@@ -1,0 +1,4 @@
+# .markdownlint-cli2.yaml
+config: .markdownlint.json
+ignores:
+  - "LICENSE"

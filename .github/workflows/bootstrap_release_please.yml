@@ -1,0 +1,34 @@
+# .github/workflows/bootstrap_release_please.yml
+name: 🚀 Bootstrap release-please
+
+on:
+  workflow_dispatch:
+
+jobs:
+  bootstrap:
+    name: Bootstrap and commit release-please setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_PAT }} # ← PAT mit `repo`-Scope
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install release-please globally
+        run: npm install -g release-please
+
+      - name: Run release-please bootstrap
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_PAT }}
+        run: |
+          release-please bootstrap \
+            --release-type=rust \
+            --target-branch=main \
+            --repo-url="https://github.com/${{ github.repository }}" \
+            --token="$GITHUB_TOKEN"

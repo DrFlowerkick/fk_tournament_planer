@@ -1,0 +1,26 @@
+# .github/workflows/main_pr.yml
+name: CI for pushing to main branch
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  marker:
+    name: Log branch workflow start
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello
+        run: echo "Running main branch workflow..."
+        
+  audit:
+    uses: ./.github/workflows/_audit.yml
+
+  release:
+    uses: ./.github/workflows/_release_please.yml
+    secrets:
+      token: ${{ secrets.RELEASE_PLEASE_PAT }}

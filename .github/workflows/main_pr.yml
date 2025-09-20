@@ -1,0 +1,33 @@
+# .github/workflows/main_pr.yml
+name: CI for pull request to main branch
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  marker:
+    name: Log branch workflow start
+    runs-on: ubuntu-latest
+    steps:
+      - name: Say hello
+        run: echo "Running main branch pull request workflow..."
+
+  lint:
+    uses: ./.github/workflows/_lint.yml
+
+  lint_leptos:
+    uses: ./.github/workflows/_lint_leptos.yml
+
+  test:
+    uses: ./.github/workflows/_test.yml
+
+  end_to_end_test:
+    uses: ./.github/workflows/_end_to_end_test.yml
+
+  coverage:
+    uses: ./.github/workflows/_coverage.yml

@@ -1,0 +1,33 @@
+# .github/workflows/_audit.yml
+name: Security audit
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  security_audit:
+    name: Security audit of rust crates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install tools
+        run: |
+          cargo install cargo-audit
+          cargo install -f cargo-outdated
+
+      - name: Cargo deny
+        uses: taiki-e/install-action@cargo-deny
+      - run: cargo deny check
+
+      - name: Cargo audit
+        run: cargo audit
+
+      - name: Cargo outdated
+        run: cargo outdated || true

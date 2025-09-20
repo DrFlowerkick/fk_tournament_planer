@@ -1,0 +1,25 @@
+# .github/workflows/_lint_leptos.yml
+name: Lint Leptos View Code
+
+on:
+  workflow_call:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  leptosfmt:
+    name: Check Leptos `view!` macros with leptosfmt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install leptosfmt
+        run: cargo install leptosfmt
+
+      - name: Run leptosfmt check
+        run: leptosfmt ./**/*.rs --check
