@@ -19,13 +19,13 @@ fmt:
 
 .PHONY: clippy
 clippy:
-  cargo clippy
+	cargo clippy
 
 # -------- Leptos lint: fmt + clippy --------
 
 .PHONY: lint
 lint:
-  leptosfmt ./**/*.rs && cargo fmt && cargo clippy
+	leptosfmt ./**/*.rs && cargo fmt && cargo clippy
 
 # -------- Cleanup --------
 
