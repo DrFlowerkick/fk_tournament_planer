@@ -32,7 +32,7 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
 
         // sets the document title
-        <Title text="Welcome to Leptos" />
+        <Title text="Welcome to FK Tournament Planer" />
 
         // content for this welcome page
         <Router>
@@ -53,7 +53,10 @@ fn HomePage() -> impl IntoView {
     let on_click = move |_| *count.write() += 1;
 
     view! {
-        <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
+        <h1>"Welcome to FK Tournament Planer!"</h1>
+        <button class="btn" on:click=on_click>
+            "Click Me: "
+            {count}
+        </button>
     }
 }

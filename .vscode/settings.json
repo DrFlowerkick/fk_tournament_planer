@@ -1,15 +1,13 @@
 {
   "rust-analyzer.procMacro.ignored": {
-    "leptos_macro": [
-      "server"
-    ]
+    "leptos_macro": ["server"]
   },
   "rust-analyzer.cargo.features": ["ssr"],
-  "rust-analyzer.rustfmt.overrideCommand": [
+  /*"rust-analyzer.rustfmt.overrideCommand": [
     "leptosfmt",
     "--stdin",
     "--rustfmt"
-  ],
+  ],*/
   "css.validate": false,
   "makefile.configureOnOpen": false,
   "tailwindCSS.includeLanguages": {
@@ -26,11 +24,33 @@
   "cSpell.dictionaries": ["en", "de-de"],
   "cSpell.enabled": true,
   "cSpell.words": [
-    "axum", "bindgen", "browserlist", "browserquery", "buildx",
-    "Buildx", "cdylib", "codegen", "daisyui", "drflowerkick",
-    "dtolnay", "github", "GITHUB", "leptos", "leptosfmt",
-    "linux", "prefersdark", "rlib", "rustc", "srcset",
-    "stylesheet", "Swatinem", "taiki", "tailwindcss", "tokio"
+    "autoreload",
+    "axum",
+    "bindgen",
+    "browserlist",
+    "browserquery",
+    "buildx",
+    "Buildx",
+    "cdylib",
+    "codegen",
+    "daisyui",
+    "drflowerkick",
+    "dtolnay",
+    "github",
+    "GITHUB",
+    "leptos",
+    "leptosfmt",
+    "linux",
+    "prefersdark",
+    "rlib",
+    "rustc",
+    "srcset",
+    "stylesheet",
+    "Swatinem",
+    "swiss",
+    "taiki",
+    "tailwindcss",
+    "tokio"
   ],
   "cSpell.ignorePaths": [
     "package-lock.json",
