@@ -36,8 +36,12 @@ pub struct ScoringPolicy {
 /// comparing EntrantGroupScore.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EntrantGroupScore {
+    /// if of entrant group score
+    id: Uuid,
     /// id of entrant
     entrant_id: Uuid,
+    /// id of orchestration group
+    group_id: Uuid,
     /// achieved victory points
     victory_points: NotNan<f32>,
     /// relative score over all matches, e.g.:

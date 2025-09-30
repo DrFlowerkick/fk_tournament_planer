@@ -461,6 +461,7 @@ dependencies = [
 name = "core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "app",
  "log",
  "ordered-float",

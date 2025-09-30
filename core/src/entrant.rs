@@ -6,14 +6,16 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct Entrant {
     /// id of entrant in tournament
-    id: Uuid,
+    pub id: Uuid,
     /// optional global id of entrant, if entrant stats are kept in database
     global_id: Option<Uuid>,
     /// name of entrant
     name: String,
-    // ToDo: more parameters for scoring including an optional "score mate", who is responsible for providing scores of entrant
+    /// members of entrant
+    members: Vec<Member>,
 }
 
+// ToDo: move this into generic people mod?
 /// member of entrant, if entrant is team
 #[derive(Debug, Clone)]
 pub struct Member {

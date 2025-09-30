@@ -1,55 +1,17 @@
-// scheduling a tournament
+// group of a stage
 
 use uuid::Uuid;
-use time::OffsetDateTime;
-use crate::ScoringPolicy;
+use crate::{ScoringPolicy, MatchTiming};
 
-/// schedule of tournament
+/// group of a stage
 #[derive(Debug, Clone)]
-pub struct Schedule {
-    /// id of schedule
-    id: Uuid,
-    /// date of (first) day of tournament
-    date: OffsetDateTime,
-    /// number of stations
-    /// station represents all kinds of sport areas to carry out matches, e.g. courts, tables, fields
-    num_stations: u16,
-    /// stages of tournament
-    stages: Vec<ScheduledStage>,
-    // ToDo: add further parameters required to schedule a tournament
-}
-
-
-/// one stage of a tournament
-#[derive(Debug, Clone)]
-pub struct ScheduledStage {
-    /// id of stage in tournament
-    id: Uuid,
-    /// id of scheduled Stage
-    schedule_id: Uuid,
-    /// id of tournament
-    tournament_id: Uuid,
-    /// groups of stage
-    groups: Vec<ScheduledGroup>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Mode {
-    RoundRobin,
-    KO,
-    KOFullPlayOut,
-    Swiss,
-}
-
-/// scheduled group of a stage
-#[derive(Debug, Clone)]
-pub struct ScheduledGroup {
+pub struct Group {
     /// id of group in tournament
     id: Uuid,
-    /// id of scheduled group
-    schedule_id: Uuid,
     /// id of stage
     stage_id: Uuid,
+    /// group number
+    number: usize,
     /// match making mode of group
     /// Normally all groups of one stage share the same mode. This may be not true for final stage,
     /// if number of entrants forces groups with different number of entrants. If you have 9
@@ -65,41 +27,32 @@ pub struct ScheduledGroup {
     /// you may wish to increase number of sets to win the match (if applicable), so that both teams
     /// have more time to play.
     scoring_policy: ScoringPolicy,
-    /// entrants of this group
-    entrants: Vec<ScheduledEntrant>,
-    /// rounds of matches of this group
-    rounds: Vec<ScheduledRound>,
-    /// current active round; ToDo: do we need this?
-    active_round: usize,
+    /// timing structure of a match of this group
+    /// Normally all groups of one stage share the same timing structure. This may be not true for final stage,
+    /// as it is for match making mode for the same reasons. If there is one group with only two entrants,
+    /// you may wish to increase number of sets to win the match (if applicable), therefore changing
+    /// the timing structure for this group.
+    timing: MatchTiming,
+    /// scheduled entrants of this group
+    // ToDo: do we need a list of entrants in group?
+    scheduled_entrants: Vec<ScheduledEntrant>,
+    /// scoring of entrants in this group, referenced by id
+    entrant_scores: Vec<Uuid>,
+    /// rounds of matches of this group, referenced by id, sorted by round number
+    rounds: Vec<Uuid>,
 }
 
-/// round of scheduled matches
+
+
 #[derive(Debug, Clone)]
-pub struct ScheduledRound {
-    /// id of round in tournament
-    id: Uuid,
-    /// matches of round
-    matches: Vec<ScheduledMatch>,
-    /// if odd number of entrants, one entrant must pause this round
-    /// index of entrant in entrant list of group sorted by rank
-    pause: Option<usize>,
+pub enum Mode {
+    RoundRobin,
+    KOFullPlayOut,
+    KO,
+    Swiss,
 }
 
-/// scheduled match of tournament
-#[derive(Debug, Clone)]
-pub struct ScheduledMatch {
-    /// id of match in tournament
-    id: Uuid,
-    /// id of scheduled round
-    round_id: Uuid,
-    /// scheduled entrant a
-    side_a: ScheduledEntrant,
-    /// scheduled entrant b
-    side_b: ScheduledEntrant,
-    // ToDo: schedule information: time, date, court
-}
-
-/// scheduled entrant for match
+/// scheduled entrant for a match
 #[derive(Debug, Clone)]
 pub enum ScheduledEntrant {
     /// Entrant referenced by id; used for first stage

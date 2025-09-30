@@ -14,3 +14,4 @@ time.workspace = true
 uuid.workspace = true
 ordered-float.workspace = true
 rand.workspace = true
+anyhow.workspace = true
