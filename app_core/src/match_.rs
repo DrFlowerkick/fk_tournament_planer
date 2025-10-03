@@ -1,7 +1,7 @@
 // match of tournament
 
 use uuid::Uuid;
-use time::OffsetDateTime;
+use chrono::{DateTime, Local};
 use crate::ScheduledEntrant;
 
 /// match of tournament
@@ -9,22 +9,18 @@ use crate::ScheduledEntrant;
 pub struct Match {
     /// id of match in tournament
     id: Uuid,
-    /// if if round
+    /// id of round
     round_id: Uuid,
     /// number of match
     number: usize,
-    /// scheduled entrant a
-    scheduled_a: ScheduledEntrant,
-    /// scheduled entrant b
-    scheduled_b: ScheduledEntrant,
+    /// entrant a, either scheduled or concrete id
+    side_a: ScheduledEntrant,
+    /// entrant b, either scheduled or concrete id
+    side_b: ScheduledEntrant,
     /// station of match
     station: u16,
     /// date and start time of match
-    start_at: OffsetDateTime,
-    /// id of entrant a
-    side_a: Uuid,
-    /// if of entrant b
-    side_b: Uuid,
+    start_at: DateTime<Local>,
     /// We use a Vec for scoring, since some sports score over multiple sets,
     /// e.g. best out of 3 sets
     /// score of a; each Vec entry represents one set

@@ -13,6 +13,11 @@
 /// 5 groups, you count trough from top rank to lowest rank from 1 to 5,
 /// in which the number represents the mapped group), or random. When moving
 /// to next stage, current stage rank decides group mapping (see below).
+/// Snake muster anschauen. Eher der Standard international.
+/// ToDo: die number of courts können über das Turnier ggf. variieren.
+/// Knock Out mit Wild Card? Recherchieren...
+/// Ein Turnierort sollte optional sein, für quick and dirty tournaments
+/// Dafür sollten dann auh einfach dummy entrants möglich sein, die einfach per Nummer durchgezählt sind.
 ///
 /// I each group all entrants have matches against each other after a
 /// certain mode. In final stage this is usually KO Play Out (see below), while
@@ -21,6 +26,8 @@
 /// organized in rounds. With an even number of entrants in group, each entrant
 /// has one match per round (if not dropped out of tournament, see KO below).
 /// An odd number of entrants implies a pause for one entrant in each round.
+/// ToDo: Zuordnung zu de stations: die top gesetzten Teams werden festen Stationen zugeteilt,
+/// die anderen müssen wandern. StationPolicy?
 ///
 /// After all rounds of matches in all groups of current stage are done, a stage
 /// ranking is generated for all entrants. This ranking depends upon ranking of
@@ -43,6 +50,14 @@
 /// rounds the ranking of entrants is stable enough to represent the final ranking.
 /// The recommended number of rounds to play is 'log_2(number of entrants) + 2' or more.
 /// The maximum number of rounds is equal to round robin.
+/// Hier ggf. mit Buffern arbeiten. Nochmal recherchieren.
+/// Double elimination wird durchaus verwendet (z.B. Free Style)
+/// Ring System. Man stellt die Mannschaften in einem Ring auf und spielt gegen die Nachbarn
+/// -> Recherchieren
+///
+/// Harte Time caps im Timing ergänzen
+/// Noch nicht gestartete stages sollten auch bei gestarteten Turnier nur bearbeitbar im schedule sein.
+/// Tie Breaker sollen durch den turnierdirektor konfigurierbar sein.
 ///
 /// The Swiss system can be integrated in the generic tournament structure by using a stage
 /// for each round of Swiss matches. Therefore a Swiss stage contains only one
@@ -80,11 +95,10 @@
 /// and more confusing with growing size of struct, I suggest separate structs for the
 /// components of the tournament, which data will be persisted via  database.
 ///
-use crate::{Core, Entrant, PostalAddress};
+use crate::{Core, PostalAddress};
 use anyhow::Result;
-
-use std::collections::HashMap;
-use time::OffsetDateTime;
+use chrono::{DateTime, Local};
+use std::collections::HashSet;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -94,14 +108,16 @@ pub struct Tournament {
     /// name of tournament
     name: String,
     /// location of tournament
-    location: PostalAddress,
+    location: Uuid,
     /// date and timing of tournament days, referenced by id, sorted by day number
     tournament_days: Vec<Uuid>,
     /// number of stations
     /// station represents all kinds of sport areas to carry out matches, e.g. courts, tables, fields
     num_stations: u16,
+    /// tie breaker policy
+    tie_breaker_policy: Uuid,
     /// entrants of tournament
-    entrants: HashMap<Uuid, Entrant>,
+    entrants: HashSet<Uuid>,
     /// stages of tournament, referenced by id, sorted by stage number
     stages: Vec<Uuid>,
     /// state of tournament
@@ -121,27 +137,29 @@ pub struct TournamentState {
 }
 
 impl Core<TournamentState> {
-    pub fn tournament_action(&mut self, action: TournamentActions) -> Result<TournamentViewModel> {
+    pub async fn tournament_action(
+        &mut self,
+        action: TournamentActions,
+    ) -> Result<TournamentViewModel> {
         match action {
             TournamentActions::ChangeName(name) => self.state.tournament.name = name,
             TournamentActions::ChangeLocation(location) => {
                 self.state.tournament.location = location
             }
-            TournamentActions::ChangeEntrant(entrant) => {
-                self.state
-                    .tournament
-                    .entrants
-                    .entry(entrant.id)
-                    .and_modify(|e| *e = entrant.clone())
-                    .or_insert(entrant);
+            TournamentActions::AddEntrant(entrant) => {
+                self.state.tournament.entrants.insert(entrant);
             }
             TournamentActions::RemoveEntrant(entrant) => {
-                self.state.tournament.entrants.remove(&entrant.id);
+                self.state.tournament.entrants.remove(&entrant);
             }
         }
-        self.render_view_model()
+        self.render_view_model().await
     }
-    pub fn render_view_model(&self) -> Result<TournamentViewModel> {
+    pub async fn render_view_model(&self) -> Result<TournamentViewModel> {
+        let location = self
+            .get_postal_address_state(self.state.tournament.location)
+            .await?
+            .map(|pa| pa.get().clone());
         let start_at = if let Some(day_timing_id) = self.state.tournament.tournament_days.get(0)
             && let Some(day_timing) = self.get_tournament_day_timing_state(*day_timing_id)?
         {
@@ -151,7 +169,7 @@ impl Core<TournamentState> {
         };
         Ok(TournamentViewModel {
             name: self.state.tournament.name.clone(),
-            location: self.state.tournament.location.clone(),
+            location,
             start_at,
             num_entrants: self.state.tournament.entrants.len(),
             valid_schedule: self.is_valid(),
@@ -160,23 +178,21 @@ impl Core<TournamentState> {
     pub fn is_valid(&self) -> bool {
         todo!()
     }
-    // todo: use a view model fo entrant?
-    pub fn list_entrants(&self) -> Vec<Entrant> {
-        self.state.tournament.entrants.values().cloned().collect()
-    }
 }
 
 pub enum TournamentActions {
     ChangeName(String),
-    ChangeLocation(PostalAddress),
-    ChangeEntrant(Entrant),
-    RemoveEntrant(Entrant),
+    ChangeLocation(Uuid),
+    AddEntrant(Uuid),
+    RemoveEntrant(Uuid),
 }
 
 pub struct TournamentViewModel {
     pub name: String,
-    pub location: PostalAddress,
-    pub start_at: Option<OffsetDateTime>,
+    pub location: Option<PostalAddress>,
+    pub start_at: Option<DateTime<Local>>,
     pub num_entrants: usize,
     pub valid_schedule: bool,
 }
+
+pub struct NewTournamentState {}

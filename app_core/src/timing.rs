@@ -2,8 +2,8 @@
 
 use crate::Core;
 use anyhow::{Context, Result};
+use chrono::{DateTime, Local};
 use std::time::Duration;
-use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// Timing structure of a match. For set based sports with sets_to_win and
@@ -12,6 +12,10 @@ use uuid::Uuid;
 /// depending on score_to_win and experience with the particular sport.
 #[derive(Debug, Clone)]
 pub struct MatchTiming {
+    /// if of match timing
+    id: Uuid,
+    /// name of match timing
+    name: String,
     /// number of periods (min 1)
     num_periods: u8,
     /// duration of a period
@@ -20,20 +24,25 @@ pub struct MatchTiming {
     interval_between_periods: Duration,
 }
 
+// ToDo: bei der final stage sollte beachtet werden, dass die unteren Pool Spiele zuerst und eher etwas kürzer
+// laufen und das alle das finale anschauen können.
+
 #[derive(Debug, Clone)]
 pub struct DayTiming {
     /// id of tournament day timing
     id: Uuid,
-    /// id of schedule
-    schedule_id: Uuid,
+    /// id of tournament
+    tournament_id: Uuid,
     /// number of day of tournament
     number: usize,
     /// date and start time of a tournament day
-    pub date: OffsetDateTime,
+    pub date: DateTime<Local>,
     /// maximum duration of day
     max_duration: Duration,
+    /// interval between matches
+    interval_between_matches: Duration,
     /// start of midday break
-    midday_break: OffsetDateTime,
+    midday_break: DateTime<Local>,
     /// midday break duration
     midday_break_duration: Duration,
 }

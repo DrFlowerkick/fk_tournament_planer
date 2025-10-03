@@ -7,6 +7,8 @@ use uuid::Uuid;
 pub struct Entrant {
     /// id of entrant in tournament
     pub id: Uuid,
+    /// id of tournament
+    tournament_id: Uuid,
     /// optional global id of entrant, if entrant stats are kept in database
     global_id: Option<Uuid>,
     /// name of entrant

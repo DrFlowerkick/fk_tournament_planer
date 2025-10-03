@@ -1,7 +1,6 @@
 // group of a stage
 
 use uuid::Uuid;
-use crate::{ScoringPolicy, MatchTiming};
 
 /// group of a stage
 #[derive(Debug, Clone)]
@@ -26,13 +25,13 @@ pub struct Group {
     /// as it is for match making mode for the same reasons. If there is one group with only two entrants,
     /// you may wish to increase number of sets to win the match (if applicable), so that both teams
     /// have more time to play.
-    scoring_policy: ScoringPolicy,
+    scoring_policy: Uuid,
     /// timing structure of a match of this group
     /// Normally all groups of one stage share the same timing structure. This may be not true for final stage,
     /// as it is for match making mode for the same reasons. If there is one group with only two entrants,
     /// you may wish to increase number of sets to win the match (if applicable), therefore changing
     /// the timing structure for this group.
-    timing: MatchTiming,
+    timing: Uuid,
     /// scheduled entrants of this group
     // ToDo: do we need a list of entrants in group?
     scheduled_entrants: Vec<ScheduledEntrant>,
@@ -55,7 +54,7 @@ pub enum Mode {
 /// scheduled entrant for a match
 #[derive(Debug, Clone)]
 pub enum ScheduledEntrant {
-    /// Entrant referenced by id; used for first stage
+    /// Entrant referenced by id; used for first stage and stages, which previous stages are done
     /// Uuid: id of entrant
     Entrant(Uuid),
     /// rank of entrant after concluded stage
