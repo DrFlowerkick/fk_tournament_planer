@@ -8,11 +8,12 @@ use thiserror::Error;
 /// database port trait
 pub trait DatabasePort: DbpPostalAddress {}
 
-/// database port trait
+/// database port trait for postal address
 #[async_trait]
 pub trait DbpPostalAddress: Send + Sync {
     async fn get_postal_address(&self, id: Uuid) -> DbResult<Option<PostalAddress>>;
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress>;
+    async fn list_postal_addresses(&self, name_filter: Option<&str>, limit: Option<usize>) -> DbResult<Vec<PostalAddress>>;
 }
 
 #[derive(Debug, Error)]

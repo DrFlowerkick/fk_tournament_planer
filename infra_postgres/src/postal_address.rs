@@ -11,9 +11,9 @@ use diesel::{
     dsl::sql,
     prelude::{
         AsChangeset, BoolExpressionMethods, ExpressionMethods, Insertable, OptionalExtension,
-        QueryDsl, Queryable,
+        PgSortExpressionMethods, QueryDsl, Queryable, TextExpressionMethods,
     },
-    sql_types::BigInt,
+    sql_types::{BigInt, Nullable, Text},
 };
 use diesel_async::RunQueryDsl;
 use uuid::Uuid;
@@ -159,5 +159,35 @@ impl DbpPostalAddress for PgDb {
                 Err(e) => Err(map_db_err(e)),
             }
         }
+    }
+    async fn list_postal_addresses(
+        &self,
+        name_filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> DbResult<Vec<PostalAddress>> {
+        let mut conn = self.new_connection().await?;
+
+        // Start with a boxed query so we can conditionally add filters/limit.
+        let mut query = postal_addresses.into_boxed::<diesel::pg::Pg>();
+
+        if let Some(f) = name_filter {
+            if !f.is_empty() {
+                // Case-insensitive "contains" match
+                let pattern = format!("%{}%", f);
+                query = query.filter(sql::<Nullable<Text>>("name::text").like(pattern));
+            }
+        }
+
+        if let Some(lim) = limit {
+            query = query.limit(lim as i64);
+        }
+
+        let rows = query
+            .order((name.asc().nulls_last(), created_at.asc()))
+            .load::<DbPostalAddress>(&mut conn)
+            .await
+            .map_err(map_db_err)?;
+
+        Ok(rows.into_iter().map(PostalAddress::from).collect())
     }
 }

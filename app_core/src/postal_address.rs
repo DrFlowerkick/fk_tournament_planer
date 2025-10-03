@@ -74,7 +74,7 @@ impl<S> Core<S> {
         &self,
         id: Uuid,
     ) -> Result<Option<Core<PostalAddressState>>> {
-        if let Some(address) = self.data_base.get_postal_address(id).await? {
+        if let Some(address) = self.database.get_postal_address(id).await? {
             // ToDo: client must register to registry
             return Ok(Some(self.switch_state(PostalAddressState { address })));
         }
@@ -94,7 +94,7 @@ impl Core<PostalAddressState> {
     }
     pub async fn resync(&mut self) -> Result<&PostalAddress> {
         self.state.address = self
-            .data_base
+            .database
             .get_postal_address(self.state.address.id)
             .await?
             .context("Expected postal address")?;
@@ -129,7 +129,7 @@ impl Core<PostalAddressState> {
     }
     pub async fn save(&self) -> Result<PostalAddressView> {
         Ok(self
-            .data_base
+            .database
             .save_postal_address(&self.state.address)
             .await?
             .into())
