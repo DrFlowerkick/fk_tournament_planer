@@ -2,7 +2,10 @@
   "rust-analyzer.procMacro.ignored": {
     "leptos_macro": ["server"]
   },
-  "rust-analyzer.cargo.features": ["ssr"],
+  // Do NOT pass workspace-wide features to every package
+  //"rust-analyzer.cargo.features": [],
+  // Enable all features
+  //"rust-analyzer.cargo.allFeatures": true,
   /*"rust-analyzer.rustfmt.overrideCommand": [
     "leptosfmt",
     "--stdin",

@@ -157,9 +157,10 @@ impl Core<TournamentState> {
     }
     pub async fn render_view_model(&self) -> Result<TournamentViewModel> {
         let location = self
-            .get_postal_address_state(self.state.tournament.location)
+            .as_postal_address_state()
+            .load(self.state.tournament.location)
             .await?
-            .map(|pa| pa.get().clone());
+            .cloned();
         let start_at = if let Some(day_timing_id) = self.state.tournament.tournament_days.get(0)
             && let Some(day_timing) = self.get_tournament_day_timing_state(*day_timing_id)?
         {

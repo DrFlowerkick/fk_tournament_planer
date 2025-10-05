@@ -238,6 +238,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-macros"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "604fde5e028fea851ce1d8570bbdc034bec850d157f7569d10f347d06808c05c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "backtrace"
 version = "0.3.75"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -534,6 +545,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cr_mock"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app_core",
+ "async-trait",
+ "dotenvy",
+ "uuid",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -612,6 +634,21 @@ name = "data-encoding"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
+
+[[package]]
+name = "db_postgres"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app_core",
+ "async-trait",
+ "chrono",
+ "diesel",
+ "diesel-async",
+ "diesel-derive-enum",
+ "dotenvy",
+ "uuid",
+]
 
 [[package]]
 name = "deranged"
@@ -1329,21 +1366,6 @@ checksum = "4b0f83760fb341a774ed326568e19f5a863af4a952def8c39f9ab92fd95b88e5"
 dependencies = [
  "equivalent",
  "hashbrown 0.16.0",
-]
-
-[[package]]
-name = "infra_postgres"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "app_core",
- "async-trait",
- "chrono",
- "diesel",
- "diesel-async",
- "diesel-derive-enum",
- "dotenvy",
- "uuid",
 ]
 
 [[package]]
@@ -2486,7 +2508,11 @@ name = "server"
 version = "0.1.0"
 dependencies = [
  "app",
+ "app_core",
  "axum",
+ "axum-macros",
+ "cr_mock",
+ "db_postgres",
  "leptos",
  "leptos_axum",
  "log",

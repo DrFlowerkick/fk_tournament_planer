@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["app", "app_core", "frontend", "server", "infra_postgres"]
+members = ["app", "app_core", "frontend", "server", "db_postgres", "cr_mock"]
 
 # need to be applied only to wasm build
 [profile.release]
@@ -15,6 +15,7 @@ leptos_router = { version = "0.8.2" }
 leptos_axum = { version = "0.8.2" }
 
 axum = "0.8.4"
+axum-macros = "0.5.0"
 cfg-if = "1.0.0"
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"

@@ -52,8 +52,8 @@ impl<S> Core<S> {
 // ToDo: we probably need some kind of configuration to provide init values for port creation. Or we do everything via .env.
 pub struct InitState {}
 
-struct NoDB {}
-struct NoCR {}
+pub struct NoDB {}
+pub struct NoCR {}
 
 pub struct DynDB {
     database: Arc<dyn DatabasePort>,

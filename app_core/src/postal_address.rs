@@ -1,7 +1,6 @@
 // data types for postal addresses
 
-use crate::Core;
-use anyhow::{Context, Result};
+use crate::{Core, DbError, DbResult};
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -69,18 +68,9 @@ pub struct PostalAddressState {
 }
 
 /// API of postal address
+// switch state to portal address state to provide API for PostalAddress
 impl<S> Core<S> {
-    pub async fn get_postal_address_state(
-        &self,
-        id: Uuid,
-    ) -> Result<Option<Core<PostalAddressState>>> {
-        if let Some(address) = self.database.get_postal_address(id).await? {
-            // ToDo: client must register to registry
-            return Ok(Some(self.switch_state(PostalAddressState { address })));
-        }
-        Ok(None)
-    }
-    pub fn new_postal_address_state(&self) -> Core<PostalAddressState> {
+    pub fn as_postal_address_state(&self) -> Core<PostalAddressState> {
         self.switch_state(PostalAddressState {
             address: PostalAddress::default(),
         })
@@ -89,15 +79,23 @@ impl<S> Core<S> {
 
 // ToDo: maybe add validations to change actions
 impl Core<PostalAddressState> {
+    pub async fn load(&mut self, id: Uuid) -> DbResult<Option<&PostalAddress>> {
+        if let Some(address) = self.database.get_postal_address(id).await? {
+            self.state.address = address;
+            Ok(Some(self.get()))
+        } else {
+            Ok(None)
+        }
+    }
     pub fn get(&self) -> &PostalAddress {
         &self.state.address
     }
-    pub async fn resync(&mut self) -> Result<&PostalAddress> {
+    pub async fn resync(&mut self) -> DbResult<&PostalAddress> {
         self.state.address = self
             .database
             .get_postal_address(self.state.address.id)
             .await?
-            .context("Expected postal address")?;
+            .ok_or(DbError::NotFound)?;
         Ok(self.get())
     }
     pub fn change_name(&mut self, name: String) {
@@ -127,7 +125,7 @@ impl Core<PostalAddressState> {
             (!view.address_region.is_empty()).then_some(view.address_region.to_string());
         self.state.address.address_country = view.address_country.to_string();
     }
-    pub async fn save(&self) -> Result<PostalAddressView> {
+    pub async fn save(&self) -> DbResult<PostalAddressView> {
         Ok(self
             .database
             .save_postal_address(&self.state.address)
