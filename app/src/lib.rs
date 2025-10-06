@@ -1,8 +1,16 @@
+// web app ui
+
+pub mod error;
+pub mod postal_addresses;
+use error::*;
+use postal_addresses::*;
+
 use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
+use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
-    components::{Route, Router, Routes},
     StaticSegment,
+    components::{A, Route, Router, Routes},
+    path,
 };
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -34,11 +42,19 @@ pub fn App() -> impl IntoView {
         // sets the document title
         <Title text="Welcome to FK Tournament Planer" />
 
-        // content for this welcome page
+        // routing
         <Router>
+
+            // navigation
+            <nav>
+                <A href="/">"Home"</A>
+                <A href="/postal_address">"Postal Address"</A>
+            </nav>
             <main>
                 <Routes fallback=|| "Page not found.".into_view()>
                     <Route path=StaticSegment("") view=HomePage />
+                    <Route path=path!("postal_address") view=NewPostalAddress />
+                    <Route path=path!("postal_address/:uuid") view=ViewPostalAddress />
                 </Routes>
             </main>
         </Router>

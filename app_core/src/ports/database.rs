@@ -2,8 +2,8 @@
 
 use crate::PostalAddress;
 use async_trait::async_trait;
-use uuid::Uuid;
 use thiserror::Error;
+use uuid::Uuid;
 
 /// database port trait
 pub trait DatabasePort: DbpPostalAddress {}
@@ -13,7 +13,11 @@ pub trait DatabasePort: DbpPostalAddress {}
 pub trait DbpPostalAddress: Send + Sync {
     async fn get_postal_address(&self, id: Uuid) -> DbResult<Option<PostalAddress>>;
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress>;
-    async fn list_postal_addresses(&self, name_filter: Option<&str>, limit: Option<usize>) -> DbResult<Vec<PostalAddress>>;
+    async fn list_postal_addresses(
+        &self,
+        name_filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> DbResult<Vec<PostalAddress>>;
 }
 
 #[derive(Debug, Error)]
@@ -28,7 +32,7 @@ pub enum DbError {
 
     /// constraint name if it is returned from db
     #[error("unique violation{0:?}")]
-    UniqueViolation(Option<String>), 
+    UniqueViolation(Option<String>),
 
     /// constraint name if it is returned from db
     #[error("foreign key violation{0:?}")]

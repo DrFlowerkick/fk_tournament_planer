@@ -7,8 +7,12 @@ use anyhow::{Context, Result};
 use app_core::{DatabasePort, DbError, DbResult};
 use diesel_async::{
     AsyncPgConnection,
-    pooled_connection::{AsyncDieselConnectionManager, bb8::{Pool, PooledConnection}},
+    pooled_connection::{
+        AsyncDieselConnectionManager,
+        bb8::{Pool, PooledConnection},
+    },
 };
+use dotenvy::dotenv;
 use std::env;
 use std::sync::Arc;
 
@@ -18,6 +22,7 @@ pub struct PgDb {
 
 impl PgDb {
     pub async fn new() -> Result<Arc<Self>> {
+        dotenv().ok();
         let database_url = env::var("DATABASE_URL")
             .context("DATABASE_URL must be set. Hint: did you run dotenv()?")?;
         let config = AsyncDieselConnectionManager::new(database_url);
@@ -26,11 +31,7 @@ impl PgDb {
         }))
     }
     async fn new_connection(&self) -> DbResult<PooledConnection<'_, AsyncPgConnection>> {
-        self
-            .pool
-            .get()
-            .await
-            .map_err(|e| DbError::Other(e.into()))
+        self.pool.get().await.map_err(|e| DbError::Other(e.into()))
     }
 }
 

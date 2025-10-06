@@ -41,8 +41,6 @@ pub struct Group {
     rounds: Vec<Uuid>,
 }
 
-
-
 #[derive(Debug, Clone)]
 pub enum Mode {
     RoundRobin,

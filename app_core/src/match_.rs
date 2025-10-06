@@ -1,8 +1,8 @@
 // match of tournament
 
-use uuid::Uuid;
-use chrono::{DateTime, Local};
 use crate::ScheduledEntrant;
+use chrono::{DateTime, Local};
+use uuid::Uuid;
 
 /// match of tournament
 #[derive(Debug, Clone)]

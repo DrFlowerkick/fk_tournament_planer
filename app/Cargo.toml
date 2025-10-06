@@ -7,6 +7,8 @@ edition = "2024"
 
 [dependencies]
 app_core = { path = "../app_core" }
+db_postgres = { path = "../db_postgres", optional = true }
+cr_mock = { path = "../cr_mock", optional = true }
 
 leptos.workspace = true
 leptos_meta.workspace = true
@@ -16,6 +18,13 @@ leptos_axum = { workspace = true, optional = true }
 http.workspace = true
 cfg-if.workspace = true
 thiserror.workspace = true
+
+uuid.workspace = true
+serde.workspace = true
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { workspace = true, features = ["wasm_js"] }
+
 
 [features]
 default = []

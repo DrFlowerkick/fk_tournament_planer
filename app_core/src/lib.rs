@@ -51,6 +51,7 @@ impl<S> Core<S> {
 
 // ToDo: we probably need some kind of configuration to provide init values for port creation. Or we do everything via .env.
 pub struct InitState {}
+pub type CoreState = Arc<Core<InitState>>;
 
 pub struct NoDB {}
 pub struct NoCR {}

@@ -11,6 +11,6 @@ log.workspace = true
 chrono.workspace = true
 uuid.workspace = true
 ordered-float.workspace = true
-rand.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
+serde.workspace = true

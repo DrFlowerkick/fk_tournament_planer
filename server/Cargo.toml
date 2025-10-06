@@ -14,7 +14,6 @@ leptos = { workspace = true, features = [ "ssr" ]}
 leptos_axum.workspace = true
 
 axum.workspace = true
-axum-macros.workspace = true
 simple_logger.workspace = true
 tokio.workspace = true
 tower.workspace = true

@@ -1,9 +1,10 @@
 // data types for postal addresses
 
 use crate::{Core, DbError, DbResult};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct PostalAddress {
     /// id of address
     pub id: Uuid,
@@ -34,31 +35,6 @@ impl Default for PostalAddress {
             address_locality: "".into(),
             address_region: None,
             address_country: "".into(),
-        }
-    }
-}
-
-/// view model of postal address
-/// struct field description see PostalAddress
-#[derive(Clone, Debug, Default)]
-pub struct PostalAddressView {
-    name: String,
-    street_address: String,
-    postal_code: String,
-    address_locality: String,
-    address_region: String,
-    address_country: String,
-}
-
-impl From<PostalAddress> for PostalAddressView {
-    fn from(value: PostalAddress) -> Self {
-        PostalAddressView {
-            name: value.name.clone().unwrap_or_default(),
-            street_address: value.street_address.clone(),
-            postal_code: value.postal_code.clone(),
-            address_locality: value.address_locality.clone(),
-            address_region: value.address_region.clone().unwrap_or_default(),
-            address_country: value.address_country.clone(),
         }
     }
 }
@@ -98,6 +74,12 @@ impl Core<PostalAddressState> {
             .ok_or(DbError::NotFound)?;
         Ok(self.get())
     }
+    pub fn set_id(&mut self, id: Uuid) {
+        self.state.address.id = id;
+    }
+    pub fn set_version(&mut self, version: i64) {
+        self.state.address.version = version;
+    }
     pub fn change_name(&mut self, name: String) {
         self.state.address.name = (!name.is_empty()).then_some(name);
     }
@@ -116,20 +98,12 @@ impl Core<PostalAddressState> {
     pub fn change_address_country(&mut self, address_country: String) {
         self.state.address.address_country = address_country;
     }
-    pub fn apply_view(&mut self, view: PostalAddressView) {
-        self.state.address.name = (!view.name.is_empty()).then_some(view.name.to_string());
-        self.state.address.street_address = view.street_address.to_string();
-        self.state.address.postal_code = view.postal_code.to_string();
-        self.state.address.address_locality = view.address_locality.to_string();
-        self.state.address.address_region =
-            (!view.address_region.is_empty()).then_some(view.address_region.to_string());
-        self.state.address.address_country = view.address_country.to_string();
-    }
-    pub async fn save(&self) -> DbResult<PostalAddressView> {
-        Ok(self
+    pub async fn save(&mut self) -> DbResult<&PostalAddress> {
+        self.state.address = self
             .database
             .save_postal_address(&self.state.address)
-            .await?
-            .into())
+            .await?;
+
+        Ok(self.get())
     }
 }
