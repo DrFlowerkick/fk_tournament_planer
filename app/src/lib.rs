@@ -52,9 +52,11 @@ pub fn App() -> impl IntoView {
             </nav>
             <main>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=StaticSegment("") view=HomePage />
-                    <Route path=path!("postal_address") view=NewPostalAddress />
-                    <Route path=path!("postal_address/:uuid") view=ViewPostalAddress />
+                    <Route path=StaticSegment("/") view=HomePage />
+                    <Route path=path!("/postal-address") view=SearchPostalAddress />
+                    <Route path=path!("/postal-address/new") view=NewPostalAddress />
+                    <Route path=path!("/postal-address/:uuid/edit") view=PostalAddressEdit />
+                    <Route path=path!("/postal-address/:uuid") view=SearchPostalAddress />
                 </Routes>
             </main>
         </Router>

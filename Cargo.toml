@@ -37,6 +37,7 @@ dotenvy = "0.15"
 async-trait = "0.1.89"
 serde = "1.0"
 getrandom = "0.3"
+gloo-timers = { version = "0.3.0", features = ["futures"] }
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 

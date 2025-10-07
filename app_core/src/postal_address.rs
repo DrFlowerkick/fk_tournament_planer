@@ -1,7 +1,9 @@
 // data types for postal addresses
 
 use crate::{Core, DbError, DbResult};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -105,5 +107,14 @@ impl Core<PostalAddressState> {
             .await?;
 
         Ok(self.get())
+    }
+    pub async fn list_addresses(
+        &self,
+        name_filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> DbResult<Vec<PostalAddress>> {
+        self.database
+            .list_postal_addresses(name_filter, limit)
+            .await
     }
 }
