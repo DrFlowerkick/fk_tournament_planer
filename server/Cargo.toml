@@ -9,7 +9,7 @@ edition = "2024"
 app = { path = "../app", default-features = false, features = ["ssr"] }
 app_core = { path = "../app_core" }
 db_postgres = { path = "../db_postgres" }
-cr_mock = { path = "../cr_mock" }
+cr_single_instance = { path = "../cr_single_instance" }
 leptos = { workspace = true, features = [ "ssr" ]}
 leptos_axum.workspace = true
 

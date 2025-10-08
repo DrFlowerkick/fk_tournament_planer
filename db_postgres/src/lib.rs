@@ -14,21 +14,20 @@ use diesel_async::{
 };
 use dotenvy::dotenv;
 use std::env;
-use std::sync::Arc;
 
 pub struct PgDb {
     pool: Pool<AsyncPgConnection>,
 }
 
 impl PgDb {
-    pub async fn new() -> Result<Arc<Self>> {
+    pub async fn new() -> Result<Self> {
         dotenv().ok();
         let database_url = env::var("DATABASE_URL")
             .context("DATABASE_URL must be set. Hint: did you run dotenv()?")?;
         let config = AsyncDieselConnectionManager::new(database_url);
-        Ok(Arc::new(PgDb {
+        Ok(PgDb {
             pool: Pool::builder().build(config).await?,
-        }))
+        })
     }
     async fn new_connection(&self) -> DbResult<PooledConnection<'_, AsyncPgConnection>> {
         self.pool.get().await.map_err(|e| DbError::Other(e.into()))

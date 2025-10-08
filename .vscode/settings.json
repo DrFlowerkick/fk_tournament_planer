@@ -39,6 +39,7 @@
     "citext",
     "codegen",
     "daisyui",
+    "dashmap",
     "drflowerkick",
     "dtolnay",
     "fieldset",

@@ -1,7 +1,7 @@
 use app::*;
 use app_core::*;
 use axum::Router;
-use cr_mock::*;
+use cr_single_instance::*;
 use db_postgres::*;
 use leptos::logging::log;
 use leptos::prelude::*;
@@ -15,8 +15,8 @@ async fn main() {
     let leptos_options = conf.leptos_options;
     // initialize core state
     let core = CoreBuilder::new()
-        .set_db(PgDb::new().await.unwrap())
-        .set_cr(ClientRegistryMock::new())
+        .set_db(Arc::new(PgDb::new().await.unwrap()))
+        .set_cr(Arc::new(CrSingleInstance::new()))
         .build();
     let app_state: CoreState = Arc::new(core);
     // Generate the list of routes in your Leptos App

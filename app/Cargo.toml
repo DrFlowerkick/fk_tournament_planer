@@ -8,7 +8,7 @@ edition = "2024"
 [dependencies]
 app_core = { path = "../app_core" }
 db_postgres = { path = "../db_postgres", optional = true }
-cr_mock = { path = "../cr_mock", optional = true }
+cr_single_instance = { path = "../cr_single_instance", optional = true }
 leptos.workspace = true
 leptos_meta.workspace = true
 leptos_router.workspace = true

@@ -74,7 +74,7 @@ version = "0.1.0"
 dependencies = [
  "app_core",
  "cfg-if",
- "cr_mock",
+ "cr_single_instance",
  "db_postgres",
  "getrandom",
  "gloo-timers",
@@ -95,6 +95,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "futures-core",
  "log",
  "ordered-float",
  "serde",
@@ -538,13 +539,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "cr_mock"
+name = "cr_single_instance"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "app_core",
  "async-trait",
+ "dashmap",
  "dotenvy",
+ "futures-core",
+ "futures-util",
+ "tokio",
+ "tokio-stream",
  "uuid",
 ]
 
@@ -2516,7 +2522,7 @@ dependencies = [
  "app",
  "app_core",
  "axum",
- "cr_mock",
+ "cr_single_instance",
  "db_postgres",
  "leptos",
  "leptos_axum",
@@ -2955,6 +2961,18 @@ dependencies = [
  "tokio",
  "tokio-util",
  "whoami",
+]
+
+[[package]]
+name = "tokio-stream"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eca58d7bba4a75707817a2c44174253f9236b2d5fbd055602e9d5c07c139a047"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

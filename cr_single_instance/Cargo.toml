@@ -1,5 +1,5 @@
 [package]
-name = "cr_mock"
+name = "cr_single_instance"
 version = "0.1.0"
 edition = "2024"
 
@@ -11,3 +11,8 @@ dotenvy.workspace = true
 anyhow.workspace = true
 uuid.workspace = true
 async-trait.workspace = true
+dashmap.workspace = true
+futures-core.workspace = true
+futures-util.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
