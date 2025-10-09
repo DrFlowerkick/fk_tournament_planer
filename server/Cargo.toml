@@ -10,7 +10,7 @@ app = { path = "../app", default-features = false, features = ["ssr"] }
 shared = { path = "../shared" }
 app_core = { path = "../app_core" }
 db_postgres = { path = "../db_postgres" }
-cr_single_instance = { path = "../cr_single_instance", default-features = false, features = ["ssr"] }
+cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
 leptos = { workspace = true, features = [ "ssr" ]}
 leptos_axum.workspace = true
 

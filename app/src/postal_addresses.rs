@@ -2,6 +2,7 @@
 
 use crate::AppResult;
 use app_core::{CrTopic, PostalAddress};
+use cr_single_instance::{use_changed_sse, SseUrl};
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
@@ -9,7 +10,6 @@ use leptos_router::{
     params::Params,
 };
 use uuid::Uuid;
-use cr_single_instance::use_changed_sse;
 
 #[derive(Params, Clone, PartialEq, Eq, Debug)]
 struct AddressParams {
@@ -60,8 +60,9 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let version = move || address.get().version;
     // use id from address, since this address is either an existing postal address or nil
     // id from use_params() may be broken or not existing id
+    let topic_url = move || CrTopic::Address(address.get().id).sse_url();
+    #[cfg(all(target_arch="wasm32", feature="hydrate"))]
     use_changed_sse(CrTopic::Address(address.get().id), refetch, version);
-
 
     // initialize query and address from Uuid
     Effect::new(move || {
@@ -88,22 +89,19 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let select_idx = move |i: usize| {
         if let Some(Ok(list)) = addr_list.get_untracked() {
             if let Some(item) = list.get(i) {
-                // 1) UI-Status aktualisieren
+                // 1) update UI state
                 set_query.set(item.name.clone().unwrap_or_default());
                 set_address.set(item.clone());
                 set_open.set(false);
 
-                // 2) URL aktualisieren (nur bei existierender Adresse)
-                //    -> Pfad-Variante: /postal-address/:uuid
-                //    Falls du einen anderen Pfad hast, hier anpassen.
+                // 2) update URL aktualisieren
                 let id_str = item.id.to_string(); // falls id: Uuid
                 let navigate = use_navigate();
                 let _ = navigate(
                     &format!("/postal-address/{}", id_str),
                     NavigateOptions {
-                        // replace=true verhindert „History-Spam“, wenn du oft auswählst;
-                        // false, wenn jede Auswahl einen Back-Button-Eintrag bekommen soll.
-                        replace: false,
+                        // replace=true prevents „history spam“
+                        replace: true,
                         ..Default::default()
                     },
                 );
@@ -167,6 +165,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
         }>
             {move || {
                 view! {
+                    <p> {move || topic_url() }</p>
                     // DaisyUI dropdown container
                     <div class=move || {
                         format!("dropdown w-full {}", if open.get() { "dropdown-open" } else { "" })

@@ -2,7 +2,7 @@
 
 use app_core::CrTopic;
 use serde::{Deserialize, Serialize};
-use serde_json::to_value;
+//use serde_json::to_value;
 
 
 
@@ -14,7 +14,9 @@ pub enum CrKind {
 
 impl ToString for CrKind {
     fn to_string(&self) -> String {
-        to_value(&self).unwrap().to_string()
+        match self {
+            CrKind::Address => "address".into()
+        }
     }
 }
 
@@ -41,7 +43,7 @@ impl SseUrl for CrTopic {
         };
         CR_TOPIC_URL_TEMPLATE
             .replace("{kind}", CrKind::from(self).to_string().as_str())
-            .replace("id", id.to_string().as_ref())
+            .replace("{id}", id.to_string().as_ref())
     }
 }
 

@@ -8,6 +8,7 @@ use axum::{
 use axum_extra::routing::TypedPath;
 use futures_core::Stream;
 use futures_util::StreamExt;
+use leptos::logging::log;
 use serde::Deserialize;
 use shared::AppState;
 use tokio_stream::once;
@@ -41,7 +42,10 @@ pub async fn api_subscribe(
         Ok(st) => st
             .map(|changed| {
                 match serde_json::to_string(&changed) {
-                    Ok(s) => Ok(Event::default().event("changed").data(s)),
+                    Ok(s) => {
+                        log!("sending event {s}");
+                        Ok(Event::default().event("changed").data(s))
+                    },
                     Err(e) => Ok(Event::default().event("error").data(format!("serde error: {e}"))),
                 }
             })

@@ -1,7 +1,7 @@
 // web app ui
 
-pub mod error;
-pub mod postal_addresses;
+mod error;
+mod postal_addresses;
 use error::*;
 use postal_addresses::*;
 
@@ -48,7 +48,7 @@ pub fn App() -> impl IntoView {
             // navigation
             <nav>
                 <A href="/">"Home"</A>
-                <A href="/postal_address">"Postal Address"</A>
+                <A href="/postal-address">"Postal Address"</A>
             </nav>
             <main>
                 <Routes fallback=|| "Page not found.".into_view()>

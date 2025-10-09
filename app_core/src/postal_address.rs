@@ -103,7 +103,7 @@ impl Core<PostalAddressState> {
             .database
             .save_postal_address(&self.state.address)
             .await?;
-        // signal change of address per client registry
+        // publish change of address to client registry
         let notice = CrPushNotice::AddressUpdated {
             id: self.state.address.id,
             meta: CrUpdateMeta {

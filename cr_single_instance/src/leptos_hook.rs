@@ -7,7 +7,7 @@ use codee::string::JsonSerdeCodec;
 use leptos::{logging::log, prelude::*};
 
 pub fn use_changed_sse(topic: CrTopic, refetch: impl Fn() + 'static, version: impl Fn() -> i64 + 'static) {
-    
+    log!("Some client wants to subscribe to {:?}", topic);
     let UseEventSourceReturn {
         data,
         ..
