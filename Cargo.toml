@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["app", "app_core", "frontend", "server", "db_postgres", "cr_single_instance"]
+members = ["app", "app_core", "frontend", "server", "db_postgres", "cr_single_instance", "shared"]
 
 # need to be applied only to wasm build
 [profile.release]
@@ -13,8 +13,11 @@ leptos = { version = "0.8.2" }
 leptos_meta = { version = "0.8.2" }
 leptos_router = { version = "0.8.2" }
 leptos_axum = { version = "0.8.2" }
+leptos-use = { version = "0.16.3", features = ["use_event_source", "use_event_listener"]}
 
 axum = "0.8.4"
+axum-extra = { version = "0.10.3", features = ["typed-routing"]}
+axum-macros = "0.5.0"
 cfg-if = "1.0.0"
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
@@ -37,11 +40,13 @@ diesel-async = { version = "0.6", features = ["postgres", "pool", "bb8"] }
 dotenvy = "0.15"
 async-trait = "0.1.89"
 serde = "1.0"
+serde_json = "1.0"
 getrandom = "0.3"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 futures-core = "0.3"
 futures-util = "0.3"
 dashmap = "6.1.0"
+codee = "0.3"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 

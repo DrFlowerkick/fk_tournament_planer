@@ -5,14 +5,37 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+types = []
+hydrate = ["leptos/hydrate", "types"]
+ssr = [
+    "leptos/ssr",
+    "leptos-use/ssr",
+    "leptos-use/axum",
+    "types",
+    "dep:axum",
+    "dep:axum-extra",
+    "dep:tokio",
+    "dep:tokio-stream",
+    "dep:shared"
+]
+
 [dependencies]
 app_core = { path = "../app_core" }
-dotenvy.workspace = true
+shared = { path = "../shared", optional = true}
 anyhow.workspace = true
 uuid.workspace = true
 async-trait.workspace = true
 dashmap.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
-tokio.workspace = true
-tokio-stream.workspace = true
+tokio = {workspace = true, optional = true}
+tokio-stream = {workspace = true, optional = true}
+axum = {workspace = true, optional = true}
+axum-extra = {workspace = true, optional = true}
+serde.workspace = true
+serde_json.workspace = true
+leptos.workspace = true
+leptos-use.workspace = true
+codee.workspace = true

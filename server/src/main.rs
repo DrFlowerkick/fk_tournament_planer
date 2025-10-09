@@ -1,11 +1,13 @@
 use app::*;
 use app_core::*;
 use axum::Router;
+use axum_extra::routing::RouterExt;
 use cr_single_instance::*;
 use db_postgres::*;
 use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
+use shared::*;
 use std::sync::Arc;
 
 #[tokio::main]
@@ -18,25 +20,29 @@ async fn main() {
         .set_db(Arc::new(PgDb::new().await.unwrap()))
         .set_cr(Arc::new(CrSingleInstance::new()))
         .build();
-    let app_state: CoreState = Arc::new(core);
+    let app_state = AppState {
+        core: Arc::new(core),
+        leptos_options: leptos_options.clone(),
+    };
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
 
     let app = Router::new()
+        .typed_get(api_subscribe)
         .leptos_routes_with_context(
-            &leptos_options,
+            &app_state,
             routes,
             {
-                let app_state = app_state.clone();
-                move || provide_context(app_state.clone())
+                let core = app_state.core.clone();
+                move || provide_context(core.clone())
             },
             {
                 let leptos_options = leptos_options.clone();
                 move || shell(leptos_options.clone())
             },
         )
-        .fallback(leptos_axum::file_and_error_handler(shell))
-        .with_state(leptos_options);
+        .fallback(leptos_axum::file_and_error_handler::<AppState, _>(shell))
+        .with_state(app_state);
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`

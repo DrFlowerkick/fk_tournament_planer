@@ -1,7 +1,7 @@
 // web ui for adding and modifying postal addresses
 
 use crate::AppResult;
-use app_core::PostalAddress;
+use app_core::{CrTopic, PostalAddress};
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
@@ -9,6 +9,7 @@ use leptos_router::{
     params::Params,
 };
 use uuid::Uuid;
+use cr_single_instance::use_changed_sse;
 
 #[derive(Params, Clone, PartialEq, Eq, Debug)]
 struct AddressParams {
@@ -34,13 +35,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let params = use_params::<AddressParams>();
     let id = move || params.get().map(|ap| ap.uuid).unwrap_or(None);
 
-    // query to search address & loaded / selected address
-    let (query, set_query) = signal(String::new());
-    let (address, set_address) = signal(PostalAddress::default());
-
     // dropdown-status & keyboard-highlight
     let (open, set_open) = signal(false);
     let (hi, set_hi) = signal::<Option<usize>>(None);
+
+    // query to search address & loaded / selected address
+    let (query, set_query) = signal(String::new());
+    let (address, set_address) = signal(PostalAddress::default());
 
     // load existing address when `id` is Some(...)
     let addr_res = Resource::new(
@@ -54,6 +55,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
             }
         },
     );
+
+    let refetch = move || addr_res.refetch();
+    let version = move || address.get().version;
+    // use id from address, since this address is either an existing postal address or nil
+    // id from use_params() may be broken or not existing id
+    use_changed_sse(CrTopic::Address(address.get().id), refetch, version);
+
 
     // initialize query and address from Uuid
     Effect::new(move || {

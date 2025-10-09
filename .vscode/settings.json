@@ -2,8 +2,7 @@
   "rust-analyzer.procMacro.ignored": {
     "leptos_macro": ["server"]
   },
-  // Do NOT pass workspace-wide features to every package
-  //"rust-analyzer.cargo.features": [],
+  "rust-analyzer.cargo.features": ["types", "ssr", "hydrate"],
   // Enable all features
   //"rust-analyzer.cargo.allFeatures": true,
   /*"rust-analyzer.rustfmt.overrideCommand": [
@@ -37,6 +36,7 @@
     "Buildx",
     "cdylib",
     "citext",
+    "codee",
     "codegen",
     "daisyui",
     "dashmap",

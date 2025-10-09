@@ -34,9 +34,9 @@ use std::sync::Arc;
 /// connectors to sport specific ranking systems).
 /// Core is a server side sync + send async object.
 pub struct Core<S> {
-    pub state: S,
-    database: Arc<dyn DatabasePort>,
-    client_registry: Arc<dyn ClientRegistryPort>,
+    state: S,
+    pub database: Arc<dyn DatabasePort>,
+    pub client_registry: Arc<dyn ClientRegistryPort>,
 }
 
 impl<S> Core<S> {

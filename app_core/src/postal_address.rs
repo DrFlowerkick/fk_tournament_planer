@@ -1,9 +1,7 @@
 // data types for postal addresses
 
-use crate::{Core, DbError, DbResult};
-use anyhow::Result;
+use crate::{Core, CrPushNotice, CrUpdateMeta, DbError, DbResult};
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
 use uuid::Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -105,7 +103,14 @@ impl Core<PostalAddressState> {
             .database
             .save_postal_address(&self.state.address)
             .await?;
-
+        // signal change of address per client registry
+        let notice = CrPushNotice::AddressUpdated {
+            id: self.state.address.id,
+            meta: CrUpdateMeta {
+                version: self.state.address.version,
+            },
+        };
+        self.client_registry.publish(notice).await?;
         Ok(self.get())
     }
     pub async fn list_addresses(
