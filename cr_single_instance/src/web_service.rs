@@ -1,5 +1,6 @@
 // web service helper functions and types to use the client registry in web
 
+use crate::CrKind;
 use app_core::CrTopic;
 use axum::{
     extract::State,
@@ -8,13 +9,11 @@ use axum::{
 use axum_extra::routing::TypedPath;
 use futures_core::Stream;
 use futures_util::StreamExt;
-use leptos::logging::log;
 use serde::Deserialize;
 use shared::AppState;
+use std::convert::Infallible;
 use tokio_stream::once;
 use uuid::Uuid;
-use std::convert::Infallible;
-use crate::CrKind;
 
 // typed_path must match to crate::types::CR_TOPIC_URL_TEMPLATE
 #[derive(TypedPath, Deserialize)]
@@ -40,19 +39,17 @@ pub async fn api_subscribe(
 
     let out = match state.core.client_registry.subscribe(topic.clone()).await {
         Ok(st) => st
-            .map(|changed| {
-                match serde_json::to_string(&changed) {
-                    Ok(s) => {
-                        log!("sending event {s}");
-                        Ok(Event::default().event("changed").data(s))
-                    },
-                    Err(e) => Ok(Event::default().event("error").data(format!("serde error: {e}"))),
-                }
+            .map(|changed| match serde_json::to_string(&changed) {
+                Ok(s) => Ok(Event::default().event("changed").data(s)),
+                Err(e) => Ok(Event::default()
+                    .event("error")
+                    .data(format!("serde error: {e}"))),
             })
             .boxed(),
-        Err(e) => once(
-            Ok(Event::default().event("error").data(format!("subscribe failed: {e}")))
-        ).boxed(),
+        Err(e) => once(Ok(Event::default()
+            .event("error")
+            .data(format!("subscribe failed: {e}"))))
+        .boxed(),
     };
 
     Sse::new(out).keep_alive(axum::response::sse::KeepAlive::default())

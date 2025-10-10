@@ -1,32 +1,44 @@
-// web ui for adding and modifying postal addresses
+// search for postal address by name
 
-use crate::AppResult;
-use app_core::{CrTopic, PostalAddress};
-use cr_single_instance::{use_changed_sse, SseUrl};
+use super::{
+    AddressParams,
+    server_fn::{list_postal_addresses, load_postal_address},
+};
+use app_core::{CrPushNotice, CrTopic, PostalAddress};
+use codee::string::JsonSerdeCodec;
+use cr_single_instance::SseUrl;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
-    params::Params,
 };
-use uuid::Uuid;
-
-#[derive(Params, Clone, PartialEq, Eq, Debug)]
-struct AddressParams {
-    pub uuid: Option<Uuid>,
-}
+use leptos_use::{UseEventSourceOptions, UseEventSourceReturn, use_event_source_with_options};
 
 #[component]
-pub fn NewPostalAddress() -> impl IntoView {
-    view! { <AddressFormWrapper id=None /> }
-}
-
-#[component]
-pub fn PostalAddressEdit() -> impl IntoView {
-    // get id from url
-    let params = use_params::<AddressParams>();
-    let id = params.get().map(|ap| ap.uuid).unwrap_or(None);
-    view! { <AddressFormWrapper id=id /> }
+fn sse_listener(
+    topic: CrTopic,
+    version: impl Fn() -> i64 + 'static,
+    refetch: impl Fn() + 'static,
+) -> impl IntoView {
+    let url = topic.sse_url();
+    let UseEventSourceReturn { data, .. } =
+        use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
+            url.as_str(),
+            UseEventSourceOptions::default().named_events(["changed".to_string()]),
+        );
+    Effect::new(move || {
+        if let Some(data) = data.get() {
+            match data {
+                CrPushNotice::AddressUpdated { id, meta } => {
+                    // id should always be equal, since we subscribed for topic id
+                    assert_eq!(*topic.id(), id);
+                    if meta.version > version() {
+                        refetch();
+                    }
+                }
+            }
+        }
+    });
 }
 
 #[component]
@@ -56,22 +68,26 @@ pub fn SearchPostalAddress() -> impl IntoView {
         },
     );
 
-    let refetch = move || addr_res.refetch();
-    let version = move || address.get().version;
-    // use id from address, since this address is either an existing postal address or nil
-    // id from use_params() may be broken or not existing id
-    let topic_url = move || CrTopic::Address(address.get().id).sse_url();
-    #[cfg(all(target_arch="wasm32", feature="hydrate"))]
-    use_changed_sse(CrTopic::Address(address.get().id), refetch, version);
-
     // initialize query and address from Uuid
     Effect::new(move || {
         if let Some(Ok(addr)) = addr_res.get() {
-            // Passe diese Felder an deinen Typ an:
             set_address.set(addr.clone());
             set_query.set(addr.name.clone().unwrap_or_default());
         }
     });
+
+    // these function are required by sse_listener to refetch addr_res after changes to it at server side
+    let refetch = move || addr_res.refetch();
+    let version = move || address.get().version;
+    // use id from address, since this address is either an existing postal address or nil
+    // id from use_params() may be broken or not existing id
+    let topic = move || {
+        if address.get().id.is_nil() {
+            None
+        } else {
+            Some(CrTopic::Address(address.get().id))
+        }
+    };
 
     // load possible addresses from query
     let addr_list = Resource::new(
@@ -94,7 +110,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                 set_address.set(item.clone());
                 set_open.set(false);
 
-                // 2) update URL aktualisieren
+                // 2) update URL
                 let id_str = item.id.to_string(); // falls id: Uuid
                 let navigate = use_navigate();
                 let _ = navigate(
@@ -165,7 +181,15 @@ pub fn SearchPostalAddress() -> impl IntoView {
         }>
             {move || {
                 view! {
-                    <p> {move || topic_url() }</p>
+                    // pseudocode
+                    {move || match topic() {
+                        Some(topic) => {
+                            view! { <SseListener topic=topic version=version refetch=refetch /> }
+                                .into_any()
+                        }
+                        None => view! { <></> }.into_any(),
+                    }}
+
                     // DaisyUI dropdown container
                     <div class=move || {
                         format!("dropdown w-full {}", if open.get() { "dropdown-open" } else { "" })
@@ -320,258 +344,4 @@ pub fn SearchPostalAddress() -> impl IntoView {
             }}
         </Transition>
     }
-}
-
-#[component]
-pub fn AddressFormWrapper(id: Option<Uuid>) -> impl IntoView {
-    // Resource: load existing address when `id` is Some(...)
-    let addr_res = Resource::new(
-        move || id,
-        |maybe_id| async move {
-            match maybe_id {
-                // AppResult<PostalAddress>
-                Some(id) => load_postal_address(id).await,
-                // new form: no loading delay
-                None => Ok(Default::default()),
-            }
-        },
-    );
-
-    view! {
-        <Transition fallback=move || {
-            view! { <AddressForm address=PostalAddress::default() loading=true /> }
-        }>
-            {move || {
-                addr_res
-                    .get()
-                    .map(|a| view! { <AddressForm address=a.unwrap_or_default() loading=false /> })
-            }}
-        </Transition>
-    }
-}
-
-#[component]
-pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
-    let save_postal_address = ServerAction::<SavePostalAddress>::new();
-
-    let is_new = address.version == -1 || address.id.is_nil();
-
-    view! {
-        // Use <ActionForm/> to bind to your save server fn
-        <ActionForm action=save_postal_address>
-            // Hidden meta fields the server expects (id / version / intent)
-            <input type="hidden" name="id" prop:value=address.id.to_string() />
-            <input type="hidden" name="version" prop:value=address.version />
-
-            // Disable the whole form while loading existing data
-            <fieldset prop:disabled=move || loading>
-                // Example: Name
-                <label class="block">
-                    <span class="block text-sm">"Name (optional)"</span>
-                    <input
-                        class="w-full border rounded p-2"
-                        name="name"
-                        // show live value when loaded; while loading show "Loading…" as placeholder
-                        prop:value=address.name.unwrap_or_default()
-                        placeholder=move || {
-                            if loading {
-                                "Loading..."
-                            } else if is_new {
-                                "Enter name (optional)..."
-                            } else {
-                                ""
-                            }
-                        }
-                    />
-                </label>
-
-                // Street
-                <label class="block">
-                    <span class="block text-sm">"Street & number"</span>
-                    <input
-                        class="w-full border rounded p-2"
-                        name="street_address"
-                        prop:value=address.street_address
-                        placeholder=move || {
-                            if loading {
-                                "Loading..."
-                            } else if is_new {
-                                "Enter street and number..."
-                            } else {
-                                ""
-                            }
-                        }
-                    />
-                </label>
-
-                // Postal code + City
-                <div class="grid grid-cols-2 gap-3">
-                    <label class="block">
-                        <span class="block text-sm">"Postal code"</span>
-                        <input
-                            class="w-full border rounded p-2"
-                            name="postal_code"
-                            prop:value=address.postal_code
-                            placeholder=move || {
-                                if loading {
-                                    "Loading..."
-                                } else if is_new {
-                                    "Enter postal code..."
-                                } else {
-                                    ""
-                                }
-                            }
-                        />
-                    </label>
-                    <label class="block">
-                        <span class="block text-sm">"City"</span>
-                        <input
-                            class="w-full border rounded p-2"
-                            name="address_locality"
-                            prop:value=address.address_locality
-                            placeholder=move || {
-                                if loading {
-                                    "Loading..."
-                                } else if is_new {
-                                    "Enter city..."
-                                } else {
-                                    ""
-                                }
-                            }
-                        />
-                    </label>
-                </div>
-
-                // Region (optional)
-                <label class="block">
-                    <span class="block text-sm">"Region (optional)"</span>
-                    <input
-                        class="w-full border rounded p-2"
-                        name="address_region"
-                        prop:value=address.address_region
-                        placeholder=move || {
-                            if loading {
-                                "Loading..."
-                            } else if is_new {
-                                "Enter region (optional)..."
-                            } else {
-                                ""
-                            }
-                        }
-                    />
-                </label>
-
-                // Country
-                <label class="block">
-                    <span class="block text-sm">"Country (ISO/name)"</span>
-                    <input
-                        class="w-full border rounded p-2"
-                        name="address_country"
-                        prop:value=address.address_country
-                        placeholder=move || {
-                            if loading {
-                                "Loading..."
-                            } else if is_new {
-                                "Enter country..."
-                            } else {
-                                ""
-                            }
-                        }
-                    />
-                </label>
-
-                // Actions: Update vs. "Save as new"
-                <div class="flex gap-2">
-                    // Update existing (disabled in "new" mode)
-                    <button
-                        type="submit"
-                        name="intent"
-                        value="update"
-                        class="rounded px-4 py-2 border"
-                        prop:disabled=move || loading || is_new
-                        prop:hidden=move || is_new
-                    >
-                        "Save"
-                    </button>
-
-                    // Always allow "save as new"
-                    <button
-                        type="submit"
-                        name="intent"
-                        value="create"
-                        class="rounded px-4 py-2 border"
-                        prop:disabled=move || loading
-                    >
-                        "Save as new"
-                    </button>
-                </div>
-            </fieldset>
-        </ActionForm>
-    }
-}
-
-#[server]
-pub async fn load_postal_address(id: Uuid) -> AppResult<PostalAddress> {
-    // get core from context
-    use app_core::CoreState;
-    let mut core = expect_context::<CoreState>().as_postal_address_state();
-    let pa = if let Some(pa) = core.load(id).await? {
-        pa.to_owned()
-    } else {
-        PostalAddress::default()
-    };
-    Ok(pa)
-}
-
-#[server]
-pub async fn save_postal_address(
-    // hidden in the form; nil => new; else => update
-    id: Uuid,
-    // hidden in the form; -1 => new; else => update
-    version: i64,
-    // optional text field: treat "" as None
-    name: Option<String>,
-    street_address: String,
-    postal_code: String,
-    address_locality: String,
-    // optional text field: treat "" as None
-    address_region: Option<String>,
-    address_country: String,
-    // which submit button was clicked: "update" | "create"
-    intent: Option<String>,
-) -> AppResult<()> {
-    // get core from context
-    use app_core::CoreState;
-    let mut core = expect_context::<CoreState>().as_postal_address_state();
-
-    if matches!(intent.as_deref(), Some("update")) {
-        // set id and version previously loaded
-        core.set_id(id);
-        core.set_version(version);
-    }
-
-    let name = name.unwrap_or_default();
-    core.change_name(name);
-    core.change_street_address(street_address);
-    core.change_postal_code(postal_code);
-    core.change_address_locality(address_locality);
-    let address_region = address_region.unwrap_or_default();
-    core.change_address_region(address_region);
-    core.change_address_country(address_country);
-
-    // ToDo: gracefully handle errors, e.g. retry
-    let saved = core.save().await?;
-    let route = format!("/postal-address/{}", saved.id);
-    // redirect to newly saved postal address
-    leptos_axum::redirect(&route);
-    Ok(())
-}
-
-#[server]
-pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
-    // get core from context
-    use app_core::CoreState;
-    let core = expect_context::<CoreState>().as_postal_address_state();
-    let list = core.list_addresses(Some(&name), Some(10)).await?;
-    Ok(list)
 }

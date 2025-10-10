@@ -2,9 +2,6 @@
 
 use app_core::CrTopic;
 use serde::{Deserialize, Serialize};
-//use serde_json::to_value;
-
-
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]

@@ -6,7 +6,6 @@ use async_trait::async_trait;
 use dashmap::DashMap;
 use futures_core::Stream;
 use futures_util::StreamExt;
-use leptos::logging::log;
 use std::{
     pin::Pin,
     sync::Arc,
@@ -84,7 +83,6 @@ impl ClientRegistryPort for CrSingleInstance {
         if topic.id().is_nil() {
             return Err(anyhow!("nil uuid"));
         }
-        log!("some client is subscribing to: {:?}", topic);
         let tx = self.ensure_bus(&topic);
         let rx = tx.subscribe();
 
@@ -103,9 +101,7 @@ impl ClientRegistryPort for CrSingleInstance {
 
     async fn publish(&self, notice: CrPushNotice) -> Result<()> {
         let topic = CrTopic::from(&notice);
-        log!("received topic to publish: {:?}", topic);
         if let Some(tx) = self.get_bus(&topic) {
-            log!("publishing topic: {:?}", topic);
             // best-effort fan-out
             let _ = tx.send(notice);
         }
