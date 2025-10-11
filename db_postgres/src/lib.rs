@@ -1,7 +1,10 @@
 // diesel postgres implementation of database port
 
+pub mod helpers;
 pub mod postal_address;
 pub mod schema;
+
+pub use helpers::*;
 
 use anyhow::{Context, Result};
 use app_core::{DatabasePort, DbError, DbResult};
@@ -12,8 +15,8 @@ use diesel_async::{
         bb8::{Pool, PooledConnection},
     },
 };
-use dotenvy::dotenv;
 use std::env;
+use tracing::{instrument, warn};
 
 pub struct PgDb {
     pool: Pool<AsyncPgConnection>,
@@ -21,7 +24,6 @@ pub struct PgDb {
 
 impl PgDb {
     pub async fn new() -> Result<Self> {
-        dotenv().ok();
         let database_url = env::var("DATABASE_URL")
             .context("DATABASE_URL must be set. Hint: did you run dotenv()?")?;
         let config = AsyncDieselConnectionManager::new(database_url);
@@ -29,8 +31,16 @@ impl PgDb {
             pool: Pool::builder().build(config).await?,
         })
     }
+    #[instrument(name = "db.conn.get", skip(self))]
     async fn new_connection(&self) -> DbResult<PooledConnection<'_, AsyncPgConnection>> {
-        self.pool.get().await.map_err(|e| DbError::Other(e.into()))
+        match self.pool.get().await {
+            Ok(conn) => Ok(conn),
+            Err(e) => {
+                // Pool exhausted or database unavailable
+                warn!(error = %e, "pool_get_failed");
+                Err(DbError::Other(e.into()))
+            }
+        }
     }
 }
 

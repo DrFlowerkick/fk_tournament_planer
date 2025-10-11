@@ -4,7 +4,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use futures_core::Stream;
 use serde::{Deserialize, Serialize};
-use std::pin::Pin;
+use std::{fmt::Display, pin::Pin};
 use uuid::Uuid;
 
 /// Framework-agnostic event stream (boxed + pinned trait object).
@@ -14,6 +14,14 @@ pub type CrNoticeStream = Pin<Box<dyn Stream<Item = CrPushNotice> + Send + 'stat
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum CrTopic {
     Address(Uuid),
+}
+
+impl Display for CrTopic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CrTopic::Address(id) => write!(f, "address: {id}"),
+        }
+    }
 }
 
 impl CrTopic {

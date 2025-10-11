@@ -12,7 +12,8 @@ use std::{
     task::{Context, Poll},
 };
 use tokio::sync::broadcast;
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
+use tracing::{debug, info, instrument, warn};
 
 type CrBuses = Arc<DashMap<CrTopic, broadcast::Sender<CrPushNotice>>>;
 
@@ -33,14 +34,20 @@ impl Stream for CrSubscriptionStream {
 
 impl Drop for CrSubscriptionStream {
     fn drop(&mut self) {
-        // Remove the topic bus if no receivers remain (saves memory).
+        // Log before potential removal for better visibility.
+        let mut removed = false;
+        let mut receivers = 0usize;
+
         if let Some(bus) = self.buses.get(&self.topic) {
-            if bus.receiver_count() == 0 {
+            receivers = bus.receiver_count();
+            if receivers == 0 {
                 // release guard before remove
                 drop(bus);
                 self.buses.remove(&self.topic);
+                removed = true;
             }
         }
+        debug!(%removed, receivers, topic = %self.topic, "subscription_drop");
         // Dropping the stream drops the broadcast::Receiver
     }
 }
@@ -60,15 +67,23 @@ impl CrSingleInstance {
     }
 
     /// Create a bus only when a client subscribes (avoid orphan buses).
+    /// Create a bus only when a client subscribes (avoid orphan buses).
     fn ensure_bus(&self, topic: &CrTopic) -> broadcast::Sender<CrPushNotice> {
-        self.buses
+        let mut created = false;
+        let tx = self
+            .buses
             .entry(topic.clone())
             .or_insert_with(|| {
+                created = true;
                 // Small bounded buffer; slow receivers drop oldest messages.
                 let (tx, _rx) = broadcast::channel::<CrPushNotice>(128);
                 tx
             })
-            .clone()
+            .clone();
+        if created {
+            info!(topic = %topic, "bus_created");
+        }
+        tx
     }
 
     /// For publishing: access an existing bus without creating a new one.
@@ -79,15 +94,27 @@ impl CrSingleInstance {
 
 #[async_trait]
 impl ClientRegistryPort for CrSingleInstance {
+    #[instrument(name = "cr.subscribe", skip(self), fields(topic = %topic))]
     async fn subscribe(&self, topic: CrTopic) -> Result<CrNoticeStream> {
         if topic.id().is_nil() {
             return Err(anyhow!("nil uuid"));
         }
         let tx = self.ensure_bus(&topic);
         let rx = tx.subscribe();
+        let listeners = tx.receiver_count();
+        info!(listeners, "subscribed");
 
-        // Map BroadcastStream<Result<_, _>> -> Stream<CrPushNotice>, dropping lag errors.
-        let base = BroadcastStream::new(rx).filter_map(|res| async move { res.ok() });
+        // Map BroadcastStream<Result<_, _>> -> Stream<CrPushNotice>, log lagged drops.
+        let base = BroadcastStream::new(rx).filter_map(|res| async move {
+            match res {
+                Ok(v) => Some(v),
+                Err(BroadcastStreamRecvError::Lagged(n)) => {
+                    // back pressure: dropped n oldest messages
+                    warn!(dropped = n, "lagged_dropped");
+                    None
+                }
+            }
+        });
 
         // Wrap to perform RAII cleanup when the stream is dropped.
         let wrapped = CrSubscriptionStream {
@@ -99,13 +126,16 @@ impl ClientRegistryPort for CrSingleInstance {
         Ok(Box::pin(wrapped))
     }
 
+    #[instrument(name = "cr.publish", skip(self, notice), fields(topic = %CrTopic::from(&notice)))]
     async fn publish(&self, notice: CrPushNotice) -> Result<()> {
         let topic = CrTopic::from(&notice);
         if let Some(tx) = self.get_bus(&topic) {
-            // best-effort fan-out
-            let _ = tx.send(notice);
+            let listeners = tx.receiver_count();
+            let sent = tx.send(notice).is_ok();
+            debug!(listeners, %sent, "publish_attempt");
+        } else {
+            debug!("publish_no_listeners");
         }
-        // If there is no bus, nobody is listening; intentionally do nothing.
         Ok(())
     }
 }

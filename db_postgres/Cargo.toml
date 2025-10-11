@@ -10,8 +10,8 @@ app_core = { path = "../app_core" }
 diesel.workspace = true
 diesel-derive-enum.workspace = true
 diesel-async.workspace = true
-dotenvy.workspace = true
 anyhow.workspace = true
 uuid.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
+tracing.workspace = true

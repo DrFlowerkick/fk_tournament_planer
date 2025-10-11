@@ -1,17 +1,62 @@
 use app::*;
 use app_core::*;
-use axum::Router;
+use axum::{
+    Router, http,
+    http::{HeaderMap, HeaderName},
+};
 use axum_extra::routing::RouterExt;
 use cr_single_instance::*;
 use db_postgres::*;
-use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
 use shared::*;
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
+use tower_http::{
+    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
+    trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
+};
+use tracing::{Level, Span, info, info_span};
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
+use tracing_error::ErrorLayer;
+use tracing_log::LogTracer;
+use tracing_subscriber::{EnvFilter, Registry, prelude::*};
+
+fn init_tracing_bunyan() {
+    // Read level configuration from env (.env via dotenvy or docker sets env)
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,axum=info"));
+
+    // Name identifies the service in log streams (use your app/service name)
+    let formatting_layer = BunyanFormattingLayer::new(
+        "tournament-app".into(),
+        std::io::stdout, // single sink: JSON to stdout; no other outputs supported
+    );
+
+    // Build a Bunyan-only subscriber:
+    // - JsonStorageLayer: propagates span fields to child events
+    // - BunyanFormattingLayer: strict Bunyan JSON output
+    // - ErrorLayer: enrich errors with span context
+    let subscriber = Registry::default()
+        .with(env_filter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer)
+        .with(ErrorLayer::default());
+
+    // Set as the single global subscriber (no fallback to fmt/console)
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("failed to set global tracing subscriber");
+}
 
 #[tokio::main]
 async fn main() {
+    // Load .env first if present; ignore if missing (Docker sets envs)
+    dotenvy::dotenv().ok();
+    // map all log! calls in dependencies to tracing
+    LogTracer::init().expect("failed to init LogTracer");
+    // Initialize Bunyan-only tracing before constructing anything else.
+    init_tracing_bunyan();
+
+    // load leptos options
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
@@ -42,11 +87,41 @@ async fn main() {
             },
         )
         .fallback(leptos_axum::file_and_error_handler::<AppState, _>(shell))
-        .with_state(app_state);
+        .with_state(app_state)
+        // --- request id handling: set + propagate x-request-id ---
+        .layer(PropagateRequestIdLayer::new(HeaderName::from_static("x-request-id")))
+        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
+        // --- tracing per HTTP request (root span) + EOS logging ---
+        .layer(
+            TraceLayer::new_for_http()
+                // Create a root span for every incoming HTTP request.
+                .make_span_with(|req: &http::Request<_>| {
+                    let ua = req
+                        .headers()
+                        .get(http::header::USER_AGENT)
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("-");
+                    info_span!(
+                        "http_request",
+                        level = %Level::INFO,
+                        method = %req.method(),
+                        path = %req.uri().path(),
+                        ua,
+                    )
+                })
+                // Emit standardized on_request/on_response events.
+                .on_request(DefaultOnRequest::new())
+                .on_response(DefaultOnResponse::new())
+                // Log end-of-stream (useful for long-lived SSE; fires when body stream fully ends).
+                .on_eos(|trailers: Option<&HeaderMap>, dur: Duration, _span: &Span| {
+                    // trailers.is_some() indicates graceful end with trailers present (rare for SSE).
+                    tracing::info!(duration_ms = %dur.as_millis(), has_trailers = trailers.is_some(), "http stream closed");
+                })
+        );
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
-    log!("listening on http://{}", &addr);
+    info!(%addr, "listening on http server");
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
     axum::serve(listener, app.into_make_service())
         .await

@@ -3,7 +3,7 @@
 use app_core::CrTopic;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub enum CrKind {
     Address,
@@ -12,7 +12,7 @@ pub enum CrKind {
 impl ToString for CrKind {
     fn to_string(&self) -> String {
         match self {
-            CrKind::Address => "address".into()
+            CrKind::Address => "address".into(),
         }
     }
 }
@@ -32,7 +32,6 @@ pub trait SseUrl {
     fn sse_url(&self) -> String;
 }
 
-
 impl SseUrl for CrTopic {
     fn sse_url(&self) -> String {
         let id = match self {
@@ -43,4 +42,3 @@ impl SseUrl for CrTopic {
             .replace("{id}", id.to_string().as_ref())
     }
 }
-

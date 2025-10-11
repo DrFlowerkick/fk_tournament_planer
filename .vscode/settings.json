@@ -2,7 +2,7 @@
   "rust-analyzer.procMacro.ignored": {
     "leptos_macro": ["server"]
   },
-  "rust-analyzer.cargo.features": ["ssr", "hydrate"],
+  "rust-analyzer.cargo.features": ["app/ssr", "app/hydrate"],
   // Enable all features
   //"rust-analyzer.cargo.allFeatures": true,
   /*"rust-analyzer.rustfmt.overrideCommand": [
@@ -34,6 +34,7 @@
     "btrim",
     "buildx",
     "Buildx",
+    "bunyan",
     "cdylib",
     "citext",
     "codee",

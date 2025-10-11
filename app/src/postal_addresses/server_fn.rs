@@ -1,22 +1,44 @@
 // server function for postal address
 
-use leptos::prelude::*;
 use crate::AppResult;
-use app_core::{PostalAddress, CoreState};
+use app_core::{CoreState, PostalAddress};
+use leptos::prelude::*;
+use tracing::{error, info, instrument};
 use uuid::Uuid;
 
 #[server]
+#[instrument(
+    name = "postal_address.load",
+    skip_all,
+    fields(id = %id)
+)]
 pub async fn load_postal_address(id: Uuid) -> AppResult<PostalAddress> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
     let pa = if let Some(pa) = core.load(id).await? {
+        info!("loaded");
         pa.to_owned()
     } else {
+        // Not an error here: returning default is the expected fallback
+        info!("not_found_return_default");
         PostalAddress::default()
     };
     Ok(pa)
 }
 
 #[server]
+#[instrument(
+    name = "postal_address.save",
+    skip_all,
+    fields(
+        id = %id,
+        version = version,
+        // capture intent without logging full payloads
+        intent = intent.as_deref().unwrap_or(""),
+        // tiny hints only; avoid PII/body dumps
+        name_len = name.as_deref().map(|s| s.len()).unwrap_or(0),
+        locality_len = address_locality.len()
+    )
+)]
 pub async fn save_postal_address(
     // hidden in the form; nil => new; else => update
     id: Uuid,
@@ -35,10 +57,15 @@ pub async fn save_postal_address(
 ) -> AppResult<()> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
 
-    if matches!(intent.as_deref(), Some("update")) {
+    // Interpret intent
+    let is_update = matches!(intent.as_deref(), Some("update"));
+    if is_update {
         // set id and version previously loaded
         core.set_id(id);
         core.set_version(version);
+        info!("saving_update");
+    } else {
+        info!("saving_create");
     }
 
     let name = name.unwrap_or_default();
@@ -50,17 +77,39 @@ pub async fn save_postal_address(
     core.change_address_region(address_region);
     core.change_address_country(address_country);
 
-    // ToDo: gracefully handle errors, e.g. retry
-    let saved = core.save().await?;
-    let route = format!("/postal-address/{}", saved.id);
-    // redirect to newly saved postal address
-    leptos_axum::redirect(&route);
-    Ok(())
+    // Persist; log outcome with the saved id.
+    match core.save().await {
+        Ok(saved) => {
+            info!(saved_id = %saved.id, "save_ok_redirect");
+            let route = format!("/postal-address/{}", saved.id);
+            leptos_axum::redirect(&route);
+            Ok(())
+        }
+        Err(e) => {
+            // Primary goal failed -> error
+            error!(error = %e, "save_failed");
+            Err(e.into())
+        }
+    }
 }
 
 #[server]
+#[instrument(
+    name = "postal_address.list",
+    skip_all,
+    fields(q_len = name.len(), limit = 10)
+)]
 pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
     let core = expect_context::<CoreState>().as_postal_address_state();
-    let list = core.list_addresses(Some(&name), Some(10)).await?;
-    Ok(list)
+    info!("list_request");
+    match core.list_addresses(Some(&name), Some(10)).await {
+        Ok(list) => {
+            info!(count = list.len(), "list_ok");
+            Ok(list)
+        }
+        Err(e) => {
+            error!(error = %e, "list_failed");
+            Err(e.into())
+        }
+    }
 }

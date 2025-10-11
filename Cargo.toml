@@ -46,6 +46,11 @@ futures-core = "0.3"
 futures-util = "0.3"
 dashmap = "6.1.0"
 codee = "0.3"
+tracing = "0.1"
+tracing-error = "0.2"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-bunyan-formatter = "0.3"
+tracing-log = "0.2"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 

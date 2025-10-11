@@ -1,7 +1,7 @@
 // implementation of postal address port
 
 use crate::{
-    PgDb, map_db_err,
+    PgDb, escape_like, map_db_err,
     schema::{postal_addresses, postal_addresses::dsl::*},
 };
 use app_core::{DbError, DbResult, DbpPostalAddress, PostalAddress};
@@ -13,9 +13,10 @@ use diesel::{
         AsChangeset, BoolExpressionMethods, ExpressionMethods, Insertable, OptionalExtension,
         PgSortExpressionMethods, QueryDsl, Queryable, TextExpressionMethods,
     },
-    sql_types::{BigInt, Nullable, Text},
+    sql_types::BigInt,
 };
 use diesel_async::RunQueryDsl;
+use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
 
 // ------------------- DB-Row (SELECT/RETURNING) -------------------
@@ -84,23 +85,39 @@ const NEW_VERSION: i64 = -1;
 
 #[async_trait]
 impl DbpPostalAddress for PgDb {
+    #[instrument(name = "db.pa.get", skip(self), fields(id = %pa_id))]
     async fn get_postal_address(&self, pa_id: Uuid) -> DbResult<Option<PostalAddress>> {
         let mut conn = self.new_connection().await?;
-        Ok(postal_addresses
+        let res = postal_addresses
             .filter(id.eq(pa_id))
             .first::<DbPostalAddress>(&mut conn)
             .await
             .optional()
-            .map_err(map_db_err)?
-            .map(PostalAddress::from))
+            .map_err(map_db_err)?;
+
+        match &res {
+            Some(_) => debug!("row_found"),
+            None => debug!("row_not_found"),
+        }
+        Ok(res.map(PostalAddress::from))
     }
+
+    #[instrument(
+        name = "db.pa.save",
+        skip(self, address),
+        fields(
+            id = %address.id,
+            version = address.version,
+            is_new = address.id.is_nil() || address.version == NEW_VERSION
+        )
+    )]
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress> {
         let mut conn = self.new_connection().await?;
         let w = WriteDbPostalAddress::from(address);
 
         if address.id.is_nil() || address.version == NEW_VERSION {
             // INSERT
-            Ok(diesel::insert_into(postal_addresses)
+            let row = diesel::insert_into(postal_addresses)
                 .values(w)
                 .returning((
                     id,
@@ -116,14 +133,14 @@ impl DbpPostalAddress for PgDb {
                 ))
                 .get_result::<DbPostalAddress>(&mut conn)
                 .await
-                .map_err(map_db_err)?
-                .into())
+                .map_err(map_db_err)?;
+            info!(saved_id = %row.id, "insert_ok");
+            Ok(row.into())
         } else {
-            // UPDATE if current version in table is equal to version in address
+            // UPDATE with optimistic locking
             let res = diesel::update(
                 postal_addresses.filter(id.eq(address.id).and(version.eq(address.version))),
             )
-            // increment version separately
             .set((w, version.eq(sql::<BigInt>("version + 1"))))
             .returning((
                 id,
@@ -139,10 +156,14 @@ impl DbpPostalAddress for PgDb {
             ))
             .get_result::<DbPostalAddress>(&mut conn)
             .await;
+
             match res {
-                Ok(row) => Ok(row.into()),
+                Ok(row) => {
+                    info!(saved_id = %row.id, new_version = row.version, "update_ok");
+                    Ok(row.into())
+                }
                 Err(diesel::result::Error::NotFound) => {
-                    // check if ID exists
+                    // Distinguish lock conflict from missing row
                     let exists = diesel::select(diesel::dsl::exists(
                         postal_addresses.filter(id.eq(address.id)),
                     ))
@@ -151,15 +172,29 @@ impl DbpPostalAddress for PgDb {
                     .map_err(map_db_err)?;
 
                     if exists {
+                        warn!("optimistic_lock_conflict");
                         Err(DbError::OptimisticLockConflict)
                     } else {
+                        warn!("row_missing_on_update");
                         Err(DbError::NotFound)
                     }
                 }
-                Err(e) => Err(map_db_err(e)),
+                Err(e) => {
+                    error!(error = %e, "update_failed");
+                    Err(map_db_err(e))
+                }
             }
         }
     }
+
+    #[instrument(
+        name = "db.pa.list",
+        skip(self, name_filter, limit),
+        fields(
+            q_len = name_filter.map(|s| s.len()).unwrap_or(0),
+            limit = limit.unwrap_or(10)
+        )
+    )]
     async fn list_postal_addresses(
         &self,
         name_filter: Option<&str>,
@@ -167,14 +202,14 @@ impl DbpPostalAddress for PgDb {
     ) -> DbResult<Vec<PostalAddress>> {
         let mut conn = self.new_connection().await?;
 
-        // Start with a boxed query so we can conditionally add filters/limit.
         let mut query = postal_addresses.into_boxed::<diesel::pg::Pg>();
 
         if let Some(f) = name_filter {
             if !f.is_empty() {
-                // Case-insensitive "contains" match
-                let pattern = format!("%{}%", f);
-                query = query.filter(sql::<Nullable<Text>>("name::text").like(pattern));
+                // Case-insensitive "contains" match; escape special chars for LIKE
+                let pattern = format!("%{}%", escape_like(f));
+                debug!("apply_name_filter");
+                query = query.filter(name.like(pattern));
             }
         }
 
@@ -188,6 +223,7 @@ impl DbpPostalAddress for PgDb {
             .await
             .map_err(map_db_err)?;
 
+        info!(count = rows.len(), "list_ok");
         Ok(rows.into_iter().map(PostalAddress::from).collect())
     }
 }
