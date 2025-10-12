@@ -23,11 +23,14 @@ jobs:
   lint_leptos:
     uses: ./.github/workflows/_lint_leptos.yml
 
-  test:
-    uses: ./.github/workflows/_test.yml
+  build_workspace:
+    needs: [lint, lint_leptos]
+    uses: ./.github/workflows/_build_workspace.yml
 
-  end_to_end_test:
-    uses: ./.github/workflows/_end_to_end_test.yml
+  unit_and_integration_tests:
+    needs: [build_workspace]
+    uses: ./.github/workflows/_unit_and_integration_tests.yml
 
-  coverage:
-    uses: ./.github/workflows/_coverage.yml
+  end_to_end_tests:
+    needs: [build_workspace]
+    uses: ./.github/workflows/_end_to_end_tests.yml

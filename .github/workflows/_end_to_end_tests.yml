@@ -1,0 +1,133 @@
+# .github/workflows/_end_to_end_test.yml
+name: end_to_end_tests
+
+on:
+  workflow_call:
+    inputs:
+      rust_toolchain:
+        description: "Rust toolchain channel"
+        required: false
+        type: string
+        default: "stable"
+      release_profile:
+        description: "Use --release for cargo leptos end-to-end"
+        required: false
+        type: boolean
+        default: true
+      features:
+        description: "Comma-separated cargo features (empty = default)"
+        required: false
+        type: string
+        default: ""
+      locked:
+        description: "Pass --locked to underlying cargo build (via --)"
+        required: false
+        type: boolean
+        default: true
+      node_version:
+        description: "Node.js version (Playwright requirement if your project needs it)"
+        required: false
+        type: string
+        default: "20.x"
+      upload_artifacts:
+        description: "Upload Playwright reports (and any logs) produced by cargo leptos"
+        required: false
+        type: boolean
+        default: true
+      extra_end_to_end_args:
+        description: "Extra args for 'cargo leptos end-to-end' (rarely needed)"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  e2e:
+    name: End-to-End (Playwright via cargo leptos)
+    runs-on: ubuntu-latest
+    env:
+      RUST_LOG: warn
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ inputs.rust_toolchain }}
+          profile: minimal
+          override: true
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-leptos
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            end2end/package-lock.json
+
+      - name: Install root-level npm dependencies (e.g. Tailwind, daisyui)
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: end2end
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Build (optional warm-up to speed up 'serve')
+        # Not strictly required: 'cargo leptos serve' can build itself.
+        # Keeping it helps fail-fast and warms the cache.
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLAGS="--workspace"
+          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
+          if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
+          if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
+          echo "cargo build $FLAGS"
+          bash -c "cargo build $FLAGS"
+
+      - name: Run cargo leptos end-to-end
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LEPTOS_FLAGS=""
+          if [ "${{ inputs.release_profile }}" = "true" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS --release"
+          fi
+          if [ -n "${{ inputs.features }}" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS --features \"${{ inputs.features }}\""
+          fi
+          if [ -n "${{ inputs.extra_end_to_end_args }}" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS ${{ inputs.extra_end_to_end_args }}"
+          fi
+
+          CARGO_FLAGS=""
+          if [ "${{ inputs.locked }}" = "true" ]; then
+            CARGO_FLAGS="$CARGO_FLAGS --locked"
+          fi
+
+          echo "Running: cargo leptos end-to-end ${LEPTOS_FLAGS} -- ${CARGO_FLAGS}"
+          # The '--' passes flags through to underlying cargo builds invoked by cargo-leptos.
+          bash -lc "cargo leptos end-to-end ${LEPTOS_FLAGS} -- ${CARGO_FLAGS}"
+
+      - name: Upload E2E artifacts
+        if: ${{ inputs.upload_artifacts && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: leptos-e2e-report
+          # Adjust paths to whatever your project generates. Commonly:
+          # - 'playwright-report/' if Playwright is used under the hood
+          # - any logs cargo-leptos or your project emits
+          path: |
+            playwright-report/
+          retention-days: 10

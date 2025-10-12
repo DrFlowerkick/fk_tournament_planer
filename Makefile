@@ -2,9 +2,6 @@
 
 CARGO_LEPTOS := cargo leptos
 
-# use this flags when developing for faster compile
-DEV_RUSTFLAGS := RUSTFLAGS="--cfg erase_components"
-
 # -------- App Configuration --------
 SERVER_NAME := fk_tournament_planer
 WEB_PORT := 3000
@@ -37,7 +34,7 @@ clean:
 
 .PHONY: dev-ssr
 dev-ssr:
-	$(DEV_RUSTFLAGS) $(CARGO_LEPTOS) watch
+	$(CARGO_LEPTOS) watch | bunyan
 
 .PHONY: e2e-ssr
 e2e-ssr:

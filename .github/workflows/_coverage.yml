@@ -1,25 +1,111 @@
 # .github/workflows/_coverage.yml
-name: Code Coverage
+# Reusable coverage workflow using cargo-llvm-cov + nextest
+# All comments are in English as requested.
+
+name: coverage
 
 on:
+  # Reusable workflow: can be called from other workflows via "uses:"
   workflow_call:
-
-env:
-  CARGO_TERM_COLOR: always
+    # inputs can be changed with the "with" statement in calling workflow
+    inputs:
+      upload_artifacts:
+        description: "Upload HTML and LCOV artifacts"
+        required: false
+        type: boolean
+        default: true
+      fail_under_lines:
+        description: "Global minimum line coverage percentage to gate the build"
+        required: false
+        type: number
+        default: 70
+      features:
+        description: "Cargo features to use (empty = default features)"
+        required: false
+        type: string
+        default: ""
+      release_profile:
+        description: "Run coverage with --release for parity with tests"
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   coverage:
-    name: Code Coverage
+    name: Coverage (llvm-cov)
     runs-on: ubuntu-latest
+    env:
+      # Keep logs quiet; coverage jobs can be noisy otherwise.
+      RUST_LOG: warn
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust (stable)
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: llvm-tools-preview
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache Rust build
+        # Coverage builds use different flags than normal builds, but caching still helps.
+        uses: Swatinem/rust-cache@v2
 
-      - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
 
-      - name: Run tarpaulin
-        run: cargo tarpaulin --verbose --workspace
+      - name: Install cargo-nextest
+        # Needed because we'll run coverage with the nextest subcommand.
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Pre-build workspace
+        # Fail fast on compilation; also warms the cache with the same profile/features used below.
+        if: ${{ inputs.release_profile }}
+        run: |
+          if [ -n "${{ inputs.features }}" ]; then
+            cargo build --workspace --locked --release --features "${{ inputs.features }}"
+          else
+            cargo build --workspace --locked --release
+          fi
+
+      - name: Run coverage (nextest + doctests)
+        # Generates HTML report in ./coverage/ and LCOV file ./lcov.info
+        run: |
+          FLAGS=""
+          if [ "${{ inputs.release_profile }}" = "true" ]; then
+            FLAGS="$FLAGS --release"
+          fi
+          if [ -n "${{ inputs.features }}" ]; then
+            FLAGS="$FLAGS --features \"${{ inputs.features }}\""
+          fi
+          # Run nextest coverage including doctests; merge everything into a single report.
+          # --fail-under-lines gates the job on global line coverage percentage.
+          bash -eo pipefail -c "
+            cargo llvm-cov nextest \
+              --workspace \
+              --locked \
+              --doctests \
+              --html \
+              --html-dir coverage \
+              --lcov \
+              --output-path lcov.info \
+              --fail-under-lines ${{ inputs.fail_under_lines }} \
+              $FLAGS
+          "
+
+      - name: Upload coverage artifacts
+        if: ${{ inputs.upload_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+            lcov.info
+          if-no-files-found: error
+          retention-days: 10
