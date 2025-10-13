@@ -95,7 +95,7 @@
 /// and more confusing with growing size of struct, I suggest separate structs for the
 /// components of the tournament, which data will be persisted via  database.
 ///
-use crate::{Core, PostalAddress};
+use crate::{Core, PostalAddress, ServerContext};
 use anyhow::Result;
 use chrono::{DateTime, Local};
 use std::collections::HashSet;
@@ -136,7 +136,13 @@ pub struct TournamentState {
     tournament: Tournament,
 }
 
-impl Core<TournamentState> {
+impl<C: Clone> Core<TournamentState, C> {
+    pub fn is_valid(&self) -> bool {
+        todo!()
+    }
+}
+
+impl Core<TournamentState, ServerContext> {
     pub async fn tournament_action(
         &mut self,
         action: TournamentActions,
@@ -175,9 +181,6 @@ impl Core<TournamentState> {
             num_entrants: self.state.tournament.entrants.len(),
             valid_schedule: self.is_valid(),
         })
-    }
-    pub fn is_valid(&self) -> bool {
-        todo!()
     }
 }
 

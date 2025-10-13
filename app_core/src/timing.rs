@@ -52,11 +52,11 @@ pub struct DayTimingState {
 }
 
 /// API of tournament day timings
-impl<S> Core<S> {
+impl<S, C: Clone> Core<S, C> {
     pub fn get_tournament_day_timing_state(
         &self,
         id: Uuid,
-    ) -> Result<Option<Core<DayTimingState>>> {
+    ) -> Result<Option<Core<DayTimingState, C>>> {
         if let Some(day_timing) = self.load_tournament_day_timing(id)? {
             return Ok(Some(self.switch_state(DayTimingState { day_timing })));
         }
@@ -67,7 +67,7 @@ impl<S> Core<S> {
     }
 }
 
-impl Core<DayTimingState> {
+impl<C: Clone> Core<DayTimingState, C> {
     pub fn get(&self) -> &DayTiming {
         &self.state.day_timing
     }

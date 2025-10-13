@@ -1,8 +1,10 @@
+use std::ops::DerefMut;
+
 use super::{
     AddressParams,
     server_fn::{SavePostalAddress, load_postal_address},
 };
-use app_core::PostalAddress;
+use app_core::{CoreBuilder, CoreClientState, PostalAddress};
 use leptos::prelude::*;
 use leptos_router::hooks::use_params;
 use uuid::Uuid;
@@ -50,6 +52,17 @@ pub fn AddressFormWrapper(id: Option<Uuid>) -> impl IntoView {
 
 #[component]
 pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
+    // ToDo: use signals for client side verification
+    // use write guard: set_addr.write().deref_mut().some_action()
+    let (_addr, _set_addr) = signal({
+        let mut client_state = CoreBuilder::new()
+            .client_context()
+            .build()
+            .as_postal_address_state();
+        client_state.set(address.clone());
+        client_state
+    });
+
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
 
     let is_new = address.version == -1 || address.id.is_nil();

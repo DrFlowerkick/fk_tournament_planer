@@ -4,42 +4,13 @@ use super::{
     AddressParams,
     server_fn::{list_postal_addresses, load_postal_address},
 };
-use app_core::{CrPushNotice, CrTopic, PostalAddress};
-use codee::string::JsonSerdeCodec;
-use cr_single_instance::SseUrl;
+use crate::SseListener;
+use app_core::{CrTopic, PostalAddress};
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
 };
-use leptos_use::{UseEventSourceOptions, UseEventSourceReturn, use_event_source_with_options};
-
-#[component]
-fn sse_listener(
-    topic: CrTopic,
-    version: impl Fn() -> i64 + 'static,
-    refetch: impl Fn() + 'static,
-) -> impl IntoView {
-    let url = topic.sse_url();
-    let UseEventSourceReturn { data, .. } =
-        use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
-            url.as_str(),
-            UseEventSourceOptions::default().named_events(["changed".to_string()]),
-        );
-    Effect::new(move || {
-        if let Some(data) = data.get() {
-            match data {
-                CrPushNotice::AddressUpdated { id, meta } => {
-                    // id should always be equal, since we subscribed for topic id
-                    assert_eq!(*topic.id(), id);
-                    if meta.version > version() {
-                        refetch();
-                    }
-                }
-            }
-        }
-    });
-}
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
