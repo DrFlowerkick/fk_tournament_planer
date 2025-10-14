@@ -62,7 +62,6 @@ async fn main() {
     let leptos_options = conf.leptos_options;
     // initialize core state
     let core = CoreBuilder::new()
-        .server_context()
         .set_db(Arc::new(PgDb::new().await.unwrap()))
         .set_cr(Arc::new(CrSingleInstance::new()))
         .build();

@@ -1,6 +1,6 @@
 // data types for postal addresses
 
-use crate::{Core, CrPushNotice, CrUpdateMeta, DbError, DbResult, ServerContext};
+use crate::{Core, CrPushNotice, CrUpdateMeta, DbError, DbResult};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -45,23 +45,24 @@ pub struct PostalAddressState {
 
 /// API of postal address
 // switch state to portal address state to provide API for PostalAddress
-impl<S, C: Clone> Core<S, C> {
-    pub fn as_postal_address_state(&self) -> Core<PostalAddressState, C> {
+impl<S> Core<S> {
+    pub fn as_postal_address_state(&self) -> Core<PostalAddressState> {
         self.switch_state(PostalAddressState {
             address: PostalAddress::default(),
         })
     }
 }
 
-// function in client and server context
 // ToDo: maybe add validations to change actions
-impl<C: Clone> Core<PostalAddressState, C> {
+impl Core<PostalAddressState> {
     pub fn get(&self) -> &PostalAddress {
         &self.state.address
     }
-    pub fn set(&mut self, address: PostalAddress) -> &PostalAddress {
-        self.state.address = address;
-        &self.state.address
+    pub fn set_id(&mut self, id: Uuid) {
+        self.state.address.id = id;
+    }
+    pub fn set_version(&mut self, version: i64) {
+        self.state.address.version = version;
     }
     pub fn change_name(&mut self, name: String) {
         self.state.address.name = (!name.is_empty()).then_some(name);
@@ -81,18 +82,8 @@ impl<C: Clone> Core<PostalAddressState, C> {
     pub fn change_address_country(&mut self, address_country: String) {
         self.state.address.address_country = address_country;
     }
-}
-
-// functions in server context
-impl Core<PostalAddressState, ServerContext> {
-    pub fn set_id(&mut self, id: Uuid) {
-        self.state.address.id = id;
-    }
-    pub fn set_version(&mut self, version: i64) {
-        self.state.address.version = version;
-    }
     pub async fn load(&mut self, id: Uuid) -> DbResult<Option<&PostalAddress>> {
-        if let Some(address) = self.database().get_postal_address(id).await? {
+        if let Some(address) = self.database.get_postal_address(id).await? {
             self.state.address = address;
             Ok(Some(self.get()))
         } else {
@@ -101,7 +92,7 @@ impl Core<PostalAddressState, ServerContext> {
     }
     pub async fn resync(&mut self) -> DbResult<&PostalAddress> {
         self.state.address = self
-            .database()
+            .database
             .get_postal_address(self.state.address.id)
             .await?
             .ok_or(DbError::NotFound)?;
@@ -109,7 +100,7 @@ impl Core<PostalAddressState, ServerContext> {
     }
     pub async fn save(&mut self) -> DbResult<&PostalAddress> {
         self.state.address = self
-            .database()
+            .database
             .save_postal_address(&self.state.address)
             .await?;
         // publish change of address to client registry
@@ -119,7 +110,7 @@ impl Core<PostalAddressState, ServerContext> {
                 version: self.state.address.version,
             },
         };
-        self.client_registry().publish(notice).await?;
+        self.client_registry.publish(notice).await?;
         Ok(self.get())
     }
     pub async fn list_addresses(
@@ -127,8 +118,9 @@ impl Core<PostalAddressState, ServerContext> {
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<PostalAddress>> {
-        self.database()
+        self.database
             .list_postal_addresses(name_filter, limit)
             .await
     }
 }
+

@@ -42,7 +42,7 @@ pub async fn api_subscribe(
     info!("SSE connected");
     let topic = CrTopic::from(topic);
 
-    let out = match state.core.client_registry().subscribe(topic).await {
+    let out = match state.core.client_registry.subscribe(topic).await {
         Ok(st) => st
             .map(|changed| match serde_json::to_string(&changed) {
                 Ok(s) => Ok(Event::default().event("changed").data(s)),

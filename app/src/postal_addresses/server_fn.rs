@@ -1,7 +1,7 @@
 // server function for postal address
 
 use crate::AppResult;
-use app_core::{CoreServerState, PostalAddress};
+use app_core::{CoreState, PostalAddress};
 use leptos::prelude::*;
 use tracing::{error, info, instrument};
 use uuid::Uuid;
@@ -13,7 +13,7 @@ use uuid::Uuid;
     fields(id = %id)
 )]
 pub async fn load_postal_address(id: Uuid) -> AppResult<PostalAddress> {
-    let mut core = expect_context::<CoreServerState>().as_postal_address_state();
+    let mut core = expect_context::<CoreState>().as_postal_address_state();
     let pa = if let Some(pa) = core.load(id).await? {
         info!("loaded");
         pa.to_owned()
@@ -55,7 +55,7 @@ pub async fn save_postal_address(
     // which submit button was clicked: "update" | "create"
     intent: Option<String>,
 ) -> AppResult<()> {
-    let mut core = expect_context::<CoreServerState>().as_postal_address_state();
+    let mut core = expect_context::<CoreState>().as_postal_address_state();
 
     // Interpret intent
     let is_update = matches!(intent.as_deref(), Some("update"));
@@ -100,7 +100,7 @@ pub async fn save_postal_address(
     fields(q_len = name.len(), limit = 10)
 )]
 pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
-    let core = expect_context::<CoreServerState>().as_postal_address_state();
+    let core = expect_context::<CoreState>().as_postal_address_state();
     info!("list_request");
     match core.list_addresses(Some(&name), Some(10)).await {
         Ok(list) => {
