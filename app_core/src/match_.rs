@@ -5,6 +5,8 @@ use chrono::{DateTime, Local};
 use uuid::Uuid;
 
 /// match of tournament
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Match {
     /// id of match in tournament

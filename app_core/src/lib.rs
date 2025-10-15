@@ -31,8 +31,10 @@ use std::sync::Arc;
 /// - API for entrants to participate at a tournament
 /// - input validators
 /// - Administration API
+///
 /// Core holds connections to all required ports (e.g. data base, sending email,
-/// connectors to sport specific ranking systems).
+///   connectors to sport specific ranking systems).
+///
 /// Core does provide on client context:
 /// - input validators
 pub struct Core<S> {
@@ -72,6 +74,12 @@ impl CoreBuilder<NoDB, NoCR> {
             state_db: NoDB {},
             state_cr: NoCR {},
         }
+    }
+}
+
+impl Default for CoreBuilder<NoDB, NoCR> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

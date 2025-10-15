@@ -3,6 +3,8 @@
 use uuid::Uuid;
 
 /// entrant of tournament; either team or individual athlete
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Entrant {
     /// id of entrant in tournament
@@ -19,6 +21,8 @@ pub struct Entrant {
 
 // ToDo: move this into generic people mod?
 /// member of entrant, if entrant is team
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Member {
     /// id of member in tournament

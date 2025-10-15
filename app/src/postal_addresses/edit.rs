@@ -52,7 +52,7 @@ pub fn AddressFormWrapper(id: Option<Uuid>) -> impl IntoView {
 pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
     // ToDo: use these signal for validation!
-    let (addr, set_addr) = signal(address.clone());
+    let (_addr, _set_addr) = signal(address.clone());
 
     let is_new = address.get_id().is_none();
 

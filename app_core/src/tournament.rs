@@ -101,6 +101,8 @@ use chrono::{DateTime, Local};
 use std::collections::HashSet;
 use uuid::Uuid;
 
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Tournament {
     /// id of tournament
@@ -167,7 +169,7 @@ impl Core<TournamentState> {
             .load(self.state.tournament.location)
             .await?
             .cloned();
-        let start_at = if let Some(day_timing_id) = self.state.tournament.tournament_days.get(0)
+        let start_at = if let Some(day_timing_id) = self.state.tournament.tournament_days.first()
             && let Some(day_timing) = self.get_tournament_day_timing_state(*day_timing_id)?
         {
             Some(day_timing.get().date)

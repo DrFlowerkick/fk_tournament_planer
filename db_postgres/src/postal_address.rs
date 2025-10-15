@@ -222,13 +222,13 @@ impl DbpPostalAddress for PgDb {
 
         let mut query = postal_addresses.into_boxed::<diesel::pg::Pg>();
 
-        if let Some(f) = name_filter {
-            if !f.is_empty() {
-                // Case-insensitive "contains" match; escape special chars for LIKE
-                let pattern = format!("%{}%", escape_like(f));
-                debug!("apply_name_filter");
-                query = query.filter(name.like(pattern));
-            }
+        if let Some(f) = name_filter
+            && !f.is_empty()
+        {
+            // Case-insensitive "contains" match; escape special chars for LIKE
+            let pattern = format!("%{}%", escape_like(f));
+            debug!("apply_name_filter");
+            query = query.filter(name.like(pattern));
         }
 
         if let Some(lim) = limit {

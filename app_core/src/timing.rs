@@ -10,6 +10,8 @@ use uuid::Uuid;
 /// score_to_win (see crate::scoring::ScoringPolicy) the number of periods
 /// may be set to the number of sets. The duration of a period has to be estimated
 /// depending on score_to_win and experience with the particular sport.
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct MatchTiming {
     /// if of match timing
@@ -26,7 +28,8 @@ pub struct MatchTiming {
 
 // ToDo: bei der final stage sollte beachtet werden, dass die unteren Pool Spiele zuerst und eher etwas kürzer
 // laufen und das alle das finale anschauen können.
-
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct DayTiming {
     /// id of tournament day timing
@@ -62,7 +65,7 @@ impl<S> Core<S> {
         }
         Ok(None)
     }
-    fn load_tournament_day_timing(&self, id: Uuid) -> Result<Option<DayTiming>> {
+    fn load_tournament_day_timing(&self, _id: Uuid) -> Result<Option<DayTiming>> {
         todo!()
     }
 }

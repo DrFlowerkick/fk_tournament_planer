@@ -3,6 +3,8 @@
 use uuid::Uuid;
 
 /// stage of a tournament
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Stage {
     /// id of stage in tournament

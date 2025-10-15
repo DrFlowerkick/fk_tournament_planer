@@ -55,7 +55,7 @@ impl Default for PostalAddress {
 impl PostalAddress {
     pub fn new(id_version: IdVersion) -> PostalAddress {
         PostalAddress {
-            id_version: id_version,
+            id_version,
             ..Default::default()
         }
     }

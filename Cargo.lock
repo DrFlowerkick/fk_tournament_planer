@@ -614,6 +614,7 @@ dependencies = [
  "axum-extra",
  "codee",
  "dashmap",
+ "displaydoc",
  "futures-core",
  "futures-util",
  "serde",

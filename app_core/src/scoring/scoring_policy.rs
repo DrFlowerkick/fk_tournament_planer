@@ -8,6 +8,8 @@ use uuid::Uuid;
 /// scoring condition.
 /// It describes although the number of victory points for a win or draw and
 /// the number of score points for a free ticket in Swiss system.
+/// // ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct ScoringPolicy {
     /// id of scoring policy

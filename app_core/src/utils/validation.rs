@@ -60,7 +60,7 @@ impl FieldError<NoField> {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Default)]
 #[error("validation failed with {} error(s)", errors.len())]
 pub struct ValidationErrors<F> {
     pub errors: Vec<FieldError<F>>,

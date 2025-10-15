@@ -27,17 +27,14 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let (address, set_address) = signal(PostalAddress::default());
 
     // load existing address when `id` is Some(...)
-    let addr_res = Resource::new(
-        move || id(),
-        move |maybe_id| async move {
-            match maybe_id {
-                // AppResult<PostalAddress>
-                Some(id) => load_postal_address(id).await,
-                // new form: no loading delay
-                None => Ok(Default::default()),
-            }
-        },
-    );
+    let addr_res = Resource::new(id, move |maybe_id| async move {
+        match maybe_id {
+            // AppResult<PostalAddress>
+            Some(id) => load_postal_address(id).await,
+            // new form: no loading delay
+            None => Ok(Default::default()),
+        }
+    });
 
     // initialize query and address from Uuid
     Effect::new(move || {
@@ -52,7 +49,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let version = move || address.get().get_version().unwrap_or_default();
     // use id from address, since this address is either an existing postal address or nil
     // id from use_params() may be broken or not existing id
-    let topic = move || address.get().get_id().map(|id| CrTopic::Address(id));
+    let topic = move || address.get().get_id().map(CrTopic::Address);
 
     // load possible addresses from query
     let addr_list = Resource::new(
@@ -68,25 +65,25 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     // selection handler
     let select_idx = move |i: usize| {
-        if let Some(Ok(list)) = addr_list.get_untracked() {
-            if let Some(item) = list.get(i) {
-                // 1) update UI state
-                set_query.set(item.get_name().unwrap_or_default().to_string());
-                set_address.set(item.clone());
-                set_open.set(false);
+        if let Some(Ok(list)) = addr_list.get_untracked()
+            && let Some(item) = list.get(i)
+        {
+            // 1) update UI state
+            set_query.set(item.get_name().unwrap_or_default().to_string());
+            set_address.set(item.clone());
+            set_open.set(false);
 
-                // 2) update URL
-                let id_str = item.get_id().map(|id| id.to_string()).unwrap_or_default();
-                let navigate = use_navigate();
-                let _ = navigate(
-                    &format!("/postal-address/{}", id_str),
-                    NavigateOptions {
-                        // replace=true prevents „history spam“
-                        replace: true,
-                        ..Default::default()
-                    },
-                );
-            }
+            // 2) update URL
+            let id_str = item.get_id().map(|id| id.to_string()).unwrap_or_default();
+            let navigate = use_navigate();
+            navigate(
+                &format!("/postal-address/{}", id_str),
+                NavigateOptions {
+                    // replace=true prevents „history spam“
+                    replace: true,
+                    ..Default::default()
+                },
+            );
         }
     };
 
@@ -121,7 +118,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     // handle blur
     let on_blur = move |_| {
-        let set_open = set_open.clone();
         spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(0).await;
             set_open.set(false);
@@ -146,13 +142,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
         }>
             {move || {
                 view! {
-                    // pseudocode
+                    // Only call sse listener, if some topic exists
                     {move || match topic() {
                         Some(topic) => {
                             view! { <SseListener topic=topic version=version refetch=refetch /> }
                                 .into_any()
                         }
-                        None => view! { <></> }.into_any(),
+                        None => ().into_any(),
                     }}
 
                     // DaisyUI dropdown container
@@ -309,7 +305,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                         "Save expect, since get_id() returns Some(). Otherwise button would be disabled.",
                                     );
                                 let navigate = use_navigate();
-                                let _ = navigate(
+                                navigate(
                                     &format!("/postal-address/{id}/edit"),
                                     NavigateOptions {
                                         replace: false,

@@ -39,6 +39,7 @@ pub async fn load_postal_address(id: Uuid) -> AppResult<PostalAddress> {
         locality_len = locality.len()
     )
 )]
+#[allow(clippy::too_many_arguments)]
 pub async fn save_postal_address(
     // hidden in the form; nil => new; else => update
     id: Uuid,

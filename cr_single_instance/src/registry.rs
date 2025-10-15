@@ -59,6 +59,12 @@ pub struct CrSingleInstance {
     buses: CrBuses,
 }
 
+impl Default for CrSingleInstance {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CrSingleInstance {
     pub fn new() -> Self {
         Self {

@@ -1,20 +1,14 @@
 // type definitions shared by client and server
 
 use app_core::CrTopic;
+use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Clone, Copy)]
+#[derive(Deserialize, Serialize, Clone, Copy, Display)]
 #[serde(rename_all = "kebab-case")]
 pub enum CrKind {
+    /// address
     Address,
-}
-
-impl ToString for CrKind {
-    fn to_string(&self) -> String {
-        match self {
-            CrKind::Address => "address".into(),
-        }
-    }
 }
 
 impl From<&CrTopic> for CrKind {

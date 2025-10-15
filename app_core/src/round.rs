@@ -3,6 +3,8 @@
 use uuid::Uuid;
 
 /// round of matches
+// ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct Round {
     /// id of round in tournament

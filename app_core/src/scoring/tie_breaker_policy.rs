@@ -3,6 +3,8 @@
 use uuid::Uuid;
 
 /// policy to break ties. Tie breaker rules are resolved in vec order
+/// // ToDo: remove allow(dead_code) flag
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct TieBreakerPolicy {
     /// if of policy
