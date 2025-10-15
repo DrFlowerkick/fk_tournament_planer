@@ -1,7 +1,7 @@
 // server function for postal address
 
-use crate::AppResult;
-use app_core::{CoreState, PostalAddress};
+use crate::{AppError, AppResult};
+use app_core::{CoreState, PostalAddress, utils::id_version::IdVersion};
 use leptos::prelude::*;
 use tracing::{error, info, instrument};
 use uuid::Uuid;
@@ -36,7 +36,7 @@ pub async fn load_postal_address(id: Uuid) -> AppResult<PostalAddress> {
         intent = intent.as_deref().unwrap_or(""),
         // tiny hints only; avoid PII/body dumps
         name_len = name.as_deref().map(|s| s.len()).unwrap_or(0),
-        locality_len = address_locality.len()
+        locality_len = locality.len()
     )
 )]
 pub async fn save_postal_address(
@@ -46,42 +46,53 @@ pub async fn save_postal_address(
     version: i64,
     // optional text field: treat "" as None
     name: Option<String>,
-    street_address: String,
+    street: String,
     postal_code: String,
-    address_locality: String,
+    locality: String,
     // optional text field: treat "" as None
-    address_region: Option<String>,
-    address_country: String,
+    region: Option<String>,
+    country: String,
     // which submit button was clicked: "update" | "create"
     intent: Option<String>,
 ) -> AppResult<()> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
 
+    // get mut handle to wrapped PostalAddress
+    let mut_pa_core = core.get_mut();
+
     // Interpret intent
     let is_update = matches!(intent.as_deref(), Some("update"));
     if is_update {
         // set id and version previously loaded
-        core.set_id(id);
-        core.set_version(version);
+        if version < 0 {
+            return Err(AppError::NegativeVersionUpdate);
+        }
+        let id_version = IdVersion::builder()
+            .set_id(id)
+            .map_err(|_| AppError::NilIdUpdate)?
+            .set_version(version as u64)
+            .build();
+        mut_pa_core.set_id_version(id_version);
         info!("saving_update");
     } else {
         info!("saving_create");
     }
 
-    let name = name.unwrap_or_default();
-    core.change_name(name);
-    core.change_street_address(street_address);
-    core.change_postal_code(postal_code);
-    core.change_address_locality(address_locality);
-    let address_region = address_region.unwrap_or_default();
-    core.change_address_region(address_region);
-    core.change_address_country(address_country);
+    // set address data from Form inputs
+    mut_pa_core
+        .set_name(name.unwrap_or_default())
+        .set_street(street)
+        .set_postal_code(postal_code)
+        .set_locality(locality)
+        .set_region(region.unwrap_or_default())
+        .set_country(country)
+        .validate()?;
 
     // Persist; log outcome with the saved id.
     match core.save().await {
         Ok(saved) => {
-            info!(saved_id = %saved.id, "save_ok_redirect");
-            let route = format!("/postal-address/{}", saved.id);
+            info!(saved_id = %saved.get_id(), "save_ok_redirect");
+            let route = format!("/postal-address/{}", saved.get_id());
             leptos_axum::redirect(&route);
             Ok(())
         }

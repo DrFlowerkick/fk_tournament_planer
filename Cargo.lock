@@ -111,6 +111,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "chrono",
+ "displaydoc",
  "futures-core",
  "serde",
  "thiserror 2.0.17",

@@ -1,7 +1,8 @@
 // database port
 
-use crate::PostalAddress;
+use crate::{PostalAddress, utils::validation::ValidationErrors};
 use async_trait::async_trait;
+use std::fmt::Display;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -22,6 +23,18 @@ pub trait DbpPostalAddress: Send + Sync {
 
 #[derive(Debug, Error)]
 pub enum DbError {
+    /// row id is nil
+    #[error("id of row is nil")]
+    NilRowId,
+
+    /// row version is negativ
+    #[error("version of row is negativ")]
+    NegativeRowVersion,
+
+    /// validation error
+    #[error("validation error: {0}")]
+    ValidationErrors(String),
+
     /// Update could ot find matching id + version
     #[error("optimistic lock conflict")]
     OptimisticLockConflict,
@@ -49,6 +62,13 @@ pub enum DbError {
     // connection, pool, or other DB errors
     #[error(transparent)]
     Other(#[from] anyhow::Error),
+}
+
+// since ValidationErrors requires generic parameter F, we have to convert ValidationErrors to string
+impl<F: Display> From<ValidationErrors<F>> for DbError {
+    fn from(e: ValidationErrors<F>) -> Self {
+        DbError::ValidationErrors(e.to_string())
+    }
 }
 
 pub type DbResult<T> = Result<T, DbError>;

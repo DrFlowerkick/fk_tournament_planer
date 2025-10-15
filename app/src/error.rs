@@ -3,15 +3,28 @@
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use server_fn::codec::JsonEncoding;
+use std::fmt::Display;
 use thiserror::Error;
 
-use app_core::DbError;
+use app_core::{DbError, utils::validation::ValidationErrors};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error)]
 pub enum AppError {
+    /// update expects valid uuid
+    #[error("Expected non nil id of object to update")]
+    NilIdUpdate,
+
+    /// update expects current version to be >= 0
+    #[error("version of row is negativ")]
+    NegativeVersionUpdate,
+
     /// Preserve inner server-fn error message/structure
     #[error(transparent)]
     ServerFn(#[from] ServerFnErrorErr),
+
+    /// validation error
+    #[error("validation error: {0}")]
+    ValidationErrors(String),
 
     /// Your own DB/domain errors (serialized as string over the wire)
     #[error("database error: {0}")]
@@ -28,10 +41,17 @@ impl FromServerFnError for AppError {
     }
 }
 
-// since anyhow does not support serde, wie have to convert DbError to string
+// since anyhow does not support serde, we have to convert DbError to string
 impl From<DbError> for AppError {
     fn from(e: DbError) -> Self {
         AppError::Db(e.to_string())
+    }
+}
+
+// since ValidationErrors does not support serde, we have to convert ValidationErrors to string
+impl<F: Display> From<ValidationErrors<F>> for AppError {
+    fn from(e: ValidationErrors<F>) -> Self {
+        AppError::ValidationErrors(e.to_string())
     }
 }
 

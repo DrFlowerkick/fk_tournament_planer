@@ -6,4 +6,5 @@ file = "src/schema.rs"
 custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
 
 [migrations_directory]
-dir = "/home/marc/Development/repos/fk_tournament_planer/infra_postgres/migrations"
+#dir = "/home/marc/Development/repos/fk_tournament_planer/db_postgres/migrations"
+dir = "migrations"

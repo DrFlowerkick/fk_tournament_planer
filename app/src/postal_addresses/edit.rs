@@ -51,15 +51,17 @@ pub fn AddressFormWrapper(id: Option<Uuid>) -> impl IntoView {
 #[component]
 pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
+    // ToDo: use these signal for validation!
+    let (addr, set_addr) = signal(address.clone());
 
-    let is_new = address.version == -1 || address.id.is_nil();
+    let is_new = *address.get_version() == -1 || address.get_id().is_nil();
 
     view! {
         // Use <ActionForm/> to bind to your save server fn
         <ActionForm action=save_postal_address>
             // Hidden meta fields the server expects (id / version / intent)
-            <input type="hidden" name="id" prop:value=address.id.to_string() />
-            <input type="hidden" name="version" prop:value=address.version />
+            <input type="hidden" name="id" prop:value=address.get_id().to_string() />
+            <input type="hidden" name="version" prop:value=*address.get_version() />
 
             // Disable the whole form while loading existing data
             <fieldset prop:disabled=move || loading>
@@ -70,7 +72,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         class="w-full border rounded p-2"
                         name="name"
                         // show live value when loaded; while loading show "Loading…" as placeholder
-                        prop:value=address.name.unwrap_or_default()
+                        prop:value=address.get_name().unwrap_or_default().to_string()
                         placeholder=move || {
                             if loading {
                                 "Loading..."
@@ -88,8 +90,8 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <span class="block text-sm">"Street & number"</span>
                     <input
                         class="w-full border rounded p-2"
-                        name="street_address"
-                        prop:value=address.street_address
+                        name="street"
+                        prop:value=address.get_street().to_string()
                         placeholder=move || {
                             if loading {
                                 "Loading..."
@@ -109,7 +111,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         <input
                             class="w-full border rounded p-2"
                             name="postal_code"
-                            prop:value=address.postal_code
+                            prop:value=address.get_postal_code().to_string()
                             placeholder=move || {
                                 if loading {
                                     "Loading..."
@@ -125,8 +127,8 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         <span class="block text-sm">"City"</span>
                         <input
                             class="w-full border rounded p-2"
-                            name="address_locality"
-                            prop:value=address.address_locality
+                            name="locality"
+                            prop:value=address.get_locality().to_string()
                             placeholder=move || {
                                 if loading {
                                     "Loading..."
@@ -145,8 +147,8 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <span class="block text-sm">"Region (optional)"</span>
                     <input
                         class="w-full border rounded p-2"
-                        name="address_region"
-                        prop:value=address.address_region
+                        name="region"
+                        prop:value=address.get_region().map(|ar| ar.to_string())
                         placeholder=move || {
                             if loading {
                                 "Loading..."
@@ -164,8 +166,8 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <span class="block text-sm">"Country (ISO/name)"</span>
                     <input
                         class="w-full border rounded p-2"
-                        name="address_country"
-                        prop:value=address.address_country
+                        name="country"
+                        prop:value=address.get_country().to_string()
                         placeholder=move || {
                             if loading {
                                 "Loading..."

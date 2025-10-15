@@ -10,6 +10,7 @@ mod scoring;
 mod stage;
 mod timing;
 mod tournament;
+pub mod utils;
 
 pub use entrant::*;
 pub use group::*;
@@ -57,12 +58,8 @@ pub type CoreState = Arc<Core<InitState>>;
 pub struct NoDB {}
 pub struct NoCR {}
 
-pub struct DynDB {
-    database: Arc<dyn DatabasePort>,
-}
-pub struct DynCR {
-    client_registry: Arc<dyn ClientRegistryPort>,
-}
+pub struct DynDB(Arc<dyn DatabasePort>);
+pub struct DynCR(Arc<dyn ClientRegistryPort>);
 
 pub struct CoreBuilder<DB, CR> {
     state_db: DB,
@@ -81,7 +78,7 @@ impl CoreBuilder<NoDB, NoCR> {
 impl<DB, CR> CoreBuilder<DB, CR> {
     pub fn set_db(self, database: Arc<dyn DatabasePort>) -> CoreBuilder<DynDB, CR> {
         CoreBuilder {
-            state_db: DynDB { database },
+            state_db: DynDB(database),
             state_cr: self.state_cr,
         }
     }
@@ -89,7 +86,7 @@ impl<DB, CR> CoreBuilder<DB, CR> {
     pub fn set_cr(self, client_registry: Arc<dyn ClientRegistryPort>) -> CoreBuilder<DB, DynCR> {
         CoreBuilder {
             state_db: self.state_db,
-            state_cr: DynCR { client_registry },
+            state_cr: DynCR(client_registry),
         }
     }
 }
@@ -98,8 +95,8 @@ impl CoreBuilder<DynDB, DynCR> {
     pub fn build(self) -> Core<InitState> {
         Core {
             state: InitState {},
-            database: self.state_db.database,
-            client_registry: self.state_cr.client_registry,
+            database: self.state_db.0,
+            client_registry: self.state_cr.0,
         }
     }
 }

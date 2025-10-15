@@ -4,7 +4,7 @@ use crate::{
     PgDb, escape_like, map_db_err,
     schema::{postal_addresses, postal_addresses::dsl::*},
 };
-use app_core::{DbError, DbResult, DbpPostalAddress, PostalAddress};
+use app_core::{DbError, DbResult, DbpPostalAddress, PostalAddress, utils::id_version::IdVersion};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use diesel::{
@@ -25,28 +25,37 @@ pub struct DbPostalAddress {
     pub id: Uuid,
     pub version: i64,
     pub name: Option<String>,
-    pub street_address: String,
+    pub street: String,
     pub postal_code: String,
-    pub address_locality: String,
-    pub address_region: Option<String>,
-    pub address_country: String,
+    pub locality: String,
+    pub region: Option<String>,
+    pub country: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 // Mapping DB -> Core
-impl From<DbPostalAddress> for PostalAddress {
-    fn from(r: DbPostalAddress) -> Self {
-        Self {
-            id: r.id,
-            version: r.version,
-            name: r.name,
-            street_address: r.street_address,
-            postal_code: r.postal_code,
-            address_locality: r.address_locality,
-            address_region: r.address_region,
-            address_country: r.address_country,
+impl TryFrom<DbPostalAddress> for PostalAddress {
+    type Error = DbError;
+
+    fn try_from(r: DbPostalAddress) -> Result<Self, Self::Error> {
+        if r.version < 0 {
+            return Err(DbError::NegativeRowVersion);
         }
+        let id_version = IdVersion::builder()
+            .set_id(r.id)
+            .map_err(|_| DbError::NilRowId)?
+            .set_version(r.version as u64)
+            .build();
+        let mut pa = PostalAddress::new(id_version);
+        pa.set_name(r.name.unwrap_or_default())
+            .set_street(r.street)
+            .set_postal_code(r.postal_code)
+            .set_locality(r.locality)
+            .set_region(r.region.unwrap_or_default())
+            .set_country(r.country);
+        pa.validate()?;
+        Ok(pa)
     }
 }
 
@@ -58,23 +67,23 @@ impl From<DbPostalAddress> for PostalAddress {
 pub struct WriteDbPostalAddress<'a> {
     // do NIT set version -> DEFAULT 0 from migration
     pub name: Option<&'a str>,
-    pub street_address: &'a str,
+    pub street: &'a str,
     pub postal_code: &'a str,
-    pub address_locality: &'a str,
-    pub address_region: Option<&'a str>,
-    pub address_country: &'a str,
+    pub locality: &'a str,
+    pub region: Option<&'a str>,
+    pub country: &'a str,
 }
 
 // Mapping Core -> DB
 impl<'a> From<&'a PostalAddress> for WriteDbPostalAddress<'a> {
     fn from(p: &'a PostalAddress) -> Self {
         WriteDbPostalAddress {
-            name: p.name.as_deref(),
-            street_address: &p.street_address,
-            postal_code: &p.postal_code,
-            address_locality: &p.address_locality,
-            address_region: p.address_region.as_deref(),
-            address_country: &p.address_country,
+            name: p.get_name(),
+            street: p.get_street(),
+            postal_code: p.get_postal_code(),
+            locality: p.get_locality(),
+            region: p.get_region(),
+            country: p.get_country(),
         }
     }
 }
@@ -95,27 +104,33 @@ impl DbpPostalAddress for PgDb {
             .optional()
             .map_err(map_db_err)?;
 
-        match &res {
-            Some(_) => debug!("row_found"),
-            None => debug!("row_not_found"),
+        match res {
+            Some(res) => {
+                let res = PostalAddress::try_from(res)?;
+                debug!("row_found");
+                Ok(Some(res))
+            }
+            None => {
+                debug!("row_not_found");
+                Ok(None)
+            }
         }
-        Ok(res.map(PostalAddress::from))
     }
 
     #[instrument(
         name = "db.pa.save",
         skip(self, address),
         fields(
-            id = %address.id,
-            version = address.version,
-            is_new = address.id.is_nil() || address.version == NEW_VERSION
+            id = %address.get_id(),
+            version = address.get_version(),
+            is_new = address.get_id().is_nil() || *address.get_version() == NEW_VERSION
         )
     )]
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress> {
         let mut conn = self.new_connection().await?;
         let w = WriteDbPostalAddress::from(address);
 
-        if address.id.is_nil() || address.version == NEW_VERSION {
+        if address.get_id().is_nil() || *address.get_version() == NEW_VERSION {
             // INSERT
             let row = diesel::insert_into(postal_addresses)
                 .values(w)
@@ -123,11 +138,11 @@ impl DbpPostalAddress for PgDb {
                     id,
                     version,
                     name,
-                    street_address,
+                    street,
                     postal_code,
-                    address_locality,
-                    address_region,
-                    address_country,
+                    locality,
+                    region,
+                    country,
                     created_at,
                     updated_at,
                 ))
@@ -135,22 +150,25 @@ impl DbpPostalAddress for PgDb {
                 .await
                 .map_err(map_db_err)?;
             info!(saved_id = %row.id, "insert_ok");
-            Ok(row.into())
+            Ok(row.try_into()?)
         } else {
             // UPDATE with optimistic locking
             let res = diesel::update(
-                postal_addresses.filter(id.eq(address.id).and(version.eq(address.version))),
+                postal_addresses.filter(
+                    id.eq(address.get_id())
+                        .and(version.eq(address.get_version())),
+                ),
             )
             .set((w, version.eq(sql::<BigInt>("version + 1"))))
             .returning((
                 id,
                 version,
                 name,
-                street_address,
+                street,
                 postal_code,
-                address_locality,
-                address_region,
-                address_country,
+                locality,
+                region,
+                country,
                 created_at,
                 updated_at,
             ))
@@ -160,12 +178,12 @@ impl DbpPostalAddress for PgDb {
             match res {
                 Ok(row) => {
                     info!(saved_id = %row.id, new_version = row.version, "update_ok");
-                    Ok(row.into())
+                    Ok(row.try_into()?)
                 }
                 Err(diesel::result::Error::NotFound) => {
                     // Distinguish lock conflict from missing row
                     let exists = diesel::select(diesel::dsl::exists(
-                        postal_addresses.filter(id.eq(address.id)),
+                        postal_addresses.filter(id.eq(address.get_id())),
                     ))
                     .get_result::<bool>(&mut conn)
                     .await
@@ -224,6 +242,9 @@ impl DbpPostalAddress for PgDb {
             .map_err(map_db_err)?;
 
         info!(count = rows.len(), "list_ok");
-        Ok(rows.into_iter().map(PostalAddress::from).collect())
+        Ok(rows
+            .into_iter()
+            .map(PostalAddress::try_from)
+            .collect::<Result<Vec<PostalAddress>, _>>()?)
     }
 }

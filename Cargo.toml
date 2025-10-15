@@ -38,7 +38,7 @@ diesel-derive-enum = "2.1"
 diesel-async = { version = "0.7", features = ["postgres", "pool", "bb8"] }
 dotenvy = "0.15"
 async-trait = "0.1.89"
-serde = "1.0"
+serde = { version = "1.0", features=["derive"] }
 serde_json = "1.0"
 getrandom = "0.3"
 gloo-timers = { version = "0.3.0", features = ["futures"] }
@@ -51,6 +51,7 @@ tracing-error = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-bunyan-formatter = "0.3"
 tracing-log = "0.2"
+displaydoc = "0.2"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 

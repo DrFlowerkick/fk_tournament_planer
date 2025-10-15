@@ -13,11 +13,11 @@ CREATE TABLE IF NOT EXISTS postal_addresses (
   name             citext,
 
   -- Address fields
-  street_address   text        NOT NULL,
+  street   text        NOT NULL,
   postal_code      text        NOT NULL,
-  address_locality text        NOT NULL,
-  address_region   text,
-  address_country  text        NOT NULL,
+  locality text        NOT NULL,
+  region   text,
+  country  text        NOT NULL,
 
   -- Timestamps
   created_at       timestamptz NOT NULL DEFAULT now(),
@@ -28,9 +28,9 @@ CREATE TABLE IF NOT EXISTS postal_addresses (
   CONSTRAINT version_non_negative CHECK (version >= 0)
 );
 
--- Enforce uniqueness of (name, postal_code, address_locality) only when name is present
+-- Enforce uniqueness of (name, postal_code, locality) only when name is present
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_postal_addresses_name_per_city_zip
-  ON postal_addresses (name, postal_code, address_locality)
+  ON postal_addresses (name, postal_code, locality)
   WHERE name IS NOT NULL;
 
 -- updated_at maintenance trigger (keine Automatik für version!)

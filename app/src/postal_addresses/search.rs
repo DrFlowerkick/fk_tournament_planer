@@ -43,20 +43,20 @@ pub fn SearchPostalAddress() -> impl IntoView {
     Effect::new(move || {
         if let Some(Ok(addr)) = addr_res.get() {
             set_address.set(addr.clone());
-            set_query.set(addr.name.clone().unwrap_or_default());
+            set_query.set(addr.get_name().unwrap_or_default().to_string());
         }
     });
 
     // these function are required by sse_listener to refetch addr_res after changes to it at server side
     let refetch = move || addr_res.refetch();
-    let version = move || address.get().version;
+    let version = move || *address.get().get_version();
     // use id from address, since this address is either an existing postal address or nil
     // id from use_params() may be broken or not existing id
     let topic = move || {
-        if address.get().id.is_nil() {
+        if address.get().get_id().is_nil() {
             None
         } else {
-            Some(CrTopic::Address(address.get().id))
+            Some(CrTopic::Address(*address.get().get_id()))
         }
     };
 
@@ -77,12 +77,12 @@ pub fn SearchPostalAddress() -> impl IntoView {
         if let Some(Ok(list)) = addr_list.get_untracked() {
             if let Some(item) = list.get(i) {
                 // 1) update UI state
-                set_query.set(item.name.clone().unwrap_or_default());
+                set_query.set(item.get_name().unwrap_or_default().to_string());
                 set_address.set(item.clone());
                 set_open.set(false);
 
                 // 2) update URL
-                let id_str = item.id.to_string(); // falls id: Uuid
+                let id_str = item.get_id().to_string(); // falls id: Uuid
                 let navigate = use_navigate();
                 let _ = navigate(
                     &format!("/postal-address/{}", id_str),
@@ -219,7 +219,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                                     view! {
                                                         <For
                                                             each=move || results().clone().into_iter().enumerate()
-                                                            key=|(_i, a)| a.id
+                                                            key=|(_i, a)| *a.get_id()
                                                             children=move |(i, a)| {
                                                                 let is_hi = move || {
                                                                     hi.get().map(|j| j == i).unwrap_or(false)
@@ -244,16 +244,27 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                                                             on:mousedown=move |_| select_idx(i)
                                                                         >
                                                                             <span class="font-medium">
-                                                                                {a.name.clone().unwrap_or_default()}
+                                                                                {a.get_name().unwrap_or_default().to_string()}
                                                                             </span>
                                                                             <span class="text-xs text-base-content/70">
-                                                                                {format!(
-                                                                                    "{} {} · {:?} · {}",
-                                                                                    a.postal_code,
-                                                                                    a.address_locality,
-                                                                                    a.address_region,
-                                                                                    a.address_country,
-                                                                                )}
+                                                                                {match a.get_region() {
+                                                                                    Some(region) => {
+                                                                                        format!(
+                                                                                            "{} {} · {region} · {}",
+                                                                                            a.get_postal_code(),
+                                                                                            a.get_locality(),
+                                                                                            a.get_country(),
+                                                                                        )
+                                                                                    }
+                                                                                    None => {
+                                                                                        format!(
+                                                                                            "{} {} {}",
+                                                                                            a.get_postal_code(),
+                                                                                            a.get_locality(),
+                                                                                            a.get_country(),
+                                                                                        )
+                                                                                    }
+                                                                                }}
                                                                             </span>
                                                                         </a>
                                                                     </li>
@@ -272,18 +283,18 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
                     // current selected address
                     <div class="mt-3 space-y-1 text-sm">
-                        <p>{move || address.get().street_address}</p>
+                        <p>{move || address.get().get_street().to_string()}</p>
                         <p>
                             {move || {
                                 format!(
                                     "{} {}",
-                                    address.get().postal_code,
-                                    address.get().address_locality,
+                                    address.get().get_postal_code(),
+                                    address.get().get_locality(),
                                 )
                             }}
                         </p>
-                        <p>{move || address.get().address_region}</p>
-                        <p>{move || address.get().address_country}</p>
+                        <p>{move || address.get().get_region().unwrap_or_default().to_string()}</p>
+                        <p>{move || address.get().get_country().to_string()}</p>
                     </div>
 
                     <div class="mt-4 flex gap-2">
@@ -295,9 +306,9 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         // MODIFY: only active, if valid address is selected
                         <button
                             class="btn btn-secondary btn-sm"
-                            disabled=move || address.get().id.is_nil()
+                            disabled=move || address.get().get_id().is_nil()
                             on:click=move |_| {
-                                let id = address.get().id;
+                                let id = *address.get().get_id();
                                 let navigate = use_navigate();
                                 let _ = navigate(
                                     &format!("/postal-address/{id}/edit"),
