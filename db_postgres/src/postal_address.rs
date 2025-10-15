@@ -39,14 +39,16 @@ impl TryFrom<DbPostalAddress> for PostalAddress {
     type Error = DbError;
 
     fn try_from(r: DbPostalAddress) -> Result<Self, Self::Error> {
+        if r.id.is_nil() {
+            return Err(DbError::NilRowId);
+        }
         if r.version < 0 {
             return Err(DbError::NegativeRowVersion);
         }
-        let id_version = IdVersion::builder()
-            .set_id(r.id)
-            .map_err(|_| DbError::NilRowId)?
-            .set_version(r.version as u64)
-            .build();
+        if r.version > u32::MAX as i64 {
+            return Err(DbError::RowVersionOutOfRange);
+        }
+        let id_version = IdVersion::new(r.id, r.version as u32);
         let mut pa = PostalAddress::new(id_version);
         pa.set_name(r.name.unwrap_or_default())
             .set_street(r.street)
@@ -90,8 +92,6 @@ impl<'a> From<&'a PostalAddress> for WriteDbPostalAddress<'a> {
 
 // ------------------- Impl trait --------------------
 
-const NEW_VERSION: i64 = -1;
-
 #[async_trait]
 impl DbpPostalAddress for PgDb {
     #[instrument(name = "db.pa.get", skip(self), fields(id = %pa_id))]
@@ -121,42 +121,21 @@ impl DbpPostalAddress for PgDb {
         name = "db.pa.save",
         skip(self, address),
         fields(
-            id = %address.get_id(),
+            id = ?address.get_id(),
             version = address.get_version(),
-            is_new = address.get_id().is_nil() || *address.get_version() == NEW_VERSION
+            is_new = address.get_id().is_none()
         )
     )]
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress> {
         let mut conn = self.new_connection().await?;
         let w = WriteDbPostalAddress::from(address);
 
-        if address.get_id().is_nil() || *address.get_version() == NEW_VERSION {
-            // INSERT
-            let row = diesel::insert_into(postal_addresses)
-                .values(w)
-                .returning((
-                    id,
-                    version,
-                    name,
-                    street,
-                    postal_code,
-                    locality,
-                    region,
-                    country,
-                    created_at,
-                    updated_at,
-                ))
-                .get_result::<DbPostalAddress>(&mut conn)
-                .await
-                .map_err(map_db_err)?;
-            info!(saved_id = %row.id, "insert_ok");
-            Ok(row.try_into()?)
-        } else {
+        if let IdVersion::Existing(inner) = address.get_id_version() {
             // UPDATE with optimistic locking
             let res = diesel::update(
                 postal_addresses.filter(
-                    id.eq(address.get_id())
-                        .and(version.eq(address.get_version())),
+                    id.eq(inner.get_id())
+                        .and(version.eq(inner.get_version() as i64)),
                 ),
             )
             .set((w, version.eq(sql::<BigInt>("version + 1"))))
@@ -183,7 +162,7 @@ impl DbpPostalAddress for PgDb {
                 Err(diesel::result::Error::NotFound) => {
                     // Distinguish lock conflict from missing row
                     let exists = diesel::select(diesel::dsl::exists(
-                        postal_addresses.filter(id.eq(address.get_id())),
+                        postal_addresses.filter(id.eq(inner.get_id())),
                     ))
                     .get_result::<bool>(&mut conn)
                     .await
@@ -202,6 +181,27 @@ impl DbpPostalAddress for PgDb {
                     Err(map_db_err(e))
                 }
             }
+        } else {
+            // INSERT
+            let row = diesel::insert_into(postal_addresses)
+                .values(w)
+                .returning((
+                    id,
+                    version,
+                    name,
+                    street,
+                    postal_code,
+                    locality,
+                    region,
+                    country,
+                    created_at,
+                    updated_at,
+                ))
+                .get_result::<DbPostalAddress>(&mut conn)
+                .await
+                .map_err(map_db_err)?;
+            info!(saved_id = %row.id, "insert_ok");
+            Ok(row.try_into()?)
         }
     }
 

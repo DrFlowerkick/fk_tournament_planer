@@ -14,3 +14,8 @@ async-trait.workspace = true
 serde.workspace = true
 futures-core.workspace = true
 displaydoc.workspace = true
+
+# only needed in tests
+[dev-dependencies]
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

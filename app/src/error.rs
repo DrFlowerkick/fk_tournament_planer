@@ -14,10 +14,6 @@ pub enum AppError {
     #[error("Expected non nil id of object to update")]
     NilIdUpdate,
 
-    /// update expects current version to be >= 0
-    #[error("version of row is negativ")]
-    NegativeVersionUpdate,
-
     /// Preserve inner server-fn error message/structure
     #[error(transparent)]
     ServerFn(#[from] ServerFnErrorErr),

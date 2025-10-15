@@ -43,7 +43,7 @@ impl From<&CrPushNotice> for CrTopic {
 /// Lightweight metadata to hint clients about a newer state.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct CrUpdateMeta {
-    pub version: i64,
+    pub version: u32,
 }
 
 /// Domain notices sent to subscribed clients. Keep payloads minimal.

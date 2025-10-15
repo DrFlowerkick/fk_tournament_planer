@@ -54,14 +54,22 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
     // ToDo: use these signal for validation!
     let (addr, set_addr) = signal(address.clone());
 
-    let is_new = *address.get_version() == -1 || address.get_id().is_nil();
+    let is_new = address.get_id().is_none();
 
     view! {
         // Use <ActionForm/> to bind to your save server fn
         <ActionForm action=save_postal_address>
             // Hidden meta fields the server expects (id / version / intent)
-            <input type="hidden" name="id" prop:value=address.get_id().to_string() />
-            <input type="hidden" name="version" prop:value=*address.get_version() />
+            <input
+                type="hidden"
+                name="id"
+                prop:value=address.get_id().unwrap_or(Uuid::nil()).to_string()
+            />
+            <input
+                type="hidden"
+                name="version"
+                prop:value=address.get_version().unwrap_or_default()
+            />
 
             // Disable the whole form while loading existing data
             <fieldset prop:disabled=move || loading>

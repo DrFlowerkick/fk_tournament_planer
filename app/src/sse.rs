@@ -11,7 +11,7 @@ pub fn sse_listener(
     // topic to subscribe to
     topic: CrTopic,
     // current version of object as derived signal
-    version: impl Fn() -> i64 + 'static,
+    version: impl Fn() -> u32 + 'static,
     // refetch of data source as derived signal
     refetch: impl Fn() + 'static,
 ) -> impl IntoView {

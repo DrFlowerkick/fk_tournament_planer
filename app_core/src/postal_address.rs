@@ -1,7 +1,7 @@
 // data types for postal addresses
 
 use crate::{
-    Core, CrPushNotice, CrUpdateMeta, DbError, DbResult,
+    Core, CrPushNotice, CrUpdateMeta, DbResult,
     utils::{id_version::IdVersion, normalize::*, validation::*},
 };
 use displaydoc::Display;
@@ -22,10 +22,8 @@ pub enum PaValidationField {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PostalAddress {
-    /// id of address
-    id: Uuid,
-    /// optimistic locking version
-    version: i64,
+    /// id and optimistic locking version of address
+    id_version: IdVersion,
     /// name of location
     name: Option<String>,
     /// street address
@@ -43,8 +41,7 @@ pub struct PostalAddress {
 impl Default for PostalAddress {
     fn default() -> Self {
         PostalAddress {
-            id: Uuid::nil(),
-            version: -1,
+            id_version: IdVersion::New,
             name: None,
             street: "".into(),
             postal_code: "".into(),
@@ -58,16 +55,18 @@ impl Default for PostalAddress {
 impl PostalAddress {
     pub fn new(id_version: IdVersion) -> PostalAddress {
         PostalAddress {
-            id: *id_version.get_id(),
-            version: *id_version.get_version(),
+            id_version: id_version,
             ..Default::default()
         }
     }
-    pub fn get_id(&self) -> &Uuid {
-        &self.id
+    pub fn get_id(&self) -> Option<Uuid> {
+        self.id_version.get_id()
     }
-    pub fn get_version(&self) -> &i64 {
-        &self.version
+    pub fn get_version(&self) -> Option<u32> {
+        self.id_version.get_version()
+    }
+    pub fn get_id_version(&self) -> IdVersion {
+        self.id_version
     }
     pub fn get_name(&self) -> Option<&str> {
         self.name.as_deref()
@@ -89,8 +88,7 @@ impl PostalAddress {
     }
 
     pub fn set_id_version(&mut self, id_version: IdVersion) -> &mut Self {
-        self.id = *id_version.get_id();
-        self.version = *id_version.get_version();
+        self.id_version = id_version;
         self
     }
 
@@ -291,7 +289,7 @@ pub struct PostalAddressState {
 }
 
 /// API of postal address
-// switch state to portal address state to provide API for PostalAddress
+// switch state to postal address state to provide API for PostalAddress
 impl<S> Core<S> {
     pub fn as_postal_address_state(&self) -> Core<PostalAddressState> {
         self.switch_state(PostalAddressState {
@@ -321,12 +319,19 @@ impl Core<PostalAddressState> {
             .save_postal_address(&self.state.address)
             .await?;
         // publish change of address to client registry
-        let notice = CrPushNotice::AddressUpdated {
-            id: self.state.address.id,
-            meta: CrUpdateMeta {
-                version: self.state.address.version,
-            },
-        };
+        let notice =
+            CrPushNotice::AddressUpdated {
+                id: self
+                    .state
+                    .address
+                    .get_id()
+                    .expect("expecting save_postal_address to return always an existing uuid"),
+                meta: CrUpdateMeta {
+                    version: self.state.address.get_version().expect(
+                        "expecting save_postal_address to return always an existing version",
+                    ),
+                },
+            };
         self.client_registry.publish(notice).await?;
         Ok(self.get())
     }
@@ -347,12 +352,7 @@ mod test_validate {
 
     // Helper to build a *valid* baseline address we can then tweak per test.
     fn valid_addr() -> PostalAddress {
-        let id_version = IdVersion::builder()
-            .set_id(Uuid::new_v4())
-            .map_err(|_| "map err to replace nil id version with this message to enable unwrap()")
-            .unwrap()
-            .set_version(0)
-            .build();
+        let id_version = IdVersion::new(Uuid::new_v4(), 0);
         let mut pa = PostalAddress::new(id_version);
         pa.set_name("Main Campus")
             .set_street("Musterstraße 1")

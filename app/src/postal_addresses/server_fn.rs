@@ -42,8 +42,8 @@ pub async fn load_postal_address(id: Uuid) -> AppResult<PostalAddress> {
 pub async fn save_postal_address(
     // hidden in the form; nil => new; else => update
     id: Uuid,
-    // hidden in the form; -1 => new; else => update
-    version: i64,
+    // hidden in the form
+    version: u32,
     // optional text field: treat "" as None
     name: Option<String>,
     street: String,
@@ -64,14 +64,10 @@ pub async fn save_postal_address(
     let is_update = matches!(intent.as_deref(), Some("update"));
     if is_update {
         // set id and version previously loaded
-        if version < 0 {
-            return Err(AppError::NegativeVersionUpdate);
+        if id.is_nil() {
+            return Err(AppError::NilIdUpdate);
         }
-        let id_version = IdVersion::builder()
-            .set_id(id)
-            .map_err(|_| AppError::NilIdUpdate)?
-            .set_version(version as u64)
-            .build();
+        let id_version = IdVersion::new(id, version);
         mut_pa_core.set_id_version(id_version);
         info!("saving_update");
     } else {
@@ -88,11 +84,11 @@ pub async fn save_postal_address(
         .set_country(country)
         .validate()?;
 
-    // Persist; log outcome with the saved id.
+    // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {
         Ok(saved) => {
-            info!(saved_id = %saved.get_id(), "save_ok_redirect");
-            let route = format!("/postal-address/{}", saved.get_id());
+            info!(saved_id = %saved.get_id().unwrap(), "save_ok_redirect");
+            let route = format!("/postal-address/{}", saved.get_id().unwrap());
             leptos_axum::redirect(&route);
             Ok(())
         }

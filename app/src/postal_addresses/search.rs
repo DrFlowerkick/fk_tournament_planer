@@ -49,16 +49,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     // these function are required by sse_listener to refetch addr_res after changes to it at server side
     let refetch = move || addr_res.refetch();
-    let version = move || *address.get().get_version();
+    let version = move || address.get().get_version().unwrap_or_default();
     // use id from address, since this address is either an existing postal address or nil
     // id from use_params() may be broken or not existing id
-    let topic = move || {
-        if address.get().get_id().is_nil() {
-            None
-        } else {
-            Some(CrTopic::Address(*address.get().get_id()))
-        }
-    };
+    let topic = move || address.get().get_id().map(|id| CrTopic::Address(id));
 
     // load possible addresses from query
     let addr_list = Resource::new(
@@ -82,7 +76,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                 set_open.set(false);
 
                 // 2) update URL
-                let id_str = item.get_id().to_string(); // falls id: Uuid
+                let id_str = item.get_id().map(|id| id.to_string()).unwrap_or_default();
                 let navigate = use_navigate();
                 let _ = navigate(
                     &format!("/postal-address/{}", id_str),
@@ -219,7 +213,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                                     view! {
                                                         <For
                                                             each=move || results().clone().into_iter().enumerate()
-                                                            key=|(_i, a)| *a.get_id()
+                                                            key=|(_i, a)| a.get_id_version()
                                                             children=move |(i, a)| {
                                                                 let is_hi = move || {
                                                                     hi.get().map(|j| j == i).unwrap_or(false)
@@ -306,9 +300,14 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         // MODIFY: only active, if valid address is selected
                         <button
                             class="btn btn-secondary btn-sm"
-                            disabled=move || address.get().get_id().is_nil()
+                            disabled=move || address.get().get_id().is_none()
                             on:click=move |_| {
-                                let id = *address.get().get_id();
+                                let id = address
+                                    .get()
+                                    .get_id()
+                                    .expect(
+                                        "Save expect, since get_id() returns Some(). Otherwise button would be disabled.",
+                                    );
                                 let navigate = use_navigate();
                                 let _ = navigate(
                                     &format!("/postal-address/{id}/edit"),

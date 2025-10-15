@@ -31,6 +31,10 @@ pub enum DbError {
     #[error("version of row is negativ")]
     NegativeRowVersion,
 
+    /// row version is out of range
+    #[error("version of row is out of range of u32")]
+    RowVersionOutOfRange,
+
     /// validation error
     #[error("validation error: {0}")]
     ValidationErrors(String),

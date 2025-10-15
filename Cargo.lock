@@ -113,8 +113,10 @@ dependencies = [
  "chrono",
  "displaydoc",
  "futures-core",
+ "futures-util",
  "serde",
  "thiserror 2.0.17",
+ "tokio",
  "uuid",
 ]
 
@@ -3555,7 +3557,17 @@ dependencies = [
  "getrandom",
  "js-sys",
  "serde",
+ "uuid-rng-internal",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "uuid-rng-internal"
+version = "1.18.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23426b4394875bbc29a3074f94e1b52cd0eed2c8410c21a6edbfb033daef0aa1"
+dependencies = [
+ "getrandom",
 ]
 
 [[package]]
