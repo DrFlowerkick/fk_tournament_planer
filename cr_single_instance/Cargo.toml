@@ -33,3 +33,7 @@ serde_json.workspace = true
 codee.workspace = true
 tracing.workspace = true
 displaydoc.workspace = true
+
+# only needed in tests
+[dev-dependencies]
+tracing-subscriber.workspace = true

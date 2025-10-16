@@ -28,6 +28,7 @@
   "cSpell.words": [
     "autoreload",
     "axum",
+    "backpressure",
     "bindgen",
     "browserlist",
     "browserquery",

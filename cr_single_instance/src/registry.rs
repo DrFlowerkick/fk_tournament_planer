@@ -8,7 +8,7 @@ use futures_core::Stream;
 use futures_util::StreamExt;
 use std::{
     pin::Pin,
-    sync::Arc,
+    sync::{Arc, Weak},
     task::{Context, Poll},
 };
 use tokio::sync::broadcast;
@@ -16,19 +16,23 @@ use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 use tracing::{debug, info, instrument, warn};
 
 type CrBuses = Arc<DashMap<CrTopic, broadcast::Sender<CrPushNotice>>>;
+type WeakBuses = Weak<DashMap<CrTopic, broadcast::Sender<CrPushNotice>>>;
 
 /// RAII stream wrapper that can drop the underlying receiver and
 /// remove an empty topic bus when the stream goes out of scope.
 struct CrSubscriptionStream {
-    inner: CrNoticeStream,
-    buses: CrBuses,
+    inner: Option<CrNoticeStream>,
+    buses: WeakBuses,
     topic: CrTopic,
 }
 
 impl Stream for CrSubscriptionStream {
     type Item = CrPushNotice;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.inner.as_mut().poll_next(cx)
+        match self.inner.as_mut() {
+            Some(inner) => inner.as_mut().poll_next(cx),
+            None => Poll::Ready(None),
+        }
     }
 }
 
@@ -37,13 +41,16 @@ impl Drop for CrSubscriptionStream {
         // Log before potential removal for better visibility.
         let mut removed = false;
         let mut receivers = 0usize;
+        self.inner.take();
 
-        if let Some(bus) = self.buses.get(&self.topic) {
+        if let Some(strong_again) = self.buses.upgrade()
+            && let Some(bus) = strong_again.get(&self.topic)
+        {
             receivers = bus.receiver_count();
             if receivers == 0 {
                 // release guard before remove
                 drop(bus);
-                self.buses.remove(&self.topic);
+                strong_again.remove(&self.topic);
                 removed = true;
             }
         }
@@ -72,7 +79,6 @@ impl CrSingleInstance {
         }
     }
 
-    /// Create a bus only when a client subscribes (avoid orphan buses).
     /// Create a bus only when a client subscribes (avoid orphan buses).
     fn ensure_bus(&self, topic: &CrTopic) -> broadcast::Sender<CrPushNotice> {
         let mut created = false;
@@ -123,9 +129,10 @@ impl ClientRegistryPort for CrSingleInstance {
         });
 
         // Wrap to perform RAII cleanup when the stream is dropped.
+        let buses = Arc::clone(&self.buses);
         let wrapped = CrSubscriptionStream {
-            inner: Box::pin(base),
-            buses: Arc::clone(&self.buses),
+            inner: Some(Box::pin(base)),
+            buses: Arc::downgrade(&buses),
             topic,
         };
 
@@ -143,5 +150,116 @@ impl ClientRegistryPort for CrSingleInstance {
             debug!("publish_no_listeners");
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests_drop_semantics {
+    use super::*;
+    use app_core::CrUpdateMeta;
+    use futures_util::StreamExt;
+    use tokio::time::{Duration, timeout};
+    use uuid::Uuid;
+
+    /// Helper: build a minimal AddressUpdated notice.
+    fn notice(id: Uuid, version: u32) -> CrPushNotice {
+        CrPushNotice::AddressUpdated {
+            id,
+            meta: CrUpdateMeta { version },
+        }
+    }
+
+    /// U1: Dropping the subscription should release the last receiver so that
+    /// the bus can be removed (no receivers remain).
+    ///
+    /// Expected: after dropping the only subscription, the DashMap has no entry for the topic.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn dropping_subscription_removes_empty_bus() {
+        // Arrange: fresh adapter and a unique topic
+        let adapter = CrSingleInstance::new();
+        let id = Uuid::new_v4();
+        let topic = CrTopic::Address(id);
+
+        // First subscribe to create the bus.
+        let mut stream = adapter
+            .subscribe(topic.clone())
+            .await
+            .expect("subscribe failed");
+
+        // Publish one event to ensure the bus actually exists and works.
+        adapter
+            .publish(notice(id, 1))
+            .await
+            .expect("publish failed");
+        let _first = timeout(Duration::from_secs(2), stream.next())
+            .await
+            .expect("recv timed out")
+            .expect("stream ended unexpectedly");
+
+        // At this point there is exactly one receiver (our `stream`).
+        // Act: drop the stream (should drop the underlying broadcast::Receiver FIRST).
+        drop(stream);
+
+        // Assert: the bus for `topic` is gone (or at least no receivers remain).
+        // Preferred invariant: entry removed.
+        let contains = adapter.buses.contains_key(&topic);
+        assert!(
+            !contains,
+            "expected bus for topic to be removed after last receiver dropped"
+        );
+    }
+
+    /// U2: Dropping the last adapter handle should make active streams end quickly.
+    ///
+    /// This asserts "contract A": after the last strong handle to the registry is dropped,
+    /// all underlying broadcast senders are dropped via Arc semantics, therefore
+    /// receivers observe stream termination (`None`) promptly.
+    ///
+    /// Precondition for this to pass without explicit Drop on the adapter:
+    ///  - streams hold only Weak to the buses (so they can't keep the map alive),
+    ///  - there are no hidden Sender clones lingering elsewhere.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn dropping_last_adapter_closes_stream() {
+        // Arrange: create adapter and subscribe
+        let adapter = CrSingleInstance::new();
+        let id = Uuid::new_v4();
+        let topic = CrTopic::Address(id);
+
+        let mut stream = adapter
+            .subscribe(topic.clone())
+            .await
+            .expect("subscribe failed");
+
+        // Prove the stream is live
+        adapter
+            .publish(notice(id, 1))
+            .await
+            .expect("publish failed");
+        let _ = timeout(Duration::from_secs(2), stream.next())
+            .await
+            .expect("recv timed out before shutdown")
+            .expect("stream ended too early");
+
+        // Act: drop the LAST strong handle to the registry
+        drop(adapter);
+
+        // Assert: the next poll eventually returns None within a short grace period.
+        let ended = timeout(Duration::from_secs(2), async {
+            loop {
+                match stream.next().await {
+                    Some(_) => {
+                        // It's acceptable if a buffered event sneaks in; keep polling.
+                        continue;
+                    }
+                    None => break,
+                }
+            }
+        })
+        .await;
+
+        assert!(
+            ended.is_ok(),
+            "stream did not end within the grace period after the last handle was dropped"
+        );
     }
 }
