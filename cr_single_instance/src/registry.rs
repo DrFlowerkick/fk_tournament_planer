@@ -160,7 +160,7 @@ pub mod test_support;
 
 #[cfg(test)]
 mod tests_drop_semantics {
-    use super::{*, test_support::build_address_updated};
+    use super::{test_support::build_address_updated, *};
     use futures_util::StreamExt;
     use tokio::time::{Duration, timeout};
     use uuid::Uuid;
@@ -241,14 +241,8 @@ mod tests_drop_semantics {
 
         // Assert: the next poll eventually returns None within a short grace period.
         let ended = timeout(Duration::from_secs(2), async {
-            loop {
-                match stream.next().await {
-                    Some(_) => {
-                        // It's acceptable if a buffered event sneaks in; keep polling.
-                        continue;
-                    }
-                    None => break,
-                }
+            while stream.next().await.is_some() {
+                // It's acceptable if a buffered event sneaks in; keep polling.
             }
         })
         .await;

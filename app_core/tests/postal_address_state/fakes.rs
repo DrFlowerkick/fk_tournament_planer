@@ -98,7 +98,6 @@ impl DbpPostalAddress for FakeDatabasePort {
             .lock()
             .unwrap()
             .values()
-            .cloned()
             .filter(|a| {
                 if let Some(ref f) = filter {
                     a.get_name()
@@ -108,6 +107,7 @@ impl DbpPostalAddress for FakeDatabasePort {
                     true
                 }
             })
+            .cloned()
             .collect();
 
         // deterministic order: by name(Some first), then id

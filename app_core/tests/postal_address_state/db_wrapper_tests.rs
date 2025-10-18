@@ -150,8 +150,8 @@ async fn given_filter_and_limit_when_list_addresses_then_db_fake_results_are_for
         .iter()
         .map(|x| x.get_name().unwrap_or_default())
         .collect();
-    assert!(names.iter().any(|n| *n == "Mara"));
-    assert!(names.iter().any(|n| *n == "Max"));
+    assert!(names.contains(&"Mara"));
+    assert!(names.contains(&"Max"));
 }
 
 /// 7) list_addresses(): only limit

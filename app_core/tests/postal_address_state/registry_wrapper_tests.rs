@@ -134,7 +134,7 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     cr_fake.clear();
 
     // Act: load (existing id) and list
-    let any_id = core.get().get_id().unwrap_or_else(|| Uuid::new_v4());
+    let any_id = core.get().get_id().unwrap_or_else(Uuid::new_v4);
     let _ = core.load(any_id).await.expect("load ok");
     let _ = core.list_addresses(None, Some(10)).await.expect("list ok");
 

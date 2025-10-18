@@ -1,7 +1,4 @@
-use app_core::{
-    PostalAddress,
-    utils::id_version::IdVersion,
-};
+use app_core::{PostalAddress, utils::id_version::IdVersion};
 
 /// Build a valid "new" PostalAddress with deterministic fields.
 /// NOTE: `name` and `region` are optional at the DB level; we fill everything

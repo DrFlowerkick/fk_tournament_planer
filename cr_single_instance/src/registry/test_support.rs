@@ -153,7 +153,7 @@ pub async fn spawn_parallel_publishers(
                     panic!("publisher {p} failed to publish version {v}: {e:?}");
                 }
                 // short sleep every 16 publish to simulate system latency for writing data
-                if (v / step) % 16 == 0 {
+                if (v / step).is_multiple_of(16) {
                     tokio::time::sleep(tokio::time::Duration::from_millis(3)).await;
                 }
                 v += step;

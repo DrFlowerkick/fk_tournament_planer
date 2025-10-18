@@ -382,7 +382,7 @@ mod test_validate {
 
         let errs = res.unwrap_err();
         dbg!(format!("{errs}"));
-        let err = errs.errors.get(0).unwrap();
+        let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
             &PaValidationField::Street,
@@ -404,7 +404,7 @@ mod test_validate {
         assert!(res.is_err(), "empty postal code must be rejected");
 
         let errs = res.unwrap_err();
-        let err = errs.errors.get(0).unwrap();
+        let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
             &PaValidationField::PostalCode,
@@ -426,7 +426,7 @@ mod test_validate {
         assert!(res.is_err(), "empty city/locality must be rejected");
 
         let errs = res.unwrap_err();
-        let err = errs.errors.get(0).unwrap();
+        let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
             &PaValidationField::Locality,
@@ -448,7 +448,7 @@ mod test_validate {
         assert!(res.is_err(), "empty country must be rejected");
 
         let errs = res.unwrap_err();
-        let err = errs.errors.get(0).unwrap();
+        let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
             &PaValidationField::Country,
@@ -523,7 +523,7 @@ mod test_validate {
         assert!(res.is_err(), "DE postal code must be numeric");
 
         let errs = res.unwrap_err();
-        let err = errs.errors.get(0).unwrap();
+        let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
             &PaValidationField::PostalCode,
@@ -545,7 +545,7 @@ mod test_validate {
         assert!(res.is_err(), "DE postal code must have length 5");
 
         let errs = res.unwrap_err();
-        let err = errs.errors.get(0).unwrap();
+        let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
             &PaValidationField::PostalCode,
