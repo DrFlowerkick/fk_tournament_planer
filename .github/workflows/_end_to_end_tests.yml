@@ -44,6 +44,9 @@ jobs:
   e2e:
     name: End-to-End (Playwright via cargo leptos)
     runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.44.1-jammy
+      options: --ipc=host
 
     services:
       postgres:
