@@ -10,19 +10,19 @@ WEB_PORT := 3000
 
 .PHONY: fmt
 fmt:
-	cargo fmt && git ls-files '*.rs' | xargs -r -n 200 leptosfmt
+	cargo fmt --all && git ls-files '*.rs' | xargs -r -n 200 leptosfmt
 
 # -------- Leptos clippy --------
 
 .PHONY: clippy
 clippy:
-	cargo clippy
+	cargo clippy --all-targets --all-features
 
 # -------- Leptos lint: fmt + clippy --------
 
 .PHONY: lint
 lint:
-	cargo fmt && git ls-files '*.rs' | xargs -r -n 200 leptosfmt && cargo clippy
+	cargo fmt --all && git ls-files '*.rs' | xargs -r -n 200 leptosfmt && cargo clippy --all-targets --all-features
 
 # -------- Cleanup --------
 

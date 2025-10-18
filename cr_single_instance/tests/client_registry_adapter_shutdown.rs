@@ -41,14 +41,8 @@ async fn given_active_stream_when_last_handle_dropped_then_stream_ends_quickly()
     // After dropping the last handle, the next poll should return None
     // within a short grace period.
     let end = tokio::time::timeout(Duration::from_secs(2), async {
-        loop {
-            match stream.next().await {
-                Some(_) => {
-                    // It's fine to still see buffered events briefly; keep polling.
-                    continue;
-                }
-                None => break, // stream closed as expected
-            }
+        while stream.next().await.is_some() {
+            // It's fine to still see buffered events briefly; keep polling.
         }
     })
     .await;
