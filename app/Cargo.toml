@@ -3,31 +3,37 @@ name = "app"
 version = "0.1.0"
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-app_core = { path = "../app_core" }
-db_postgres = { path = "../db_postgres", optional = true }
-cr_single_instance = { path = "../cr_single_instance"}
-leptos.workspace = true
-leptos-use.workspace = true
-leptos_meta.workspace = true
-leptos_router.workspace = true
-leptos_axum = { workspace = true, optional = true }
-http.workspace = true
-cfg-if.workspace = true
-thiserror.workspace = true
-uuid.workspace = true
-serde.workspace = true
-gloo-timers.workspace = true
-codee.workspace = true
-tracing.workspace = true
+[features]
+default = []
+hydrate = ["leptos/hydrate"]
+ssr = [
+    "leptos/ssr",
+    "leptos-use/ssr",
+    "leptos_meta/ssr",
+    "leptos_router/ssr",
+    "dep:leptos_axum",
+    "cr_single_instance/ssr",
+]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { workspace = true, features = ["wasm_js"] }
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-default = []
-hydrate = ["leptos/hydrate"]
-ssr = ["leptos/ssr", "leptos-use/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum", "cr_single_instance/ssr"]
+[dependencies]
+app_core = { path = "../app_core" }
+cfg-if.workspace = true
+codee.workspace = true
+cr_single_instance = { path = "../cr_single_instance" }
+db_postgres = { path = "../db_postgres", optional = true }
+gloo-timers.workspace = true
+http.workspace = true
+leptos.workspace = true
+leptos-use.workspace = true
+leptos_axum = { workspace = true, optional = true }
+leptos_meta.workspace = true
+leptos_router.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true

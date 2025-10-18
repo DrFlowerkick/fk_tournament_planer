@@ -2,7 +2,7 @@
 // and web service to use it with axum
 
 #[cfg(feature = "ssr")]
-mod registry;
+pub mod registry;
 mod types;
 #[cfg(feature = "ssr")]
 mod web_service;

@@ -6,23 +6,23 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow.workspace = true
 app = { path = "../app", default-features = false, features = ["ssr"] }
-shared = { path = "../shared" }
 app_core = { path = "../app_core" }
-db_postgres = { path = "../db_postgres" }
-cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
-leptos = { workspace = true, features = [ "ssr" ]}
-leptos_axum.workspace = true
-
 axum.workspace = true
 axum-extra.workspace = true
+cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
+db_postgres = { path = "../db_postgres" }
+dotenvy.workspace = true
+leptos = { workspace = true, features = [ "ssr" ] }
+leptos_axum.workspace = true
+shared = { path = "../shared" }
 simple_logger.workspace = true
 tokio.workspace = true
 tower.workspace = true
 tower-http.workspace = true
-dotenvy.workspace = true
 tracing.workspace = true
-tracing-error.workspace = true
-tracing-subscriber.workspace = true
 tracing-bunyan-formatter.workspace = true
+tracing-error.workspace = true
 tracing-log.workspace = true
+tracing-subscriber.workspace = true

@@ -7,33 +7,34 @@ edition = "2024"
 
 [features]
 default = []
+test_support = ["dep:tracing-subscriber"]
 ssr = [
     "dep:axum",
     "dep:axum-extra",
     "dep:tokio",
     "dep:tokio-stream",
-    "dep:shared"
+    "dep:shared",
 ]
 
 [dependencies]
-app_core = { path = "../app_core" }
-shared = { path = "../shared", optional = true}
 anyhow.workspace = true
-uuid.workspace = true
+app_core = { path = "../app_core" }
 async-trait.workspace = true
+axum = { workspace = true, optional = true }
+axum-extra = { workspace = true, optional = true }
+codee.workspace = true
 dashmap.workspace = true
+displaydoc.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
-tokio = {workspace = true, optional = true}
-tokio-stream = {workspace = true, optional = true}
-axum = {workspace = true, optional = true}
-axum-extra = {workspace = true, optional = true}
 serde.workspace = true
 serde_json.workspace = true
-codee.workspace = true
+shared = { path = "../shared", optional = true }
+tokio = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
 tracing.workspace = true
-displaydoc.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
+uuid.workspace = true
 
-# only needed in tests
 [dev-dependencies]
 tracing-subscriber.workspace = true

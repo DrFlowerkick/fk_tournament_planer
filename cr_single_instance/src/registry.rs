@@ -41,16 +41,17 @@ impl Drop for CrSubscriptionStream {
         // Log before potential removal for better visibility.
         let mut removed = false;
         let mut receivers = 0usize;
+        // drop inner to drop receiver in inner stream
         self.inner.take();
 
-        if let Some(strong_again) = self.buses.upgrade()
-            && let Some(bus) = strong_again.get(&self.topic)
+        if let Some(strong_buses) = self.buses.upgrade()
+            && let Some(bus) = strong_buses.get(&self.topic)
         {
             receivers = bus.receiver_count();
             if receivers == 0 {
                 // release guard before remove
                 drop(bus);
-                strong_again.remove(&self.topic);
+                strong_buses.remove(&self.topic);
                 removed = true;
             }
         }
@@ -153,21 +154,16 @@ impl ClientRegistryPort for CrSingleInstance {
     }
 }
 
+/// support for unit and integration tests
+#[cfg(any(test, feature = "test_support"))]
+pub mod test_support;
+
 #[cfg(test)]
 mod tests_drop_semantics {
-    use super::*;
-    use app_core::CrUpdateMeta;
+    use super::{*, test_support::build_address_updated};
     use futures_util::StreamExt;
     use tokio::time::{Duration, timeout};
     use uuid::Uuid;
-
-    /// Helper: build a minimal AddressUpdated notice.
-    fn notice(id: Uuid, version: u32) -> CrPushNotice {
-        CrPushNotice::AddressUpdated {
-            id,
-            meta: CrUpdateMeta { version },
-        }
-    }
 
     /// U1: Dropping the subscription should release the last receiver so that
     /// the bus can be removed (no receivers remain).
@@ -188,7 +184,7 @@ mod tests_drop_semantics {
 
         // Publish one event to ensure the bus actually exists and works.
         adapter
-            .publish(notice(id, 1))
+            .publish(build_address_updated(id, 1))
             .await
             .expect("publish failed");
         let _first = timeout(Duration::from_secs(2), stream.next())
@@ -232,7 +228,7 @@ mod tests_drop_semantics {
 
         // Prove the stream is live
         adapter
-            .publish(notice(id, 1))
+            .publish(build_address_updated(id, 1))
             .await
             .expect("publish failed");
         let _ = timeout(Duration::from_secs(2), stream.next())

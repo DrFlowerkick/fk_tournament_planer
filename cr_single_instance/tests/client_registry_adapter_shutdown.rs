@@ -1,4 +1,4 @@
-#![cfg(feature = "ssr")]
+#![cfg(all(feature = "ssr", feature = "test_support"))]
 // tests/client_registry_adapter_shutdown.rs
 //! Shutdown semantics for the single-instance client registry adapter.
 //!
@@ -7,9 +7,7 @@
 //! Since after the last handle is gone we cannot call methods anymore, the
 //! assertion focuses on stream termination behavior.
 
-mod common;
-
-use common::*;
+use cr_single_instance::registry::test_support::*;
 use futures_util::StreamExt;
 use std::time::Duration;
 

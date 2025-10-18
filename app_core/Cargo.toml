@@ -7,16 +7,15 @@ edition = "2024"
 
 [features]
 
-
 [dependencies]
-thiserror.workspace = true
-chrono.workspace = true
-uuid.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
-serde.workspace = true
-futures-core.workspace = true
+chrono.workspace = true
 displaydoc.workspace = true
+futures-core.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
 
 # only needed in tests
 [dev-dependencies]

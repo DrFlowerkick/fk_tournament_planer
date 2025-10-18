@@ -6,30 +6,52 @@ pub mod schema;
 
 pub use helpers::*;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use app_core::{DatabasePort, DbError, DbResult};
 use diesel_async::{
-    AsyncPgConnection,
+    AsyncMigrationHarness, AsyncPgConnection,
     pooled_connection::{
         AsyncDieselConnectionManager,
         bb8::{Pool, PooledConnection},
     },
 };
-use std::env;
-use tracing::{instrument, warn};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
+use tracing::{info, instrument, warn};
+use url::Url;
+
+/// embed migrations
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 pub struct PgDb {
     pool: Pool<AsyncPgConnection>,
 }
 
 impl PgDb {
-    pub async fn new() -> Result<Self> {
-        let database_url = env::var("DATABASE_URL")
-            .context("DATABASE_URL must be set. Hint: did you run dotenv()?")?;
-        let config = AsyncDieselConnectionManager::new(database_url);
+    pub async fn new(database: Url) -> Result<Self> {
+        let config = AsyncDieselConnectionManager::new(database);
         Ok(PgDb {
             pool: Pool::builder().build(config).await?,
         })
+    }
+    #[instrument(name = "db.migration", skip(self))]
+    pub async fn run_migration(&self) -> DbResult<()> {
+        let conn = self
+            .pool
+            .get_owned()
+            .await
+            .map_err(|e| DbError::Other(e.into()))?;
+        tokio::task::spawn_blocking(move || -> Result<()> {
+            let mut harness = AsyncMigrationHarness::new(conn);
+            harness
+                .run_pending_migrations(MIGRATIONS)
+                .map_err(|e| anyhow!("migration failed: {e}"))?;
+            Ok(())
+        })
+        .await
+        .context("Join error while running migrations")??;
+
+        info!("Migrations applied successfully");
+        Ok(())
     }
     #[instrument(name = "db.conn.get", skip(self))]
     async fn new_connection(&self) -> DbResult<PooledConnection<'_, AsyncPgConnection>> {
@@ -64,3 +86,8 @@ fn map_db_err(e: DE) -> DbError {
         _ => DbError::Other(anyhow::anyhow!(e)),
     }
 }
+
+
+/// support for unit and integration tests
+#[cfg(any(test, feature = "test_support"))]
+pub mod test_support;

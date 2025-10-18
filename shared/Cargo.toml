@@ -7,7 +7,7 @@ edition = "2024"
 
 [dependencies]
 app_core = { path = "../app_core" }
-axum-macros.workspace = true
 axum.workspace = true
+axum-macros.workspace = true
 leptos.workspace = true
 

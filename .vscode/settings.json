@@ -42,6 +42,8 @@
     "codegen",
     "daisyui",
     "dashmap",
+    "datistemplate",
+    "datname",
     "displaydoc",
     "doctests",
     "drflowerkick",

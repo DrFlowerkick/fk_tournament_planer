@@ -30,6 +30,8 @@ jobs:
   unit_and_integration_tests:
     needs: [build_workspace]
     uses: ./.github/workflows/_unit_and_integration_tests.yml
+    with:
+      features: "ssr test_support"
 
   end_to_end_tests:
     needs: [build_workspace]

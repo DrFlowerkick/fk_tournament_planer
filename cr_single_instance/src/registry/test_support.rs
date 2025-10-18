@@ -1,4 +1,3 @@
-#![cfg(feature = "ssr")]
 // tests/common/mod.rs
 //! Test helpers for the real Client Registry adapter.
 //!
@@ -15,13 +14,11 @@
 //!
 //! See the TODOs below if names differ in your codebase.
 
+use super::CrSingleInstance;
 use anyhow::Result;
 use app_core::{ClientRegistryPort, CrNoticeStream, CrPushNotice, CrTopic, CrUpdateMeta};
-use cr_single_instance::CrSingleInstance;
-use futures_core::Stream;
 use futures_util::{StreamExt, future::join_all};
 use std::{
-    pin::Pin,
     sync::{Arc, Once},
     time::Duration,
 };
@@ -75,45 +72,6 @@ pub fn make_adapter() -> Result<Arc<dyn ClientRegistryPort>> {
 /// Produce a unique topic name by suffixing with a UUID v4.
 pub fn unique_topic() -> CrTopic {
     CrTopic::Address(Uuid::new_v4())
-}
-
-/// Await exactly one item from a stream within `deadline`.
-/// Returns `Ok(Some(item))` if received, `Ok(None)` if the stream terminated,
-/// and `Err` on timeout.
-pub async fn recv_one<T: Send + 'static>(
-    mut stream: Pin<Box<dyn Stream<Item = T> + Send>>,
-    deadline: Duration,
-) -> anyhow::Result<Option<T>> {
-    let next = timeout(deadline, stream.next()).await;
-    match next {
-        Ok(item_opt) => Ok(item_opt),
-        Err(_) => anyhow::bail!("recv_one timed out after {deadline:?}"),
-    }
-}
-
-/// Collect exactly `n` items from a stream or fail after `deadline`.
-pub async fn collect_n<T: Send + 'static>(
-    mut stream: CrNoticeStream,
-    n: usize,
-    deadline: Duration,
-) -> anyhow::Result<Vec<T>>
-where
-    T: From<CrPushNotice>,
-{
-    let mut out = Vec::with_capacity(n);
-    let fut = async {
-        while out.len() < n {
-            if let Some(it) = stream.next().await {
-                out.push(it.into());
-            } else {
-                anyhow::bail!("stream ended before collecting {n} items");
-            }
-        }
-        Ok::<_, anyhow::Error>(out)
-    };
-    timeout(deadline, fut)
-        .await
-        .map_err(|_| anyhow::anyhow!("collect_n timed out after {deadline:?}"))?
 }
 
 /// Drain a stream for `window` duration and return how many items arrived.

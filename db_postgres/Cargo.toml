@@ -5,13 +5,25 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+test_support = ["dep:tracing-subscriber", "dep:dotenvy"]
+
 [dependencies]
-app_core = { path = "../app_core" }
-diesel.workspace = true
-diesel-derive-enum.workspace = true
-diesel-async.workspace = true
 anyhow.workspace = true
-uuid.workspace = true
+app_core = { path = "../app_core" }
 async-trait.workspace = true
 chrono.workspace = true
+diesel.workspace = true
+diesel-async.workspace = true
+diesel-derive-enum.workspace = true
+diesel_migrations.workspace = true
+dotenvy = { workspace = true, optional = true }
+tokio.workspace = true
 tracing.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
+url.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+dotenvy.workspace = true
+tracing-subscriber.workspace = true

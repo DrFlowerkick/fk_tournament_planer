@@ -1,3 +1,4 @@
+use anyhow::Result;
 use app::*;
 use app_core::*;
 use axum::{
@@ -21,7 +22,7 @@ use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{EnvFilter, Registry, prelude::*};
 
-fn init_tracing_bunyan() {
+fn init_tracing_bunyan() -> Result<()> {
     // Read level configuration from env (.env via dotenvy or docker sets env)
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,axum=info"));
@@ -43,26 +44,28 @@ fn init_tracing_bunyan() {
         .with(ErrorLayer::default());
 
     // Set as the single global subscriber (no fallback to fmt/console)
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("failed to set global tracing subscriber");
+    tracing::subscriber::set_global_default(subscriber)?;
+    Ok(())
 }
 
-#[tokio::main]
-async fn main() {
+#[tokio::main(flavor = "multi_thread")]
+async fn main() -> Result<()> {
     // Load .env first if present; ignore if missing (Docker sets envs)
-    dotenvy::dotenv().ok();
+    dotenvy::dotenv()?;
     // map all log! calls in dependencies to tracing
-    LogTracer::init().expect("failed to init LogTracer");
+    LogTracer::init()?;
     // Initialize Bunyan-only tracing before constructing anything else.
-    init_tracing_bunyan();
+    init_tracing_bunyan()?;
 
     // load leptos options
-    let conf = get_configuration(None).unwrap();
+    let conf = get_configuration(None)?;
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
     // initialize core state
+    let db = PgDb::new(url_db()?).await?;
+    db.run_migration().await?;
     let core = CoreBuilder::new()
-        .set_db(Arc::new(PgDb::new().await.unwrap()))
+        .set_db(Arc::new(db))
         .set_cr(Arc::new(CrSingleInstance::new()))
         .build();
     let app_state = AppState {
@@ -122,8 +125,8 @@ async fn main() {
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     info!(%addr, "listening on http server");
-    let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
     axum::serve(listener, app.into_make_service())
-        .await
-        .unwrap();
+        .await?;
+    Ok(())
 }
