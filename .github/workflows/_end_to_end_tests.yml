@@ -96,9 +96,8 @@ jobs:
       - name: Run cargo leptos end-to-end
         shell: bash
         run: |
-          set -euo pipefail
-          echo "Running: cargo leptos end-to-end --release"
-          bash -lc "cargo leptos end-to-end --release"
+          export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          cargo leptos end-to-end --release
 
       - name: Upload E2E artifacts
         if: ${{ inputs.upload_artifacts && always() }}
