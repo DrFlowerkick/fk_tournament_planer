@@ -9,21 +9,6 @@ on:
         required: false
         type: string
         default: "stable"
-      release_profile:
-        description: "Use --release for cargo leptos end-to-end"
-        required: false
-        type: boolean
-        default: true
-      features:
-        description: "Comma-separated cargo features (empty = default)"
-        required: false
-        type: string
-        default: ""
-      locked:
-        description: "Pass --locked to underlying cargo build (via --)"
-        required: false
-        type: boolean
-        default: true
       node_version:
         description: "Node.js version (Playwright requirement if your project needs it)"
         required: false
@@ -34,11 +19,6 @@ on:
         required: false
         type: boolean
         default: true
-      extra_end_to_end_args:
-        description: "Extra args for 'cargo leptos end-to-end' (rarely needed)"
-        required: false
-        type: string
-        default: ""
 
 jobs:
   e2e:
@@ -113,43 +93,12 @@ jobs:
         with:
           host: localhost
 
-      - name: Build (optional warm-up to speed up 'serve')
-        # Not strictly required: 'cargo leptos serve' can build itself.
-        # Keeping it helps fail-fast and warms the cache.
-        shell: bash
-        run: |
-          set -euo pipefail
-          FLAGS="--workspace"
-          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
-          if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
-          if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
-          echo "cargo build $FLAGS"
-          bash -c "cargo build $FLAGS"
-
       - name: Run cargo leptos end-to-end
         shell: bash
         run: |
           set -euo pipefail
-
-          LEPTOS_FLAGS=""
-          if [ "${{ inputs.release_profile }}" = "true" ]; then
-            LEPTOS_FLAGS="$LEPTOS_FLAGS --release"
-          fi
-          if [ -n "${{ inputs.features }}" ]; then
-            LEPTOS_FLAGS="$LEPTOS_FLAGS --features \"${{ inputs.features }}\""
-          fi
-          if [ -n "${{ inputs.extra_end_to_end_args }}" ]; then
-            LEPTOS_FLAGS="$LEPTOS_FLAGS ${{ inputs.extra_end_to_end_args }}"
-          fi
-
-          CARGO_FLAGS=""
-          if [ "${{ inputs.locked }}" = "true" ]; then
-            CARGO_FLAGS="$CARGO_FLAGS --locked"
-          fi
-
-          echo "Running: cargo leptos end-to-end ${LEPTOS_FLAGS} -- ${CARGO_FLAGS}"
-          # The '--' passes flags through to underlying cargo builds invoked by cargo-leptos.
-          bash -lc "cargo leptos end-to-end ${LEPTOS_FLAGS} -- ${CARGO_FLAGS}"
+          echo "Running: cargo leptos end-to-end --release"
+          bash -lc "cargo leptos end-to-end --release"
 
       - name: Upload E2E artifacts
         if: ${{ inputs.upload_artifacts && always() }}
