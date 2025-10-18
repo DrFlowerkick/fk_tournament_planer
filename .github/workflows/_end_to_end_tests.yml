@@ -85,16 +85,6 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
 
-      - name: Install psql client (container)
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y postgresql-client
-
-      - name: Wait for Postgres (container)
-        uses: ./.github/actions/wait-for-postgres
-        with:
-          host: postgres
-
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
@@ -112,6 +102,16 @@ jobs:
         run: |
           npm ci
           npx playwright install --with-deps
+
+      - name: Install psql client (container)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres (container)
+        uses: ./.github/actions/wait-for-postgres
+        with:
+          host: postgres
 
       - name: Build (optional warm-up to speed up 'serve')
         # Not strictly required: 'cargo leptos serve' can build itself.
