@@ -2,9 +2,6 @@
 
 CARGO_LEPTOS := cargo leptos
 
-# use this flags when developing for faster compile
-DEV_RUSTFLAGS := RUSTFLAGS="--cfg erase_components"
-
 # -------- App Configuration --------
 SERVER_NAME := fk_tournament_planer
 WEB_PORT := 3000
@@ -13,7 +10,7 @@ WEB_PORT := 3000
 
 .PHONY: fmt
 fmt:
-	cargo fmt && leptosfmt ./**/*.rs
+	cargo fmt && git ls-files '*.rs' | xargs -r -n 200 leptosfmt
 
 # -------- Leptos clippy --------
 
@@ -25,7 +22,7 @@ clippy:
 
 .PHONY: lint
 lint:
-	leptosfmt ./**/*.rs && cargo fmt && cargo clippy
+	cargo fmt && git ls-files '*.rs' | xargs -r -n 200 leptosfmt && cargo clippy
 
 # -------- Cleanup --------
 
@@ -37,7 +34,7 @@ clean:
 
 .PHONY: dev-ssr
 dev-ssr:
-	$(DEV_RUSTFLAGS) $(CARGO_LEPTOS) watch
+	$(CARGO_LEPTOS) watch | bunyan
 
 .PHONY: e2e-ssr
 e2e-ssr:
