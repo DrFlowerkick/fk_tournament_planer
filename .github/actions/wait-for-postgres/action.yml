@@ -30,12 +30,12 @@ runs:
         set -euo pipefail
         conn="postgresql://${{ inputs.user }}:${{ inputs.password }}@${{ inputs.host }}:${{ inputs.port }}/${{ inputs.database }}"
         echo "Waiting for Postgres at ${conn%:*/*}:${{ inputs.port }} ..."
-        for i in {1..120}; do
+        for i in {1..60}; do
           if psql "$conn" -c '\l' >/dev/null 2>&1; then
             echo "Postgres is up"
             exit 0
           fi
-          echo "Waiting ($i/120)"
+          echo "Waiting ($i/60)"
           sleep 1
         done
         echo "Postgres did not become ready in time"

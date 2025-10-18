@@ -103,15 +103,15 @@ jobs:
           npm ci
           npx playwright install --with-deps
 
-      - name: Install psql client (container)
+      - name: Install psql client
         run: |
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
 
-      - name: Wait for Postgres (container)
+      - name: Wait for Postgres
         uses: ./.github/actions/wait-for-postgres
         with:
-          host: postgres
+          host: localhost
 
       - name: Build (optional warm-up to speed up 'serve')
         # Not strictly required: 'cargo leptos serve' can build itself.
