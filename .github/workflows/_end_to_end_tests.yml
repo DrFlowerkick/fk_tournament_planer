@@ -47,6 +47,9 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.44.1-jammy
       options: --ipc=host
+    defaults:
+      run:
+        shell: bash
 
     services:
       postgres:
@@ -77,9 +80,27 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Install system build deps (clang/lld/ssl)
+        run: |
+          set -euo pipefail
+          apt-get update -y
+          apt-get install -y \
+            clang \
+            lld \
+            build-essential \
+            pkg-config \
+            libssl-dev
+
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-leptos
+
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
-      
+
       - name: Install psql client (container)
         run: |
           apt-get update -y
@@ -89,10 +110,6 @@ jobs:
         uses: ./.github/actions/wait-for-postgres
         with:
           host: postgres
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-leptos
 
       - name: Install Node.js
         uses: actions/setup-node@v4
