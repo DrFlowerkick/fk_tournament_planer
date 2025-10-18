@@ -83,22 +83,16 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
 
-      - name: Wait for Postgres
-        shell: bash
+      - name: Install psql client (host)
         run: |
           set -euo pipefail
           sudo apt-get update -y
           sudo apt-get install -y postgresql-client
-          for i in {1..30}; do
-            if PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
-              echo "Postgres is up"
-              exit 0
-            fi
-            echo "Waiting for Postgres ($i/30)"
-            sleep 1
-          done
-          echo "Postgres did not become ready in time"
-          exit 1
+
+      - name: Wait for Postgres (host)
+        uses: ./.github/actions/wait-for-postgres
+        with:
+          host: localhost
 
       - name: Pre-build (optional sanity check)
         # Keeps profile/features consistent with the test run to warm cache.

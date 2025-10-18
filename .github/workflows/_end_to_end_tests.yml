@@ -79,23 +79,17 @@ jobs:
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
-
-      - name: Wait for Postgres
-        shell: bash
+      
+      - name: Install psql client (container)
         run: |
           set -euo pipefail
-          sudo apt-get update -y
-          sudo apt-get install -y postgresql-client
-          for i in {1..30}; do
-            if PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
-              echo "Postgres is up"
-              exit 0
-            fi
-            echo "Waiting for Postgres ($i/30)"
-            sleep 1
-          done
-          echo "Postgres did not become ready in time"
-          exit 1
+          apt-get update -y
+          apt-get install -y postgresql-client
+
+      - name: Wait for Postgres (container)
+        uses: ./.github/actions/wait-for-postgres
+        with:
+          host: postgres
 
       - uses: taiki-e/install-action@v2
         with:
@@ -113,11 +107,13 @@ jobs:
       - name: Install root-level npm dependencies (e.g. Tailwind, daisyui)
         run: npm ci
 
-      - name: Install Playwright browsers
+      - name: Install npm in end2end
         working-directory: end2end
-        run: |
-          npm ci
-          npx playwright install --with-deps
+        run: npx playwright install --with-deps
+
+      - name: Install Playwright in end2end
+        working-directory: end2end
+        run: npx playwright install --with-deps
 
       - name: Build (optional warm-up to speed up 'serve')
         # Not strictly required: 'cargo leptos serve' can build itself.

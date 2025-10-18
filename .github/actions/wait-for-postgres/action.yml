@@ -1,0 +1,42 @@
+name: Wait for Postgres
+description: Waits until a Postgres server accepts connections.
+inputs:
+  host:
+    description: Hostname to connect to (postgres or localhost)
+    required: true
+  port:
+    description: Port to connect to
+    required: false
+    default: "5432"
+  user:
+    description: DB user
+    required: false
+    default: "postgres"
+  password:
+    description: DB password
+    required: false
+    default: "postgres"
+  database:
+    description: DB name
+    required: false
+    default: "postgres"
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        PGPASSWORD: ${{ inputs.password }}
+      run: |
+        set -euo pipefail
+        conn="postgresql://${{ inputs.user }}:${{ inputs.password }}@${{ inputs.host }}:${{ inputs.port }}/${{ inputs.database }}"
+        echo "Waiting for Postgres at ${conn%:*/*}:${{ inputs.port }} ..."
+        for i in {1..60}; do
+          if psql "$conn" -c '\l' >/dev/null 2>&1; then
+            echo "Postgres is up"
+            exit 0
+          fi
+          echo "Waiting ($i/60)"
+          sleep 1
+        done
+        echo "Postgres did not become ready in time"
+        exit 1
