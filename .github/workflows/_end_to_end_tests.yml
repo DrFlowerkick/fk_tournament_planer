@@ -43,13 +43,7 @@ on:
 jobs:
   e2e:
     name: End-to-End (Playwright via cargo leptos)
-    runs-on: ubuntu-latest
-    container:
-      image: mcr.microsoft.com/playwright:v1.44.1-jammy
-      options: --ipc=host
-    defaults:
-      run:
-        shell: bash
+    runs-on: ubuntu-22.04
 
     services:
       postgres:
@@ -68,6 +62,7 @@ jobs:
     env:
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/
       RUST_LOG: info,db_postgres=debug,db_port=debug,diesel=warn
+      LEPTOS_ENV: PROD
 
     steps:
       - name: Checkout
@@ -79,17 +74,6 @@ jobs:
           toolchain: ${{ inputs.rust_toolchain }}
           profile: minimal
           override: true
-
-      - name: Install system build deps (clang/lld/ssl)
-        run: |
-          set -euo pipefail
-          apt-get update -y
-          apt-get install -y \
-            clang \
-            lld \
-            build-essential \
-            pkg-config \
-            libssl-dev
 
       - name: Add wasm target
         run: rustup target add wasm32-unknown-unknown
@@ -103,8 +87,8 @@ jobs:
 
       - name: Install psql client (container)
         run: |
-          apt-get update -y
-          apt-get install -y postgresql-client
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
 
       - name: Wait for Postgres (container)
         uses: ./.github/actions/wait-for-postgres
@@ -123,13 +107,11 @@ jobs:
       - name: Install root-level npm dependencies (e.g. Tailwind, daisyui)
         run: npm ci
 
-      - name: Install npm in end2end
+      - name: Install npm and playwright in end2end
         working-directory: end2end
-        run: npx playwright install --with-deps
-
-      - name: Install Playwright in end2end
-        working-directory: end2end
-        run: npx playwright install --with-deps
+        run: |
+          npm ci
+          npx playwright install --with-deps
 
       - name: Build (optional warm-up to speed up 'serve')
         # Not strictly required: 'cargo leptos serve' can build itself.
@@ -174,9 +156,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: leptos-e2e-report
-          # Adjust paths to whatever your project generates. Commonly:
-          # - 'playwright-report/' if Playwright is used under the hood
-          # - any logs cargo-leptos or your project emits
-          path: |
-            playwright-report/
+          path: end2end/playwright-report
           retention-days: 10
