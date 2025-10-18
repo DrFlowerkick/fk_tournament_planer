@@ -82,7 +82,6 @@ jobs:
       
       - name: Install psql client (container)
         run: |
-          set -euo pipefail
           apt-get update -y
           apt-get install -y postgresql-client
 
