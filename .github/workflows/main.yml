@@ -19,6 +19,8 @@ jobs:
 
   coverage:
     uses: ./.github/workflows/_coverage.yml
+    with:
+      features: "ssr test_support"
 
   audit:
     uses: ./.github/workflows/_audit.yml

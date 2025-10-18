@@ -34,9 +34,25 @@ jobs:
   coverage:
     name: Coverage (llvm-cov)
     runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
     env:
-      # Keep logs quiet; coverage jobs can be noisy otherwise.
-      RUST_LOG: warn
+      POSTGRES_URL: postgres://postgres:postgres@localhost:5432/
+      RUST_LOG: info,db_postgres=debug,db_port=debug,diesel=warn
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -52,6 +68,23 @@ jobs:
       - name: Cache Rust build
         # Coverage builds use different flags than normal builds, but caching still helps.
         uses: Swatinem/rust-cache@v2
+      
+      - name: Wait for Postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+          for i in {1..30}; do
+            if PGPASSWORD=postgres psql -h localhost -U postgres -d postgres -c '\l' >/dev/null 2>&1; then
+              echo "Postgres is up"
+              exit 0
+            fi
+            echo "Waiting for Postgres ($i/30)"
+            sleep 1
+          done
+          echo "Postgres did not become ready in time"
+          exit 1
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@v2

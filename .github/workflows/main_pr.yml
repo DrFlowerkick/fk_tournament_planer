@@ -21,10 +21,11 @@ jobs:
     uses: ./.github/workflows/_lint.yml
 
   lint_leptos:
+    needs: [lint]
     uses: ./.github/workflows/_lint_leptos.yml
 
   build_workspace:
-    needs: [lint, lint_leptos]
+    needs: [lint_leptos]
     uses: ./.github/workflows/_build_workspace.yml
 
   unit_and_integration_tests:
