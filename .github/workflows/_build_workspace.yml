@@ -50,6 +50,9 @@ jobs:
           profile: minimal
           override: true
       
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+      
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-leptos
