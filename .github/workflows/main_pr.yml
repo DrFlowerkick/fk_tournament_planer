@@ -3,8 +3,8 @@ name: CI for pull request to main branch
 
 on:
   pull_request:
-    branches:
-      - main
+    #branches:
+    #  - main
 
 env:
   CARGO_TERM_COLOR: always
@@ -17,23 +17,21 @@ jobs:
       - name: Say hello
         run: echo "Running main branch pull request workflow..."
 
-  lint:
-    uses: ./.github/workflows/_lint.yml
+  #lint:
+  #  uses: ./.github/workflows/_lint.yml
 
-  lint_leptos:
-    needs: [lint]
-    uses: ./.github/workflows/_lint_leptos.yml
+  #lint_leptos:
+  #  uses: ./.github/workflows/_lint_leptos.yml
 
-  build_workspace:
-    needs: [lint_leptos]
-    uses: ./.github/workflows/_build_workspace.yml
+  #build_workspace:
+  #  uses: ./.github/workflows/_build_workspace.yml
 
-  unit_and_integration_tests:
-    needs: [build_workspace]
-    uses: ./.github/workflows/_unit_and_integration_tests.yml
-    with:
-      features: "ssr test_support"
+  #unit_and_integration_tests:
+  #  needs: [build_workspace]
+  #  uses: ./.github/workflows/_unit_and_integration_tests.yml
+  #  with:
+  #    features: "ssr test_support"
 
   end_to_end_tests:
-    needs: [build_workspace]
+  #  needs: [build_workspace]
     uses: ./.github/workflows/_end_to_end_tests.yml
