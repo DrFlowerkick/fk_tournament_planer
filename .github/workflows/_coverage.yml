@@ -90,19 +90,10 @@ jobs:
         with:
           host: localhost
 
-      - name: Pre-build workspace
-        # Fail fast on compilation; also warms the cache with the same profile/features used below.
-        if: ${{ inputs.release_profile }}
-        run: |
-          if [ -n "${{ inputs.features }}" ]; then
-            cargo build --workspace --locked --release --features "${{ inputs.features }}"
-          else
-            cargo build --workspace --locked --release
-          fi
-
       - name: Run coverage (nextest + doctests)
-        # Generates HTML report in ./coverage/ and LCOV file ./lcov.info
+        shell: bash
         run: |
+          set -euo pipefail
           FLAGS=""
           if [ "${{ inputs.release_profile }}" = "true" ]; then
             FLAGS="$FLAGS --release"
@@ -125,6 +116,7 @@ jobs:
               $FLAGS
           "
 
+      # Generates HTML report in ./coverage/ and LCOV file ./lcov.info
       - name: Upload coverage artifacts
         if: ${{ inputs.upload_artifacts }}
         uses: actions/upload-artifact@v4

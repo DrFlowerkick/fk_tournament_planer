@@ -65,6 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          FLAGS=""
           if [ "${{ inputs.release_profile }}" = "true" ]; then
             FLAGS="$FLAGS --release"
           fi
