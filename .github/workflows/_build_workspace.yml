@@ -21,6 +21,11 @@ on:
         required: false
         type: string
         default: ""
+      node_version:
+        description: "Node.js version (Playwright requirement if your project needs it)"
+        required: false
+        type: string
+        default: "20.x"
       extra_args:
         description: "Extra arguments passed to cargo build (rarely needed)"
         required: false
@@ -49,6 +54,18 @@ jobs:
         with:
           tool: cargo-leptos
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            end2end/package-lock.json
+
+      - name: Install root-level npm dependencies (e.g. Tailwind, daisyui)
+        run: npm ci
+      
       - name: Print versions
         run: |
           rustc -Vv
