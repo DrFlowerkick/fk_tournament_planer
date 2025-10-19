@@ -21,11 +21,6 @@ on:
         required: false
         type: string
         default: ""
-      locked:
-        description: "Use --locked to enforce Cargo.lock"
-        required: false
-        type: boolean
-        default: true
       extra_args:
         description: "Extra arguments passed to cargo build (rarely needed)"
         required: false
@@ -49,6 +44,10 @@ jobs:
           toolchain: ${{ inputs.rust_toolchain }}
           profile: minimal
           override: true
+      
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-leptos
 
       - name: Print versions
         run: |
@@ -66,10 +65,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          FLAGS="--workspace"
-          if [ "${{ inputs.locked }}" = "true" ]; then
-            FLAGS="$FLAGS --locked"
-          fi
           if [ "${{ inputs.release_profile }}" = "true" ]; then
             FLAGS="$FLAGS --release"
           fi
@@ -79,5 +74,5 @@ jobs:
           if [ -n "${{ inputs.extra_args }}" ]; then
             FLAGS="$FLAGS ${{ inputs.extra_args }}"
           fi
-          echo "Running: cargo build $FLAGS"
-          bash -c "cargo build $FLAGS"
+          echo "Running: cargo leptos build $FLAGS"
+          bash -c "cargo leptos build $FLAGS"
