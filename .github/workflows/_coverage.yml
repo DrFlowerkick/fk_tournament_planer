@@ -112,20 +112,17 @@ jobs:
           if [ -n "${{ inputs.features }}" ]; then
             FLAGS="$FLAGS --features \"${{ inputs.features }}\""
           fi
+          mkdir coverage
           # Run nextest coverage including doctests; merge everything into a single report.
           # --fail-under-lines gates the job on global line coverage percentage.
-          bash -eo pipefail -c "
-            cargo llvm-cov nextest \
-              --workspace \
-              --locked \
-              --doctests \
-              --html \
-              --html-dir coverage \
-              --lcov \
-              --output-path lcov.info \
-              --fail-under-lines ${{ inputs.fail_under_lines }} \
-              $FLAGS
-          "
+          cargo llvm-cov nextest \
+            --workspace \
+            --locked \
+            --lcov \
+            --output-path ./coverage/lcov.info \
+            --fail-under-lines ${{ inputs.fail_under_lines }} \
+            $FLAGS
+          cargo llvm-cov report --html --output-dir coverage $FLAGS
 
       # Generates HTML report in ./coverage/ and LCOV file ./lcov.info
       - name: Upload coverage artifacts
@@ -134,7 +131,6 @@ jobs:
         with:
           name: coverage-report
           path: |
-            coverage/
-            lcov.info
+            coverage/**
           if-no-files-found: error
           retention-days: 10

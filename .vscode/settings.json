@@ -93,6 +93,11 @@
     ".vscode",
     ".vscode-insiders",
     "**/*.lock",
-    "LICENSE"
-  ]
+    "LICENSE",
+    "./coverage/**"
+  ],
+  "coverage-gutters.showGutterCoverage": true,
+  "coverage-gutters.showLineCoverage": true,
+  "coverage-gutters.showRulerCoverage": true,
+  "coverage-gutters.coverageReportFileName": "coverage/lcov.info"
 }
