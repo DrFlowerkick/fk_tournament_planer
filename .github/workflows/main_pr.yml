@@ -3,8 +3,8 @@ name: CI for pull request to main branch
 
 on:
   pull_request:
-    #branches:
-    #  - main
+    branches:
+      - main
 
 env:
   CARGO_TERM_COLOR: always
@@ -30,9 +30,3 @@ jobs:
 
   end_to_end_tests:
     uses: ./.github/workflows/_end_to_end_tests.yml
-
-  coverage:
-    uses: ./.github/workflows/_coverage.yml
-    with:
-      features: "ssr test_support"
-      fail_under_lines: 1
