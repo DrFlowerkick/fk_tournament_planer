@@ -154,7 +154,7 @@ pub async fn spawn_parallel_publishers(
                 }
                 // short sleep every 16 publish to simulate system latency for writing data
                 if (v / step).is_multiple_of(16) {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(3)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(5)).await;
                 }
                 v += step;
             }

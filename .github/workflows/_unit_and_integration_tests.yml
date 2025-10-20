@@ -68,6 +68,8 @@ jobs:
     env:
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/
       RUST_LOG: info,db_postgres=debug,db_port=debug,diesel=warn
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
 
     steps:
       - name: Checkout
@@ -82,6 +84,11 @@ jobs:
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
+        with:
+          key: unit-release-ssr_test_support
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Install psql client
         run: |
@@ -92,18 +99,6 @@ jobs:
         uses: ./.github/actions/wait-for-postgres
         with:
           host: localhost
-
-      - name: Pre-build (optional sanity check)
-        # Keeps profile/features consistent with the test run to warm cache.
-        shell: bash
-        run: |
-          set -euo pipefail
-          FLAGS="--workspace"
-          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
-          if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
-          if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
-          echo "cargo build $FLAGS"
-          bash -c "cargo build $FLAGS"
 
       - name: Install cargo-nextest
         uses: taiki-e/install-action@v2

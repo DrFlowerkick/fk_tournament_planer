@@ -48,6 +48,12 @@ build-ssr:
 run-ssr:
 	$(CARGO_LEPTOS) serve --release
 
+# -------- Coverage --------
+.PHONY: coverage
+coverage:
+	cargo llvm-cov nextest --workspace --locked --release --features "ssr test_support" --lcov --output-path coverage/lcov.info
+	cargo llvm-cov report --release --html --output-dir coverage
+
 # -------- Webserver Monitoring & Control --------
 
 .PHONY: webserver

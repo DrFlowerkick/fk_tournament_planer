@@ -9,6 +9,16 @@ on:
         required: false
         type: string
         default: "stable"
+      release_profile:
+        description: "Use --release for cargo leptos end-to-end"
+        required: false
+        type: boolean
+        default: true
+      features:
+        description: "Comma-separated cargo features (empty = default)"
+        required: false
+        type: string
+        default: ""
       node_version:
         description: "Node.js version (Playwright requirement if your project needs it)"
         required: false
@@ -19,6 +29,11 @@ on:
         required: false
         type: boolean
         default: true
+      extra_end_to_end_args:
+        description: "Extra args for 'cargo leptos end-to-end' (rarely needed)"
+        required: false
+        type: string
+        default: ""
 
 jobs:
   e2e:
@@ -31,6 +46,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fk_tournament_planer
         ports:
           - 5432:5432
         options: >-
@@ -42,6 +58,9 @@ jobs:
     env:
       POSTGRES_URL: postgres://postgres:postgres@localhost:5432/
       RUST_LOG: info,db_postgres=debug,db_port=debug,diesel=warn
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      # used by ./scripts/e2e-testing.sh
       LEPTOS_ENV: PROD
 
     steps:
@@ -64,6 +83,11 @@ jobs:
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
+        with:
+          key: e2e-release-ssr_wasm
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -92,12 +116,26 @@ jobs:
         uses: ./.github/actions/wait-for-postgres
         with:
           host: localhost
-
+      
       - name: Run cargo leptos end-to-end
         shell: bash
         run: |
+          set -euo pipefail
+
+          LEPTOS_FLAGS=""
+          if [ "${{ inputs.release_profile }}" = "true" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS --release"
+          fi
+          if [ -n "${{ inputs.features }}" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS --features \"${{ inputs.features }}\""
+          fi
+          if [ -n "${{ inputs.extra_end_to_end_args }}" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS ${{ inputs.extra_end_to_end_args }}"
+          fi
+
           export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          cargo leptos end-to-end --release
+          echo "Running: cargo leptos end-to-end ${LEPTOS_FLAGS}"
+          bash -lc "cargo leptos end-to-end ${LEPTOS_FLAGS}"
 
       - name: Upload E2E artifacts
         if: ${{ inputs.upload_artifacts && always() }}
