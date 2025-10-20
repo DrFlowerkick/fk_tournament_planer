@@ -60,6 +60,8 @@ jobs:
       RUST_LOG: info,db_postgres=debug,db_port=debug,diesel=warn
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
+      # used by ./scripts/e2e-testing.sh
+      LEPTOS_ENV: PROD
 
     steps:
       - name: Checkout
