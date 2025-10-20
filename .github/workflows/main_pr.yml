@@ -33,3 +33,6 @@ jobs:
 
   coverage:
     uses: ./.github/workflows/_coverage.yml
+    with:
+      features: "ssr test_support"
+      fail_under_lines: 1
