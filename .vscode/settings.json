@@ -2,6 +2,7 @@
   "rust-analyzer.procMacro.ignored": {
     "leptos_macro": ["server"]
   },
+  "rust-analyzer.cargo.features": ["test_support"],
   //"rust-analyzer.cargo.features": ["ssr", "hydrate"],
   // Enable all features
   //"rust-analyzer.cargo.allFeatures": true,
@@ -95,9 +96,5 @@
     "**/*.lock",
     "LICENSE",
     "./coverage/**"
-  ],
-  "coverage-gutters.showGutterCoverage": true,
-  "coverage-gutters.showLineCoverage": true,
-  "coverage-gutters.showRulerCoverage": true,
-  "coverage-gutters.coverageReportFileName": "coverage/lcov.info"
+  ]
 }

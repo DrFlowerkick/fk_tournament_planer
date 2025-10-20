@@ -54,7 +54,7 @@ impl PgDb {
         Ok(())
     }
     #[instrument(name = "db.conn.get", skip(self))]
-    async fn new_connection(&self) -> DbResult<PooledConnection<'_, AsyncPgConnection>> {
+    pub async fn new_connection(&self) -> DbResult<PooledConnection<'_, AsyncPgConnection>> {
         match self.pool.get().await {
             Ok(conn) => Ok(conn),
             Err(e) => {

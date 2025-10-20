@@ -25,3 +25,20 @@ pub fn mutate_address_v2(mut pa: PostalAddress) -> PostalAddress {
         .set_locality("Potsdam");
     pa
 }
+
+/// A second mutation variant to differentiate two competing updates.
+pub fn mutate_address_v3(mut pa: PostalAddress) -> PostalAddress {
+    // Values are arbitrary but stable for assertions
+    pa.set_street("Alt-Moabit 1")
+        .set_postal_code("10115")
+        .set_locality("Berlin");
+    pa
+}
+
+/// Compare only the fields we change in mutations to decide the "winner" semantics.
+/// Avoid comparing timestamps or adapter-managed fields.
+pub fn same_semantics(a: &PostalAddress, b: &PostalAddress) -> bool {
+    a.get_street() == b.get_street()
+        && a.get_postal_code() == b.get_postal_code()
+        && a.get_locality() == b.get_locality()
+}

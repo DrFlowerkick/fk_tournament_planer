@@ -6,7 +6,21 @@ use crate::common::*;
 use anyhow::Result;
 use app_core::DbpPostalAddress;
 use db_postgres::test_support::*;
+use diesel::sql_query;
+use diesel_async::RunQueryDsl;
 use tracing::info;
+
+#[tokio::test(flavor = "multi_thread")]
+async fn smoke_db_connectivity_select_1() -> Result<()> {
+    // Minimal connectivity probe: fail fast if DB URL/credentials are wrong.
+    init_db_testing();
+    let tdb = TestDb::new().await?;
+    let db = tdb.adapter();
+    let mut conn = db.new_connection().await?;
+    sql_query("SELECT 1").execute(&mut conn).await?;
+
+    Ok(())
+}
 
 #[tokio::test(flavor = "multi_thread")]
 async fn given_new_when_save_then_get_roundtrip_version_is_0() -> Result<()> {

@@ -33,7 +33,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_postal_addresses_name_per_city_zip
   ON postal_addresses (name, postal_code, locality)
   WHERE name IS NOT NULL;
 
--- updated_at maintenance trigger (keine Automatik für version!)
+-- updated_at maintenance trigger
 CREATE OR REPLACE FUNCTION trg_set_timestamp()
 RETURNS trigger AS $$
 BEGIN

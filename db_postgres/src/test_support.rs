@@ -22,8 +22,7 @@ use diesel_async::{
     AsyncPgConnection, RunQueryDsl,
     pooled_connection::{AsyncDieselConnectionManager, bb8::Pool},
 };
-use std::sync::Once;
-use std::time::Duration;
+use std::{sync::Arc, sync::Once, time::Duration};
 use tracing::{info, warn};
 use url::Url;
 
@@ -162,7 +161,7 @@ pub async fn create_test_database(conn: &mut AsyncPgConnection, db_name: &str) -
 pub struct TestDb {
     db_name: String,
     db_url: Url,
-    db: PgDb,
+    db: Arc<PgDb>,
 }
 
 impl TestDb {
@@ -194,7 +193,7 @@ impl TestDb {
         Ok(Self {
             db_name,
             db_url,
-            db,
+            db: Arc::new(db),
         })
     }
 
@@ -209,7 +208,7 @@ impl TestDb {
     }
 
     /// adapter of implemented database port
-    pub fn adapter(&self) -> &PgDb {
-        &self.db
+    pub fn adapter(&self) -> Arc<PgDb> {
+        self.db.clone()
     }
 }
