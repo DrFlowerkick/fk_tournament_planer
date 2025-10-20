@@ -23,15 +23,10 @@ jobs:
   lint_leptos:
     uses: ./.github/workflows/_lint_leptos.yml
 
-  build_workspace:
-    uses: ./.github/workflows/_build_workspace.yml
-
   unit_and_integration_tests:
-    needs: [build_workspace, lint]
     uses: ./.github/workflows/_unit_and_integration_tests.yml
     with:
       features: "ssr test_support"
 
   end_to_end_tests:
-    needs: [build_workspace, lint, lint_leptos]
     uses: ./.github/workflows/_end_to_end_tests.yml
