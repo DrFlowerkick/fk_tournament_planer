@@ -4,10 +4,8 @@
 
 use crate::common::*;
 use anyhow::Result;
-use app_core::DbpPostalAddress;
+use app_core::{DbError, DbpPostalAddress, DatabasePort};
 use db_postgres::test_support::*;
-use diesel::sql_query;
-use diesel_async::RunQueryDsl;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -16,8 +14,7 @@ async fn smoke_db_connectivity_select_1() -> Result<()> {
     init_db_testing();
     let tdb = TestDb::new().await?;
     let db = tdb.adapter();
-    let mut conn = db.new_connection().await?;
-    sql_query("SELECT 1").execute(&mut conn).await?;
+    db.ping_db().await?;
 
     Ok(())
 }
@@ -103,16 +100,13 @@ async fn given_stale_version_when_update_then_conflict_error() -> Result<()> {
 
     // Try to update again using the *stale* v0 snapshot (Existing(id,0))
     // This should hit the optimistic-lock branch and return DbError::OptimisticLockConflict.
-    let stale = mutate_address_v2(v0); // still carries version=0 internally
+    let stale = mutate_address_v3(v0); // still carries version=0 internally
     let err = db
         .save_postal_address(&stale)
         .await
         .expect_err("must conflict");
     // Pattern match the domain error
-    match err {
-        app_core::DbError::OptimisticLockConflict => { /* ok */ }
-        other => panic!("expected OptimisticLockConflict, got: {other:?}"),
-    }
+    assert!(matches!(err, DbError::OptimisticLockConflict));
 
     // Row remains at v1
     let fetched = db.get_postal_address(id).await?.expect("row present");

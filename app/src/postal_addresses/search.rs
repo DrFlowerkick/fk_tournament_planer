@@ -160,6 +160,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             type="text"
                             class="input input-bordered w-full"
                             prop:value=move || query.get()
+                            data-testid="search-input"
                             placeholder="Enter name of address you are searching..."
                             on:input=move |ev| {
                                 set_query.set(event_target_value(&ev));
@@ -189,16 +190,19 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
                         // dropdown list
                         {move || {
-                            (open.get() && (!results().is_empty() || loading()))
+                            open.get()
                                 .then(|| {
                                     view! {
                                         <ul
                                             id="addr-suggest"
+                                            data-testid="search-suggest"
+                                            // aria-busy=true while loading resource, otherwise false
+                                            aria-busy=move || if results().is_empty() || loading() { "true" } else { "false" }
                                             class="dropdown-content menu menu-sm bg-base-100 rounded-box z-[1] mt-1 w-full p-0 shadow max-h-72 overflow-auto"
                                             role="listbox"
                                         >
                                             {move || {
-                                                if loading() {
+                                                if results().is_empty() || loading() {
                                                     view! {
                                                         <li class="px-3 py-2 text-sm text-base-content/70">
                                                             "Searching…"
@@ -220,6 +224,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                                                 view! {
                                                                     <li
                                                                         id=opt_id.clone()
+                                                                        data-testid="search-suggest-item"
                                                                         role="option"
                                                                         // a11y: mark current „active“ option element
                                                                         aria-selected=move || if is_hi() { "true" } else { "false" }
@@ -272,9 +277,14 @@ pub fn SearchPostalAddress() -> impl IntoView {
                     </div>
 
                     // current selected address
-                    <div class="mt-3 space-y-1 text-sm">
-                        <p>{move || address.get().get_street().to_string()}</p>
-                        <p>
+                    <div class="mt-3 space-y-1 text-sm" data-testid="address-preview">
+                        <h2 data-testid="preview-name">
+                            {move || address.get().get_name().unwrap_or_default().to_string()}
+                        </h2>
+                        <p data-testid="preview-street">
+                            {move || address.get().get_street().to_string()}
+                        </p>
+                        <p data-testid="preview-postal_locality">
                             {move || {
                                 format!(
                                     "{} {}",
@@ -283,19 +293,28 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                 )
                             }}
                         </p>
-                        <p>{move || address.get().get_region().unwrap_or_default().to_string()}</p>
-                        <p>{move || address.get().get_country().to_string()}</p>
+                        <p data-testid="preview-region">
+                            {move || address.get().get_region().unwrap_or_default().to_string()}
+                        </p>
+                        <p data-testid="preview-country">
+                            {move || address.get().get_country().to_string()}
+                        </p>
                     </div>
 
                     <div class="mt-4 flex gap-2">
                         // NEW: always clickable
-                        <a href="/postal-address/new" class="btn btn-primary btn-sm">
+                        <a
+                            href="/postal-address/new"
+                            class="btn btn-primary btn-sm"
+                            data-testid="btn-new-address"
+                        >
                             "New"
                         </a>
 
                         // MODIFY: only active, if valid address is selected
                         <button
                             class="btn btn-secondary btn-sm"
+                            data-testid="btn-modify-address"
                             disabled=move || address.get().get_id().is_none()
                             on:click=move |_| {
                                 let id = address

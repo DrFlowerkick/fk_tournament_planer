@@ -8,8 +8,9 @@ pub use helpers::*;
 
 use anyhow::{Context, Result, anyhow};
 use app_core::{DatabasePort, DbError, DbResult};
+use diesel::{dsl::sql, select, sql_types::Bool};
 use diesel_async::{
-    AsyncMigrationHarness, AsyncPgConnection,
+    AsyncMigrationHarness, AsyncPgConnection,RunQueryDsl,
     pooled_connection::{
         AsyncDieselConnectionManager,
         bb8::{Pool, PooledConnection},
@@ -18,6 +19,7 @@ use diesel_async::{
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 use tracing::{info, instrument, warn};
 use url::Url;
+use async_trait::async_trait;
 
 /// embed migrations
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
@@ -66,7 +68,15 @@ impl PgDb {
     }
 }
 
-impl DatabasePort for PgDb {}
+#[async_trait]
+impl DatabasePort for PgDb {
+    #[instrument(name = "db.ping", skip(self))]
+    async fn ping_db(&self) -> DbResult<()> {
+        let mut conn = self.new_connection().await?;
+        select(sql::<Bool>("1=1")).execute(&mut conn).await.map_err(|e| DbError::Other(e.into()))?;
+        Ok(())
+    }
+}
 
 use diesel::result::{DatabaseErrorKind as K, Error as DE};
 

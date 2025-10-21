@@ -3,7 +3,10 @@ use app::*;
 use app_core::*;
 use axum::{
     Router, http,
-    http::{HeaderMap, HeaderName},
+    http::{HeaderMap, HeaderName, StatusCode},
+    response::IntoResponse,
+    routing::get,
+    extract::State,
 };
 use axum_extra::routing::RouterExt;
 use cr_single_instance::*;
@@ -16,16 +19,26 @@ use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
-use tracing::{Level, Span, info, info_span};
+use tracing::{Level, Span, info, info_span, instrument};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{EnvFilter, Registry, prelude::*};
+use serde::Serialize;
+
+use std::env;
+use anyhow::Context;
 
 fn init_tracing_bunyan() -> Result<()> {
     // Read level configuration from env (.env via dotenvy or docker sets env)
+    let rust_log = env::var("RUST_LOG")
+        .context("POSTGRES_URL must be set. Hint: did you run dotenv()?")?;
+    let database_name = env::var("DATABASE_NAME")
+        .context("POSTGRES_URL must be set. Hint: did you run dotenv()?")?;
+    dbg!(rust_log, database_name);
     let env_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,axum=info"));
+        //EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,axum=info"));
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error,axum=error"));
 
     // Name identifies the service in log streams (use your app/service name)
     let formatting_layer = BunyanFormattingLayer::new(
@@ -46,6 +59,24 @@ fn init_tracing_bunyan() -> Result<()> {
     // Set as the single global subscriber (no fallback to fmt/console)
     tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
+}
+
+// --- /health (service liveness) ---
+#[instrument(name = "health")]
+async fn health() -> impl IntoResponse {
+    (StatusCode::OK, "ok")
+}
+
+// --- /health/db (database readiness) ---
+#[derive(Serialize)]
+struct DbStatus { db: &'static str }
+
+#[instrument(name = "health_db", skip(app_state))]
+async fn health_db(State(app_state): State<AppState>) -> impl IntoResponse {
+    match app_state.core.database.ping_db().await {
+        Ok(_)  => (StatusCode::OK, axum::Json(DbStatus { db: "ok" })),
+        Err(_) => (StatusCode::SERVICE_UNAVAILABLE, axum::Json(DbStatus { db: "down" })),
+    }
 }
 
 #[tokio::main(flavor = "multi_thread")]
@@ -76,6 +107,8 @@ async fn main() -> Result<()> {
     let routes = generate_route_list(App);
 
     let app = Router::new()
+        .route("/health", get(health))
+        .route("/health/db", get(health_db))
         .typed_get(api_subscribe)
         .leptos_routes_with_context(
             &app_state,

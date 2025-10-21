@@ -3,8 +3,13 @@ use super::{
     server_fn::{SavePostalAddress, load_postal_address},
 };
 use app_core::PostalAddress;
-use leptos::prelude::*;
-use leptos_router::hooks::use_params;
+// this is probably in most cases only used for debugging. Remove it if not used anymore.
+use leptos::logging::log;
+use leptos::{leptos_dom::helpers::set_timeout, prelude::*, web_sys};
+use leptos_router::{
+    NavigateOptions,
+    hooks::{use_navigate, use_params},
+};
 use uuid::Uuid;
 
 #[component]
@@ -54,11 +59,19 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
     // ToDo: use these signal for validation!
     let (_addr, _set_addr) = signal(address.clone());
 
-    let is_new = address.get_id().is_none();
+    let id = address.get_id();
+    let is_new = id.is_none();
+
+    let navigate = use_navigate();
+
+    let cancel_target = move || {
+        id.map(|id| format!("/postal-address/{}", id))
+            .unwrap_or_else(|| "/postal-address".to_string())
+    };
 
     view! {
         // Use <ActionForm/> to bind to your save server fn
-        <ActionForm action=save_postal_address>
+        <ActionForm action=save_postal_address attr:data-testid="form-address">
             // Hidden meta fields the server expects (id / version / intent)
             <input
                 type="hidden"
@@ -79,6 +92,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <input
                         class="w-full border rounded p-2"
                         name="name"
+                        data-testid="input-name"
                         // show live value when loaded; while loading show "Loading…" as placeholder
                         prop:value=address.get_name().unwrap_or_default().to_string()
                         placeholder=move || {
@@ -99,6 +113,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <input
                         class="w-full border rounded p-2"
                         name="street"
+                        data-testid="input-street"
                         prop:value=address.get_street().to_string()
                         placeholder=move || {
                             if loading {
@@ -119,6 +134,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         <input
                             class="w-full border rounded p-2"
                             name="postal_code"
+                            data-testid="input-postal_code"
                             prop:value=address.get_postal_code().to_string()
                             placeholder=move || {
                                 if loading {
@@ -136,6 +152,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         <input
                             class="w-full border rounded p-2"
                             name="locality"
+                            data-testid="input-locality"
                             prop:value=address.get_locality().to_string()
                             placeholder=move || {
                                 if loading {
@@ -156,6 +173,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <input
                         class="w-full border rounded p-2"
                         name="region"
+                        data-testid="input-region"
                         prop:value=address.get_region().map(|ar| ar.to_string())
                         placeholder=move || {
                             if loading {
@@ -175,6 +193,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <input
                         class="w-full border rounded p-2"
                         name="country"
+                        data-testid="input-country"
                         prop:value=address.get_country().to_string()
                         placeholder=move || {
                             if loading {
@@ -195,7 +214,8 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         type="submit"
                         name="intent"
                         value="update"
-                        class="rounded px-4 py-2 border"
+                        data-testid="btn-save"
+                        class="btn"
                         prop:disabled=move || loading || is_new
                         prop:hidden=move || is_new
                     >
@@ -207,10 +227,57 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         type="submit"
                         name="intent"
                         value="create"
-                        class="rounded px-4 py-2 border"
+                        data-testid="btn-save-as-new"
+                        class="btn"
                         prop:disabled=move || loading
                     >
                         "Save as new"
+                    </button>
+
+                    <button
+                        type="button"
+                        name="intent"
+                        value="cancel"
+                        data-testid="btn-cancel"
+                        class="btn"
+                        on:click=move |_| {
+                            let Some(win) = web_sys::window() else {
+                                navigate(&cancel_target(), NavigateOptions::default());
+                                return;
+                            };
+                            let before = win.location().href().unwrap_or_default();
+                            let used_back = win
+                                .history()
+                                .ok()
+                                .and_then(|h| h.length().ok())
+                                .map(|len| {
+                                    if len > 1 {
+                                        log!("Moving back in history");
+                                        let _ = win.history().unwrap().back();
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                })
+                                .unwrap_or(false);
+                            let nav = navigate.clone();
+                            let target = cancel_target();
+                            set_timeout(
+                                move || {
+                                    if let Some(win2) = web_sys::window() {
+                                        let after = win2.location().href().unwrap_or_default();
+                                        if !used_back || after == before {
+                                            nav(&target, NavigateOptions::default());
+                                        }
+                                    } else {
+                                        nav(&target, NavigateOptions::default());
+                                    }
+                                },
+                                std::time::Duration::from_millis(300),
+                            );
+                        }
+                    >
+                        "Cancel"
                     </button>
                 </div>
             </fieldset>

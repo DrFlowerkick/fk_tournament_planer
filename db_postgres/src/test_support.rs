@@ -176,10 +176,8 @@ impl TestDb {
         let prefix = std::env::var("TEST_DB_PREFIX").unwrap_or_else(|_| "tst_".into());
         let db_name = format!("{}{}", prefix, uuid::Uuid::new_v4());
 
-        dbg!("before create new db");
         // Connect to admin and create the test DB
         create_test_database(&mut conn, &db_name).await?;
-        dbg!("after create new db");
 
         let db_url = url_custom_db(&db_name)?;
         info!(%db_name, %db_url, "Created test database");

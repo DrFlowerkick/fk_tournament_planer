@@ -134,7 +134,12 @@ impl DbpPostalAddress for FakeDatabasePort {
 }
 
 // Blanket impl: your DatabasePort is a supertrait of DbpPostalAddress.
-impl DatabasePort for FakeDatabasePort {}
+#[async_trait]
+impl DatabasePort for FakeDatabasePort {
+    async fn ping_db(&self) -> DbResult<()> {
+        Ok(())
+    }
+}
 
 /// Minimal ClientRegistry fake (not used by these DB tests, but needed to build Core).
 #[derive(Clone, Default)]

@@ -16,6 +16,7 @@ db_postgres = { path = "../db_postgres" }
 dotenvy.workspace = true
 leptos = { workspace = true, features = [ "ssr" ] }
 leptos_axum.workspace = true
+serde.workspace = true
 shared = { path = "../shared" }
 simple_logger.workspace = true
 tokio.workspace = true

@@ -381,7 +381,6 @@ mod test_validate {
         assert!(res.is_err(), "empty street must be rejected");
 
         let errs = res.unwrap_err();
-        dbg!(format!("{errs}"));
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),

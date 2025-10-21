@@ -1,9 +1,15 @@
 // server function for postal address
 
-use crate::{AppError, AppResult};
-use app_core::{CoreState, PostalAddress, utils::id_version::IdVersion};
+#[cfg(feature = "ssr")]
+use crate::AppError;
+use crate::AppResult;
+use app_core::PostalAddress;
+#[cfg(feature = "ssr")]
+use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
-use tracing::{error, info, instrument};
+use tracing::instrument;
+#[cfg(feature = "ssr")]
+use tracing::{error, info};
 use uuid::Uuid;
 
 #[server]

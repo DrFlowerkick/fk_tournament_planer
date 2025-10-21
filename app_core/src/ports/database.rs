@@ -7,7 +7,10 @@ use thiserror::Error;
 use uuid::Uuid;
 
 /// database port trait
-pub trait DatabasePort: DbpPostalAddress {}
+#[async_trait]
+pub trait DatabasePort: DbpPostalAddress {
+    async fn ping_db(&self) -> DbResult<()>;
+}
 
 /// database port trait for postal address
 #[async_trait]
