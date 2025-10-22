@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS postal_addresses (
   version          bigint      NOT NULL DEFAULT 0,
 
   -- Optional, case-insensitive name of the location (NULL = no name)
-  name             citext,
+  name             citext     NOT NULL,
 
   -- Address fields
   street   text        NOT NULL,
@@ -30,8 +30,7 @@ CREATE TABLE IF NOT EXISTS postal_addresses (
 
 -- Enforce uniqueness of (name, postal_code, locality) only when name is present
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_postal_addresses_name_per_city_zip
-  ON postal_addresses (name, postal_code, locality)
-  WHERE name IS NOT NULL;
+  ON postal_addresses (name, postal_code, locality);
 
 -- updated_at maintenance trigger
 CREATE OR REPLACE FUNCTION trg_set_timestamp()

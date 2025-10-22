@@ -24,7 +24,7 @@ use uuid::Uuid;
 pub struct DbPostalAddress {
     pub id: Uuid,
     pub version: i64,
-    pub name: Option<String>,
+    pub name: String,
     pub street: String,
     pub postal_code: String,
     pub locality: String,
@@ -50,7 +50,7 @@ impl TryFrom<DbPostalAddress> for PostalAddress {
         }
         let id_version = IdVersion::new(r.id, r.version as u32);
         let mut pa = PostalAddress::new(id_version);
-        pa.set_name(r.name.unwrap_or_default())
+        pa.set_name(r.name)
             .set_street(r.street)
             .set_postal_code(r.postal_code)
             .set_locality(r.locality)
@@ -68,7 +68,7 @@ impl TryFrom<DbPostalAddress> for PostalAddress {
 #[diesel(treat_none_as_null = true)]
 pub struct WriteDbPostalAddress<'a> {
     // do NIT set version -> DEFAULT 0 from migration
-    pub name: Option<&'a str>,
+    pub name: &'a str,
     pub street: &'a str,
     pub postal_code: &'a str,
     pub locality: &'a str,

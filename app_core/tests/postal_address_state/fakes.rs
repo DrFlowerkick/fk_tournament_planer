@@ -100,9 +100,7 @@ impl DbpPostalAddress for FakeDatabasePort {
             .values()
             .filter(|a| {
                 if let Some(ref f) = filter {
-                    a.get_name()
-                        .map(|n| n.to_lowercase().contains(f))
-                        .unwrap_or(false)
+                    a.get_name().to_lowercase().contains(f)
                 } else {
                     true
                 }
@@ -110,20 +108,10 @@ impl DbpPostalAddress for FakeDatabasePort {
             .cloned()
             .collect();
 
-        // deterministic order: by name(Some first), then id
-        rows.sort_by(|a, b| {
-            match (&a.get_name(), &b.get_name()) {
-                (Some(na), Some(nb)) => {
-                    let ord = na.cmp(nb);
-                    if ord != std::cmp::Ordering::Equal {
-                        return ord;
-                    }
-                }
-                (Some(_), None) => return std::cmp::Ordering::Less,
-                (None, Some(_)) => return std::cmp::Ordering::Greater,
-                (None, None) => {}
-            }
-            a.get_id().cmp(&b.get_id())
+        // deterministic order: by name, then id
+        rows.sort_by(|a, b| match a.get_name().cmp(b.get_name()) {
+            std::cmp::Ordering::Equal => a.get_id().cmp(&b.get_id()),
+            cmp => cmp,
         });
 
         if let Some(l) = limit {

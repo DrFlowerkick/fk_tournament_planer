@@ -2,17 +2,19 @@ use anyhow::Result;
 use app::*;
 use app_core::*;
 use axum::{
-    Router, http,
+    Router,
+    extract::State,
+    http,
     http::{HeaderMap, HeaderName, StatusCode},
     response::IntoResponse,
     routing::get,
-    extract::State,
 };
 use axum_extra::routing::RouterExt;
 use cr_single_instance::*;
 use db_postgres::*;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
+use serde::Serialize;
 use shared::*;
 use std::{sync::Arc, time::Duration};
 use tower_http::{
@@ -24,15 +26,14 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{EnvFilter, Registry, prelude::*};
-use serde::Serialize;
 
-use std::env;
 use anyhow::Context;
+use std::env;
 
 fn init_tracing_bunyan() -> Result<()> {
     // Read level configuration from env (.env via dotenvy or docker sets env)
-    let rust_log = env::var("RUST_LOG")
-        .context("POSTGRES_URL must be set. Hint: did you run dotenv()?")?;
+    let rust_log =
+        env::var("RUST_LOG").context("POSTGRES_URL must be set. Hint: did you run dotenv()?")?;
     let database_name = env::var("DATABASE_NAME")
         .context("POSTGRES_URL must be set. Hint: did you run dotenv()?")?;
     dbg!(rust_log, database_name);
@@ -69,13 +70,18 @@ async fn health() -> impl IntoResponse {
 
 // --- /health/db (database readiness) ---
 #[derive(Serialize)]
-struct DbStatus { db: &'static str }
+struct DbStatus {
+    db: &'static str,
+}
 
 #[instrument(name = "health_db", skip(app_state))]
 async fn health_db(State(app_state): State<AppState>) -> impl IntoResponse {
     match app_state.core.database.ping_db().await {
-        Ok(_)  => (StatusCode::OK, axum::Json(DbStatus { db: "ok" })),
-        Err(_) => (StatusCode::SERVICE_UNAVAILABLE, axum::Json(DbStatus { db: "down" })),
+        Ok(_) => (StatusCode::OK, axum::Json(DbStatus { db: "ok" })),
+        Err(_) => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            axum::Json(DbStatus { db: "down" }),
+        ),
     }
 }
 

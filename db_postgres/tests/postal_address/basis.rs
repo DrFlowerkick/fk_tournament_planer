@@ -4,7 +4,7 @@
 
 use crate::common::*;
 use anyhow::Result;
-use app_core::{DbError, DbpPostalAddress, DatabasePort};
+use app_core::{DatabasePort, DbError, DbpPostalAddress};
 use db_postgres::test_support::*;
 use tracing::info;
 
@@ -147,7 +147,7 @@ async fn given_name_filter_and_limit_when_list_then_ordered_and_bounded() -> Res
     // Names are ordered ascending (NULLS LAST)
     let names: Vec<String> = listed
         .into_iter()
-        .map(|p| p.get_name().unwrap_or_default().to_string())
+        .map(|p| p.get_name().to_string())
         .collect();
     let mut sorted = names.clone();
     sorted.sort();

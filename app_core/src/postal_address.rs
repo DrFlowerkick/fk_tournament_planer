@@ -10,6 +10,8 @@ use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
 pub enum PaValidationField {
+    /// name
+    Name,
     /// street
     Street,
     /// postal code
@@ -25,7 +27,7 @@ pub struct PostalAddress {
     /// id and optimistic locking version of address
     id_version: IdVersion,
     /// name of location
-    name: Option<String>,
+    name: String,
     /// street address
     street: String,
     /// postal code
@@ -42,7 +44,7 @@ impl Default for PostalAddress {
     fn default() -> Self {
         PostalAddress {
             id_version: IdVersion::New,
-            name: None,
+            name: "".into(),
             street: "".into(),
             postal_code: "".into(),
             locality: "".into(),
@@ -68,8 +70,8 @@ impl PostalAddress {
     pub fn get_id_version(&self) -> IdVersion {
         self.id_version
     }
-    pub fn get_name(&self) -> Option<&str> {
-        self.name.as_deref()
+    pub fn get_name(&self) -> &str {
+        self.name.as_str()
     }
     pub fn get_street(&self) -> &str {
         self.street.as_str()
@@ -105,16 +107,12 @@ impl PostalAddress {
     /// // Start from default.
     /// let mut addr = PostalAddress::default();
     ///
-    /// // 1) Regularize spacing (trim + collapse):
+    /// // Regularize spacing (trim + collapse):
     /// addr.set_name("  Main   Campus  ");
-    /// assert_eq!(addr.get_name(), Some("Main Campus"));
-    ///
-    /// // 2) Whitespace-only becomes None:
-    /// addr.set_name("   ");
-    /// assert_eq!(addr.get_name(), None);
+    /// assert_eq!(addr.get_name(), "Main Campus");
     /// ```
     pub fn set_name(&mut self, value: impl Into<String>) -> &mut Self {
-        self.name = normalize_opt(Some(value));
+        self.name = normalize_ws(value);
         self
     }
 
@@ -233,6 +231,14 @@ impl PostalAddress {
         let mut errs = ValidationErrors::new();
 
         // Required fields (syntax-level)
+        if self.name.is_empty() {
+            errs.add(
+                FieldError::builder()
+                    .set_field(PaValidationField::Name)
+                    .add_required()
+                    .build(),
+            );
+        }
         if self.street.is_empty() {
             errs.add(
                 FieldError::builder()
@@ -373,6 +379,28 @@ mod test_validate {
     }
 
     #[test]
+    fn given_empty_name_when_validate_then_err() {
+        let mut addr = valid_addr();
+        addr.name = "".into();
+
+        let res = addr.validate();
+        assert!(res.is_err(), "empty name must be rejected");
+
+        let errs = res.unwrap_err();
+        let err = errs.errors.first().unwrap();
+        assert_eq!(
+            err.get_field(),
+            &PaValidationField::Name,
+            "should report the name field"
+        );
+        assert_eq!(
+            err.get_code(),
+            "required",
+            "should classify as 'required' violation"
+        );
+    }
+
+    #[test]
     fn given_empty_street_when_validate_then_err() {
         let mut addr = valid_addr();
         addr.street = "".into();
@@ -504,11 +532,10 @@ mod test_validate {
     #[test]
     fn given_missing_optional_fields_when_validate_then_ok() {
         let mut addr = valid_addr();
-        addr.name = None;
         addr.region = None;
 
         let res = addr.validate();
-        assert!(res.is_ok(), "optional fields (name, region) may be None");
+        assert!(res.is_ok(), "optional fields (region) may be None");
     }
 
     // ── Country-specific postal requirements (DE example) ────────────────────

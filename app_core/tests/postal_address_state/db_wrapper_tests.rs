@@ -26,7 +26,7 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
     // Assert state was replaced by the record from DB (version set to 0 by fake)
     let got = core.get().clone();
     assert_eq!(got.get_id(), Some(id));
-    assert_eq!(got.get_name(), Some("Alpha"));
+    assert_eq!(got.get_name(), "Alpha");
     assert_eq!(got.get_version(), Some(0), "initial insert sets version 0");
 }
 
@@ -146,10 +146,7 @@ async fn given_filter_and_limit_when_list_addresses_then_db_fake_results_are_for
 
     // Assert: exactly 2 with names containing "ma" (case-insensitive)
     assert_eq!(got.len(), 2);
-    let names: Vec<_> = got
-        .iter()
-        .map(|x| x.get_name().unwrap_or_default())
-        .collect();
+    let names: Vec<_> = got.iter().map(|x| x.get_name()).collect();
     assert!(names.contains(&"Mara"));
     assert!(names.contains(&"Max"));
 }

@@ -18,6 +18,8 @@ export const T = {
       name: 'preview-name',
       street: 'preview-street',
       postalLocality: 'preview-postal_locality', // "10555 Berlin"
+      postalCode: 'preview-postal_code',
+      locality: 'preview-locality',
       region: 'preview-region',
       country: 'preview-country',
     },

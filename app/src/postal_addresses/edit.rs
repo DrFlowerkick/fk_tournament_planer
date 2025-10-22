@@ -2,7 +2,7 @@ use super::{
     AddressParams,
     server_fn::{SavePostalAddress, load_postal_address},
 };
-use app_core::PostalAddress;
+use app_core::{PaValidationField, PostalAddress};
 // this is probably in most cases only used for debugging. Remove it if not used anymore.
 use leptos::logging::log;
 use leptos::{leptos_dom::helpers::set_timeout, prelude::*, web_sys};
@@ -56,11 +56,60 @@ pub fn AddressFormWrapper(id: Option<Uuid>) -> impl IntoView {
 #[component]
 pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
-    // ToDo: use these signal for validation!
-    let (_addr, _set_addr) = signal(address.clone());
 
     let id = address.get_id();
+    let version = address.get_version();
+    let region = address.get_region().unwrap_or_default().to_string();
     let is_new = id.is_none();
+
+    // address signals for normalization and validation
+    let (norm_name, set_norm_name) = signal(address.get_name().to_string());
+    let (norm_street, set_norm_street) = signal(address.get_street().to_string());
+    let (norm_postal_code, set_norm_postal_code) = signal(address.get_postal_code().to_string());
+    let (norm_locality, set_norm_locality) = signal(address.get_locality().to_string());
+    let (norm_country, set_norm_country) = signal(address.get_country().to_string());
+    let (addr, set_addr) = signal(address);
+    let is_valid_addr = move || addr.get().validate().is_ok();
+
+    let is_valid_name = move || match addr.get().validate() {
+        Ok(()) => true,
+        Err(err) => err
+            .errors
+            .iter()
+            .all(|e| *e.get_field() != PaValidationField::Name),
+    };
+
+    let is_valid_street = move || match addr.get().validate() {
+        Ok(()) => true,
+        Err(err) => err
+            .errors
+            .iter()
+            .all(|e| *e.get_field() != PaValidationField::Street),
+    };
+
+    let is_valid_postal_code = move || match addr.get().validate() {
+        Ok(()) => true,
+        Err(err) => err
+            .errors
+            .iter()
+            .all(|e| *e.get_field() != PaValidationField::PostalCode),
+    };
+
+    let is_valid_locality = move || match addr.get().validate() {
+        Ok(()) => true,
+        Err(err) => err
+            .errors
+            .iter()
+            .all(|e| *e.get_field() != PaValidationField::Locality),
+    };
+
+    let is_valid_country = move || match addr.get().validate() {
+        Ok(()) => true,
+        Err(err) => err
+            .errors
+            .iter()
+            .all(|e| *e.get_field() != PaValidationField::Country),
+    };
 
     let navigate = use_navigate();
 
@@ -73,36 +122,35 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
         // Use <ActionForm/> to bind to your save server fn
         <ActionForm action=save_postal_address attr:data-testid="form-address">
             // Hidden meta fields the server expects (id / version / intent)
-            <input
-                type="hidden"
-                name="id"
-                prop:value=address.get_id().unwrap_or(Uuid::nil()).to_string()
-            />
-            <input
-                type="hidden"
-                name="version"
-                prop:value=address.get_version().unwrap_or_default()
-            />
+            <input type="hidden" name="id" prop:value=id.unwrap_or(Uuid::nil()).to_string() />
+            <input type="hidden" name="version" prop:value=version.unwrap_or_default() />
 
             // Disable the whole form while loading existing data
             <fieldset prop:disabled=move || loading>
                 // Example: Name
                 <label class="block">
-                    <span class="block text-sm">"Name (optional)"</span>
+                    <span class="block text-sm">"Name"</span>
                     <input
-                        class="w-full border rounded p-2"
+                        class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
                         name="name"
                         data-testid="input-name"
+                        aria-invalid=move || if is_valid_name() { "false" } else { "true" }
                         // show live value when loaded; while loading show "Loading…" as placeholder
-                        prop:value=address.get_name().unwrap_or_default().to_string()
+                        prop:value=move || norm_name.get()
                         placeholder=move || {
                             if loading {
                                 "Loading..."
                             } else if is_new {
-                                "Enter name (optional)..."
+                                "Enter name..."
                             } else {
                                 ""
                             }
+                        }
+                        on:input=move |ev| {
+                            set_addr.write().set_name(event_target_value(&ev));
+                        }
+                        on:blur=move |_| {
+                            set_norm_name.set(addr.get().get_name().to_string());
                         }
                     />
                 </label>
@@ -111,10 +159,11 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                 <label class="block">
                     <span class="block text-sm">"Street & number"</span>
                     <input
-                        class="w-full border rounded p-2"
+                        class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
                         name="street"
                         data-testid="input-street"
-                        prop:value=address.get_street().to_string()
+                        aria-invalid=move || if is_valid_street() { "false" } else { "true" }
+                        prop:value=move || norm_street.get()
                         placeholder=move || {
                             if loading {
                                 "Loading..."
@@ -124,6 +173,12 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                                 ""
                             }
                         }
+                        on:input=move |ev| {
+                            set_addr.write().set_street(event_target_value(&ev));
+                        }
+                        on:blur=move |_| {
+                            set_norm_street.set(addr.get().get_street().to_string());
+                        }
                     />
                 </label>
 
@@ -132,10 +187,13 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                     <label class="block">
                         <span class="block text-sm">"Postal code"</span>
                         <input
-                            class="w-full border rounded p-2"
+                            class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
                             name="postal_code"
                             data-testid="input-postal_code"
-                            prop:value=address.get_postal_code().to_string()
+                            aria-invalid=move || {
+                                if is_valid_postal_code() { "false" } else { "true" }
+                            }
+                            prop:value=move || norm_postal_code.get()
                             placeholder=move || {
                                 if loading {
                                     "Loading..."
@@ -145,15 +203,22 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                                     ""
                                 }
                             }
+                            on:input=move |ev| {
+                                set_addr.write().set_postal_code(event_target_value(&ev));
+                            }
+                            on:blur=move |_| {
+                                set_norm_postal_code.set(addr.get().get_postal_code().to_string());
+                            }
                         />
                     </label>
                     <label class="block">
                         <span class="block text-sm">"City"</span>
                         <input
-                            class="w-full border rounded p-2"
+                            class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
                             name="locality"
                             data-testid="input-locality"
-                            prop:value=address.get_locality().to_string()
+                            aria-invalid=move || if is_valid_locality() { "false" } else { "true" }
+                            prop:value=move || norm_locality.get()
                             placeholder=move || {
                                 if loading {
                                     "Loading..."
@@ -162,6 +227,12 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                                 } else {
                                     ""
                                 }
+                            }
+                            on:input=move |ev| {
+                                set_addr.write().set_locality(event_target_value(&ev));
+                            }
+                            on:blur=move |_| {
+                                set_norm_locality.set(addr.get().get_locality().to_string());
                             }
                         />
                     </label>
@@ -174,7 +245,7 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                         class="w-full border rounded p-2"
                         name="region"
                         data-testid="input-region"
-                        prop:value=address.get_region().map(|ar| ar.to_string())
+                        prop:value=region
                         placeholder=move || {
                             if loading {
                                 "Loading..."
@@ -191,10 +262,11 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                 <label class="block">
                     <span class="block text-sm">"Country (ISO/name)"</span>
                     <input
-                        class="w-full border rounded p-2"
+                        class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
                         name="country"
                         data-testid="input-country"
-                        prop:value=address.get_country().to_string()
+                        aria-invalid=move || if is_valid_country() { "false" } else { "true" }
+                        prop:value=move || norm_country.get()
                         placeholder=move || {
                             if loading {
                                 "Loading..."
@@ -204,32 +276,38 @@ pub fn AddressForm(address: PostalAddress, loading: bool) -> impl IntoView {
                                 ""
                             }
                         }
+                        on:input=move |ev| {
+                            set_addr.write().set_country(event_target_value(&ev));
+                        }
+                        on:blur=move |_| {
+                            set_norm_country.set(addr.get().get_country().to_string());
+                        }
                     />
                 </label>
 
                 // Actions: Update vs. "Save as new"
                 <div class="flex gap-2">
-                    // Update existing (disabled in "new" mode)
+                    // Update existing
                     <button
                         type="submit"
                         name="intent"
-                        value="update"
+                        value=move || if is_new {"create"} else {"update"}
                         data-testid="btn-save"
                         class="btn"
-                        prop:disabled=move || loading || is_new
-                        prop:hidden=move || is_new
+                        prop:disabled=move || loading || !is_valid_addr()
                     >
                         "Save"
                     </button>
 
-                    // Always allow "save as new"
+                    // "save as new" (disabled in "new" mode)
                     <button
-                        type="submit"
+                        type="button"
                         name="intent"
                         value="create"
                         data-testid="btn-save-as-new"
                         class="btn"
-                        prop:disabled=move || loading
+                        prop:disabled=move || loading || is_new || !is_valid_addr()
+                        prop:hidden=move || is_new
                     >
                         "Save as new"
                     </button>

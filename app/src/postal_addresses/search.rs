@@ -40,7 +40,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
     Effect::new(move || {
         if let Some(Ok(addr)) = addr_res.get() {
             set_address.set(addr.clone());
-            set_query.set(addr.get_name().unwrap_or_default().to_string());
+            set_query.set(addr.get_name().to_string());
         }
     });
 
@@ -69,7 +69,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
             && let Some(item) = list.get(i)
         {
             // 1) update UI state
-            set_query.set(item.get_name().unwrap_or_default().to_string());
+            set_query.set(item.get_name().to_string());
             set_address.set(item.clone());
             set_open.set(false);
 
@@ -197,7 +197,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                             id="addr-suggest"
                                             data-testid="search-suggest"
                                             // aria-busy=true while loading resource, otherwise false
-                                            aria-busy=move || if results().is_empty() || loading() { "true" } else { "false" }
+                                            aria-busy=move || {
+                                                if results().is_empty() || loading() {
+                                                    "true"
+                                                } else {
+                                                    "false"
+                                                }
+                                            }
                                             class="dropdown-content menu menu-sm bg-base-100 rounded-box z-[1] mt-1 w-full p-0 shadow max-h-72 overflow-auto"
                                             role="listbox"
                                         >
@@ -238,9 +244,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                                                             // before blur
                                                                             on:mousedown=move |_| select_idx(i)
                                                                         >
-                                                                            <span class="font-medium">
-                                                                                {a.get_name().unwrap_or_default().to_string()}
-                                                                            </span>
+                                                                            <span class="font-medium">{a.get_name().to_string()}</span>
                                                                             <span class="text-xs text-base-content/70">
                                                                                 {match a.get_region() {
                                                                                     Some(region) => {
@@ -279,19 +283,20 @@ pub fn SearchPostalAddress() -> impl IntoView {
                     // current selected address
                     <div class="mt-3 space-y-1 text-sm" data-testid="address-preview">
                         <h2 data-testid="preview-name">
-                            {move || address.get().get_name().unwrap_or_default().to_string()}
+                            {move || address.get().get_name().to_string()}
                         </h2>
                         <p data-testid="preview-street">
                             {move || address.get().get_street().to_string()}
                         </p>
                         <p data-testid="preview-postal_locality">
-                            {move || {
-                                format!(
-                                    "{} {}",
-                                    address.get().get_postal_code(),
-                                    address.get().get_locality(),
-                                )
-                            }}
+                            <span data-testid="preview-postal_code">
+                                {move || address.get().get_postal_code().to_string()}
+
+                            </span>
+                            " "
+                            <span data-testid="preview-locality">
+                                {move || address.get().get_locality().to_string()}
+                            </span>
                         </p>
                         <p data-testid="preview-region">
                             {move || address.get().get_region().unwrap_or_default().to_string()}

@@ -4,7 +4,7 @@ diesel::table! {
     postal_addresses (id) {
         id -> Uuid,
         version -> Int8,
-        name -> Nullable<Citext>,
+        name -> Citext,
         street -> Text,
         postal_code -> Text,
         locality -> Text,
