@@ -1,0 +1,56 @@
+// generic sse listener
+
+use app_core::{CrPushNotice, CrTopic};
+use codee::string::JsonSerdeCodec;
+use cr_single_instance::SseUrl;
+use leptos::prelude::*;
+use leptos_use::{
+    UseEventSourceOptions, UseEventSourceReturn, core::ConnectionReadyState,
+    use_event_source_with_options,
+};
+use std::thread::sleep;
+use std::time::Duration;
+
+#[component]
+pub fn sse_listener(
+    // topic to subscribe to
+    topic: CrTopic,
+    // current version of object as derived signal
+    version: impl Fn() -> u32 + 'static,
+    // refetch of data source as derived signal
+    refetch: impl Fn() + 'static,
+) -> impl IntoView {
+    let url = topic.sse_url();
+    let UseEventSourceReturn {
+        data, ready_state, ..
+    } = use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
+        url.as_str(),
+        UseEventSourceOptions::default().named_events(["changed".to_string()]),
+    );
+    Effect::new(move || {
+        if let Some(data) = data.get() {
+            match data {
+                CrPushNotice::AddressUpdated { id, meta } => {
+                    // id should always be equal, since we subscribed for topic id
+                    assert_eq!(*topic.id(), id);
+                    let max_retry = 5;
+                    let num_retry = 0;
+                    while meta.version > version() && num_retry < max_retry {
+                        refetch();
+                        sleep(Duration::from_millis(100));
+                    }
+                }
+            }
+        }
+    });
+    view! {
+        <p class="hidden" data-testid="sse-status">
+            {move || match ready_state.get() {
+                ConnectionReadyState::Connecting => "connecting",
+                ConnectionReadyState::Open => "connected",
+                ConnectionReadyState::Closing => "disconnecting",
+                ConnectionReadyState::Closed => "disconnected",
+            }}
+        </p>
+    }
+}
