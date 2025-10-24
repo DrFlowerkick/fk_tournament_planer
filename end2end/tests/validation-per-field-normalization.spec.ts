@@ -229,8 +229,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectSavesDisabled(page);
 
     // fill all fields with valid values
-    const ts = Date.now();
-    const name = `E2E Test Address ${ts}`;
+    const name = `E2E Valid Test Address`;
     await fillAllRequiredValid(page, name);
 
     // expect all fields are valid (values taken from ..helpers/form.ts)

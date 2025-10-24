@@ -20,6 +20,13 @@ export async function openPostalAddressList(page: Page) {
 }
 
 /**
+ * Wait for navigation to a postal address detail page (UUID URL).
+ */
+export async function waitForPostalAddressListLoadedWithUrl(page: Page) {
+  await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+}
+
+/**
  * Open the "New Postal Address" form directly.
  */
 export async function openNewForm(page: Page) {
@@ -142,16 +149,16 @@ export async function fillAllRequiredValid(page: Page, name: string) {
 }
 
 /**
- * Save and expect we leave the form or see a success state (adjust to your app). ToDo: What happens, if save is not successful?
+ * Save and expect we leave the form or see some Error message.
  */
 export async function clickSave(page: Page) {
   await expectSavesEnabled(page);
   await page.getByTestId(T.form.btnSave).click();
 }
 /**
- * Save and expect we leave the form or see a success state (adjust to your app). ToDo: What happens, if save is not successful?
+ * Save and expect we leave the form or see some Error message.
  */
-export async function clickSaveModify(page: Page) {
+export async function clickSaveAsNew(page: Page) {
   await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
   await expectSavesEnabled(page);
   await page.getByTestId(T.form.btnSaveAsNew).click();
@@ -287,6 +294,38 @@ export async function expectPreviewShows(
   if (expected.country !== undefined) {
     await expect(page.getByTestId(T.search.preview.country)).toHaveText(
       expected.country!
+    );
+  }
+}
+
+/**
+ * Extracts the UUID from a /postal-address/<uuid> URL.
+ */
+export function extractUuidFromUrl(url: string): string {
+  const m = url.match(/\/postal-address\/([0-9a-f-]{36})(?:$|\/)/i);
+  if (!m) throw new Error(`No UUID found in URL: ${url}`);
+  return m[1];
+}
+
+/**
+ * Waits for SSE to be connected *if and only if* the optional status element exists.
+ */
+export async function waitForSseConnected(page: Page, timeoutMs = 2000) {
+  const el = page.getByTestId(T.search.sseStatus);
+
+  // Ensure element exists and has *some* state:
+  await expect(el).toHaveText(
+    /connecting|connected|disconnecting|disconnected/i
+  );
+
+  try {
+    // Prefer real "connected" when engines expose it quickly (Chromium/WebKit).
+    await expect(el).toHaveText(/connected/i, { timeout: timeoutMs });
+  } catch {
+    // Firefox can stay "connecting" until the first event is delivered.
+    // Do NOT fail here; the test will gate on the version bump anyway.
+    console.warn(
+      '[E2E] SSE never reported "connected" (Firefox behavior). Continuing…'
     );
   }
 }

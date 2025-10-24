@@ -1,4 +1,3 @@
-// e2e/tests/smoke-render-and-nav.spec.ts
 import { test, expect } from "@playwright/test";
 import { selectors } from "../helpers/selectors";
 

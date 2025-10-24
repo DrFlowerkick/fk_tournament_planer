@@ -5,18 +5,23 @@ use super::{
     server_fn::{list_postal_addresses, load_postal_address},
 };
 use crate::SseListener;
-use app_core::{CrTopic, PostalAddress};
+use app_core::CrTopic;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
 };
+use uuid::Uuid;
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
-    let id = move || params.get().map(|ap| ap.uuid).unwrap_or(None);
+    let (id, set_id) = signal(None::<Uuid>);
+
+    Effect::new(move |_| {
+        set_id.set(params.get().ok().and_then(|p| p.uuid));
+    });
 
     // dropdown-status & keyboard-highlight
     let (open, set_open) = signal(false);
@@ -24,32 +29,35 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     // query to search address & loaded / selected address
     let (query, set_query) = signal(String::new());
-    let (address, set_address) = signal(PostalAddress::default());
 
     // load existing address when `id` is Some(...)
-    let addr_res = Resource::new(id, move |maybe_id| async move {
-        match maybe_id {
-            // AppResult<PostalAddress>
-            Some(id) => load_postal_address(id).await,
-            // new form: no loading delay
-            None => Ok(Default::default()),
-        }
-    });
-
-    // initialize query and address from Uuid
-    Effect::new(move || {
-        if let Some(Ok(addr)) = addr_res.get() {
-            set_address.set(addr.clone());
-            set_query.set(addr.get_name().to_string());
-        }
-    });
+    let addr_res = Resource::new(
+        move || id.get(),
+        move |maybe_id| async move {
+            match maybe_id {
+                // AppResult<PostalAddress>
+                Some(id) => load_postal_address(id).await.unwrap_or_default(),
+                // new form: no loading delay
+                None => Default::default(),
+            }
+        },
+    );
 
     // these function are required by sse_listener to refetch addr_res after changes to it at server side
     let refetch = move || addr_res.refetch();
-    let version = move || address.get().get_version().unwrap_or_default();
-    // use id from address, since this address is either an existing postal address or nil
+    let version = move || {
+        addr_res
+            .get()
+            .map(|a| a.get_version().unwrap_or_default())
+            .unwrap_or_default()
+    };
+    // use id from addr_res, since it provides either an existing postal address id or None
     // id from use_params() may be broken or not existing id
-    let topic = move || address.get().get_id().map(CrTopic::Address);
+    let topic = move || {
+        addr_res
+            .get()
+            .and_then(|a| a.get_id().map(CrTopic::Address))
+    };
 
     // load possible addresses from query
     let addr_list = Resource::new(
@@ -70,7 +78,11 @@ pub fn SearchPostalAddress() -> impl IntoView {
         {
             // 1) update UI state
             set_query.set(item.get_name().to_string());
-            set_address.set(item.clone());
+            if id.get() == item.get_id() {
+                addr_res.notify();
+            } else {
+                set_id.set(item.get_id());
+            }
             set_open.set(false);
 
             // 2) update URL
@@ -121,10 +133,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
         spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(0).await;
             set_open.set(false);
+            addr_res.notify();
         });
     };
 
-    let loading = move || addr_list.get().is_none();
     let results = move || {
         addr_list
             .get()
@@ -148,7 +160,14 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             view! { <SseListener topic=topic version=version refetch=refetch /> }
                                 .into_any()
                         }
-                        None => ().into_any(),
+                        None => {
+                            view! {
+                                <p class="hidden" data-testid="sse-status">
+                                    "disconnected"
+                                </p>
+                            }
+                                .into_any()
+                        }
                     }}
 
                     // DaisyUI dropdown container
@@ -159,7 +178,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         <input
                             type="text"
                             class="input input-bordered w-full"
-                            prop:value=move || query.get()
+                            prop:value=move || addr_res.get().map(|a| a.get_name().to_string())
                             data-testid="search-input"
                             placeholder="Enter name of address you are searching..."
                             on:input=move |ev| {
@@ -167,7 +186,18 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                 set_open.set(true);
                                 set_hi.set(None);
                             }
-                            on:focus=move |_| set_open.set(true)
+                            on:focus=move |_| {
+                                if query.get().is_empty() {
+                                    set_query
+                                        .set(
+                                            addr_res
+                                                .get()
+                                                .map(|a| a.get_name().to_string())
+                                                .unwrap_or_default(),
+                                        );
+                                }
+                                set_open.set(true);
+                            }
                             on:keydown=on_key
                             on:blur=on_blur
                             autocomplete="off"
@@ -177,16 +207,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             }
                             aria-controls="addr-suggest"
                         />
-
-                        // optional loading indicator at right-bottom, only visible if loading
-                        {move || {
-                            loading()
-                                .then(|| {
-                                    view! {
-                                        <span class="loading loading-spinner loading-sm absolute right-3 top-3"></span>
-                                    }
-                                })
-                        }}
 
                         // dropdown list
                         {move || {
@@ -198,7 +218,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                             data-testid="search-suggest"
                                             // aria-busy=true while loading resource, otherwise false
                                             aria-busy=move || {
-                                                if results().is_empty() || loading() {
+                                                if results().is_empty() {
                                                     "true"
                                                 } else {
                                                     "false"
@@ -208,7 +228,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                             role="listbox"
                                         >
                                             {move || {
-                                                if results().is_empty() || loading() {
+                                                if results().is_empty() {
                                                     view! {
                                                         <li class="px-3 py-2 text-sm text-base-content/70">
                                                             "Searching…"
@@ -283,26 +303,38 @@ pub fn SearchPostalAddress() -> impl IntoView {
                     // current selected address
                     <div class="mt-3 space-y-1 text-sm" data-testid="address-preview">
                         <h2 data-testid="preview-name">
-                            {move || address.get().get_name().to_string()}
+                            {move || addr_res.get().map(|a| a.get_name().to_string())}
                         </h2>
                         <p data-testid="preview-street">
-                            {move || address.get().get_street().to_string()}
+                            {move || addr_res.get().map(|a| a.get_street().to_string())}
                         </p>
                         <p data-testid="preview-postal_locality">
                             <span data-testid="preview-postal_code">
-                                {move || address.get().get_postal_code().to_string()}
+                                {move || addr_res.get().map(|a| a.get_postal_code().to_string())}
 
                             </span>
                             " "
                             <span data-testid="preview-locality">
-                                {move || address.get().get_locality().to_string()}
+                                {move || addr_res.get().map(|a| a.get_locality().to_string())}
                             </span>
                         </p>
                         <p data-testid="preview-region">
-                            {move || address.get().get_region().unwrap_or_default().to_string()}
+                            {move || {
+                                addr_res
+                                    .get()
+                                    .map(|a| a.get_region().unwrap_or_default().to_string())
+                            }}
                         </p>
                         <p data-testid="preview-country">
-                            {move || address.get().get_country().to_string()}
+                            {move || addr_res.get().map(|a| a.get_country().to_string())}
+                        </p>
+                        <p class="hidden" data-testid="preview-id">
+                            {move || {
+                                addr_res.get().map(|a| a.get_id().unwrap_or_default().to_string())
+                            }}
+                        </p>
+                        <p class="hidden" data-testid="preview-version">
+                            {move || addr_res.get().map(|a| a.get_version().unwrap_or_default())}
                         </p>
                     </div>
 
@@ -320,10 +352,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         <button
                             class="btn btn-secondary btn-sm"
                             data-testid="btn-modify-address"
-                            disabled=move || address.get().get_id().is_none()
+                            disabled=move || addr_res.get().and_then(|a| a.get_id()).is_none()
                             on:click=move |_| {
-                                let id = address
+                                let id = addr_res
                                     .get()
+                                    .expect(
+                                        "Save expect, since get_id() returns Some(). Otherwise button would be disabled.",
+                                    )
                                     .get_id()
                                     .expect(
                                         "Save expect, since get_id() returns Some(). Otherwise button would be disabled.",
