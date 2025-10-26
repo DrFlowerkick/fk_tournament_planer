@@ -1661,6 +1661,7 @@ dependencies = [
 [[package]]
 name = "leptos-use"
 version = "0.16.3"
+source = "git+https://github.com/DrFlowerkick/leptos-use/?branch=add_change_url_to_use_event_source#a85410af3867dbbcc44707d4c806e604c692a7d0"
 dependencies = [
  "cfg-if",
  "chrono",
