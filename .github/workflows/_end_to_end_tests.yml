@@ -1,0 +1,146 @@
+# .github/workflows/_end_to_end_test.yml
+name: end_to_end_tests
+
+on:
+  workflow_call:
+    inputs:
+      rust_toolchain:
+        description: "Rust toolchain channel"
+        required: false
+        type: string
+        default: "stable"
+      release_profile:
+        description: "Use --release for cargo leptos end-to-end"
+        required: false
+        type: boolean
+        default: true
+      features:
+        description: "Comma-separated cargo features (empty = default)"
+        required: false
+        type: string
+        default: ""
+      node_version:
+        description: "Node.js version (Playwright requirement if your project needs it)"
+        required: false
+        type: string
+        default: "20.x"
+      upload_artifacts:
+        description: "Upload Playwright reports (and any logs) produced by cargo leptos"
+        required: false
+        type: boolean
+        default: true
+      extra_end_to_end_args:
+        description: "Extra args for 'cargo leptos end-to-end' (rarely needed)"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  e2e:
+    name: End-to-End (Playwright via cargo leptos)
+    runs-on: ubuntu-22.04
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fk_tournament_planer
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      POSTGRES_URL: postgres://postgres:postgres@localhost:5432/
+      RUST_LOG: warn,server=warn,app=warn,app_core=warn,db_postgres=warn,leptos_axum=warn,tower_http=error,hyper=error,diesel=error
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      # used by ./scripts/e2e-testing.sh
+      LEPTOS_ENV: PROD
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ inputs.rust_toolchain }}
+          profile: minimal
+          override: true
+
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-leptos
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: e2e-release-ssr_wasm
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node_version }}
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            end2end/package-lock.json
+
+      - name: Install root-level npm dependencies (e.g. Tailwind, daisyui)
+        run: npm ci
+
+      - name: Install npm and playwright in end2end
+        working-directory: end2end
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        uses: ./.github/actions/wait-for-postgres
+        with:
+          host: localhost
+      
+      - name: Run cargo leptos end-to-end
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LEPTOS_FLAGS=""
+          if [ "${{ inputs.release_profile }}" = "true" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS --release"
+          fi
+          if [ -n "${{ inputs.features }}" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS --features \"${{ inputs.features }}\""
+          fi
+          if [ -n "${{ inputs.extra_end_to_end_args }}" ]; then
+            LEPTOS_FLAGS="$LEPTOS_FLAGS ${{ inputs.extra_end_to_end_args }}"
+          fi
+
+          export GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          echo "Running: cargo leptos end-to-end ${LEPTOS_FLAGS}"
+          bash -lc "cargo leptos end-to-end ${LEPTOS_FLAGS}"
+
+      - name: Upload E2E artifacts
+        if: ${{ inputs.upload_artifacts && always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: leptos-e2e-report
+          path: end2end/playwright-report
+          retention-days: 10

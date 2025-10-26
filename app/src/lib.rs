@@ -1,8 +1,17 @@
+// web app ui
+
+mod banner;
+mod error;
+mod postal_addresses;
+use error::*;
+use postal_addresses::*;
+
 use leptos::prelude::*;
-use leptos_meta::{provide_meta_context, MetaTags, Stylesheet, Title};
+use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
-    components::{Route, Router, Routes},
     StaticSegment,
+    components::{A, Route, Router, Routes},
+    path,
 };
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
@@ -32,13 +41,23 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
 
         // sets the document title
-        <Title text="Welcome to Leptos" />
+        <Title text="Welcome to FK Tournament Planer" />
 
-        // content for this welcome page
+        // routing
         <Router>
+
+            // navigation
+            <nav>
+                <A href="/">"Home"</A>
+                <A href="/postal-address">"Postal Address"</A>
+            </nav>
             <main>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=StaticSegment("") view=HomePage />
+                    <Route path=StaticSegment("/") view=HomePage />
+                    <Route path=path!("/postal-address") view=SearchPostalAddress />
+                    <Route path=path!("/postal-address/new") view=NewPostalAddress />
+                    <Route path=path!("/postal-address/:uuid/edit") view=PostalAddressEdit />
+                    <Route path=path!("/postal-address/:uuid") view=SearchPostalAddress />
                 </Routes>
             </main>
         </Router>
@@ -53,7 +72,10 @@ fn HomePage() -> impl IntoView {
     let on_click = move |_| *count.write() += 1;
 
     view! {
-        <h1>"Welcome to Leptos!"</h1>
-        <button on:click=on_click>"Click Me: " {count}</button>
+        <h1>"Welcome to FK Tournament Planer!"</h1>
+        <button class="btn" on:click=on_click>
+            "Click Me: "
+            {count}
+        </button>
     }
 }

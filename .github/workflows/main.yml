@@ -16,7 +16,12 @@ jobs:
     steps:
       - name: Say hello
         run: echo "Running main branch workflow..."
-        
+
+  coverage:
+    uses: ./.github/workflows/_coverage.yml
+    with:
+      features: "ssr test_support"
+
   audit:
     uses: ./.github/workflows/_audit.yml
 

@@ -6,6 +6,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  SCCACHE_GHA_ENABLED: "true"
+  RUSTC_WRAPPER: "sccache"
 
 jobs:
   lint:
@@ -16,6 +18,15 @@ jobs:
 
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@stable
+
+      # cache for clippy
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: lint-debug-all-features
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Run rustfmt
         run: cargo fmt --all -- --check
