@@ -8,6 +8,7 @@ import {
   searchAndOpenByNameOnCurrentPage,
 } from "../helpers/form";
 import { T } from "../helpers/selectors";
+import exp from "constants";
 
 test.describe("Cancel button navigation", () => {
   test("returns to the previous page (search list)", async ({ page }) => {
@@ -20,7 +21,7 @@ test.describe("Cancel button navigation", () => {
     const url = page.url();
 
     // Go to list and search for it to create a history entry
-    await openPostalAddressList(page);
+    await expect(page.getByTestId(T.search.input)).toBeVisible();
     await searchAndOpenByNameOnCurrentPage(page, name);
 
     // -------------------- Act: Go to edit and click cancel --------------------

@@ -3,10 +3,8 @@
 mod banner;
 mod error;
 mod postal_addresses;
-mod sse;
 use error::*;
 use postal_addresses::*;
-use sse::*;
 
 use leptos::prelude::*;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};

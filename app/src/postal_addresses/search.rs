@@ -4,13 +4,18 @@ use super::{
     AddressParams,
     server_fn::{list_postal_addresses, load_postal_address},
 };
-use crate::{SseListener, banner::AcknowledgmentAndNavigateBanner};
-use app_core::CrTopic;
+use crate::banner::AcknowledgmentAndNavigateBanner;
+use app_core::{CrPushNotice, CrTopic};
+use codee::string::JsonSerdeCodec;
 use cr_single_instance::SseUrl;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
+};
+use leptos_use::{
+    UseEventSourceOptions, UseEventSourceReturn, core::ConnectionReadyState,
+    use_event_source_with_options,
 };
 use uuid::Uuid;
 
@@ -18,6 +23,19 @@ use uuid::Uuid;
 pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
+
+    // setup sse listener
+    let UseEventSourceReturn {
+        data,
+        ready_state,
+        change_url,
+        ..
+    } = use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
+        "",
+        UseEventSourceOptions::default()
+            .immediate(false)
+            .named_events(["changed".to_string()]),
+    );
 
     // signals for address fields
     let (name, set_name) = signal(String::new());
@@ -58,11 +76,23 @@ pub fn SearchPostalAddress() -> impl IntoView {
         },
     );
 
+    Effect::new(move || {
+        if let Some(event) = data.get() {
+            match event {
+                CrPushNotice::AddressUpdated { meta, .. } => {
+                    if meta.version > version.get_untracked() {
+                        addr_res.refetch();
+                    }
+                }
+            }
+        }
+    });
+
     let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
     // these function are required by sse_listener to refetch addr_res after changes to it at server side
-    let refetch = move || addr_res.refetch();
-    let topic = move || id.get().map(CrTopic::Address);
+    let _refetch = move || addr_res.refetch();
+    let _topic = move || id.get().map(CrTopic::Address);
 
     // load possible addresses from query
     let addr_list = Resource::new(
@@ -163,26 +193,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
             }
         }>
             // Only call sse listener, if some topic exists
-            {move || match topic() {
-                Some(topic) => {
-                    view! {
-                        <SseListener
-                            topic=topic
-                            version=move || version.get_untracked()
-                            refetch=refetch
-                        />
-                    }
-                        .into_any()
-                }
-                None => {
-                    view! {
-                        <p class="hidden" data-testid="sse-status">
-                            "disconnected"
-                        </p>
-                    }
-                        .into_any()
-                }
-            }}
+
             {move || {
                 addr_res
                     .get()
@@ -204,11 +215,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             set_name.set(addr.get_name().to_string());
                             set_id.set(addr.get_id());
                             set_version.set(addr.get_version().unwrap_or_default());
-                            // update topic and url if id
                             if let Some(id) = addr.get_id() {
                                 let topic = CrTopic::Address(id);
                                 let url = topic.sse_url();
-                                //todo!("call change_url(url) from SSE listener");
+                                change_url(url);
                             }
                             ().into_any()
                         }
@@ -331,7 +341,8 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             }
                         })
                 }}
-            </div> // current selected address
+            // current selected address
+            </div>
             {move || {
                 if let Some(Ok(addr)) = addr_res.get() {
                     view! {
@@ -369,10 +380,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
                 <button
                     class="btn btn-secondary btn-sm"
                     data-testid="btn-new-address"
-                    disabled=move || is_disabled()
+                    disabled=is_disabled
                     on:click=move |_| {
                         let navigate = use_navigate();
-                        navigate(&format!("/postal-address/new"), NavigateOptions::default());
+                        navigate("/postal-address/new", NavigateOptions::default());
                     }
                 >
                     "Modify"
@@ -395,7 +406,15 @@ pub fn SearchPostalAddress() -> impl IntoView {
                 >
                     "Modify"
                 </button>
-            </div>
+            // SSE connection status (hidden)
+            </div> <p class="hidden" data-testid="sse-status">
+                {move || match ready_state.get() {
+                    ConnectionReadyState::Connecting => "connecting",
+                    ConnectionReadyState::Open => "connected",
+                    ConnectionReadyState::Closing => "disconnecting",
+                    ConnectionReadyState::Closed => "disconnected",
+                }}
+            </p>
         </Transition>
     }
 }
