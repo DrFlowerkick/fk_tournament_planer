@@ -45,15 +45,15 @@ export const T = {
     btnSave: "btn-save", // primary update
     btnSaveAsNew: "btn-save-as-new", // value="create"
     btnCancel: "btn-cancel",
-    // Conflict UI
-    conflictBanner: "conflict-banner",
-    btnConflictReload: "btn-conflict-reload",
-    // Duplicate Error UI
-    duplicateBanner: "duplicate-banner",
-    btnDuplicateDismiss: "btn-duplicate-dismiss",
-    // Generic Error UI
-    genericErrorBanner: "generic-error-banner",
-    btnGenericErrorDismiss: "btn-generic-error-dismiss",
+  },
+
+  // banners (global)
+  banner: {
+    acknowledgmentBanner: "acknowledgment-banner",
+    btnAcknowledgment: "btn-acknowledgment-action",
+    acknowledgmentNavigateBanner: "acknowledgment-navigate-banner",
+    btnAcknowledgmentNavigateAction: "btn-acknowledgment-navigate-action",
+    btnAcknowledgmentNavigate: "btn-acknowledgment-navigate",
   },
 } as const;
 
@@ -93,12 +93,13 @@ export function selectors(page: Page) {
       btnSave: root.getByTestId(T.form.btnSave),
       btnSaveAsNew: root.getByTestId(T.form.btnSaveAsNew),
       btnCancel: root.getByTestId(T.form.btnCancel),
-      conflictBanner: root.getByTestId(T.form.conflictBanner),
-      btnConflictReload: root.getByTestId(T.form.btnConflictReload),
-      duplicateBanner: root.getByTestId(T.form.duplicateBanner),
-      btnDuplicateDismiss: root.getByTestId(T.form.btnDuplicateDismiss),
-      genericErrorBanner: root.getByTestId(T.form.genericErrorBanner),
-      btnGenericErrorDismiss: root.getByTestId(T.form.btnGenericErrorDismiss),
+    },
+    banner: {
+      acknowledgmentBanner: root.getByTestId(T.banner.acknowledgmentBanner),
+      btnAcknowledgment: root.getByTestId(T.banner.btnAcknowledgment),
+      acknowledgmentNavigateBanner: root.getByTestId(T.banner.acknowledgmentNavigateBanner),
+      btnAcknowledgmentNavigateAction: root.getByTestId(T.banner.btnAcknowledgmentNavigateAction),
+      btnAcknowledgmentNavigate: root.getByTestId(T.banner.btnAcknowledgmentNavigate),
     },
   });
 
@@ -137,12 +138,15 @@ export function selectors(page: Page) {
       btnSave: page.getByTestId(T.form.btnSave),
       btnSaveAsNew: page.getByTestId(T.form.btnSaveAsNew),
       btnCancel: page.getByTestId(T.form.btnCancel),
-      conflictBanner: page.getByTestId(T.form.conflictBanner),
-      btnConflictReload: page.getByTestId(T.form.btnConflictReload),
-      duplicateBanner: page.getByTestId(T.form.duplicateBanner),
-      btnDuplicateDismiss: page.getByTestId(T.form.btnDuplicateDismiss),
-      genericErrorBanner: page.getByTestId(T.form.genericErrorBanner),
-      btnGenericErrorDismiss: page.getByTestId(T.form.btnGenericErrorDismiss),
+    },
+
+    // banners (global)
+    banner: {
+      acknowledgmentBanner: page.getByTestId(T.banner.acknowledgmentBanner),
+      btnAcknowledgment: page.getByTestId(T.banner.btnAcknowledgment),
+      acknowledgmentNavigateBanner: page.getByTestId(T.banner.acknowledgmentNavigateBanner),
+      btnAcknowledgmentNavigateAction: page.getByTestId(T.banner.btnAcknowledgmentNavigateAction),
+      btnAcknowledgmentNavigate: page.getByTestId(T.banner.btnAcknowledgmentNavigate),
     },
 
     // scopers

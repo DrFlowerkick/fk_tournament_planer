@@ -1,5 +1,6 @@
 // web app ui
 
+mod banner;
 mod error;
 mod postal_addresses;
 mod sse;

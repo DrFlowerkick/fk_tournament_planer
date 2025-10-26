@@ -11,17 +11,11 @@ use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
 };
-use uuid::Uuid;
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
-    let (id, set_id) = signal(None::<Uuid>);
-
-    Effect::new(move |_| {
-        set_id.set(params.get().ok().and_then(|p| p.uuid));
-    });
 
     // dropdown-status & keyboard-highlight
     let (open, set_open) = signal(false);
@@ -32,13 +26,15 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     // load existing address when `id` is Some(...)
     let addr_res = Resource::new(
-        move || id.get(),
+        move || params.get(),
         move |maybe_id| async move {
             match maybe_id {
                 // AppResult<PostalAddress>
-                Some(id) => load_postal_address(id).await.unwrap_or_default(),
-                // new form: no loading delay
-                None => Default::default(),
+                Ok(AddressParams { uuid: Some(id) }) => {
+                    load_postal_address(id).await.unwrap_or_default()
+                }
+                // new form or bad uuid: no loading delay
+                _ => Default::default(),
             }
         },
     );
@@ -78,24 +74,24 @@ pub fn SearchPostalAddress() -> impl IntoView {
         {
             // 1) update UI state
             set_query.set(item.get_name().to_string());
-            if id.get() == item.get_id() {
+            set_open.set(false);
+            if let Some(addr) = addr_res.get()
+                && addr.get_id() == item.get_id()
+            {
                 addr_res.notify();
             } else {
-                set_id.set(item.get_id());
+                // 2) update URL
+                let id_str = item.get_id().map(|id| id.to_string()).unwrap_or_default();
+                let navigate = use_navigate();
+                navigate(
+                    &format!("/postal-address/{}", id_str),
+                    NavigateOptions {
+                        // replace=true prevents „history spam“
+                        replace: true,
+                        ..Default::default()
+                    },
+                );
             }
-            set_open.set(false);
-
-            // 2) update URL
-            let id_str = item.get_id().map(|id| id.to_string()).unwrap_or_default();
-            let navigate = use_navigate();
-            navigate(
-                &format!("/postal-address/{}", id_str),
-                NavigateOptions {
-                    // replace=true prevents „history spam“
-                    replace: true,
-                    ..Default::default()
-                },
-            );
         }
     };
 
@@ -218,11 +214,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                             data-testid="search-suggest"
                                             // aria-busy=true while loading resource, otherwise false
                                             aria-busy=move || {
-                                                if results().is_empty() {
-                                                    "true"
-                                                } else {
-                                                    "false"
-                                                }
+                                                if results().is_empty() { "true" } else { "false" }
                                             }
                                             class="dropdown-content menu menu-sm bg-base-100 rounded-box z-[1] mt-1 w-full p-0 shadow max-h-72 overflow-auto"
                                             role="listbox"

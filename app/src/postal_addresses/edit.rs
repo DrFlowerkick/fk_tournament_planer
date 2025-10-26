@@ -2,10 +2,11 @@ use super::{
     AddressParams,
     server_fn::{SavePostalAddress, load_postal_address},
 };
-use crate::AppError;
+use crate::{
+    AppError,
+    banner::{AcknowledgmentBanner, AcknowledgmentAndNavigateBanner},
+};
 use app_core::{PaValidationField, PostalAddress};
-// this is probably in most cases only used for debugging. Remove it if not used anymore.
-//use leptos::logging::log;
 use leptos::{leptos_dom::helpers::set_timeout, prelude::*, web_sys};
 use leptos_router::{
     NavigateOptions,
@@ -41,7 +42,10 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
         },
     );
 
-    let refetch = move || addr_res.refetch();
+    let refetch_and_reset = move || {
+        addr_res.refetch();
+        save_postal_address.clear();
+    };
 
     // --- Signals for form fields ---
     let (name, set_name) = signal(String::new());
@@ -53,36 +57,45 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
     let (version, set_version) = signal(0);
 
     // --- Signals for UI state & errors ---
-    let (is_conflict, set_is_conflict) = signal(false);
-    let (is_duplicate, set_is_duplicate) = signal(false);
-    let (is_general_error, set_is_general_error) = signal(None::<String>);
     let pending = save_postal_address.pending();
-    let action_value = save_postal_address.value();
     let navigate = use_navigate();
 
     let is_new = id.is_none();
 
-    // --- Effect to populate signals from resource ---
-    Effect::new(move |_| {
-        addr_res
-            .get()
-            .and_then(|res| res.ok())
-            .map(|addr| {
-                // This runs when the resource loads or reloads.
-                // It resets all form fields to the loaded data.
-                set_name.set(addr.get_name().to_string());
-                set_street.set(addr.get_street().to_string());
-                set_postal_code.set(addr.get_postal_code().to_string());
-                set_locality.set(addr.get_locality().to_string());
-                set_region.set(addr.get_region().unwrap_or_default().to_string());
-                set_country.set(addr.get_country().to_string());
-                set_version.set(addr.get_version().unwrap_or_default());
-                // Also reset error states on reload
-                set_is_conflict.set(false);
-                set_is_duplicate.set(false);
-                set_is_general_error.set(None);
-            });
-    });
+    // --- Derived Signals for Error States ---
+    // reset these signals with save_postal_address.clear() when needed
+    let is_conflict = move || {
+        if let Some(Err(AppError::Db(ref msg))) = save_postal_address.value().get() {
+            msg.contains("optimistic lock conflict")
+        } else {
+            false
+        }
+    };
+    let is_duplicate = move || {
+        if let Some(Err(AppError::Db(ref msg))) = save_postal_address.value().get() {
+            msg.contains("unique violation")
+        } else {
+            false
+        }
+    };
+    let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
+    let is_general_error = move || {
+        if let Some(Err(err)) = save_postal_address.value().get() {
+            match err {
+                AppError::Db(ref msg) => {
+                    if msg.contains("optimistic lock conflict") || msg.contains("unique violation")
+                    {
+                        None
+                    } else {
+                        Some(msg.clone())
+                    }
+                }
+                _ => Some(format!("{:?}", err)),
+            }
+        } else {
+            None
+        }
+    };
 
     // --- Derived Signal for Validation & Normalization ---
     let current_address = move || {
@@ -113,38 +126,13 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
     let is_valid_locality = move || is_field_valid(PaValidationField::Locality);
     let is_valid_country = move || is_field_valid(PaValidationField::Country);
 
-    // --- Effect to handle server action results (e.g., conflicts) ---
-    Effect::new(move |_prev_val| {
-        if let Some(result) = action_value.get() {
-            match result {
-                Err(AppError::Db(ref msg)) => {
-                    if msg.contains("optimistic lock conflict") {
-                        set_is_conflict.set(true);
-                    } else if msg.contains("unique violation") {
-                        set_is_duplicate.set(true);
-                    } else {
-                        set_is_general_error.set(Some(msg.clone()));
-                    }
-                }
-                Err(ref e) => {
-                    set_is_general_error.set(Some(format!("{:?}", e)));
-                }
-                Ok(_) => {
-                    // On successful save, reset all error states
-                    set_is_conflict.set(false);
-                    set_is_duplicate.set(false);
-                    set_is_general_error.set(None);
-                }
-            }
-        }
-    });
-
     let is_disabled = move || {
         addr_res.get().is_none()
             || pending.get()
-            || is_conflict.get()
-            || is_duplicate.get()
-            || is_general_error.get().is_some()
+            || is_conflict()
+            || is_duplicate()
+            || is_addr_res_error()
+            || is_general_error().is_some()
     };
 
     let cancel_target = move || {
@@ -156,7 +144,33 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
         <Transition fallback=move || {
             view! { <p>"Loading..."</p> }
         }>
-            // Use <ActionForm/> to bind to your save server fn
+            {move || {
+                addr_res
+                    .get()
+                    .map(|res| match res {
+                        Err(msg) => {
+                            // --- General Load Error Banner ---
+                            view! { <AcknowledgmentAndNavigateBanner
+                                msg=format!("An unexpected error occurred during load: {msg}")
+                                ack_btn_text="Reset Form"
+                                ack_action=refetch_and_reset
+                                nav_btn_text="Cancel"
+                                navigate_url=cancel_target()
+                                /> }
+                                .into_any()
+                            }
+                        Ok(addr) => {
+                            set_name.set(addr.get_name().to_string());
+                            set_street.set(addr.get_street().to_string());
+                            set_postal_code.set(addr.get_postal_code().to_string());
+                            set_locality.set(addr.get_locality().to_string());
+                            set_region.set(addr.get_region().unwrap_or_default().to_string());
+                            set_country.set(addr.get_country().to_string());
+                            set_version.set(addr.get_version().unwrap_or_default());
+                            ().into_any()
+                        }
+                    })
+            }} // Use <ActionForm/> to bind to your save server fn
             <ActionForm action=save_postal_address attr:data-testid="form-address">
                 // Hidden meta fields the server expects (id / version / intent)
                 <input
@@ -173,22 +187,12 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                 />
                 // --- Conflict Banner ---
                 {move || {
-                    if is_conflict.get() {
-                        view! { <ConflictBanner refetch=refetch /> }.into_any()
-                    } else {
-                        ().into_any()
-                    }
-                }}
-
-                // --- Duplicate Banner ---
-                {move || {
-                    if is_duplicate.get() {
+                    if is_conflict() {
                         view! {
-                            <DuplicateBanner
-                                name=name.get()
-                                postal_code=postal_code.get()
-                                locality=locality.get()
-                                set_is_duplicate=set_is_duplicate.clone()
+                            <AcknowledgmentBanner
+                                msg="A newer version of this address exists. Reloading will discard your changes."
+                                ack_btn_text="Reload"
+                                ack_action=refetch_and_reset
                             />
                         }
                             .into_any()
@@ -196,15 +200,37 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                         ().into_any()
                     }
                 }}
-                // --- General Error Banner ---
+
+                // --- Duplicate Banner ---
                 {move || {
-                    if let Some(msg) = is_general_error.get() {
+                    if is_duplicate() {
                         view! {
-                            <GeneralErrorBanner
-                                msg=msg
-                                set_is_general_error=set_is_general_error.clone()
+                            <AcknowledgmentBanner
+                                msg=format!(
+                                    "An address with name '{}' already exists in '{} {}'. ",
+                                    name.get(),
+                                    postal_code.get(),
+                                    locality.get(),
+                                )
+                                ack_btn_text="Ok"
+                                ack_action=move || save_postal_address.clear()
                             />
                         }
+                            .into_any()
+                    } else {
+                        ().into_any()
+                    }
+                }}
+                // --- General Save Error Banner ---
+                {move || {
+                    if let Some(msg) = is_general_error() {
+                        view! { <AcknowledgmentAndNavigateBanner
+                            msg=format!("An unexpected error occurred during saving: {msg}")
+                            ack_btn_text="Dismiss"
+                            ack_action=move || save_postal_address.clear()
+                            nav_btn_text="Return to Search Address"
+                            navigate_url=cancel_target()
+                            /> }
                             .into_any()
                     } else {
                         ().into_any()
@@ -438,79 +464,5 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                 </fieldset>
             </ActionForm>
         </Transition>
-    }
-}
-
-#[component]
-fn ConflictBanner(refetch: impl Fn() + 'static) -> impl IntoView {
-    view! {
-        <div
-            data-testid="conflict-banner"
-            class="p-3 my-2 text-sm text-error-content bg-error rounded-lg"
-            role="alert"
-        >
-            <p>"A newer version of this address exists. Reloading will discard your changes."</p>
-            <button
-                type="button"
-                data-testid="btn-conflict-reload"
-                class="btn btn-sm btn-outline mt-2"
-                on:click=move |_| refetch()
-            >
-                "Reload"
-            </button>
-        </div>
-    }
-}
-
-#[component]
-fn DuplicateBanner(
-    name: String,
-    postal_code: String,
-    locality: String,
-    set_is_duplicate: WriteSignal<bool>,
-) -> impl IntoView {
-    view! {
-        <div
-            data-testid="duplicate-banner"
-            class="p-3 my-2 text-sm text-error-content bg-error rounded-lg"
-            role="alert"
-        >
-            <p>
-                {format!(
-                    "An address with name '{name}' already exists in '{postal_code} {locality}'. ",
-                )}
-            </p>
-            <button
-                type="button"
-                data-testid="btn-duplicate-dismiss"
-                class="btn btn-sm btn-outline mt-2"
-                on:click=move |_| set_is_duplicate.set(false)
-            >
-                "Reload"
-            </button>
-        </div>
-    }
-}
-
-#[component]
-fn GeneralErrorBanner(
-    msg: String,
-    set_is_general_error: WriteSignal<Option<String>>,
-) -> impl IntoView {
-    view! {
-        <div
-            class="p-3 my-2 text-sm text-error-content bg-error rounded-lg"
-            role="alert"
-            data-testid="generic-error-banner"
-        >
-            <p>{format!("An unexpected error occurred: {msg}")}</p>
-            <button
-                class="btn btn-sm btn-outline mt-2"
-                data-testid="btn-generic-error-dismiss"
-                on:click=move |_| set_is_general_error.set(None)
-            >
-                "OK"
-            </button>
-        </div>
     }
 }

@@ -58,13 +58,13 @@ test.describe("Uniqueness constraint violation", () => {
 
     // -------------------- Assert: Duplicate error UI appears --------------------
     // A banner should appear, and the dismiss button should be visible.
-    await expect(page.getByTestId(T.form.duplicateBanner)).toBeVisible();
+    await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toBeVisible();
     await expect(
-      page.getByTestId(T.form.btnDuplicateDismiss)
+      page.getByTestId(T.banner.btnAcknowledgment)
     ).toBeVisible();
 
     // The banner should contain a warning message.
-    await expect(page.getByTestId(T.form.duplicateBanner)).toContainText(
+    await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toContainText(
       `An address with name '${uniqueData.name}' already exists in '${uniqueData.postal_code} ${uniqueData.locality}'.`
     );
 
@@ -72,10 +72,10 @@ test.describe("Uniqueness constraint violation", () => {
     await expect(page.getByTestId(T.form.btnSave)).toBeDisabled();
 
     // -------------------- Resolve via dismiss --------------------
-    await page.getByTestId(T.form.btnDuplicateDismiss).click();
+    await page.getByTestId(T.banner.btnAcknowledgment).click();
 
     // After dismiss, the banner should be gone.
-    await expect(page.getByTestId(T.form.duplicateBanner)).toBeHidden();
+    await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toBeHidden();
 
     // The form fields should be enabled again.
     await expect(page.getByTestId(T.form.inputName)).toBeEnabled();

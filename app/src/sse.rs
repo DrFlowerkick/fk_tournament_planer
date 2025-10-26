@@ -8,8 +8,6 @@ use leptos_use::{
     UseEventSourceOptions, UseEventSourceReturn, core::ConnectionReadyState,
     use_event_source_with_options,
 };
-use std::thread::sleep;
-use std::time::Duration;
 
 #[component]
 pub fn sse_listener(
@@ -22,22 +20,28 @@ pub fn sse_listener(
 ) -> impl IntoView {
     let url = topic.sse_url();
     let UseEventSourceReturn {
-        data, ready_state, ..
+        data,
+        ready_state,
+        close,
+        ..
     } = use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
         url.as_str(),
         UseEventSourceOptions::default().named_events(["changed".to_string()]),
     );
+
+    // call close o cleanup
+    on_cleanup(move || {
+        close();
+    });
+
     Effect::new(move || {
         if let Some(data) = data.get() {
             match data {
                 CrPushNotice::AddressUpdated { id, meta } => {
                     // id should always be equal, since we subscribed for topic id
                     assert_eq!(*topic.id(), id);
-                    let max_retry = 5;
-                    let num_retry = 0;
-                    while meta.version > version() && num_retry < max_retry {
+                    if meta.version > version() {
                         refetch();
-                        sleep(Duration::from_millis(100));
                     }
                 }
             }

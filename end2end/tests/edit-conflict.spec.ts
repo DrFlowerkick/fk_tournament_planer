@@ -72,11 +72,11 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
 
       // -------------------- Assert minimal conflict UI ------------
       // A banner should appear, and the reload button should be visible.
-      await expect(pageA.getByTestId(T.form.conflictBanner)).toBeVisible();
-      await expect(pageA.getByTestId(T.form.btnConflictReload)).toBeVisible();
+      await expect(pageA.getByTestId(T.banner.acknowledgmentBanner)).toBeVisible();
+      await expect(pageA.getByTestId(T.banner.btnAcknowledgment)).toBeVisible();
 
       // The banner should contain a warning message.
-      await expect(pageA.getByTestId(T.form.conflictBanner)).toContainText(
+      await expect(pageA.getByTestId(T.banner.acknowledgmentBanner)).toContainText(
         "A newer version of this address exists. Reloading will discard your changes."
       );
 
@@ -84,10 +84,10 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       await expect(pageA.getByTestId(T.form.btnSave)).toBeDisabled();
 
       // -------------------- Resolve via reload --------------------
-      await pageA.getByTestId(T.form.btnConflictReload).click();
+      await pageA.getByTestId(T.banner.btnAcknowledgment).click();
 
       // After reload, the banner should be gone and the form-version should bump to "1".
-      await expect(pageA.getByTestId(T.form.conflictBanner)).toBeHidden();
+      await expect(pageA.getByTestId(T.banner.acknowledgmentBanner)).toBeHidden();
       await expect(pageA.getByTestId(T.form.hiddenVersion)).toHaveValue("1");
 
       // The name input should now reflect B's saved value.
