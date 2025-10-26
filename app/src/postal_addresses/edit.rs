@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     AppError,
-    banner::{AcknowledgmentBanner, AcknowledgmentAndNavigateBanner},
+    banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
 };
 use app_core::{PaValidationField, PostalAddress};
 use leptos::{leptos_dom::helpers::set_timeout, prelude::*, web_sys};
@@ -30,13 +30,19 @@ pub fn PostalAddressEdit() -> impl IntoView {
 // Wrapper component to provide type safe refetch function via context
 #[component]
 pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
+    let navigate = use_navigate();
+
     // --- Server Actions & Resources ---
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
     let addr_res = Resource::new(
         move || id,
         |maybe_id| async move {
             match maybe_id {
-                Some(id) => load_postal_address(id).await,
+                Some(id) => match load_postal_address(id).await {
+                    Ok(Some(addr)) => Ok(addr),
+                    Ok(None) => Err(AppError::Db("Not found".to_string())),
+                    Err(e) => Err(e),
+                },
                 None => Ok(Default::default()),
             }
         },
@@ -58,8 +64,6 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
 
     // --- Signals for UI state & errors ---
     let pending = save_postal_address.pending();
-    let navigate = use_navigate();
-
     let is_new = id.is_none();
 
     // --- Derived Signals for Error States ---
@@ -97,6 +101,15 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
         }
     };
 
+    let is_disabled = move || {
+        addr_res.get().is_none()
+            || pending.get()
+            || is_conflict()
+            || is_duplicate()
+            || is_addr_res_error()
+            || is_general_error().is_some()
+    };
+
     // --- Derived Signal for Validation & Normalization ---
     let current_address = move || {
         let mut addr = PostalAddress::default();
@@ -126,15 +139,6 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
     let is_valid_locality = move || is_field_valid(PaValidationField::Locality);
     let is_valid_country = move || is_field_valid(PaValidationField::Country);
 
-    let is_disabled = move || {
-        addr_res.get().is_none()
-            || pending.get()
-            || is_conflict()
-            || is_duplicate()
-            || is_addr_res_error()
-            || is_general_error().is_some()
-    };
-
     let cancel_target = move || {
         id.map(|id| format!("/postal-address/{}", id))
             .unwrap_or_else(|| "/postal-address".to_string())
@@ -150,15 +154,17 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                     .map(|res| match res {
                         Err(msg) => {
                             // --- General Load Error Banner ---
-                            view! { <AcknowledgmentAndNavigateBanner
-                                msg=format!("An unexpected error occurred during load: {msg}")
-                                ack_btn_text="Reset Form"
-                                ack_action=refetch_and_reset
-                                nav_btn_text="Cancel"
-                                navigate_url=cancel_target()
-                                /> }
-                                .into_any()
+                            view! {
+                                <AcknowledgmentAndNavigateBanner
+                                    msg=format!("An unexpected error occurred during load: {msg}")
+                                    ack_btn_text="Reload"
+                                    ack_action=refetch_and_reset
+                                    nav_btn_text="Cancel"
+                                    navigate_url=cancel_target()
+                                />
                             }
+                                .into_any()
+                        }
                         Ok(addr) => {
                             set_name.set(addr.get_name().to_string());
                             set_street.set(addr.get_street().to_string());
@@ -170,7 +176,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                             ().into_any()
                         }
                     })
-            }} // Use <ActionForm/> to bind to your save server fn
+            }} // --- Address Form ---
             <ActionForm action=save_postal_address attr:data-testid="form-address">
                 // Hidden meta fields the server expects (id / version / intent)
                 <input
@@ -224,13 +230,15 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                 // --- General Save Error Banner ---
                 {move || {
                     if let Some(msg) = is_general_error() {
-                        view! { <AcknowledgmentAndNavigateBanner
-                            msg=format!("An unexpected error occurred during saving: {msg}")
-                            ack_btn_text="Dismiss"
-                            ack_action=move || save_postal_address.clear()
-                            nav_btn_text="Return to Search Address"
-                            navigate_url=cancel_target()
-                            /> }
+                        view! {
+                            <AcknowledgmentAndNavigateBanner
+                                msg=format!("An unexpected error occurred during saving: {msg}")
+                                ack_btn_text="Dismiss"
+                                ack_action=move || save_postal_address.clear()
+                                nav_btn_text="Return to Search Address"
+                                navigate_url=cancel_target()
+                            />
+                        }
                             .into_any()
                     } else {
                         ().into_any()

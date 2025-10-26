@@ -18,16 +18,9 @@ use uuid::Uuid;
     skip_all,
     fields(id = %id)
 )]
-pub async fn load_postal_address(id: Uuid) -> AppResult<PostalAddress> {
+pub async fn load_postal_address(id: Uuid) -> AppResult<Option<PostalAddress>> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
-    let pa = if let Some(pa) = core.load(id).await? {
-        info!("loaded");
-        pa.to_owned()
-    } else {
-        // Not an error here: returning default is the expected fallback
-        info!("not_found_return_default");
-        PostalAddress::default()
-    };
+    let pa = core.load(id).await?.map(|pa| pa.to_owned());
     Ok(pa)
 }
 
