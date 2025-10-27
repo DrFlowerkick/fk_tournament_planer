@@ -24,23 +24,23 @@ pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
 
-    // setup sse listener
-    let UseEventSourceReturn {
-        data,
-        ready_state,
-        change_url,
-        ..
-    } = use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
-        "",
-        UseEventSourceOptions::default()
-            .immediate(false)
-            .named_events(["changed".to_string()]),
-    );
-
     // signals for address fields
     let (name, set_name) = signal(String::new());
     let (id, set_id) = signal(None::<Uuid>);
     let (version, set_version) = signal(0_u32);
+    let (url, set_url) = signal(String::new());
+
+    // setup sse listener
+    let UseEventSourceReturn {
+        data,
+        ready_state,
+        ..
+    } = use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
+        url,
+        UseEventSourceOptions::default()
+            .immediate(false)
+            .named_events(["changed".to_string()]),
+    );
 
     // dropdown-status & keyboard-highlight
     let (open, set_open) = signal(false);
@@ -217,8 +217,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             set_version.set(addr.get_version().unwrap_or_default());
                             if let Some(id) = addr.get_id() {
                                 let topic = CrTopic::Address(id);
-                                let url = topic.sse_url();
-                                change_url(url);
+                                set_url.set(topic.sse_url());
                             }
                             ().into_any()
                         }
@@ -386,7 +385,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         navigate("/postal-address/new", NavigateOptions::default());
                     }
                 >
-                    "Modify"
+                    "New"
                 </button>
 
                 // MODIFY: only active, if valid address is selected and no error
