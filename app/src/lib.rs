@@ -38,7 +38,9 @@ pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
     // Provides the WebSocket socket context for client registry communication
-    provide_socket_context();
+    Effect::new(move || {
+        provide_socket_context();
+    });
 
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
