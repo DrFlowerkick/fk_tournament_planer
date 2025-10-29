@@ -6,27 +6,19 @@ use app_core::*;
 use axum::{
     Router,
     extract::State,
-    http,
-    http::{HeaderMap, HeaderName, StatusCode},
+    http::StatusCode,
     response::IntoResponse,
     routing::get,
 };
-use axum_extra::routing::RouterExt;
 use cr_leptos_axum_socket::{ClientRegistrySocket, connect_to_websocket};
-use cr_single_instance::*;
 use db_postgres::*;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
 use leptos_axum_socket::{ServerSocket, SocketRoute};
 use serde::Serialize;
 use shared::*;
-//use sse_service::api_subscribe;
-use std::{sync::Arc, time::Duration};
-use tower_http::{
-    request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
-    trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
-};
-use tracing::{Level, Span, info, info_span, instrument};
+use std::sync::Arc;
+use tracing::{info, instrument};
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
@@ -106,7 +98,6 @@ async fn main() -> Result<()> {
     // initialize core state
     let db = PgDb::new(url_db()?).await?;
     db.run_migration().await?;
-    //let cr_single = Arc::new(CrSingleInstance::new());
     let cr = Arc::new(ClientRegistrySocket {});
     let core = CoreBuilder::new()
         .set_db(Arc::new(db))
@@ -116,7 +107,6 @@ async fn main() -> Result<()> {
         core: Arc::new(core),
         leptos_options: leptos_options.clone(),
         socket: ServerSocket::new(),
-        //cr_single_instance: cr_single,
     };
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
@@ -124,7 +114,6 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/db", get(health_db))
-        //.typed_get(api_subscribe)
         .leptos_routes_with_context(
             &app_state,
             routes,
@@ -139,37 +128,7 @@ async fn main() -> Result<()> {
         )
         .socket_route(connect_to_websocket)
         .fallback(leptos_axum::file_and_error_handler::<AppState, _>(shell))
-        .with_state(app_state)
-        // --- request id handling: set + propagate x-request-id ---
-        .layer(PropagateRequestIdLayer::new(HeaderName::from_static("x-request-id")))
-        .layer(SetRequestIdLayer::x_request_id(MakeRequestUuid))
-        // --- tracing per HTTP request (root span) + EOS logging ---
-        .layer(
-            TraceLayer::new_for_http()
-                // Create a root span for every incoming HTTP request.
-                .make_span_with(|req: &http::Request<_>| {
-                    let ua = req
-                        .headers()
-                        .get(http::header::USER_AGENT)
-                        .and_then(|v| v.to_str().ok())
-                        .unwrap_or("-");
-                    info_span!(
-                        "http_request",
-                        level = %Level::INFO,
-                        method = %req.method(),
-                        path = %req.uri().path(),
-                        ua,
-                    )
-                })
-                // Emit standardized on_request/on_response events.
-                .on_request(DefaultOnRequest::new())
-                .on_response(DefaultOnResponse::new())
-                // Log end-of-stream (useful for long-lived SSE; fires when body stream fully ends).
-                .on_eos(|trailers: Option<&HeaderMap>, dur: Duration, _span: &Span| {
-                    // trailers.is_some() indicates graceful end with trailers present (rare for SSE).
-                    tracing::info!(duration_ms = %dur.as_millis(), has_trailers = trailers.is_some(), "http stream closed");
-                })
-        );
+        .with_state(app_state);
 
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`

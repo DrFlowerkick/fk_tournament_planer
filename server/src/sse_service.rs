@@ -1,5 +1,6 @@
 // web service helper functions and types to use the client registry in web
 
+/*
 use crate::CrKind;
 use app_core::CrTopic;
 use axum::{
@@ -15,7 +16,6 @@ use std::convert::Infallible;
 use tokio_stream::once;
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
-/*
 // typed_path must match to crate::types::CR_TOPIC_URL_TEMPLATE
 #[derive(TypedPath, Deserialize, Clone, Copy)]
 #[typed_path("/api/cr/subscribe/{kind}/{id}")]

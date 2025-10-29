@@ -3,31 +3,6 @@ use leptos_router::{NavigateOptions, hooks::use_navigate};
 use std::fmt::Display;
 
 #[component]
-pub fn AcknowledgmentBanner(
-    msg: impl Display,
-    ack_btn_text: impl Display,
-    ack_action: impl Fn() + 'static,
-) -> impl IntoView {
-    view! {
-        <div
-            data-testid="acknowledgment-banner"
-            class="p-3 my-2 text-sm text-error-content bg-error rounded-lg"
-            role="alert"
-        >
-            <p>{format!("{msg}")}</p>
-            <button
-                type="button"
-                data-testid="btn-acknowledgment-action"
-                class="btn btn-sm btn-outline mt-2"
-                on:click=move |_| ack_action()
-            >
-                {format!("{ack_btn_text}")}
-            </button>
-        </div>
-    }
-}
-
-#[component]
 pub fn AcknowledgmentAndNavigateBanner(
     msg: impl Display,
     ack_btn_text: impl Display,
