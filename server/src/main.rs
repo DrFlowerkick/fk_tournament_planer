@@ -1,17 +1,12 @@
+mod fake_db;
 mod sse_service;
+use fake_db::*;
 
 use anyhow::Result;
 use app::*;
 use app_core::*;
-use axum::{
-    Router,
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::get,
-};
+use axum::{Router, extract::State, http::StatusCode, response::IntoResponse, routing::get};
 use cr_leptos_axum_socket::{ClientRegistrySocket, connect_to_websocket};
-use db_postgres::*;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
 use leptos_axum_socket::{ServerSocket, SocketRoute};
@@ -24,16 +19,7 @@ use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{EnvFilter, Registry, prelude::*};
 
-use anyhow::Context;
-use std::env;
-
 fn init_tracing_bunyan() -> Result<()> {
-    // Read level configuration from env (.env via dotenvy or docker sets env)
-    let rust_log =
-        env::var("RUST_LOG").context("POSTGRES_URL must be set. Hint: did you run dotenv()?")?;
-    let database_name = env::var("DATABASE_NAME")
-        .context("POSTGRES_URL must be set. Hint: did you run dotenv()?")?;
-    dbg!(rust_log, database_name);
     let env_filter =
         //EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,axum=info"));
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("error,axum=error"));
@@ -96,8 +82,7 @@ async fn main() -> Result<()> {
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
     // initialize core state
-    let db = PgDb::new(url_db()?).await?;
-    db.run_migration().await?;
+    let db = FakeDatabasePort::new();
     let cr = Arc::new(ClientRegistrySocket {});
     let core = CoreBuilder::new()
         .set_db(Arc::new(db))

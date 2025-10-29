@@ -1,4 +1,4 @@
-use super::{AddressParams, server_fn::load_postal_address};
+use super::{AddressParams, server_fn::load_postal_address_dummy};
 use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
 use leptos::prelude::*;
 use leptos_router::hooks::use_params;
@@ -24,7 +24,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
         move || id,
         |maybe_id| async move {
             match maybe_id {
-                Some(id) => match load_postal_address(id).await {
+                Some(id) => match load_postal_address_dummy(id).await {
                     Ok(Some(addr)) => Ok(addr),
                     Ok(None) => Err(AppError::Db("Not found".to_string())),
                     Err(e) => Err(e),
@@ -84,16 +84,9 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                             ().into_any()
                         }
                     })
-            }}
-        <p>"Postal Address Edit (debug version)"</p>
-        <p>{name}</p>
-        <p>{street}</p>
-        <p>{postal_code}</p>
-        <p>{locality}</p>
-        <p>{region}</p>
-        <p>{country}</p>
-        <p>{move || format!("{}", id.unwrap_or_default().to_string())}</p>
-        <p>{version}</p>
+            }} <p>"Postal Address Edit (debug version)"</p> <p>{name}</p> <p>{street}</p>
+            <p>{postal_code}</p> <p>{locality}</p> <p>{region}</p> <p>{country}</p>
+            <p>{move || format!("{}", id.unwrap_or_default().to_string())}</p> <p>{version}</p>
         </Transition>
     }
 }

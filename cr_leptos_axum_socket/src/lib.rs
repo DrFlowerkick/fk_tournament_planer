@@ -15,6 +15,7 @@ use leptos_axum_socket::{SocketMsg, expect_socket_context};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use shared::AppState;
+use tracing::{info, instrument};
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CrSocketMsg {
@@ -33,9 +34,18 @@ pub struct ClientRegistrySocket {}
 #[cfg(feature = "ssr")]
 #[async_trait]
 impl ClientRegistryPort for ClientRegistrySocket {
+    #[instrument(
+        name = "cr_socket.publish",
+        skip_all,
+        fields(topic = %topic)
+    )]
     async fn publish(&self, topic: CrTopic, msg: CrMsg) -> AnyResult<()> {
         let msg = CrSocketMsg { msg };
-        leptos_axum_socket::send(&topic, &msg).await;
+        //leptos_axum_socket::send(&topic, &msg).await;
+        info!(
+            "THIS IS NEVER CALLED: Publishing to topic {}: {:?}",
+            topic, msg
+        );
         Ok(())
     }
 }
@@ -61,18 +71,9 @@ pub fn use_client_registry_topic(
 ) {
     let socket = expect_socket_context();
 
-    //let prev_topic = StoredValue::new(None::<CrTopic>);
-
     Effect::new(move || {
-        //    if let Some(topic) = prev_topic.get_value() {
-        //        socket.unsubscribe(topic);
-        //        prev_topic.set_value(None);
-        //    }
         if let Some(topic) = topic.get() {
-            //        prev_topic.set_value(Some(topic));
             socket.subscribe(topic, handler.clone());
         }
     });
-
-    //on_cleanup(move || socket.unsubscribe(topic.get_untracked()));
 }

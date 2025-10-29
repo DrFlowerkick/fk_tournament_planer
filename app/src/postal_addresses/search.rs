@@ -1,10 +1,7 @@
 // search for postal address by name
 
-use super::{
-    AddressParams,
-    server_fn::load_postal_address,
-};
-use crate::{banner::AcknowledgmentAndNavigateBanner, AppError};
+use super::{AddressParams, server_fn::load_postal_address_dummy};
+use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
 use app_core::{CrTopic, PostalAddress};
 use leptos::prelude::*;
 use leptos_router::{
@@ -25,7 +22,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
             let navigate = use_navigate();
             match maybe_id {
                 // AppResult<PostalAddress>
-                Ok(AddressParams { uuid: Some(id) }) => match load_postal_address(id).await {
+                Ok(AddressParams { uuid: Some(id) }) => match load_postal_address_dummy(id).await {
                     Ok(Some(pa)) => Ok(pa),
                     Ok(None) => {
                         navigate(
@@ -36,7 +33,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             },
                         );
                         Ok(Default::default())
-                    },
+                    }
                     Err(e) => Err(e),
                 },
                 // new form or bad uuid: no loading delay
@@ -98,12 +95,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             ().into_any()
                         }
                     })
-            }}
-        <p>"Postal Address Search (debug version)"</p>
-        <p>{name}</p>
-        <p>{move || format!("{}", id.get().unwrap_or_default().to_string())}</p>
-        <p>{version}</p>
-        <p>{move || format!("{}", topic.get().map(|t| t.to_string()).unwrap_or_default())}</p>
+            }} <p>"Postal Address Search (debug version)"</p> <p>{name}</p>
+            <p>{move || format!("{}", id.get().unwrap_or_default().to_string())}</p>
+            <p>{version}</p>
+            <p>{move || format!("{}", topic.get().map(|t| t.to_string()).unwrap_or_default())}</p>
         </Transition>
     }
 }
