@@ -10,7 +10,8 @@ import {
   clickSave,
   openModifyForm,
   expectPreviewShows,
-  ensureListVisible,
+  waitForPostalAddressListUrl,
+  extractUuidFromUrl,
 } from '../helpers/form';
 
 /**
@@ -32,12 +33,9 @@ test.describe('Create → Edit → Invalid forbids save → Fix → Save → Ver
     await clickSave(page);
 
     // After save, either you land on detail page or back to list.
-    await ensureListVisible(page);
-    // with ensureListVisible() we check, that we are indeed on /postal-address,
-    // but it has as a fallback a manuell load of /postal-address. If this
-    // fallback is done, the page is called without an ID, therefore 
-    // expectPreviewShows() would fail. If it does not fail, the app properly
-    // returns to /postal-address/<uuid> with uuid of new entry.
+    await waitForPostalAddressListUrl(page);
+    const uuid = extractUuidFromUrl(page.url());
+
     await expectPreviewShows(page, {
       name: name,
       street: 'Beispielstr. 1',
@@ -66,12 +64,9 @@ test.describe('Create → Edit → Invalid forbids save → Fix → Save → Ver
     await clickSave(page);
 
     // Step 5: Verify that edited address is displayed with updated values
-    await ensureListVisible(page);
-    // with ensureListVisible() we check, that we are indeed on /postal-address,
-    // but it has as a fallback a manuell load of /postal-address. If this
-    // fallback is done, the page is called without an ID, therefore 
-    // expectPreviewShows() would fail. If it does not fail, the app properly
-    // returns to /postal-address/<uuid> with uuid of new entry.
+    await waitForPostalAddressListUrl(page);
+    const uuid_edited = extractUuidFromUrl(page.url());
+    test.expect(uuid_edited).toBe(uuid); // same id
     await expectPreviewShows(page, {
       street: 'Beispielstr. 3',
     });

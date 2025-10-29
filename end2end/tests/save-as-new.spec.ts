@@ -2,12 +2,12 @@
 import { test, expect } from "@playwright/test";
 import {
   openNewForm,
-  fillAll,
+  fillFields,
   clickSave,
   clickSaveAsNew,
   extractUuidFromUrl,
   typeThenBlur,
-  waitForPostalAddressListLoadedWithUrl,
+  waitForPostalAddressListUrl,
 } from "../helpers/form";
 import { T } from "../helpers/selectors";
 
@@ -24,17 +24,9 @@ test.describe('"Save as new" functionality', () => {
     };
 
     await openNewForm(page);
-    await fillAll(
-      page,
-      initial.name,
-      initial.street,
-      initial.postal_code,
-      initial.locality,
-      initial.region,
-      initial.country
-    );
+    await fillFields(page, initial);
     await clickSave(page);
-    await waitForPostalAddressListLoadedWithUrl(page);
+    await waitForPostalAddressListUrl(page);
     const originalId = extractUuidFromUrl(page.url());
 
     // -------------------- Act: Edit and "Save as new" --------------------
@@ -51,7 +43,7 @@ test.describe('"Save as new" functionality', () => {
 
     // -------------------- Assert: A new address was created --------------------
     // We should be on the view page of the *new* address
-    await waitForPostalAddressListLoadedWithUrl(page);
+    await waitForPostalAddressListUrl(page);
     const newId = extractUuidFromUrl(page.url());
 
     // The new ID must be different from the original one

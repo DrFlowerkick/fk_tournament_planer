@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import { selectors } from "../helpers/selectors";
 import {
   searchAndOpenByNameOnCurrentPage,
-  fillAll,
+  fillFields,
   clickSave,
   expectPreviewShows,
   openPostalAddressList,
@@ -13,14 +13,16 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
 }) => {
   const S = selectors(page);
 
-  // Unique test data (avoid partial-unique collisions)
+  // Use values that make assertions obvious and avoid trimming/casing ambiguity.
   const ts = Date.now();
-  const name = `E2E Test Address ${ts}`;
-  const street = "Main Street 42";
-  const postal = "10555";
-  const locality = "Berlin";
-  const region = "BE";
-  const country = "DE";
+  const initial = {
+    name: `E2E Test Address ${ts}`,
+    street: "Main Street 42",
+    postal_code: "10555",
+    locality: "Berlin",
+    region: "BE",
+    country: "DE",
+  };
 
   await test.step("Open search and navigate to New", async () => {
     await openPostalAddressList(page);
@@ -29,7 +31,7 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
   });
 
   await test.step("Fill form", async () => {
-    await fillAll(page, name, street, postal, locality, region, country);
+    await fillFields(page, initial);
   });
 
   await test.step('Save with "save-as-new"', async () => {
@@ -40,7 +42,7 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
   });
 
   await test.step("Find the created address via search", async () => {
-    await searchAndOpenByNameOnCurrentPage(page, name, {
+    await searchAndOpenByNameOnCurrentPage(page, initial.name, {
       clearFirst: true,
       expectUnique: true,
       waitAriaBusy: true,
@@ -48,13 +50,6 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
   });
 
   await test.step("Verify preview shows the saved data", async () => {
-    await expectPreviewShows(page, {
-      name: name,
-      street: street,
-      postal_code: postal,
-      locality: locality,
-      region: region,
-      country: country,
-    });
+    await expectPreviewShows(page, initial);
   });
 });

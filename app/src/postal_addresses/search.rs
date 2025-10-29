@@ -13,10 +13,7 @@ use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
 };
-use leptos_use::{
-    UseEventSourceOptions, UseEventSourceReturn, core::ConnectionReadyState,
-    use_event_source_with_options,
-};
+use leptos_use::{UseEventSourceOptions, UseEventSourceReturn, use_event_source_with_options};
 use uuid::Uuid;
 
 #[component]
@@ -29,18 +26,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let (id, set_id) = signal(None::<Uuid>);
     let (version, set_version) = signal(0_u32);
     let (url, set_url) = signal(String::new());
-
-    // setup sse listener
-    let UseEventSourceReturn {
-        data,
-        ready_state,
-        ..
-    } = use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
-        url,
-        UseEventSourceOptions::default()
-            .immediate(false)
-            .named_events(["changed".to_string()]),
-    );
 
     // dropdown-status & keyboard-highlight
     let (open, set_open) = signal(false);
@@ -76,23 +61,31 @@ pub fn SearchPostalAddress() -> impl IntoView {
         },
     );
 
-    Effect::new(move || {
-        if let Some(event) = data.get() {
-            match event {
-                CrPushNotice::AddressUpdated { meta, .. } => {
-                    if meta.version > version.get_untracked() {
-                        addr_res.refetch();
+    let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
+
+    #[cfg(feature = "hydrate")]
+    {
+        // setup sse listener
+        let UseEventSourceReturn { data, .. } =
+            use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
+                url,
+                UseEventSourceOptions::default()
+                    .immediate(false)
+                    .named_events(["changed".to_string()]),
+            );
+
+        Effect::new(move || {
+            if let Some(event) = data.get() {
+                match event {
+                    CrPushNotice::AddressUpdated { meta, .. } => {
+                        if meta.version > version.get_untracked() {
+                            addr_res.refetch();
+                        }
                     }
                 }
             }
-        }
-    });
-
-    let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
-
-    // these function are required by sse_listener to refetch addr_res after changes to it at server side
-    let _refetch = move || addr_res.refetch();
-    let _topic = move || id.get().map(CrTopic::Address);
+        });
+    }
 
     // load possible addresses from query
     let addr_list = Resource::new(
@@ -405,15 +398,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                 >
                     "Modify"
                 </button>
-            // SSE connection status (hidden)
-            </div> <p class="hidden" data-testid="sse-status">
-                {move || match ready_state.get() {
-                    ConnectionReadyState::Connecting => "connecting",
-                    ConnectionReadyState::Open => "connected",
-                    ConnectionReadyState::Closing => "disconnecting",
-                    ConnectionReadyState::Closed => "disconnected",
-                }}
-            </p>
+            </div>
         </Transition>
     }
 }

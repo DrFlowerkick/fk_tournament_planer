@@ -5,6 +5,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - use_event_source_with_url_as_signal
 
 env:
   CARGO_TERM_COLOR: always
