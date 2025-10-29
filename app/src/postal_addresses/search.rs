@@ -19,10 +19,11 @@ use leptos_use::{
 };
 use uuid::Uuid;
 use cr_leptos_axum_socket::{use_client_registry_topic, CrSocketMsg};
+use leptos_axum_socket::{SocketMsg, expect_socket_context, use_socket_context};
 
 
 #[component]
-pub fn SearchPostalAddress() -> impl IntoView {
+pub fn SearchPostalAddress_debug() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
 
@@ -115,9 +116,9 @@ pub fn SearchPostalAddress() -> impl IntoView {
         </Transition>
     }
 }
-/*
+
 #[component]
-pub fn SearchPostalAddressOld() -> impl IntoView {
+pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
 
@@ -139,7 +140,7 @@ pub fn SearchPostalAddressOld() -> impl IntoView {
             .named_events(["changed".to_string()]),
     );*/
 
-    let (data, _set_data) = signal(None::<CrMsg>);
+    let (_data, _set_data) = signal(None::<CrMsg>);
     let (ready_state, _set_ready_state) =
         signal(ConnectionReadyState::Closed);
 
@@ -191,7 +192,7 @@ pub fn SearchPostalAddressOld() -> impl IntoView {
     });*/
 
     let socket_handler = move |msg: &CrSocketMsg| {
-        match msg.0 {
+        match msg.msg {
             CrMsg::AddressUpdated { version: meta_version, .. } => {
                 if meta_version > version.get_untracked() {
                     addr_res.refetch();
@@ -201,6 +202,22 @@ pub fn SearchPostalAddressOld() -> impl IntoView {
     };
     let (topic, set_topic) = signal(None::<CrTopic>);
     //use_client_registry_topic(topic, socket_handler);
+    
+    #[cfg(feature = "hydrate")]
+    {
+        let socket = expect_socket_context();
+    
+    Effect::new(move || {
+        //    if let Some(topic) = prev_topic.get_value() {
+        //        socket.unsubscribe(topic);
+        //        prev_topic.set_value(None);
+        //    }
+        if let Some(topic) = topic.get() {//&& let Some(socket) = use_socket_context() {
+            //        prev_topic.set_value(Some(topic));
+            socket.subscribe(topic, socket_handler);
+        }
+    });
+}
 
     let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
@@ -530,4 +547,4 @@ pub fn SearchPostalAddressOld() -> impl IntoView {
         </Transition>
     }
 }
-*/
+

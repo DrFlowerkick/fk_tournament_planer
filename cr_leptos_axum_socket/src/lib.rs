@@ -59,11 +59,11 @@ pub fn use_client_registry_topic(
     topic: ReadSignal<Option<CrTopic>>,
     handler: impl Fn(&CrSocketMsg) + Clone + Send + Sync + 'static,
 ) {
-    let socket = expect_socket_context();
 
     //let prev_topic = StoredValue::new(None::<CrTopic>);
 
     Effect::new(move || {
+        let socket = expect_socket_context();
         //    if let Some(topic) = prev_topic.get_value() {
         //        socket.unsubscribe(topic);
         //        prev_topic.set_value(None);
