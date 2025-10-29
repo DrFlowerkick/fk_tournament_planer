@@ -25,7 +25,7 @@ async fn given_active_stream_when_last_handle_dropped_then_stream_ends_quickly()
     let id = *topic.id();
 
     let mut stream =
-        subscribe_with_timeout(adapter.as_ref(), topic.clone(), DEFAULT_TIMEOUT).await?;
+        subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
 
     // Publish a couple of events to exercise the stream.
     for v in 1..=3 {
@@ -69,7 +69,7 @@ async fn given_additional_handles_when_drop_non_final_then_stream_remains_alive(
     let id = *topic.id();
 
     let mut stream =
-        subscribe_with_timeout(adapter1.as_ref(), topic.clone(), DEFAULT_TIMEOUT).await?;
+        subscribe_with_timeout(adapter1.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
 
     // Drop only one handle.
     drop(adapter2);

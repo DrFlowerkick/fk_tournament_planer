@@ -4,7 +4,7 @@
 //! Adjust the `use` paths below to your actual crate/module structure.
 //! These helpers assume the following API exists in your crate:
 //!   - Trait `ClientRegistryPort`
-//!   - Types: `CrTopic`, `CrPushNotice`, `CrUpdateMeta`, `CrNoticeStream`
+//!   - Types: `CrTopic`, `CrMsg`
 //!   - A *test-only* factory or support module to construct topics and an adapter handle.
 //!
 //! Recommended to provide (in your crate under cfg(test)):
@@ -14,9 +14,9 @@
 //!
 //! See the TODOs below if names differ in your codebase.
 
-use super::CrSingleInstance;
+use super::{CrNoticeStream, CrSingleInstance};
 use anyhow::Result;
-use app_core::{ClientRegistryPort, CrNoticeStream, CrPushNotice, CrTopic, CrUpdateMeta};
+use app_core::{ClientRegistryPort, CrMsg, CrTopic};
 use futures_util::{StreamExt, future::join_all};
 use std::{
     sync::{Arc, Once},
@@ -49,23 +49,19 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Build a minimal `AddressUpdated` notice for tests.
 /// Extend this if your real enum carries additional fields.
-pub fn build_address_updated(id: Uuid, version: u32) -> CrPushNotice {
-    CrPushNotice::AddressUpdated {
-        id,
-        meta: CrUpdateMeta { version },
-    }
+pub fn build_address_updated(id: Uuid, version: u32) -> CrMsg {
+    CrMsg::AddressUpdated { id, version }
 }
 
-/// Extract the version from a `CrPushNotice`.
-pub fn notice_version(n: &CrPushNotice) -> u32 {
+/// Extract the version from a `CrMsg`.
+pub fn notice_version(n: &CrMsg) -> u32 {
     match n {
-        CrPushNotice::AddressUpdated { meta, .. } => meta.version,
-        // add more variants if needed
+        CrMsg::AddressUpdated { version, .. } => *version,
     }
 }
 
 /// Construct the real adapter used in tests.
-pub fn make_adapter() -> Result<Arc<dyn ClientRegistryPort>> {
+pub fn make_adapter() -> Result<Arc<CrSingleInstance>> {
     Ok(Arc::new(CrSingleInstance::new()))
 }
 
@@ -114,13 +110,14 @@ pub async fn publish_address_updated(
     id: Uuid,
     version: u32,
 ) -> anyhow::Result<()> {
+    let topic = CrTopic::Address(id);
     let notice = build_address_updated(id, version);
-    reg.publish(notice).await
+    reg.publish(topic, notice).await
 }
 
 /// Subscribe helper with timeout protection on the subscription call.
 pub async fn subscribe_with_timeout(
-    reg: &dyn ClientRegistryPort,
+    reg: Arc<CrSingleInstance>,
     topic: CrTopic,
     deadline: Duration,
 ) -> anyhow::Result<CrNoticeStream> {

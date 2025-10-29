@@ -15,7 +15,7 @@ use std::convert::Infallible;
 use tokio_stream::once;
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
-
+/*
 // typed_path must match to crate::types::CR_TOPIC_URL_TEMPLATE
 #[derive(TypedPath, Deserialize, Clone, Copy)]
 #[typed_path("/api/cr/subscribe/{kind}/{id}")]
@@ -42,7 +42,7 @@ pub async fn api_subscribe(
     info!("SSE connected");
     let topic = CrTopic::from(topic);
 
-    let out = match state.core.client_registry.subscribe(topic).await {
+    let out = match state.cr_single_instance.subscribe(topic).await {
         Ok(st) => st
             .map(|changed| match serde_json::to_string(&changed) {
                 Ok(s) => Ok(Event::default().event("changed").data(s)),
@@ -67,3 +67,5 @@ pub async fn api_subscribe(
 
     Sse::new(out).keep_alive(axum::response::sse::KeepAlive::default())
 }
+
+*/

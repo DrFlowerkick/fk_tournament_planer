@@ -7,6 +7,7 @@ use error::*;
 use postal_addresses::*;
 
 use leptos::prelude::*;
+use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
     StaticSegment,
@@ -36,6 +37,8 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
+    // Provides the WebSocket socket context for client registry communication
+    provide_socket_context();
 
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />

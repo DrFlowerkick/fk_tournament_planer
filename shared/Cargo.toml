@@ -9,5 +9,6 @@ edition = "2024"
 app_core = { path = "../app_core" }
 axum.workspace = true
 axum-macros.workspace = true
+cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
 leptos.workspace = true
-
+leptos-axum-socket = { workspace = true, features = ["ssr"] }

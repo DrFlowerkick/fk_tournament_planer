@@ -4,11 +4,7 @@
 #[cfg(feature = "ssr")]
 pub mod registry;
 mod types;
-#[cfg(feature = "ssr")]
-mod web_service;
 
 #[cfg(feature = "ssr")]
 pub use registry::*;
 pub use types::*;
-#[cfg(feature = "ssr")]
-pub use web_service::*;

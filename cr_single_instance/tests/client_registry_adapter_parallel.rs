@@ -27,7 +27,7 @@ async fn given_many_parallel_publishers_when_send_and_read_concurrently_then_all
     let id = *topic.id();
 
     // Start subscriber first (hot stream). We will read concurrently.
-    let stream = subscribe_with_timeout(adapter.as_ref(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let stream = subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
 
     // 2) Define workload: moderate K to avoid overflow with cooperative yields.
     let n_publishers = 8usize;
@@ -90,8 +90,8 @@ async fn given_two_topics_and_parallel_publishers_when_send_then_isolated_stream
     let id_b = *topic_b.id();
 
     // Two independent subscribers.
-    let mut sa = subscribe_with_timeout(adapter.as_ref(), topic_a, DEFAULT_TIMEOUT).await?;
-    let mut sb = subscribe_with_timeout(adapter.as_ref(), topic_b, DEFAULT_TIMEOUT).await?;
+    let mut sa = subscribe_with_timeout(adapter.clone(), topic_a, DEFAULT_TIMEOUT).await?;
+    let mut sb = subscribe_with_timeout(adapter.clone(), topic_b, DEFAULT_TIMEOUT).await?;
 
     let n_publishers = 4usize;
     let k_versions = 100u32;
@@ -154,7 +154,7 @@ async fn given_fast_subscriber_and_parallel_publishers_when_send_then_no_drop_po
     let id = *topic.id();
 
     // Subscribe before publishing; do not add artificial delay on receive side.
-    let mut stream = subscribe_with_timeout(adapter.as_ref(), topic, DEFAULT_TIMEOUT).await?;
+    let mut stream = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // Keep total throughput moderate so the subscriber can keep up.
     let n_publishers = 4usize;

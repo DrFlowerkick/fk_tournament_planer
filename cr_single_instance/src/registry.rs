@@ -1,7 +1,7 @@
 // implementation of trait ClientRegistryPort
 
 use anyhow::{Result, anyhow};
-use app_core::{ClientRegistryPort, CrNoticeStream, CrPushNotice, CrTopic};
+use app_core::{ClientRegistryPort, CrMsg, CrTopic};
 use async_trait::async_trait;
 use dashmap::DashMap;
 use futures_core::Stream;
@@ -15,8 +15,11 @@ use tokio::sync::broadcast;
 use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 use tracing::{debug, info, instrument, warn};
 
-type CrBuses = Arc<DashMap<CrTopic, broadcast::Sender<CrPushNotice>>>;
-type WeakBuses = Weak<DashMap<CrTopic, broadcast::Sender<CrPushNotice>>>;
+/// Framework-agnostic event stream (boxed + pinned trait object).
+pub type CrNoticeStream = Pin<Box<dyn Stream<Item = CrMsg> + Send + 'static>>;
+
+type CrBuses = Arc<DashMap<CrTopic, broadcast::Sender<CrMsg>>>;
+type WeakBuses = Weak<DashMap<CrTopic, broadcast::Sender<CrMsg>>>;
 
 /// RAII stream wrapper that can drop the underlying receiver and
 /// remove an empty topic bus when the stream goes out of scope.
@@ -27,7 +30,7 @@ struct CrSubscriptionStream {
 }
 
 impl Stream for CrSubscriptionStream {
-    type Item = CrPushNotice;
+    type Item = CrMsg;
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match self.inner.as_mut() {
             Some(inner) => inner.as_mut().poll_next(cx),
@@ -81,7 +84,7 @@ impl CrSingleInstance {
     }
 
     /// Create a bus only when a client subscribes (avoid orphan buses).
-    fn ensure_bus(&self, topic: &CrTopic) -> broadcast::Sender<CrPushNotice> {
+    fn ensure_bus(&self, topic: &CrTopic) -> broadcast::Sender<CrMsg> {
         let mut created = false;
         let tx = self
             .buses
@@ -89,7 +92,7 @@ impl CrSingleInstance {
             .or_insert_with(|| {
                 created = true;
                 // Small bounded buffer; slow receivers drop oldest messages.
-                let (tx, _rx) = broadcast::channel::<CrPushNotice>(128);
+                let (tx, _rx) = broadcast::channel::<CrMsg>(128);
                 tx
             })
             .clone();
@@ -100,15 +103,12 @@ impl CrSingleInstance {
     }
 
     /// For publishing: access an existing bus without creating a new one.
-    fn get_bus(&self, topic: &CrTopic) -> Option<broadcast::Sender<CrPushNotice>> {
+    fn get_bus(&self, topic: &CrTopic) -> Option<broadcast::Sender<CrMsg>> {
         self.buses.get(topic).map(|g| g.clone())
     }
-}
-
-#[async_trait]
-impl ClientRegistryPort for CrSingleInstance {
+    /// Subscribe to a topic; dropping the returned stream ends the subscription (RAII).
     #[instrument(name = "cr.subscribe", skip(self), fields(topic = %topic))]
-    async fn subscribe(&self, topic: CrTopic) -> Result<CrNoticeStream> {
+    pub async fn subscribe(&self, topic: CrTopic) -> Result<CrNoticeStream> {
         if topic.id().is_nil() {
             return Err(anyhow!("nil uuid"));
         }
@@ -139,13 +139,15 @@ impl ClientRegistryPort for CrSingleInstance {
 
         Ok(Box::pin(wrapped))
     }
+}
 
-    #[instrument(name = "cr.publish", skip(self, notice), fields(topic = %CrTopic::from(&notice)))]
-    async fn publish(&self, notice: CrPushNotice) -> Result<()> {
-        let topic = CrTopic::from(&notice);
+#[async_trait]
+impl ClientRegistryPort for CrSingleInstance {
+    #[instrument(name = "cr.publish", skip(self, msg))]
+    async fn publish(&self, topic: CrTopic, msg: CrMsg) -> Result<()> {
         if let Some(tx) = self.get_bus(&topic) {
             let listeners = tx.receiver_count();
-            let sent = tx.send(notice).is_ok();
+            let sent = tx.send(msg).is_ok();
             debug!(listeners, %sent, "publish_attempt");
         } else {
             debug!("publish_no_listeners");
@@ -184,7 +186,7 @@ mod tests_drop_semantics {
 
         // Publish one event to ensure the bus actually exists and works.
         adapter
-            .publish(build_address_updated(id, 1))
+            .publish(topic.clone(), build_address_updated(id, 1))
             .await
             .expect("publish failed");
         let _first = timeout(Duration::from_secs(2), stream.next())
@@ -228,7 +230,7 @@ mod tests_drop_semantics {
 
         // Prove the stream is live
         adapter
-            .publish(build_address_updated(id, 1))
+            .publish(topic.clone(), build_address_updated(id, 1))
             .await
             .expect("publish failed");
         let _ = timeout(Duration::from_secs(2), stream.next())

@@ -1,4 +1,4 @@
-use app_core::{CrPushNotice, DbError};
+use app_core::{CrMsg, DbError};
 use uuid::Uuid;
 
 use super::fakes::*; // make_core_with_fakes, make_addr, Fake* types
@@ -22,12 +22,12 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
     assert_eq!(notices.len(), 1, "exactly one publish expected after save");
 
     match &notices[0] {
-        CrPushNotice::AddressUpdated { id, meta } => {
+        CrMsg::AddressUpdated { id, version } => {
             // saved.id should be Some(Uuid) if your PostalAddress uses IdVersion::Existing
             let persisted_id = saved.get_id().expect("id should exist after insert");
             assert_eq!(*id, persisted_id, "published id must match saved id");
             assert_eq!(
-                Some(meta.version),
+                Some(*version),
                 saved.get_version(),
                 "published version must match saved version"
             );
@@ -172,9 +172,9 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
 
     // (Optional) sanity on last notice payload
     match notices.last().unwrap() {
-        CrPushNotice::AddressUpdated { id: nid, meta } => {
+        CrMsg::AddressUpdated { id: nid, version } => {
             assert_eq!(*nid, id);
-            assert_eq!(Some(meta.version), second.get_version());
+            assert_eq!(Some(*version), second.get_version());
         } // uncomment this, when CrPushNotice is extended
           //other => panic!("unexpected notice variant: {:?}", other),
     }

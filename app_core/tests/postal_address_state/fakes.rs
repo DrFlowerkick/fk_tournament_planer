@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-
-use uuid::Uuid;
-
 use app_core::{
-    ClientRegistryPort, Core, CoreBuilder, CrPushNotice, DatabasePort, DbError, DbResult,
+    ClientRegistryPort, Core, CoreBuilder, CrMsg, CrTopic, DatabasePort, DbError, DbResult,
     DbpPostalAddress, PostalAddress, PostalAddressState, utils::id_version::IdVersion,
 };
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use uuid::Uuid;
 
 use async_trait::async_trait;
 
@@ -132,7 +130,7 @@ impl DatabasePort for FakeDatabasePort {
 /// Minimal ClientRegistry fake (not used by these DB tests, but needed to build Core).
 #[derive(Clone, Default)]
 pub struct FakeClientRegistryPort {
-    published: Arc<Mutex<Vec<CrPushNotice>>>,
+    published: Arc<Mutex<Vec<CrMsg>>>,
     fail_next_publish: Arc<Mutex<bool>>,
 }
 
@@ -140,7 +138,7 @@ impl FakeClientRegistryPort {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn published(&self) -> Vec<CrPushNotice> {
+    pub fn published(&self) -> Vec<CrMsg> {
         self.published.lock().unwrap().clone()
     }
     pub fn clear(&self) {
@@ -153,16 +151,7 @@ impl FakeClientRegistryPort {
 
 #[async_trait]
 impl ClientRegistryPort for FakeClientRegistryPort {
-    async fn subscribe(
-        &self,
-        _topic: app_core::CrTopic,
-    ) -> anyhow::Result<app_core::CrNoticeStream> {
-        // Not needed for DB tests: return an empty stream.
-        use futures_util::stream;
-        Ok(Box::pin(stream::empty()))
-    }
-
-    async fn publish(&self, notice: CrPushNotice) -> anyhow::Result<()> {
+    async fn publish(&self, _topic: CrTopic, notice: CrMsg) -> anyhow::Result<()> {
         let mut guard = self.fail_next_publish.lock().unwrap();
         if *guard {
             *guard = false;
@@ -183,8 +172,8 @@ pub fn make_core_with_fakes() -> (
     let cr = Arc::new(FakeClientRegistryPort::new());
 
     let core = CoreBuilder::new()
-        .set_db(db.clone() as Arc<dyn DatabasePort>)
-        .set_cr(cr.clone() as Arc<dyn ClientRegistryPort>)
+        .set_db(db.clone())
+        .set_cr(cr.clone())
         .build()
         .as_postal_address_state();
     (core, db, cr)

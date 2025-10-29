@@ -2,7 +2,7 @@
 // tests/client_registry_adapter_basic.rs
 //! Basic P1 tests for the real Client Registry adapter.
 
-use app_core::CrPushNotice;
+use app_core::CrMsg;
 use cr_single_instance::registry::test_support::*;
 use futures_util::StreamExt;
 use std::time::Duration;
@@ -18,7 +18,7 @@ async fn given_subscribed_when_publish_then_one_notice_received() -> anyhow::Res
     let id = *topic.id();
 
     // Subscribe first (hot stream: only new events)
-    let mut stream = subscribe_with_timeout(adapter.as_ref(), topic, DEFAULT_TIMEOUT).await?;
+    let mut stream = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // Publish one notice
     publish_address_updated(adapter.as_ref(), id, 1).await?;
@@ -30,9 +30,12 @@ async fn given_subscribed_when_publish_then_one_notice_received() -> anyhow::Res
         .expect("stream ended unexpectedly");
 
     match n {
-        CrPushNotice::AddressUpdated { id: got_id, meta } => {
+        CrMsg::AddressUpdated {
+            id: got_id,
+            version,
+        } => {
             assert_eq!(got_id, id, "received unexpected id");
-            assert_eq!(meta.version as u64, 1, "unexpected version");
+            assert_eq!(version, 1, "unexpected version");
         } // uncomment this, when CrPushNotice is extended
           //_ => anyhow::bail!("unexpected notice variant"),
     }
@@ -55,7 +58,7 @@ async fn given_past_publishes_when_subscribe_then_no_replay() -> anyhow::Result<
     }
 
     // Now subscribe; expect zero past events
-    let stream = subscribe_with_timeout(adapter.as_ref(), topic, DEFAULT_TIMEOUT).await?;
+    let stream = subscribe_with_timeout(adapter, topic, DEFAULT_TIMEOUT).await?;
     let received = drain_for(stream, Duration::from_millis(500)).await;
     assert_eq!(received, 0, "got unexpected replayed events");
 
@@ -71,8 +74,8 @@ async fn given_two_subscribers_when_publish_then_both_receive_one() -> anyhow::R
     let topic = unique_topic();
     let id = *topic.id();
 
-    let mut s1 = subscribe_with_timeout(adapter.as_ref(), topic.clone(), DEFAULT_TIMEOUT).await?;
-    let mut s2 = subscribe_with_timeout(adapter.as_ref(), topic, DEFAULT_TIMEOUT).await?;
+    let mut s1 = subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let mut s2 = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // Publish once
     publish_address_updated(adapter.as_ref(), id, 1).await?;
@@ -88,13 +91,19 @@ async fn given_two_subscribers_when_publish_then_both_receive_one() -> anyhow::R
 
     match (&n1, &n2) {
         (
-            CrPushNotice::AddressUpdated { id: id1, meta: m1 },
-            CrPushNotice::AddressUpdated { id: id2, meta: m2 },
+            CrMsg::AddressUpdated {
+                id: id1,
+                version: v1,
+            },
+            CrMsg::AddressUpdated {
+                id: id2,
+                version: v2,
+            },
         ) => {
             assert_eq!(*id1, id);
             assert_eq!(*id2, id);
-            assert_eq!(m1.version as u64, 1);
-            assert_eq!(m2.version as u64, 1);
+            assert_eq!(*v1 as u64, 1);
+            assert_eq!(*v2 as u64, 1);
         } // uncomment this, when CrPushNotice is extended
           //_ => anyhow::bail!("unexpected notice variant(s)"),
     }
@@ -111,7 +120,7 @@ async fn given_sequential_versions_when_publish_then_versions_non_decreasing() -
     let adapter = make_adapter()?;
     let topic = unique_topic();
     let id = *topic.id();
-    let mut stream = subscribe_with_timeout(adapter.as_ref(), topic, DEFAULT_TIMEOUT).await?;
+    let mut stream = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     let k = 50u32;
     for v in 1..=k {
@@ -141,7 +150,7 @@ async fn given_steady_state_when_publish_sequence_then_no_spurious_duplicates() 
     let adapter = make_adapter()?;
     let topic = unique_topic();
     let id = *topic.id();
-    let mut stream = subscribe_with_timeout(adapter.as_ref(), topic, DEFAULT_TIMEOUT).await?;
+    let mut stream = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     let k = 40u32;
 
@@ -183,7 +192,7 @@ async fn given_subscription_when_drop_then_no_more_events() -> anyhow::Result<()
 
     // Take a subscription and receive one event
     let mut stream =
-        subscribe_with_timeout(adapter.as_ref(), topic.clone(), DEFAULT_TIMEOUT).await?;
+        subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
 
     publish_address_updated(adapter.as_ref(), id, 1).await?;
     let _first = tokio::time::timeout(DEFAULT_TIMEOUT, stream.next())
@@ -199,15 +208,15 @@ async fn given_subscription_when_drop_then_no_more_events() -> anyhow::Result<()
     }
 
     // Fresh subscriber sees only new events
-    let mut fresh = subscribe_with_timeout(adapter.as_ref(), topic, DEFAULT_TIMEOUT).await?;
+    let mut fresh = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
     publish_address_updated(adapter.as_ref(), id, 5).await?;
     let n = tokio::time::timeout(DEFAULT_TIMEOUT, fresh.next())
         .await?
         .unwrap();
     match n {
-        CrPushNotice::AddressUpdated { id: got, meta } => {
+        CrMsg::AddressUpdated { id: got, version } => {
             assert_eq!(got, id);
-            assert_eq!(meta.version as u64, 5);
+            assert_eq!(version, 5);
         } // uncomment this, when CrPushNotice is extended
           //_ => anyhow::bail!("unexpected notice variant"),
     }
@@ -225,7 +234,7 @@ async fn given_buffer_overflow_when_publish_before_read_then_drop_policy_applies
     let adapter = make_adapter()?;
     let topic = unique_topic(); // your helper that yields a topic with a unique id
     let id = *topic.id(); // ensure payload id matches topic id
-    let stream = subscribe_with_timeout(adapter.as_ref(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let stream = subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
 
     // 2) Act: publish K » buffer_capacity (e.g., 200 > 128) BEFORE reading from the stream
     // This intentionally overflows the broadcast buffer so drop policy kicks in.

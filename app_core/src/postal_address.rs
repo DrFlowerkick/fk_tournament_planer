@@ -1,7 +1,7 @@
 // data types for postal addresses
 
 use crate::{
-    Core, CrPushNotice, CrUpdateMeta, DbResult,
+    Core, CrMsg, CrTopic, DbResult,
     utils::{id_version::IdVersion, normalize::*, validation::*},
 };
 use displaydoc::Display;
@@ -290,6 +290,7 @@ impl PostalAddress {
     }
 }
 
+/// State for postal address operations
 pub struct PostalAddressState {
     address: PostalAddress,
 }
@@ -325,20 +326,17 @@ impl Core<PostalAddressState> {
             .save_postal_address(&self.state.address)
             .await?;
         // publish change of address to client registry
-        let notice =
-            CrPushNotice::AddressUpdated {
-                id: self
-                    .state
-                    .address
-                    .get_id()
-                    .expect("expecting save_postal_address to return always an existing uuid"),
-                meta: CrUpdateMeta {
-                    version: self.state.address.get_version().expect(
-                        "expecting save_postal_address to return always an existing version",
-                    ),
-                },
-            };
-        self.client_registry.publish(notice).await?;
+        let id =
+            self.state.address.get_id().expect(
+                "expecting save_postal_address to return always an existing id and version",
+            );
+        let version =
+            self.state.address.get_version().expect(
+                "expecting save_postal_address to return always an existing id and version",
+            );
+        let notice = CrTopic::Address(id);
+        let msg = CrMsg::AddressUpdated { id, version };
+        self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
     pub async fn list_addresses(

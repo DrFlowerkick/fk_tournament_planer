@@ -12,14 +12,20 @@ app_core = { path = "../app_core" }
 axum.workspace = true
 axum-extra.workspace = true
 cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
+cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket", features = ["ssr"] }
 db_postgres = { path = "../db_postgres" }
 dotenvy.workspace = true
+futures-core.workspace = true
+futures-util.workspace = true
 leptos = { workspace = true, features = [ "ssr" ] }
+leptos-axum-socket = { workspace = true, features = [ "ssr" ] }
 leptos_axum.workspace = true
 serde.workspace = true
+serde_json.workspace = true
 shared = { path = "../shared" }
 simple_logger.workspace = true
 tokio.workspace = true
+tokio-stream.workspace = true
 tower.workspace = true
 tower-http.workspace = true
 tracing.workspace = true
@@ -27,3 +33,4 @@ tracing-bunyan-formatter.workspace = true
 tracing-error.workspace = true
 tracing-log.workspace = true
 tracing-subscriber.workspace = true
+uuid.workspace = true
