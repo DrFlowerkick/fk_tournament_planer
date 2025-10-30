@@ -63,29 +63,26 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
-    #[cfg(feature = "hydrate")]
-    {
-        // setup sse listener
-        let UseEventSourceReturn { data, .. } =
-            use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
-                url,
-                UseEventSourceOptions::default()
-                    .immediate(false)
-                    .named_events(["changed".to_string()]),
-            );
+    // setup sse listener
+    let UseEventSourceReturn { data, .. } =
+        use_event_source_with_options::<CrPushNotice, JsonSerdeCodec>(
+            url,
+            UseEventSourceOptions::default()
+                .immediate(false)
+                .named_events(["changed".to_string()]),
+        );
 
-        Effect::new(move || {
-            if let Some(event) = data.get() {
-                match event {
-                    CrPushNotice::AddressUpdated { meta, .. } => {
-                        if meta.version > version.get_untracked() {
-                            addr_res.refetch();
-                        }
+    Effect::new(move || {
+        if let Some(event) = data.get() {
+            match event {
+                CrPushNotice::AddressUpdated { meta, .. } => {
+                    if meta.version > version.get_untracked() {
+                        addr_res.refetch();
                     }
                 }
             }
-        });
-    }
+        }
+    });
 
     // load possible addresses from query
     let addr_list = Resource::new(

@@ -31,6 +31,7 @@ test.describe('"Save as new" functionality', () => {
 
     // -------------------- Act: Edit and "Save as new" --------------------
     await page.goto(`/postal-address/${originalId}/edit`);
+    await page.waitForLoadState('domcontentloaded');
 
     // Ensure we are on the edit page for the original address
     await expect(page.getByTestId(T.form.hiddenId)).toHaveValue(originalId);

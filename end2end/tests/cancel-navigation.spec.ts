@@ -6,6 +6,7 @@ import {
   clickSave,
   openPostalAddressList,
   searchAndOpenByNameOnCurrentPage,
+  waitForPostalAddressListUrl,
 } from "../helpers/form";
 import { T } from "../helpers/selectors";
 import exp from "constants";
@@ -17,7 +18,7 @@ test.describe("Cancel button navigation", () => {
     await openNewForm(page);
     await fillAllRequiredValid(page, name);
     await clickSave(page);
-    await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+    await waitForPostalAddressListUrl(page);
     const url = page.url();
 
     // Go to list and search for it to create a history entry

@@ -7,6 +7,7 @@ import {
   typeThenBlur,
   extractUuidFromUrl,
   expectSavesDisabled,
+  waitForPostalAddressListUrl,
 } from "../helpers/form";
 import { T } from "../helpers/selectors";
 
@@ -37,18 +38,20 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       await fillFields(pageA, initial);
       await clickSave(pageA);
 
-      await pageA.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+      await waitForPostalAddressListUrl(pageA);
       const id = extractUuidFromUrl(pageA.url());
 
       // A opens edit for this id. Expect form-version "0".
       await pageA.goto(`/postal-address/${id}/edit`);
+      await pageA.waitForLoadState('domcontentloaded');
       // The version is in a hidden input field. We check its value attribute.
       await expect(pageA.locator('input[name="version"]')).toHaveValue("0");
 
       // -------------------- B updates first -----------------------
       await pageB.goto(`/postal-address/${id}/edit`);
+      await pageB.waitForLoadState('domcontentloaded');
       // The version is in a hidden input field. We check its value attribute.
-      await expect(pageA.locator('input[name="version"]')).toHaveValue("0");
+      await expect(pageB.locator('input[name="version"]')).toHaveValue("0");
 
       const editedByB = `${initial.name} (B)`;
       await typeThenBlur(

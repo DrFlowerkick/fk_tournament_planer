@@ -9,6 +9,7 @@ import {
   extractUuidFromUrl,
   expectSavesDisabled,
   expectSavesEnabled,
+  waitForPostalAddressListUrl,
 } from "../helpers/form";
 
 // --- Test data ---------------------------------------------------------------
@@ -52,7 +53,7 @@ test.describe("postal address live update (Preview-only UI)", () => {
       await clickSave(pageA);
 
       // After save, route should be /postal-address/<uuid>
-      await pageA.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+      await waitForPostalAddressListUrl(pageA);
       const urlA = pageA.url();
       const id = extractUuidFromUrl(urlA);
 
@@ -63,6 +64,7 @@ test.describe("postal address live update (Preview-only UI)", () => {
       // ----------------------- Act (B edits & saves) -------------------------
       // B opens the edit route directly for the same UUID.
       await pageB.goto(`/postal-address/${id}/edit`);
+      await pageB.waitForLoadState('domcontentloaded');
       // now save button should be enabled
       await expectSavesEnabled(pageB);
 

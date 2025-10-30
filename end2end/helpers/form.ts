@@ -13,10 +13,11 @@ export const ROUTES = {
 export async function openPostalAddressList(page: Page) {
   // Navigate to "list" route and assert elements exist
   await page.goto(ROUTES.list);
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByTestId(T.search.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
   await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnModify)).toBeDisabled;
+  await expect(page.getByTestId(T.search.btnModify)).toBeDisabled();
 }
 
 /**
@@ -24,6 +25,7 @@ export async function openPostalAddressList(page: Page) {
  */
 export async function waitForPostalAddressListUrl(page: Page) {
   await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByTestId(T.search.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
   await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
@@ -45,9 +47,10 @@ export function extractUuidFromUrl(url: string): string {
 export async function openNewForm(page: Page) {
   // Navigate to "new" route and assert the form exists
   await page.goto(ROUTES.newAddress);
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByTestId(T.form.root)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
-  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeHidden;
+  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeHidden();
 }
 
 /**
@@ -65,6 +68,7 @@ export async function openModifyForm(page: Page) {
  */
 export async function waitForPostalAddressEditUrl(page: Page) {
   await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}\/edit$/);
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByTestId(T.form.root)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
