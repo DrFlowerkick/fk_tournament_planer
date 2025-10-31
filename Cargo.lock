@@ -1661,7 +1661,7 @@ dependencies = [
 [[package]]
 name = "leptos-use"
 version = "0.16.3"
-source = "git+https://github.com/DrFlowerkick/leptos-use/?branch=remove_local_storag_from_UseEventSourceReturn#776cd469dbfea2855c36250954a62c51ae7f4af6"
+source = "git+https://github.com/DrFlowerkick/leptos-use/?branch=single_thread_safety_for_use_event_source#43c4fb6613a58e0f433d858ef815c39a80d23325"
 dependencies = [
  "cfg-if",
  "chrono",
