@@ -1,6 +1,6 @@
 // e2e/create-duplicate-address.spec.ts
 import { test, expect } from "@playwright/test";
-import { openNewForm, fillAll, clickSave } from "../helpers/form";
+import { openNewForm, fillFields, clickSave } from "../helpers/form";
 import { T } from "../helpers/selectors";
 
 test.describe("Uniqueness constraint violation", () => {
@@ -23,15 +23,7 @@ test.describe("Uniqueness constraint violation", () => {
     };
 
     await openNewForm(page);
-    await fillAll(
-      page,
-      initial.name,
-      initial.street,
-      initial.postal_code,
-      initial.locality,
-      initial.region,
-      initial.country
-    );
+    await fillFields(page, initial);
     await clickSave(page);
     await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
 
@@ -45,15 +37,7 @@ test.describe("Uniqueness constraint violation", () => {
       region: "BY",
       country: "DE",
     };
-    await fillAll(
-      page,
-      duplicate.name,
-      duplicate.street,
-      duplicate.postal_code,
-      duplicate.locality,
-      duplicate.region,
-      duplicate.country
-    );
+    await fillFields(page, duplicate);
     await clickSave(page);
 
     // -------------------- Assert: Duplicate error UI appears --------------------

@@ -2,10 +2,12 @@
 import { test, expect } from "@playwright/test";
 import {
   openNewForm,
-  fillAll,
+  fillFields,
   clickSave,
   typeThenBlur,
   extractUuidFromUrl,
+  expectSavesDisabled,
+  waitForPostalAddressListUrl,
 } from "../helpers/form";
 import { T } from "../helpers/selectors";
 
@@ -30,27 +32,27 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       };
 
       await openNewForm(pageA);
-      await fillAll(
-        pageA,
-        initial.name,
-        initial.street,
-        initial.postal_code,
-        initial.locality,
-        initial.region,
-        initial.country
-      );
+      // as long as other required fields are empty/invalid, saving must remain disabled
+      await expectSavesDisabled(pageA);
+
+      await fillFields(pageA, initial);
       await clickSave(pageA);
 
-      await pageA.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+      await waitForPostalAddressListUrl(pageA);
       const id = extractUuidFromUrl(pageA.url());
 
       // A opens edit for this id. Expect form-version "0".
       await pageA.goto(`/postal-address/${id}/edit`);
+      await pageA.waitForLoadState('domcontentloaded');
       // The version is in a hidden input field. We check its value attribute.
       await expect(pageA.locator('input[name="version"]')).toHaveValue("0");
 
       // -------------------- B updates first -----------------------
       await pageB.goto(`/postal-address/${id}/edit`);
+      await pageB.waitForLoadState('domcontentloaded');
+      // The version is in a hidden input field. We check its value attribute.
+      await expect(pageB.locator('input[name="version"]')).toHaveValue("0");
+
       const editedByB = `${initial.name} (B)`;
       await typeThenBlur(
         pageB,
@@ -72,11 +74,15 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
 
       // -------------------- Assert minimal conflict UI ------------
       // A banner should appear, and the reload button should be visible.
-      await expect(pageA.getByTestId(T.banner.acknowledgmentBanner)).toBeVisible();
+      await expect(
+        pageA.getByTestId(T.banner.acknowledgmentBanner)
+      ).toBeVisible();
       await expect(pageA.getByTestId(T.banner.btnAcknowledgment)).toBeVisible();
 
       // The banner should contain a warning message.
-      await expect(pageA.getByTestId(T.banner.acknowledgmentBanner)).toContainText(
+      await expect(
+        pageA.getByTestId(T.banner.acknowledgmentBanner)
+      ).toContainText(
         "A newer version of this address exists. Reloading will discard your changes."
       );
 
@@ -87,7 +93,9 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       await pageA.getByTestId(T.banner.btnAcknowledgment).click();
 
       // After reload, the banner should be gone and the form-version should bump to "1".
-      await expect(pageA.getByTestId(T.banner.acknowledgmentBanner)).toBeHidden();
+      await expect(
+        pageA.getByTestId(T.banner.acknowledgmentBanner)
+      ).toBeHidden();
       await expect(pageA.getByTestId(T.form.hiddenVersion)).toHaveValue("1");
 
       // The name input should now reflect B's saved value.

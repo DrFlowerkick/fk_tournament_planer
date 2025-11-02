@@ -13,17 +13,32 @@ export const ROUTES = {
 export async function openPostalAddressList(page: Page) {
   // Navigate to "list" route and assert elements exist
   await page.goto(ROUTES.list);
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByTestId(T.search.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
   await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnModify)).toBeDisabled;
+  await expect(page.getByTestId(T.search.btnModify)).toBeDisabled();
 }
 
 /**
  * Wait for navigation to a postal address detail page (UUID URL).
  */
-export async function waitForPostalAddressListLoadedWithUrl(page: Page) {
+export async function waitForPostalAddressListUrl(page: Page) {
   await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+  await page.waitForLoadState('domcontentloaded');
+  await expect(page.getByTestId(T.search.input)).toBeVisible();
+  await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
+  await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
+  await expect(page.getByTestId(T.search.btnModify)).toBeEnabled();
+}
+
+/**
+ * Extracts the UUID from a /postal-address/<uuid> URL.
+ */
+export function extractUuidFromUrl(url: string): string {
+  const m = url.match(/\/postal-address\/([0-9a-f-]{36})(?:$|\/)/i);
+  if (!m) throw new Error(`No UUID found in URL: ${url}`);
+  return m[1];
 }
 
 /**
@@ -32,9 +47,31 @@ export async function waitForPostalAddressListLoadedWithUrl(page: Page) {
 export async function openNewForm(page: Page) {
   // Navigate to "new" route and assert the form exists
   await page.goto(ROUTES.newAddress);
+  await page.waitForLoadState('domcontentloaded');
   await expect(page.getByTestId(T.form.root)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
-  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeHidden;
+  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeHidden();
+}
+
+/**
+ * Enter modify mode from a detail page (if you have a dedicated edit button).
+ */
+export async function openModifyForm(page: Page) {
+  await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
+  await page.getByTestId(T.search.btnModify).click();
+  // Assert the form is shown again
+  await waitForPostalAddressEditUrl(page);
+}
+
+/**
+ * Wait for navigation to a edit postal address page (UUID URL).
+ */
+export async function waitForPostalAddressEditUrl(page: Page) {
+  await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}\/edit$/);
+  await page.waitForLoadState('domcontentloaded');
+  await expect(page.getByTestId(T.form.root)).toBeVisible();
+  await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
+  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
 }
 
 /**
@@ -69,6 +106,7 @@ export async function typeThenBlur(
   value: string,
   blurToTid: string
 ) {
+  await expect(page.getByTestId(inputTid)).toBeVisible();
   await page.getByTestId(inputTid).fill(value);
   await page.getByTestId(blurToTid).focus();
 }
@@ -95,56 +133,87 @@ export async function expectFieldValidity(
 /**
  * Fill all fields with given values.
  */
-export async function fillAll(
+export async function fillFields(
   page: Page,
-  name: string,
-  street: string,
-  postal_code: string,
-  locality: string,
-  region: string,
-  country: string
+  fields: {
+    name?: string;
+    street?: string;
+    postal_code?: string;
+    locality?: string;
+    region?: string;
+    country?: string;
+  }
 ) {
   // Name
-  await typeThenBlur(page, T.form.inputName, name, T.form.inputStreet);
+  if (fields.name !== undefined) {
+    await typeThenBlur(page, T.form.inputName, fields.name, T.form.inputStreet);
+  }
 
   // Street
-  await typeThenBlur(page, T.form.inputStreet, street, T.form.inputCountry);
+  if (fields.street !== undefined) {
+    await typeThenBlur(
+      page,
+      T.form.inputStreet,
+      fields.street,
+      T.form.inputCountry
+    );
+  }
 
-  // Country
-  await typeThenBlur(
-    page,
-    T.form.inputCountry,
-    country,
-    T.form.inputPostalCode
-  );
+  // Country before postal code (for postal code validation)
+  if (fields.country !== undefined) {
+    await typeThenBlur(
+      page,
+      T.form.inputCountry,
+      fields.country,
+      T.form.inputPostalCode
+    );
+  }
 
   // Postal code
-  await typeThenBlur(
-    page,
-    T.form.inputPostalCode,
-    postal_code,
-    T.form.inputLocality
-  );
+  if (fields.postal_code !== undefined) {
+    await typeThenBlur(
+      page,
+      T.form.inputPostalCode,
+      fields.postal_code,
+      T.form.inputLocality
+    );
+  }
 
   // Locality
-  await typeThenBlur(page, T.form.inputLocality, locality, T.form.inputRegion);
+  if (fields.locality !== undefined) {
+    await typeThenBlur(
+      page,
+      T.form.inputLocality,
+      fields.locality,
+      T.form.inputRegion
+    );
+  }
 
   // region
-  await typeThenBlur(page, T.form.inputRegion, region, T.form.inputName);
+  if (fields.region !== undefined) {
+    await typeThenBlur(
+      page,
+      T.form.inputRegion,
+      fields.region,
+      T.form.inputName
+    );
+  }
 }
 
 /**
  * Fill all required fields with valid normalized values (DE-specific ZIP example).
  */
 export async function fillAllRequiredValid(page: Page, name: string) {
-  await fillAll(
+  await fillFields(
     page,
-    name,
-    "Beispielstr. 1",
-    "10115",
-    "Berlin Mitte",
-    "",
-    "DE"
+    {
+      name,
+      street: "Beispielstr. 1",
+      postal_code: "10115",
+      locality: "Berlin Mitte",
+      region: "",
+      country: "DE"
+    }
   );
 }
 
@@ -162,22 +231,6 @@ export async function clickSaveAsNew(page: Page) {
   await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
   await expectSavesEnabled(page);
   await page.getByTestId(T.form.btnSaveAsNew).click();
-}
-
-/**
- * Ensure we are on the list page with the search input visible.
- */
-export async function ensureListVisible(page: Page) {
-  const input = page.getByTestId(T.search.input);
-
-  // Try a short, polite wait — maybe we are already on the list.
-  try {
-    await expect(input).toBeVisible();
-    return;
-  } catch {
-    // Not on list (or not yet rendered) → navigate explicitly.
-    await openPostalAddressList(page);
-  }
 }
 
 /**
@@ -236,16 +289,6 @@ export async function searchAndOpenByNameOnCurrentPage(
 }
 
 /**
- * Enter modify mode from a detail page (if you have a dedicated edit button).
- */
-export async function openModifyForm(page: Page) {
-  await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
-  await page.getByTestId(T.search.btnModify).click();
-  // Assert the form is shown again
-  await expect(page.getByTestId(T.form.root)).toBeVisible();
-}
-
-/**
  * Assert preview view shows specific field values
  */
 export async function expectPreviewShows(
@@ -294,38 +337,6 @@ export async function expectPreviewShows(
   if (expected.country !== undefined) {
     await expect(page.getByTestId(T.search.preview.country)).toHaveText(
       expected.country!
-    );
-  }
-}
-
-/**
- * Extracts the UUID from a /postal-address/<uuid> URL.
- */
-export function extractUuidFromUrl(url: string): string {
-  const m = url.match(/\/postal-address\/([0-9a-f-]{36})(?:$|\/)/i);
-  if (!m) throw new Error(`No UUID found in URL: ${url}`);
-  return m[1];
-}
-
-/**
- * Waits for SSE to be connected *if and only if* the optional status element exists.
- */
-export async function waitForSseConnected(page: Page, timeoutMs = 2000) {
-  const el = page.getByTestId(T.search.sseStatus);
-
-  // Ensure element exists and has *some* state:
-  await expect(el).toHaveText(
-    /connecting|connected|disconnecting|disconnected/i
-  );
-
-  try {
-    // Prefer real "connected" when engines expose it quickly (Chromium/WebKit).
-    await expect(el).toHaveText(/connected/i, { timeout: timeoutMs });
-  } catch {
-    // Firefox can stay "connecting" until the first event is delivered.
-    // Do NOT fail here; the test will gate on the version bump anyway.
-    console.warn(
-      '[E2E] SSE never reported "connected" (Firefox behavior). Continuing…'
     );
   }
 }

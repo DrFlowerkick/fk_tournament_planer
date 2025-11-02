@@ -1,22 +1,11 @@
 // e2e/tests/keyboard-navigation-search.spec.ts
 import { test, expect } from "@playwright/test";
-import { openPostalAddressList, openNewForm, fillAll, clickSave, waitForPostalAddressListLoadedWithUrl } from "../helpers/form";
+import { openPostalAddressList } from "../helpers/form";
 import { T } from "../helpers/selectors";
 
 test.describe("Search list keyboard navigation", () => {
-  // We need to create some data first to have something to navigate
-  test.beforeAll(async ({ browser }) => {
-    const page = await (await browser.newContext()).newPage();
-    await openNewForm(page);
-    const names = ["Alpha", "Beta", "Gamma"];
-    for (const name of names) {
-      await fillAll(page, `E2E Nav ${name} ${Date.now()}`, "Teststr. 1", "12345", "Teststadt", "", "DE");
-      await clickSave(page);
-      await waitForPostalAddressListLoadedWithUrl(page);
-      await openNewForm(page);
-    }
-    await page.close();
-  });
+  // We need to create three entries first to have something to navigate
+  // We do this globally for all tests in this suite in ./end2end/global-setup.ts
 
   test("navigates with arrow keys, selects with Enter, closes with Escape", async ({
     page,

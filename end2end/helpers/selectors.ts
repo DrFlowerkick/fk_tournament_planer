@@ -12,7 +12,6 @@ export const T = {
     input: "search-input", // <input type="text" ...> (query)
     suggestList: "search-suggest", // <ul id="addr-suggest" ...>
     suggestItem: "search-suggest-item", // each <li> entry
-    sseStatus: "sse-status", // status of sse connector
     // The right-hand "preview" (current selected/loaded address)
     preview: {
       root: "address-preview",
@@ -66,7 +65,6 @@ export function selectors(page: Page) {
       input: root.getByTestId(T.search.input),
       suggestList: root.getByTestId(T.search.suggestList),
       suggestItems: root.getByTestId(T.search.suggestItem),
-      sseStatus: root.getByTestId(T.search.sseStatus),
       preview: {
         root: root.getByTestId(T.search.preview.root),
         id: root.getByTestId(T.search.preview.id),
@@ -109,7 +107,6 @@ export function selectors(page: Page) {
       input: page.getByTestId(T.search.input),
       suggestList: page.getByTestId(T.search.suggestList),
       suggestItems: page.getByTestId(T.search.suggestItem),
-      sseStatus: page.getByTestId(T.search.sseStatus),
       preview: {
         root: page.getByTestId(T.search.preview.root),
         id: page.getByTestId(T.search.preview.id),

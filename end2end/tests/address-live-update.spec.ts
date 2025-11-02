@@ -2,13 +2,14 @@ import { test, expect, Page } from "@playwright/test";
 import { T } from "../helpers/selectors";
 import {
   openNewForm,
-  fillAll,
+  fillFields,
   clickSave,
   typeThenBlur,
   expectPreviewShows,
   extractUuidFromUrl,
-  waitForSseConnected,
-  expectTestIdTextWithObserver,
+  expectSavesDisabled,
+  expectSavesEnabled,
+  waitForPostalAddressListUrl,
 } from "../helpers/form";
 
 // --- Test data ---------------------------------------------------------------
@@ -31,10 +32,8 @@ const edited = {
 
 // --- Test --------------------------------------------------------------------
 
-test.describe("SSE live update (Preview-only UI)", () => {
-  test("editing in B updates Preview in A within 2s (no reload)", async ({
-    browser,
-  }) => {
+test.describe("postal address live update (Preview-only UI)", () => {
+  test("editing in B updates Preview in A (no reload)", async ({ browser }) => {
     // Create two completely separate browser contexts to simulate two users.
     const ctxA = await browser.newContext();
     const ctxB = await browser.newContext();
@@ -47,19 +46,14 @@ test.describe("SSE live update (Preview-only UI)", () => {
 
       // Open and create a new, valid address.
       await openNewForm(pageA);
-      await fillAll(
-        pageA,
-        initial.name,
-        initial.street,
-        initial.postal_code,
-        initial.locality,
-        initial.region,
-        initial.country
-      );
+      // as long as other required fields are empty/invalid, saving must remain disabled
+      await expectSavesDisabled(pageA);
+
+      await fillFields(pageA, initial);
       await clickSave(pageA);
 
       // After save, route should be /postal-address/<uuid>
-      await pageA.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+      await waitForPostalAddressListUrl(pageA);
       const urlA = pageA.url();
       const id = extractUuidFromUrl(urlA);
 
@@ -67,12 +61,12 @@ test.describe("SSE live update (Preview-only UI)", () => {
       await expectPreviewShows(pageA, initial);
       await expect(pageA.getByTestId(T.search.preview.version)).toHaveText("0");
 
-      // If an SSE status element exists, only proceed when connected.
-      await waitForSseConnected(pageA);
-
       // ----------------------- Act (B edits & saves) -------------------------
       // B opens the edit route directly for the same UUID.
       await pageB.goto(`/postal-address/${id}/edit`);
+      await pageB.waitForLoadState('domcontentloaded');
+      // now save button should be enabled
+      await expectSavesEnabled(pageB);
 
       // Change just the name; other fields remain as-is.
       await typeThenBlur(
@@ -88,33 +82,11 @@ test.describe("SSE live update (Preview-only UI)", () => {
 
       // ----------------------- Assert (A updates via SSE) --------------------
       // wait for new version
-      //await expect(pageA.getByTestId(T.search.preview.version)).toHaveText("1");
+      await expect(pageA.getByTestId(T.search.preview.version)).toHaveText("1");
       // A's preview should reflect the edited name.
-      await expect(pageA.getByTestId(T.search.preview.name)).toHaveText(edited.name);
-      /*await expect
-        .poll(
-          async () => {
-            // Hole beide Werte in JEDEM Poll-Intervall
-            const version = await pageA
-              .getByTestId(T.search.preview.version)
-              .textContent();
-            const name = await pageA
-              .getByTestId(T.search.preview.name)
-              .textContent();
-
-            // Gib den aktuellen Zustand zurück (nur für Debugging-Logs)
-            return { version, name };
-          },
-          {
-            // Die Bedingung, die WAHRE sein muss, damit das Pollen stoppt
-            message: `Warte darauf, dass Name='${edited.name}' UND Version='1' sind`,
-            timeout: 10000,
-          }
-        )
-        .toMatchObject({
-          version: "1",
-          name: edited.name,
-        });*/
+      await expect(pageA.getByTestId(T.search.preview.name)).toHaveText(
+        edited.name
+      );
 
       // Optional sanity check: A did not navigate away (no hard reload).
       await expect(pageA).toHaveURL(urlA);

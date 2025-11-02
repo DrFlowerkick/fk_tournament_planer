@@ -38,6 +38,9 @@ test.describe("Per-field normalization → validation + gated save", () => {
   }) => {
     await openNewForm(page);
 
+    // as long as other required fields are empty/invalid, saving must remain disabled
+    await expectSavesDisabled(page);
+
     // focus → type → blur -> normalize -> validate
     await typeThenBlur(
       page,
@@ -63,6 +66,9 @@ test.describe("Per-field normalization → validation + gated save", () => {
   }) => {
     await openNewForm(page);
 
+    // as long as other required fields are empty/invalid, saving must remain disabled
+    await expectSavesDisabled(page);
+
     // focus → type → blur -> normalize -> validate
     await typeThenBlur(
       page,
@@ -77,6 +83,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
       /*invalid*/ false
     );
 
+    // as long as other required fields are empty/invalid, saving must remain disabled
     await expectSavesDisabled(page);
   });
 
@@ -84,6 +91,9 @@ test.describe("Per-field normalization → validation + gated save", () => {
     page,
   }) => {
     await openNewForm(page);
+
+    // as long as other required fields are empty/invalid, saving must remain disabled
+    await expectSavesDisabled(page);
 
     // focus → type → blur -> normalize -> validate
     await typeThenBlur(
@@ -99,11 +109,15 @@ test.describe("Per-field normalization → validation + gated save", () => {
       /*invalid*/ false
     );
 
+    // as long as other required fields are empty/invalid, saving must remain disabled
     await expectSavesDisabled(page);
   });
 
   test("Country: uppercase on blur; then validate field", async ({ page }) => {
     await openNewForm(page);
+
+    // as long as other required fields are empty/invalid, saving must remain disabled
+    await expectSavesDisabled(page);
 
     // blur path
     await typeThenBlur(page, T.form.inputCountry, "de", T.form.inputStreet);
@@ -114,6 +128,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
       /*invalid*/ false
     );
 
+    // as long as other required fields are empty/invalid, saving must remain disabled
     await expectSavesDisabled(page);
   });
 
@@ -121,6 +136,9 @@ test.describe("Per-field normalization → validation + gated save", () => {
     page,
   }) => {
     await openNewForm(page);
+
+    // as long as other required fields are empty/invalid, saving must remain disabled
+    await expectSavesDisabled(page);
 
     /**
      * NOTE (DE-specific):
@@ -175,7 +193,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
       /*invalid*/ true
     );
 
-    // While invalid, save must be gated
+    // as long as other required fields are empty/invalid, saving must remain disabled
     await expectSavesDisabled(page);
   });
 
@@ -183,6 +201,9 @@ test.describe("Per-field normalization → validation + gated save", () => {
     page,
   }) => {
     await openNewForm(page);
+
+    // as long as other required fields are empty/invalid, saving must remain disabled
+    await expectSavesDisabled(page);
 
     /**
      * NOTE (DE-specific):
@@ -216,7 +237,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
       /*now invalid*/ true
     );
 
-    // While invalid, save must be gated
+    // as long as other required fields are empty/invalid, saving must remain disabled
     await expectSavesDisabled(page);
   });
 
