@@ -78,7 +78,6 @@ version = "0.1.0"
 dependencies = [
  "app_core",
  "cfg-if",
- "codee",
  "cr_leptos_axum_socket",
  "cr_single_instance",
  "db_postgres",
@@ -1639,8 +1638,6 @@ dependencies = [
 [[package]]
 name = "leptos-axum-socket"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5625e74345d9245a45bef9dd35b877ae9e0dd8e3564f222e50fbbe4165798422"
 dependencies = [
  "anyhow",
  "axum",

@@ -1,31 +1,55 @@
 // search for postal address by name
 
+use std::sync::Arc;
+
 use super::{
     AddressParams,
     server_fn::{list_postal_addresses, load_postal_address},
 };
-use crate::{banner::AcknowledgmentAndNavigateBanner, AppError};
+use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
 use app_core::{CrMsg, CrTopic, PostalAddress};
-use codee::string::JsonSerdeCodec;
+use cr_leptos_axum_socket::use_client_registry_topic;
 use cr_single_instance::SseUrl;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
 };
-use leptos_use::{
-    UseEventSourceOptions, UseEventSourceReturn, core::ConnectionReadyState,
-    use_event_source_with_options,
-};
+use leptos_use::{UseEventSourceOptions, UseEventSourceReturn, use_event_source_with_options};
 use uuid::Uuid;
-use cr_leptos_axum_socket::{use_client_registry_topic, CrSocketMsg};
-use leptos_axum_socket::{SocketMsg, expect_socket_context, use_socket_context};
-
 
 #[component]
-pub fn SearchPostalAddress_debug() -> impl IntoView {
+pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
+
+    // signals for address fields
+    let (name, set_name) = signal(String::new());
+    let (id, set_id) = signal(None::<Uuid>);
+    let (topic, set_topic) = signal(None::<CrTopic>);
+    let (version, set_version) = signal(0_u32);
+    let (_url, set_url) = signal(String::new());
+
+    // setup sse listener
+    /*let UseEventSourceReturn {
+        data,
+        ready_state,
+        ..
+    } = use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
+        url,
+        UseEventSourceOptions::default()
+            .immediate(false)
+            .named_events(["changed".to_string()]),
+    );*/
+
+    let (_data, _set_data) = signal(None::<CrMsg>);
+
+    // dropdown-status & keyboard-highlight
+    let (open, set_open) = signal(false);
+    let (hi, set_hi) = signal::<Option<usize>>(None);
+
+    // query to search address & loaded / selected address
+    let (query, set_query) = signal(String::new());
 
     // load existing address when `id` is Some(...)
     let addr_res: Resource<Result<PostalAddress, AppError>> = Resource::new(
@@ -45,131 +69,7 @@ pub fn SearchPostalAddress_debug() -> impl IntoView {
                             },
                         );
                         Ok(Default::default())
-                    },
-                    Err(e) => Err(e),
-                },
-                // new form or bad uuid: no loading delay
-                _ => Ok(Default::default()),
-            }
-        },
-    );
-
-    // signals for address fields
-    let (name, set_name) = signal(String::new());
-    let (id, set_id) = signal(None::<Uuid>);
-    let (version, set_version) = signal(0_u32);
-    let (topic, set_topic) = signal(None::<CrTopic>);
-
-    /*let socket_handler = move |msg: &CrSocketMsg| {
-        match msg.0 {
-            CrMsg::AddressUpdated { version: meta_version, .. } => {
-                if meta_version > version.get_untracked() {
-                    addr_res.refetch();
-                }
-            }
-        }
-    };*/
-    //use_client_registry_topic(topic, socket_handler);
-
-    view! {
-        <Transition fallback=move || {
-            view! {
-                <div>
-                    <p>"Searching for address..."</p>
-                </div>
-            }
-        }>
-            {move || {
-                addr_res
-                    .get()
-                    .map(|res| match res {
-                        Err(msg) => {
-                            // --- General Load Error Banner ---
-                            view! {
-                                <AcknowledgmentAndNavigateBanner
-                                    msg=format!("An unexpected error occurred during load: {msg}")
-                                    ack_btn_text="Reload"
-                                    ack_action=move || addr_res.refetch()
-                                    nav_btn_text="Reset"
-                                    navigate_url="/postal-address".into()
-                                />
-                            }
-                                .into_any()
-                        }
-                        Ok(addr) => {
-                            set_name.set(addr.get_name().to_string());
-                            set_id.set(addr.get_id());
-                            set_version.set(addr.get_version().unwrap_or_default());
-                            if let Some(id) = addr.get_id() {
-                                let new_topic = CrTopic::Address(id);
-                                set_topic.set(Some(new_topic));
-                            }
-                            ().into_any()
-                        }
-                    })
-            }}
-        <p>"Postal Address Search (new version)"</p>
-        <p>{name}</p>
-        <p>{move || format!("{}", id.get().unwrap_or_default().to_string())}</p>
-        <p>{version}</p>
-        <p>{move || format!("{}", topic.get().map(|t| t.to_string()).unwrap_or_default())}</p>
-        </Transition>
-    }
-}
-
-#[component]
-pub fn SearchPostalAddress() -> impl IntoView {
-    // get id from url
-    let params = use_params::<AddressParams>();
-
-    // signals for address fields
-    let (name, set_name) = signal(String::new());
-    let (id, set_id) = signal(None::<Uuid>);
-    let (version, set_version) = signal(0_u32);
-    let (_url, set_url) = signal(String::new());
-
-    // setup sse listener
-    /*let UseEventSourceReturn {
-        data,
-        ready_state,
-        ..
-    } = use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
-        url,
-        UseEventSourceOptions::default()
-            .immediate(false)
-            .named_events(["changed".to_string()]),
-    );*/
-
-    let (_data, _set_data) = signal(None::<CrMsg>);
-    let (ready_state, _set_ready_state) =
-        signal(ConnectionReadyState::Closed);
-
-    // dropdown-status & keyboard-highlight
-    let (open, set_open) = signal(false);
-    let (hi, set_hi) = signal::<Option<usize>>(None);
-
-    // query to search address & loaded / selected address
-    let (query, set_query) = signal(String::new());
-
-    // load existing address when `id` is Some(...)
-    let addr_res: Resource<Result<PostalAddress, AppError>> = Resource::new(
-        move || params.get(),
-        move |maybe_id| async move {
-            //let navigate = use_navigate();
-            match maybe_id {
-                // AppResult<PostalAddress>
-                Ok(AddressParams { uuid: Some(id) }) => match load_postal_address(id).await {
-                    Ok(Some(pa)) => Ok(pa),
-                    Ok(None) => {
-                        /*navigate(
-                            "/postal-address",
-                            NavigateOptions {
-                                replace: true,
-                                ..Default::default()
-                            },
-                        );*/
-                        Ok(Default::default())
-                    },
+                    }
                     Err(_e) => Ok(Default::default()),
                     //Err(e) => Err(e),
                 },
@@ -191,33 +91,8 @@ pub fn SearchPostalAddress() -> impl IntoView {
         }
     });*/
 
-    let socket_handler = move |msg: &CrSocketMsg| {
-        match msg.msg {
-            CrMsg::AddressUpdated { version: meta_version, .. } => {
-                if meta_version > version.get_untracked() {
-                    addr_res.refetch();
-                }
-            }
-        }
-    };
-    let (topic, set_topic) = signal(None::<CrTopic>);
-    //use_client_registry_topic(topic, socket_handler);
-    
-    #[cfg(feature = "hydrate")]
-    {
-        let socket = expect_socket_context();
-    
-    Effect::new(move || {
-        //    if let Some(topic) = prev_topic.get_value() {
-        //        socket.unsubscribe(topic);
-        //        prev_topic.set_value(None);
-        //    }
-        if let Some(topic) = topic.get() {//&& let Some(socket) = use_socket_context() {
-            //        prev_topic.set_value(Some(topic));
-            socket.subscribe(topic, socket_handler);
-        }
-    });
-}
+    let refetch = Arc::new(move || addr_res.refetch());
+    use_client_registry_topic(topic, version, refetch);
 
     let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
@@ -494,7 +369,8 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             <p class="hidden" data-testid="preview-id">
                                 {addr.get_id().unwrap_or_default().to_string()}
                             </p>
-                            <p class="hidden" data-testid="preview-version">
+                            //<p class="hidden" data-testid="preview-version">
+                            <p data-testid="preview-version">
                                 {addr.get_version().unwrap_or_default()}
                             </p>
                         </div>
@@ -535,16 +411,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                 >
                     "Modify"
                 </button>
-            // SSE connection status (hidden)
-            </div> <p class="hidden" data-testid="sse-status">
-                {move || match ready_state.get() {
-                    ConnectionReadyState::Connecting => "connecting",
-                    ConnectionReadyState::Open => "connected",
-                    ConnectionReadyState::Closing => "disconnecting",
-                    ConnectionReadyState::Closed => "disconnected",
-                }}
-            </p>
+            </div>
         </Transition>
     }
 }
-

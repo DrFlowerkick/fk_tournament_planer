@@ -8,6 +8,7 @@ use axum::{
     extract::{State, WebSocketUpgrade},
     response::Response,
 };
+use leptos::logging::log;
 use leptos::prelude::*;
 #[cfg(feature = "ssr")]
 use leptos_axum_socket::{ServerSocket, handlers::upgrade_websocket};
@@ -15,6 +16,7 @@ use leptos_axum_socket::{SocketMsg, expect_socket_context};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use shared::AppState;
+use std::sync::Arc;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CrSocketMsg {
@@ -57,22 +59,76 @@ pub async fn connect_to_websocket(
 // client registry subscription hook for leptos components
 pub fn use_client_registry_topic(
     topic: ReadSignal<Option<CrTopic>>,
-    handler: impl Fn(&CrSocketMsg) + Clone + Send + Sync + 'static,
+    version: ReadSignal<u32>,
+    refetch: Arc<dyn Fn() + Send + Sync + 'static>,
 ) {
-
-    //let prev_topic = StoredValue::new(None::<CrTopic>);
-
-    Effect::new(move || {
+    #[cfg(feature = "hydrate")]
+    {
         let socket = expect_socket_context();
-        //    if let Some(topic) = prev_topic.get_value() {
-        //        socket.unsubscribe(topic);
-        //        prev_topic.set_value(None);
-        //    }
-        if let Some(topic) = topic.get() {
-            //        prev_topic.set_value(Some(topic));
-            socket.subscribe(topic, handler.clone());
-        }
-    });
 
-    //on_cleanup(move || socket.unsubscribe(topic.get_untracked()));
+        let subscribe = {
+            move |topic: CrTopic, refetch: Arc<dyn Fn() + Send + Sync + 'static>| {
+                let version = version.get_untracked();
+                let socket_handler = move |msg: &CrSocketMsg| match msg.msg {
+                    CrMsg::AddressUpdated {
+                        version: meta_version,
+                        ..
+                    } => {
+                        if meta_version > version {
+                            log!(
+                                "AddressUpdated received: refetching address expecting version: {}",
+                                meta_version
+                            );
+                            refetch();
+                        }
+                    }
+                };
+                log!("Subscribing to topic: {:?}", topic);
+                socket.subscribe(topic, socket_handler);
+            }
+        };
+
+        Effect::watch(
+            move || topic.get(),
+            move |tp, prev_tp, _| {
+                if let Some(topic) = tp {
+                    if let Some(Some(prev_topic)) = prev_tp
+                        && prev_topic != topic
+                    {
+                        log!("Unsubscribing from previous topic: {:?}", prev_topic);
+                        socket.unsubscribe(prev_topic);
+                    }
+                    subscribe(*topic, refetch.clone());
+                }
+            },
+            true,
+        );
+    }
+}
+
+/// hook for subscribing to client registry
+pub fn subscribe_topic_version(
+    topic: CrTopic,
+    version: ReadSignal<u32>,
+    refetch: impl Fn() + Clone + Send + Sync + 'static,
+) {
+    let socket = expect_socket_context();
+    let version = version.get_untracked();
+
+    let socket_handler = move |msg: &CrSocketMsg| match msg.msg {
+        CrMsg::AddressUpdated {
+            version: meta_version,
+            ..
+        } => {
+            if meta_version > version {
+                log!(
+                    "AddressUpdated received: refetching address expecting version: {}",
+                    meta_version
+                );
+                refetch();
+            }
+        }
+    };
+
+    socket.subscribe(topic, socket_handler);
 }
