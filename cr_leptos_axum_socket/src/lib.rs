@@ -1,7 +1,11 @@
 // client registry based upon leptos-axum-socket
 
+#[cfg(feature = "ssr")]
 use anyhow::Result as AnyResult;
-use app_core::{ClientRegistryPort, CrMsg, CrTopic};
+#[cfg(feature = "ssr")]
+use app_core::ClientRegistryPort;
+use app_core::{CrMsg, CrTopic};
+#[cfg(feature = "ssr")]
 use async_trait::async_trait;
 #[cfg(feature = "ssr")]
 use axum::{
@@ -17,6 +21,8 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use shared::AppState;
 use std::sync::Arc;
+#[cfg(feature = "ssr")]
+use tracing::instrument;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct CrSocketMsg {
@@ -35,6 +41,7 @@ pub struct ClientRegistrySocket {}
 #[cfg(feature = "ssr")]
 #[async_trait]
 impl ClientRegistryPort for ClientRegistrySocket {
+    #[instrument(name = "cr.publish", skip(self, msg))]
     async fn publish(&self, topic: CrTopic, msg: CrMsg) -> AnyResult<()> {
         let msg = CrSocketMsg { msg };
         leptos_axum_socket::send(&topic, &msg).await;
@@ -57,11 +64,17 @@ pub async fn connect_to_websocket(
 }
 
 // client registry subscription hook for leptos components
-pub fn use_client_registry_topic(
+pub fn use_client_registry_socket(
     topic: ReadSignal<Option<CrTopic>>,
     version: ReadSignal<u32>,
     refetch: Arc<dyn Fn() + Send + Sync + 'static>,
 ) {
+    #[cfg(feature = "ssr")]
+    {
+        let _ = topic;
+        let _ = version;
+        let _ = refetch;
+    }
     #[cfg(feature = "hydrate")]
     {
         let socket = expect_socket_context();

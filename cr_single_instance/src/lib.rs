@@ -8,3 +8,7 @@ mod types;
 #[cfg(feature = "ssr")]
 pub use registry::*;
 pub use types::*;
+
+pub mod leptos_hook;
+
+

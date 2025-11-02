@@ -11,8 +11,8 @@ app = { path = "../app", default-features = false, features = ["ssr"] }
 app_core = { path = "../app_core" }
 axum.workspace = true
 axum-extra.workspace = true
-cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
 cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket", features = ["ssr"] }
+cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
 db_postgres = { path = "../db_postgres" }
 dotenvy.workspace = true
 futures-core.workspace = true

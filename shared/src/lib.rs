@@ -12,5 +12,5 @@ pub struct AppState {
     pub core: CoreState,
     pub leptos_options: LeptosOptions,
     pub socket: ServerSocket,
-    //pub cr_single_instance: Arc<CrSingleInstance>,
+    pub cr_single_instance: Arc<CrSingleInstance>,
 }

@@ -5,10 +5,13 @@ edition = "2024"
 
 [features]
 default = []
-hydrate = ["leptos/hydrate", "leptos-axum-socket/hydrate", "cr_leptos_axum_socket/hydrate"]
+hydrate = [
+    "leptos/hydrate",
+    "leptos-axum-socket/hydrate",
+    "cr_leptos_axum_socket/hydrate",
+]
 ssr = [
     "leptos/ssr",
-    "leptos-use/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
     "leptos-axum-socket/ssr",
@@ -25,13 +28,13 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 [dependencies]
 app_core = { path = "../app_core" }
 cfg-if.workspace = true
-cr_single_instance = { path = "../cr_single_instance" }
 cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket" }
+cr_single_instance = { path = "../cr_single_instance" }
 db_postgres = { path = "../db_postgres", optional = true }
 gloo-timers.workspace = true
 http.workspace = true
 leptos.workspace = true
-leptos-use.workspace = true
+leptos-axum-socket.workspace = true
 leptos_axum = { workspace = true, optional = true }
 leptos_meta.workspace = true
 leptos_router.workspace = true
@@ -39,4 +42,3 @@ serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-leptos-axum-socket.workspace = true

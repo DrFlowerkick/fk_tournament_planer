@@ -7,16 +7,17 @@ use super::{
     server_fn::{list_postal_addresses, load_postal_address},
 };
 use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
-use app_core::{CrMsg, CrTopic, PostalAddress};
-use cr_leptos_axum_socket::use_client_registry_topic;
-use cr_single_instance::SseUrl;
+use app_core::{CrTopic, PostalAddress};
+use cr_leptos_axum_socket::use_client_registry_socket;
+//use cr_single_instance::leptos_hook::use_client_registry_sse;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
 };
-use leptos_use::{UseEventSourceOptions, UseEventSourceReturn, use_event_source_with_options};
 use uuid::Uuid;
+
+
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
@@ -28,21 +29,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let (id, set_id) = signal(None::<Uuid>);
     let (topic, set_topic) = signal(None::<CrTopic>);
     let (version, set_version) = signal(0_u32);
-    let (_url, set_url) = signal(String::new());
-
-    // setup sse listener
-    /*let UseEventSourceReturn {
-        data,
-        ready_state,
-        ..
-    } = use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
-        url,
-        UseEventSourceOptions::default()
-            .immediate(false)
-            .named_events(["changed".to_string()]),
-    );*/
-
-    let (_data, _set_data) = signal(None::<CrMsg>);
 
     // dropdown-status & keyboard-highlight
     let (open, set_open) = signal(false);
@@ -79,20 +65,11 @@ pub fn SearchPostalAddress() -> impl IntoView {
         },
     );
 
-    /*Effect::new(move || {
-        if let Some(event) = data.get() {
-            match event {
-                CrMsg::AddressUpdated { version: meta_version, .. } => {
-                    if meta_version > version.get_untracked() {
-                        addr_res.refetch();
-                    }
-                }
-            }
-        }
-    });*/
-
     let refetch = Arc::new(move || addr_res.refetch());
-    use_client_registry_topic(topic, version, refetch);
+    // update address via socket
+    use_client_registry_socket(topic, version, refetch);
+    // update address via sse
+    //use_client_registry_sse(topic, version, refetch);
 
     let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
@@ -221,7 +198,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             set_version.set(addr.get_version().unwrap_or_default());
                             if let Some(id) = addr.get_id() {
                                 let new_topic = CrTopic::Address(id);
-                                set_url.set(new_topic.sse_url());
                                 set_topic.set(Some(new_topic));
                             }
                             ().into_any()
@@ -369,8 +345,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             <p class="hidden" data-testid="preview-id">
                                 {addr.get_id().unwrap_or_default().to_string()}
                             </p>
-                            //<p class="hidden" data-testid="preview-version">
-                            <p data-testid="preview-version">
+                            <p class="hidden" data-testid="preview-version">
                                 {addr.get_version().unwrap_or_default()}
                             </p>
                         </div>

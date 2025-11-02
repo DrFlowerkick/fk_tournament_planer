@@ -7,6 +7,7 @@ use error::*;
 use postal_addresses::*;
 
 use leptos::prelude::*;
+#[cfg(feature = "hydrate")]
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{

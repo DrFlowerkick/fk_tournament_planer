@@ -9,6 +9,8 @@ edition = "2024"
 default = []
 test_support = ["dep:tracing-subscriber"]
 ssr = [
+    "leptos/ssr",
+    "leptos-use/ssr",
     "dep:tokio",
     "dep:tokio-stream",
 ]
@@ -22,6 +24,8 @@ dashmap.workspace = true
 displaydoc.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
+leptos.workspace = true
+leptos-use.workspace = true
 serde.workspace = true
 tokio = { workspace = true, optional = true }
 tokio-stream = { workspace = true, optional = true }

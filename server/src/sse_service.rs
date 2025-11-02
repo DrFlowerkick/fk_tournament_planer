@@ -15,7 +15,7 @@ use std::convert::Infallible;
 use tokio_stream::once;
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
-/*
+
 // typed_path must match to crate::types::CR_TOPIC_URL_TEMPLATE
 #[derive(TypedPath, Deserialize, Clone, Copy)]
 #[typed_path("/api/cr/subscribe/{kind}/{id}")]
@@ -67,5 +67,3 @@ pub async fn api_subscribe(
 
     Sse::new(out).keep_alive(axum::response::sse::KeepAlive::default())
 }
-
-*/
