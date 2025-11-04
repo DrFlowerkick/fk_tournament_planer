@@ -1,7 +1,7 @@
 // web service helper functions and types to use the client registry in web
 
 use crate::CrKind;
-use app_core::CrTopic;
+use app_core::{CrMsg, CrTopic};
 use axum::{
     extract::State,
     response::{Sse, sse::Event},
@@ -44,14 +44,17 @@ pub async fn api_subscribe(
 
     let out = match state.cr_single_instance.subscribe(topic).await {
         Ok(st) => st
-            .map(|changed| match serde_json::to_string(&changed) {
-                Ok(s) => Ok(Event::default().event("changed").data(s)),
-                Err(e) => {
-                    // recoverable per-event failure: warn (don’t spam)
-                    warn!(error = %e, "serialize_changed_failed");
-                    Ok(Event::default()
-                        .event("error")
-                        .data(format!("serde error: {e}")))
+            .map(|changed| {
+                let CrMsg::AddressUpdated { id, .. } = &changed;
+                match serde_json::to_string(&changed) {
+                    Ok(s) => Ok(Event::default().event("changed").data(s).id(id.to_string())),
+                    Err(e) => {
+                        // recoverable per-event failure: warn (don’t spam)
+                        warn!(error = %e, "serialize_changed_failed");
+                        Ok(Event::default()
+                            .event("error")
+                            .data(format!("serde error: {e}")))
+                    }
                 }
             })
             .boxed(),

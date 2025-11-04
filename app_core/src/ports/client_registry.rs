@@ -3,7 +3,7 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{any::Any, fmt::Display};
 use uuid::Uuid;
 
 /// Topics a client can subscribe to. Extend as needed for your domain.
@@ -36,7 +36,7 @@ pub enum CrMsg {
 
 /// client registry port trait
 #[async_trait]
-pub trait ClientRegistryPort: Send + Sync {
+pub trait ClientRegistryPort: Send + Sync + Any {
     /// Publish a notice to current listeners (no bus is created if none exist).
     async fn publish(&self, topic: CrTopic, msg: CrMsg) -> Result<()>;
 }

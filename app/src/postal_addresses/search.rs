@@ -8,8 +8,8 @@ use super::{
 };
 use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
 use app_core::{CrTopic, PostalAddress};
-use cr_leptos_axum_socket::use_client_registry_socket;
-//use cr_single_instance::leptos_hook::use_client_registry_sse;
+//use cr_leptos_axum_socket::use_client_registry_socket;
+use cr_single_instance::{leptos_hook::use_client_registry_sse, SseUrl};
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
@@ -27,7 +27,8 @@ pub fn SearchPostalAddress() -> impl IntoView {
     // signals for address fields
     let (name, set_name) = signal(String::new());
     let (id, set_id) = signal(None::<Uuid>);
-    let (topic, set_topic) = signal(None::<CrTopic>);
+    let (_topic, set_topic) = signal(None::<CrTopic>);
+    let (url, set_url) = signal(String::new());
     let (version, set_version) = signal(0_u32);
 
     // dropdown-status & keyboard-highlight
@@ -67,9 +68,9 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     let refetch = Arc::new(move || addr_res.refetch());
     // update address via socket
-    use_client_registry_socket(topic, version, refetch);
+    //use_client_registry_socket(topic, version, refetch);
     // update address via sse
-    //use_client_registry_sse(topic, version, refetch);
+    use_client_registry_sse(url, version, refetch);
 
     let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
@@ -198,6 +199,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             set_version.set(addr.get_version().unwrap_or_default());
                             if let Some(id) = addr.get_id() {
                                 let new_topic = CrTopic::Address(id);
+                                set_url.set(new_topic.sse_url());
                                 set_topic.set(Some(new_topic));
                             }
                             ().into_any()

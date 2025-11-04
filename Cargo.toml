@@ -39,7 +39,8 @@ leptos = { version = "0.8.10" }
 #leptos-axum-socket = "0.4.1"
 leptos-axum-socket = { path = "../leptos-axum-socket" }
 #leptos-use = "0.16.3"
-leptos-use = { git = "https://github.com/DrFlowerkick/leptos-use/", branch = "add_change_url_to_use_event_source" }
+#leptos-use = { git = "https://github.com/DrFlowerkick/leptos-use/", branch = "single_thread_safety_for_use_event_source" }
+leptos-use = { path = "../leptos-use" }
 leptos_axum = { version = "0.8.6" }
 leptos_meta = { version = "0.8.5" }
 leptos_router = { version = "0.8.8" }

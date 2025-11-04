@@ -2,13 +2,13 @@
 
 use crate::{PostalAddress, utils::validation::ValidationErrors};
 use async_trait::async_trait;
-use std::fmt::Display;
+use std::{any::Any, fmt::Display};
 use thiserror::Error;
 use uuid::Uuid;
 
 /// database port trait
 #[async_trait]
-pub trait DatabasePort: DbpPostalAddress {
+pub trait DatabasePort: DbpPostalAddress + Any {
     async fn ping_db(&self) -> DbResult<()>;
 }
 

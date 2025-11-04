@@ -6,9 +6,9 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-default = ["hydrate"]
-hydrate = ["leptos-axum-socket/hydrate"]
-ssr = ["leptos-axum-socket/ssr", "dep:axum", "dep:shared"]
+default = []
+hydrate = ["leptos/hydrate", "leptos-axum-socket/hydrate"]
+ssr = ["leptos/ssr", "leptos-axum-socket/ssr", "dep:axum", "dep:shared"]
 
 [dependencies]
 anyhow.workspace = true
