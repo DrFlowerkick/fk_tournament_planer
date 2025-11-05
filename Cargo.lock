@@ -599,7 +599,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "leptos",
- "leptos-use 0.16.3 (git+https://github.com/DrFlowerkick/leptos-use/?branch=refactoring_use_event_source)",
+ "leptos-use 0.16.3",
  "serde",
  "serde_json",
  "shared",
@@ -1623,29 +1623,6 @@ dependencies = [
 [[package]]
 name = "leptos-use"
 version = "0.16.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce2162c453100c7d6bc0b6f188ef1df582e35c2458caf6cb69fcddc87619c0db"
-dependencies = [
- "cfg-if",
- "codee",
- "default-struct-builder",
- "http",
- "js-sys",
- "lazy_static",
- "leptos",
- "leptos_axum",
- "paste",
- "send_wrapper",
- "thiserror 2.0.17",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "leptos-use"
-version = "0.16.3"
-source = "git+https://github.com/DrFlowerkick/leptos-use/?branch=refactoring_use_event_source#7f4fe2cee992bb7c3d076eacc0234325ab4af09a"
 dependencies = [
  "cfg-if",
  "chrono",
@@ -1661,6 +1638,28 @@ dependencies = [
  "send_wrapper",
  "thiserror 2.0.17",
  "unic-langid",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
+name = "leptos-use"
+version = "0.16.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce2162c453100c7d6bc0b6f188ef1df582e35c2458caf6cb69fcddc87619c0db"
+dependencies = [
+ "cfg-if",
+ "codee",
+ "default-struct-builder",
+ "http",
+ "js-sys",
+ "lazy_static",
+ "leptos",
+ "leptos_axum",
+ "paste",
+ "send_wrapper",
+ "thiserror 2.0.17",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

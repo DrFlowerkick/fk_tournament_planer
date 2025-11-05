@@ -19,7 +19,7 @@ impl From<&CrTopic> for CrKind {
     }
 }
 
-/// the url mus be identical to typed path URL of server::sse_service::CrTopicPath
+/// the url mus be identical to typed path URL of crate::web_service::CrTopicPath
 pub const CR_TOPIC_URL_TEMPLATE: &str = "/api/cr/subscribe/{kind}/{id}";
 
 pub trait SseUrl {

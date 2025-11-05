@@ -29,7 +29,7 @@ impl CrTopic {
 }
 
 /// Domain notices sent to subscribed clients. Keep payloads minimal.
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum CrMsg {
     AddressUpdated { id: Uuid, version: u32 },
 }
