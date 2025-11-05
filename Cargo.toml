@@ -39,15 +39,14 @@ leptos = { version = "0.8.10" }
 #leptos-axum-socket = "0.4.1"
 leptos-axum-socket = { path = "../leptos-axum-socket" }
 #leptos-use = "0.16.3"
-#leptos-use = { git = "https://github.com/DrFlowerkick/leptos-use/", branch = "single_thread_safety_for_use_event_source" }
-leptos-use = { path = "../leptos-use" }
+leptos-use = { git = "https://github.com/DrFlowerkick/leptos-use/", branch = "refactoring_use_event_source" }
+#leptos-use = { path = "../leptos-use" }
 leptos_axum = { version = "0.8.6" }
 leptos_meta = { version = "0.8.5" }
 leptos_router = { version = "0.8.8" }
 log = "0.4.28"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-simple_logger = "5.0.0"
 thiserror = "2.0.17"
 tokio = { version = "1.47.1", features = ["full"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }

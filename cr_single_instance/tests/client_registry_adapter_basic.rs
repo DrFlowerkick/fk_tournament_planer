@@ -3,7 +3,7 @@
 //! Basic P1 tests for the real Client Registry adapter.
 
 use app_core::CrMsg;
-use cr_single_instance::registry::test_support::*;
+use cr_single_instance::test_support::*;
 use futures_util::StreamExt;
 use std::time::Duration;
 use uuid::Uuid;
@@ -74,7 +74,7 @@ async fn given_two_subscribers_when_publish_then_both_receive_one() -> anyhow::R
     let topic = unique_topic();
     let id = *topic.id();
 
-    let mut s1 = subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let mut s1 = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
     let mut s2 = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // Publish once
@@ -191,8 +191,7 @@ async fn given_subscription_when_drop_then_no_more_events() -> anyhow::Result<()
     let id = *topic.id();
 
     // Take a subscription and receive one event
-    let mut stream =
-        subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let mut stream = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     publish_address_updated(adapter.as_ref(), id, 1).await?;
     let _first = tokio::time::timeout(DEFAULT_TIMEOUT, stream.next())
@@ -234,7 +233,7 @@ async fn given_buffer_overflow_when_publish_before_read_then_drop_policy_applies
     let adapter = make_adapter()?;
     let topic = unique_topic(); // your helper that yields a topic with a unique id
     let id = *topic.id(); // ensure payload id matches topic id
-    let stream = subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let stream = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // 2) Act: publish K » buffer_capacity (e.g., 200 > 128) BEFORE reading from the stream
     // This intentionally overflows the broadcast buffer so drop policy kicks in.

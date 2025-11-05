@@ -9,15 +9,13 @@ use super::{
 use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
 use app_core::{CrTopic, PostalAddress};
 //use cr_leptos_axum_socket::use_client_registry_socket;
-use cr_single_instance::{leptos_hook::use_client_registry_sse, SseUrl};
+use cr_single_instance::{SseUrl, use_client_registry_sse};
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
 };
 use uuid::Uuid;
-
-
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {

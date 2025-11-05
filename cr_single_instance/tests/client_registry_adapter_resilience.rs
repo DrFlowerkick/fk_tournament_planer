@@ -10,7 +10,7 @@
 //! - These tests assume an in-memory single-process adapter with per-subscriber
 //!   broadcast buffers and a drop policy on overflow.
 
-use cr_single_instance::registry::test_support::*;
+use cr_single_instance::test_support::*;
 use futures_util::StreamExt;
 use std::time::Duration;
 
@@ -32,9 +32,8 @@ async fn given_two_subscribers_one_lags_when_publishing_then_other_is_healthy_an
     let topic = unique_topic();
     let id = *topic.id();
 
-    let mut s_fast =
-        subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
-    let s_slow = subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let mut s_fast = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
+    let s_slow = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // Act: publish a moderate sequence
     let k: u32 = 100;
@@ -116,7 +115,7 @@ async fn given_multiple_adapter_handles_when_drop_one_then_stream_keeps_running(
     let topic = unique_topic();
     let id = *topic.id();
 
-    let mut s = subscribe_with_timeout(adapter1.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let mut s = subscribe_with_timeout(adapter1.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // Drop one handle, but not the last
     drop(adapter2);
@@ -149,8 +148,8 @@ async fn given_same_topic_on_distinct_instances_when_publishing_then_no_cross_ta
     let topic = unique_topic();
     let id = *topic.id();
 
-    let mut sa = subscribe_with_timeout(a.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
-    let mut sb = subscribe_with_timeout(b.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let mut sa = subscribe_with_timeout(a.clone(), topic, DEFAULT_TIMEOUT).await?;
+    let mut sb = subscribe_with_timeout(b.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // Act: publish on A and on B
     publish_address_updated(a.as_ref(), id, 1).await?;

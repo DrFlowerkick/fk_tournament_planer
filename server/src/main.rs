@@ -1,5 +1,3 @@
-mod sse_service;
-
 use anyhow::Result;
 use app::*;
 use app_core::*;
@@ -20,7 +18,6 @@ use leptos_axum::{LeptosRoutes, generate_route_list};
 use leptos_axum_socket::{ServerSocket, SocketRoute};
 use serde::Serialize;
 use shared::*;
-use sse_service::api_subscribe;
 use std::{sync::Arc, time::Duration};
 use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -115,7 +112,6 @@ async fn main() -> Result<()> {
         core: Arc::new(core),
         leptos_options: leptos_options.clone(),
         socket: ServerSocket::new(),
-        cr_single_instance: cr_single,
     };
     // Generate the list of routes in your Leptos App
     let routes = generate_route_list(App);
@@ -123,7 +119,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/db", get(health_db))
-        .typed_get(api_subscribe)
+        .typed_get(api_sse_subscribe)
         .leptos_routes_with_context(
             &app_state,
             routes,

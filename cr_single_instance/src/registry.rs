@@ -88,7 +88,7 @@ impl CrSingleInstance {
         let mut created = false;
         let tx = self
             .buses
-            .entry(topic.clone())
+            .entry(*topic)
             .or_insert_with(|| {
                 created = true;
                 // Small bounded buffer; slow receivers drop oldest messages.
@@ -156,13 +156,10 @@ impl ClientRegistryPort for CrSingleInstance {
     }
 }
 
-/// support for unit and integration tests
-#[cfg(any(test, feature = "test_support"))]
-pub mod test_support;
-
 #[cfg(test)]
 mod tests_drop_semantics {
-    use super::{test_support::build_address_updated, *};
+    use super::*;
+    use crate::test_support::build_address_updated;
     use futures_util::StreamExt;
     use tokio::time::{Duration, timeout};
     use uuid::Uuid;
@@ -179,14 +176,11 @@ mod tests_drop_semantics {
         let topic = CrTopic::Address(id);
 
         // First subscribe to create the bus.
-        let mut stream = adapter
-            .subscribe(topic.clone())
-            .await
-            .expect("subscribe failed");
+        let mut stream = adapter.subscribe(topic).await.expect("subscribe failed");
 
         // Publish one event to ensure the bus actually exists and works.
         adapter
-            .publish(topic.clone(), build_address_updated(id, 1))
+            .publish(topic, build_address_updated(id, 1))
             .await
             .expect("publish failed");
         let _first = timeout(Duration::from_secs(2), stream.next())
@@ -223,14 +217,11 @@ mod tests_drop_semantics {
         let id = Uuid::new_v4();
         let topic = CrTopic::Address(id);
 
-        let mut stream = adapter
-            .subscribe(topic.clone())
-            .await
-            .expect("subscribe failed");
+        let mut stream = adapter.subscribe(topic).await.expect("subscribe failed");
 
         // Prove the stream is live
         adapter
-            .publish(topic.clone(), build_address_updated(id, 1))
+            .publish(topic, build_address_updated(id, 1))
             .await
             .expect("publish failed");
         let _ = timeout(Duration::from_secs(2), stream.next())

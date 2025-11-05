@@ -13,6 +13,10 @@ ssr = [
     "leptos-use/ssr",
     "dep:tokio",
     "dep:tokio-stream",
+    "dep:axum",
+    "dep:axum-extra",
+    "dep:shared",
+    "dep:serde_json",
 ]
 
 [dependencies]
@@ -32,6 +36,10 @@ tokio-stream = { workspace = true, optional = true }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, optional = true }
 uuid.workspace = true
+axum ={ workspace = true, optional = true }
+axum-extra ={ workspace = true, optional = true }
+shared = { path = "../shared", optional = true }
+serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 tracing-subscriber.workspace = true

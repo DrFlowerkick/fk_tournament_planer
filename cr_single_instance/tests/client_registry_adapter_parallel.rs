@@ -11,7 +11,7 @@
 //! - Comments are in English by request.
 //! - Make sure to run with `--features ssr`.
 
-use cr_single_instance::registry::test_support::*;
+use cr_single_instance::test_support::*;
 use futures_util::StreamExt;
 
 /// P2.1: Many parallel publishers on the same topic should not deadlock,
@@ -27,7 +27,7 @@ async fn given_many_parallel_publishers_when_send_and_read_concurrently_then_all
     let id = *topic.id();
 
     // Start subscriber first (hot stream). We will read concurrently.
-    let stream = subscribe_with_timeout(adapter.clone(), topic.clone(), DEFAULT_TIMEOUT).await?;
+    let stream = subscribe_with_timeout(adapter.clone(), topic, DEFAULT_TIMEOUT).await?;
 
     // 2) Define workload: moderate K to avoid overflow with cooperative yields.
     let n_publishers = 8usize;

@@ -11,7 +11,7 @@ use futures_core::Stream;
 use futures_util::StreamExt;
 use serde::Deserialize;
 use shared::AppState;
-use std::convert::Infallible;
+use std::{any::Any, convert::Infallible};
 use tokio_stream::once;
 use tracing::{error, info, instrument, warn};
 use uuid::Uuid;
@@ -35,14 +35,23 @@ impl From<CrTopicPath> for CrTopic {
 /// SSE entrypoint (typed route). We add a per-connection span for better correlation.
 /// Fields like `topic` or `client_ip` are valuable to debug fan-out.
 #[instrument(name = "sse_connection", skip(state), fields(topic = %topic))]
-pub async fn api_subscribe(
+pub async fn api_sse_subscribe(
     topic: CrTopicPath,
     State(state): State<AppState>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    info!("SSE connected");
+    let cr: &dyn Any = state.core.client_registry.as_ref();
+    let Some(cr_single_instance) = cr.downcast_ref::<crate::CrSingleInstance>() else {
+        error!("ClientRegistryPort is not CrSingleInstance");
+        let out = once(Ok(Event::default()
+            .event("error")
+            .data("internal server error: invalid client registry type")))
+        .boxed();
+        return Sse::new(out).keep_alive(axum::response::sse::KeepAlive::default());
+    };
+
     let topic = CrTopic::from(topic);
 
-    let out = match state.cr_single_instance.subscribe(topic).await {
+    let out = match cr_single_instance.subscribe(topic).await {
         Ok(st) => st
             .map(|changed| {
                 let CrMsg::AddressUpdated { id, .. } = &changed;
@@ -68,5 +77,6 @@ pub async fn api_subscribe(
         }
     };
 
+    info!("SSE connected");
     Sse::new(out).keep_alive(axum::response::sse::KeepAlive::default())
 }

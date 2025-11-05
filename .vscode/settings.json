@@ -6,8 +6,8 @@
   //"rust-analyzer.cargo.features": ["test_support"],
   //"rust-analyzer.cargo.features": ["ssr", "hydrate"],
   // Enable all features
-  //"rust-analyzer.cargo.features": "all",
-  "rust-analyzer.cargo.features": ["hydrate"],
+  "rust-analyzer.cargo.features": "all",
+  //"rust-analyzer.cargo.features": ["hydrate"],
   /*"rust-analyzer.rustfmt.overrideCommand": [
     "leptosfmt",
     "--stdin",

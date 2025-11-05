@@ -12,12 +12,10 @@ anyhow.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 displaydoc.workspace = true
-futures-core.workspace = true
 serde.workspace = true
 thiserror.workspace = true
 uuid.workspace = true
 
 # only needed in tests
 [dev-dependencies]
-futures-util = { version = "0.3", default-features = false, features = ["std"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
