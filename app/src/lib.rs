@@ -7,7 +7,7 @@ use error::*;
 use postal_addresses::*;
 
 use leptos::prelude::*;
-#[cfg(feature = "hydrate")]
+//#[cfg(feature = "hydrate")]
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
@@ -39,10 +39,10 @@ pub fn App() -> impl IntoView {
     // Provides context that manages stylesheets, titles, meta tags, etc.
     provide_meta_context();
     // Provides the WebSocket socket context for client registry communication
-    #[cfg(feature = "hydrate")]
-    {
-        provide_socket_context();
-    }
+    //#[cfg(feature = "hydrate")]
+    //{
+    provide_socket_context();
+    //}
 
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />

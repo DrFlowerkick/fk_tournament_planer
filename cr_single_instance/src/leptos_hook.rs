@@ -33,7 +33,7 @@ pub fn use_client_registry_sse(
         UseEventSourceOnEventReturn::Use
     };
 
-    let UseEventSourceReturn { message, .. } = use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
+    let UseEventSourceReturn { message, close, .. } = use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
         url,
         UseEventSourceOptions::default()
             .immediate(true)
@@ -55,5 +55,9 @@ pub fn use_client_registry_sse(
                 }
             }
         }
+    });
+
+    on_cleanup(move || {
+        close();
     });
 }

@@ -102,11 +102,11 @@ async fn main() -> Result<()> {
     // initialize core state
     let db = PgDb::new(url_db()?).await?;
     db.run_migration().await?;
-    let cr_single = Arc::new(CrSingleInstance::new());
-    let _cr = Arc::new(ClientRegistrySocket {});
+    let _cr_single = Arc::new(CrSingleInstance::new());
+    let cr = Arc::new(ClientRegistrySocket {});
     let core = CoreBuilder::new()
         .set_db(Arc::new(db))
-        .set_cr(cr_single.clone())
+        .set_cr(cr.clone())
         .build();
     let app_state = AppState {
         core: Arc::new(core),

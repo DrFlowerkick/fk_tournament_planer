@@ -69,54 +69,61 @@ pub fn use_client_registry_socket(
     version: ReadSignal<u32>,
     refetch: Arc<dyn Fn() + Send + Sync + 'static>,
 ) {
-    #[cfg(feature = "ssr")]
-    {
-        let _ = topic;
-        let _ = version;
-        let _ = refetch;
-    }
-    #[cfg(feature = "hydrate")]
-    {
-        let socket = expect_socket_context();
+    // ToDo: clean up logs
+    let socket = expect_socket_context();
 
-        let subscribe = {
-            move |topic: CrTopic, refetch: Arc<dyn Fn() + Send + Sync + 'static>| {
-                let version = version.get_untracked();
-                let socket_handler = move |msg: &CrSocketMsg| match msg.msg {
-                    CrMsg::AddressUpdated {
-                        version: meta_version,
-                        ..
-                    } => {
-                        if meta_version > version {
-                            log!(
-                                "AddressUpdated received: refetching address expecting version: {}",
-                                meta_version
-                            );
-                            refetch();
-                        }
-                    }
-                };
-                log!("Subscribing to topic: {:?}", topic);
-                socket.subscribe(topic, socket_handler);
-            }
-        };
+    let prev_topic = StoredValue::new(None::<CrTopic>);
 
-        Effect::watch(
-            move || topic.get(),
-            move |tp, prev_tp, _| {
-                if let Some(topic) = tp {
-                    if let Some(Some(prev_topic)) = prev_tp
-                        && prev_topic != topic
-                    {
-                        log!("Unsubscribing from previous topic: {:?}", prev_topic);
-                        socket.unsubscribe(prev_topic);
+    let subscribe = {
+        move |topic: CrTopic, refetch: Arc<dyn Fn() + Send + Sync + 'static>| {
+            let version = version.get_untracked();
+            let socket_handler = move |msg: &CrSocketMsg| match msg.msg {
+                CrMsg::AddressUpdated {
+                    version: meta_version,
+                    ..
+                } => {
+                    if meta_version > version {
+                        log!(
+                            "AddressUpdated received: refetching address expecting version: {}",
+                            meta_version
+                        );
+                        refetch();
                     }
-                    subscribe(*topic, refetch.clone());
                 }
-            },
-            true,
-        );
-    }
+            };
+            log!("Subscribing to topic: {:?}", topic);
+            socket.subscribe(topic, socket_handler);
+        }
+    };
+
+    Effect::watch(
+        move || topic.get(),
+        move |tp, _, _| {
+            log!("Topic changed: {:?}", tp);
+            log!("Previous topic: {:?}", prev_topic.get_value());
+            if let Some(topic) = tp {
+                if let Some(prev_tp) = prev_topic.get_value()
+                    && prev_tp != *topic
+                {
+                    log!("Unsubscribing from previous topic: {:?}", prev_tp);
+                    socket.unsubscribe(prev_tp);
+                    subscribe(*topic, refetch.clone());
+                    prev_topic.set_value(Some(*topic));
+                } else if prev_topic.get_value().is_none() {
+                    subscribe(*topic, refetch.clone());
+                    prev_topic.set_value(Some(*topic));
+                }
+            }
+        },
+        true,
+    );
+
+    on_cleanup(move || {
+        if let Some(topic) = topic.get_untracked() {
+            log!("Cleaning up subscription for topic: {:?}", topic);
+            socket.unsubscribe(topic);
+        }
+    });
 }
 
 /// hook for subscribing to client registry

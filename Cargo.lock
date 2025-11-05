@@ -599,7 +599,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "leptos",
- "leptos-use 0.16.3",
+ "leptos-use",
  "serde",
  "serde_json",
  "shared",
@@ -1609,7 +1609,7 @@ dependencies = [
  "cookie",
  "futures-util",
  "leptos",
- "leptos-use 0.16.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "leptos-use",
  "leptos_axum",
  "regex",
  "serde",
@@ -1631,27 +1631,6 @@ dependencies = [
  "default-struct-builder",
  "futures-util",
  "gloo-timers",
- "js-sys",
- "lazy_static",
- "leptos",
- "paste",
- "send_wrapper",
- "thiserror 2.0.17",
- "unic-langid",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
-name = "leptos-use"
-version = "0.16.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ce2162c453100c7d6bc0b6f188ef1df582e35c2458caf6cb69fcddc87619c0db"
-dependencies = [
- "cfg-if",
- "codee",
- "default-struct-builder",
  "http",
  "js-sys",
  "lazy_static",
@@ -1660,6 +1639,7 @@ dependencies = [
  "paste",
  "send_wrapper",
  "thiserror 2.0.17",
+ "unic-langid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
