@@ -1,4 +1,3 @@
-#![cfg(all(feature = "ssr", feature = "test_support"))]
 // tests/client_registry_adapter_resilience.rs
 //! Resilience tests for the single-instance client registry adapter.
 //!
@@ -10,7 +9,7 @@
 //! - These tests assume an in-memory single-process adapter with per-subscriber
 //!   broadcast buffers and a drop policy on overflow.
 
-use cr_single_instance::test_support::*;
+use integration_testing::cr_single_instance_test_support::*;
 use futures_util::StreamExt;
 use std::time::Duration;
 

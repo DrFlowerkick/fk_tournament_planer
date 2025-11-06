@@ -5,9 +5,6 @@ edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[features]
-test_support = ["dep:tracing-subscriber", "dep:dotenvy"]
-
 [dependencies]
 anyhow.workspace = true
 app_core = { path = "../app_core" }
@@ -22,7 +19,3 @@ tracing.workspace = true
 tracing-subscriber = { workspace = true, optional = true }
 url.workspace = true
 uuid.workspace = true
-
-[dev-dependencies]
-dotenvy.workspace = true
-tracing-subscriber.workspace = true

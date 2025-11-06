@@ -15,7 +15,7 @@
 //! Important:
 //! Call `init_tracing()` at the start of each test. Use `TestDb::new().await` to get a fresh DB + pool.
 
-use super::{PgDb, url_custom_db};
+use db_postgres::{PgDb, url_custom_db};
 use anyhow::Result;
 use diesel::{QueryableByName, sql_query, sql_types::Text};
 use diesel_async::{

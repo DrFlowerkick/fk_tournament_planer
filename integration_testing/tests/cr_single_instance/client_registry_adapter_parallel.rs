@@ -1,4 +1,3 @@
-#![cfg(all(feature = "ssr", feature = "test_support"))]
 // tests/client_registry_adapter_parallel.rs
 //! Parallel (P2) tests for the real Client Registry adapter.
 //!
@@ -11,7 +10,7 @@
 //! - Comments are in English by request.
 //! - Make sure to run with `--features ssr`.
 
-use cr_single_instance::test_support::*;
+use integration_testing::cr_single_instance_test_support::*;
 use futures_util::StreamExt;
 
 /// P2.1: Many parallel publishers on the same topic should not deadlock,

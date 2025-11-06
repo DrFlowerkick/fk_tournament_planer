@@ -4,8 +4,6 @@
 mod leptos_hook;
 #[cfg(feature = "ssr")]
 mod registry;
-#[cfg(all(feature = "ssr", any(test, feature = "test_support")))]
-pub mod test_support;
 mod types;
 #[cfg(feature = "ssr")]
 mod web_service;

@@ -1,9 +1,8 @@
-#![cfg(all(feature = "ssr", feature = "test_support"))]
 // tests/client_registry_adapter_basic.rs
 //! Basic P1 tests for the real Client Registry adapter.
 
 use app_core::CrMsg;
-use cr_single_instance::test_support::*;
+use integration_testing::cr_single_instance_test_support::*;
 use futures_util::StreamExt;
 use std::time::Duration;
 use uuid::Uuid;

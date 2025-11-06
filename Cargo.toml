@@ -7,6 +7,7 @@ members = [
     "cr_single_instance",
     "db_postgres",
     "frontend",
+    "integration_testing",
     "server",
     "shared",
 ]

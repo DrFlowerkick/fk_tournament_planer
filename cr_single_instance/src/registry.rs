@@ -159,7 +159,6 @@ impl ClientRegistryPort for CrSingleInstance {
 #[cfg(test)]
 mod tests_drop_semantics {
     use super::*;
-    use crate::test_support::build_address_updated;
     use futures_util::StreamExt;
     use tokio::time::{Duration, timeout};
     use uuid::Uuid;
@@ -180,7 +179,7 @@ mod tests_drop_semantics {
 
         // Publish one event to ensure the bus actually exists and works.
         adapter
-            .publish(topic, build_address_updated(id, 1))
+            .publish(topic, CrMsg::AddressUpdated { id, version: 1 })
             .await
             .expect("publish failed");
         let _first = timeout(Duration::from_secs(2), stream.next())
@@ -221,7 +220,7 @@ mod tests_drop_semantics {
 
         // Prove the stream is live
         adapter
-            .publish(topic, build_address_updated(id, 1))
+            .publish(topic, CrMsg::AddressUpdated { id, version: 1 })
             .await
             .expect("publish failed");
         let _ = timeout(Duration::from_secs(2), stream.next())

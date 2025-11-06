@@ -9,10 +9,9 @@
 //!   - No custom traits, no unknown utilities.
 //!   - Comments are in English per project convention.
 
-use crate::common::*;
+use integration_testing::db_postgres_test_support::{common::*, postal_address::*};
 use anyhow::Result;
 use app_core::{DbError, DbpPostalAddress};
-use db_postgres::test_support::*;
 use tokio::sync::Barrier;
 
 #[tokio::test(flavor = "multi_thread")]

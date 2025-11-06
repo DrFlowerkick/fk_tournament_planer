@@ -1,7 +1,7 @@
 use app_core::{CrMsg, DbError};
 use uuid::Uuid;
 
-use super::fakes::*; // make_core_with_fakes, make_addr, Fake* types
+use integration_testing::port_fakes::*;
 
 /// 9) save(): publishes exactly once with correct payload after successful persist
 #[tokio::test]

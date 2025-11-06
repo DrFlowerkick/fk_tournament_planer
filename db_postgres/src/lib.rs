@@ -100,6 +100,3 @@ fn map_db_err(e: DE) -> DbError {
     }
 }
 
-/// support for unit and integration tests
-#[cfg(any(test, feature = "test_support"))]
-pub mod test_support;

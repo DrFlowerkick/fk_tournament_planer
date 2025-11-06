@@ -1,22 +1,6 @@
-// tests/common/mod.rs
-//! Test helpers for the real Client Registry adapter.
-//!
-//! Adjust the `use` paths below to your actual crate/module structure.
-//! These helpers assume the following API exists in your crate:
-//!   - Trait `ClientRegistryPort`
-//!   - Types: `CrTopic`, `CrMsg`
-//!   - A *test-only* factory or support module to construct topics and an adapter handle.
-//!
-//! Recommended to provide (in your crate under cfg(test)):
-//!   - `cr_single_instance::registry::test_support::make_adapter()` -> anyhow::Result<Arc<dyn ClientRegistryPort>>
-//!   - `cr_single_instance::registry::test_support::make_topic<S: AsRef<str>>(s: S) -> CrTopic`
-//!   - `cr_single_instance::registry::test_support::build_address_updated(id: uuid::Uuid, version: u64) -> CrPushNotice`
-//!
-//! See the TODOs below if names differ in your codebase.
-
-use super::{CrNoticeStream, CrSingleInstance};
 use anyhow::Result;
 use app_core::{ClientRegistryPort, CrMsg, CrTopic};
+use cr_single_instance::{CrNoticeStream, CrSingleInstance};
 use futures_util::{StreamExt, future::join_all};
 use std::{
     sync::{Arc, Once},

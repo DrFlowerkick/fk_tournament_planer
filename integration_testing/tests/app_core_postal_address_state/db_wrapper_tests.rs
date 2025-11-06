@@ -1,7 +1,7 @@
 use app_core::DbError;
 use uuid::Uuid;
 
-use super::fakes::*; // Core builder + fakes + make_addr
+use integration_testing::port_fakes::*;
 
 /// 1) load(): found → state replaced, Some returned
 #[tokio::test]

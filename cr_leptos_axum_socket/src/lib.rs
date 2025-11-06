@@ -125,30 +125,3 @@ pub fn use_client_registry_socket(
         }
     });
 }
-
-/// hook for subscribing to client registry
-pub fn subscribe_topic_version(
-    topic: CrTopic,
-    version: ReadSignal<u32>,
-    refetch: impl Fn() + Clone + Send + Sync + 'static,
-) {
-    let socket = expect_socket_context();
-    let version = version.get_untracked();
-
-    let socket_handler = move |msg: &CrSocketMsg| match msg.msg {
-        CrMsg::AddressUpdated {
-            version: meta_version,
-            ..
-        } => {
-            if meta_version > version {
-                log!(
-                    "AddressUpdated received: refetching address expecting version: {}",
-                    meta_version
-                );
-                refetch();
-            }
-        }
-    };
-
-    socket.subscribe(topic, socket_handler);
-}

@@ -5,7 +5,7 @@ use leptos::logging::log;
 use leptos::prelude::*;
 use leptos::web_sys::Event;
 use leptos_use::{
-    UseEventSourceOnEventReturn, UseEventSourceOptions, UseEventSourceReturn,
+    //UseEventSourceOnEventReturn, UseEventSourceOptions, UseEventSourceReturn,
     use_event_source_with_options,
 };
 use std::sync::Arc;
@@ -15,7 +15,7 @@ pub fn use_client_registry_sse(
     version: ReadSignal<u32>,
     refetch: Arc<dyn Fn() + Send + Sync + 'static>,
 ) {
-    let url = Signal::derive({
+    /*let url = Signal::derive({
         move || topic.get().map(|t| t.sse_url()).unwrap_or_default()
     });
 
@@ -30,7 +30,7 @@ pub fn use_client_registry_sse(
             "ClientRegistry SSE custom Changed Event received: {}",
             event.type_()
         );
-        UseEventSourceOnEventReturn::Use
+        UseEventSourceOnEventReturn::ProcessMessage
     };
 
     let UseEventSourceReturn { message, close, .. } = use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
@@ -59,5 +59,5 @@ pub fn use_client_registry_sse(
 
     on_cleanup(move || {
         close();
-    });
+    });*/
 }

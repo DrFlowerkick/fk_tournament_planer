@@ -1,0 +1,33 @@
+[package]
+name = "integration_testing"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+
+[dependencies]
+app_core = { path = "../app_core" }
+cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket" }
+cr_single_instance = { path = "../cr_single_instance" }
+db_postgres = { path = "../db_postgres" }
+shared = { path = "../shared" }
+anyhow.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+displaydoc.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
+tokio.workspace = true
+futures-util.workspace = true
+tracing-subscriber.workspace = true
+axum.workspace = true
+leptos.workspace = true
+leptos-axum-socket.workspace = true
+diesel.workspace = true
+diesel-async.workspace = true
+dotenvy.workspace = true
+tracing.workspace = true
+url.workspace = true

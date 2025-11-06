@@ -96,21 +96,21 @@ run-ssr:
 # -------- Unit Testing & Coverage --------
 .PHONY: test
 test:
-	cargo nextest run --workspace --features "ssr test_support"
+	cargo nextest run --workspace --features "ssr"
 	cargo test --doc --workspace 
 
 .PHONY: test-release
 test-release:
-	cargo nextest run --workspace --locked --release --features "ssr test_support"
+	cargo nextest run --workspace --locked --release --features "ssr"
 
 .PHONY: coverage
 coverage:
-	cargo llvm-cov nextest --workspace --locked --features "ssr test_support" --lcov --output-path coverage/lcov.info
+	cargo llvm-cov nextest --workspace --locked --features "ssr" --lcov --output-path coverage/lcov.info
 	cargo llvm-cov report --release --html --output-dir coverage
 
 .PHONY: coverage-release
 coverage-release:
-	cargo llvm-cov nextest --workspace --locked --release --features "ssr test_support" --lcov --output-path coverage/lcov.info
+	cargo llvm-cov nextest --workspace --locked --release --features "ssr" --lcov --output-path coverage/lcov.info
 	cargo llvm-cov report --release --html --output-dir coverage
 
 # -------- Webserver Monitoring & Control --------

@@ -26,7 +26,7 @@ jobs:
   unit_and_integration_tests:
     uses: ./.github/workflows/_unit_and_integration_tests.yml
     with:
-      features: "ssr test_support"
+      features: "ssr"
 
   end_to_end_tests:
     uses: ./.github/workflows/_end_to_end_tests.yml
