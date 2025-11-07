@@ -1,6 +1,6 @@
 // web app ui
 
-mod banner;
+pub mod banner;
 mod error;
 mod postal_addresses;
 use error::*;

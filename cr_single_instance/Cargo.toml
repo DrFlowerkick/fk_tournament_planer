@@ -7,6 +7,7 @@ edition = "2024"
 
 [features]
 default = []
+hydrate = ["leptos/hydrate", "leptos-use/use_event_source"]
 ssr = [
     "leptos/ssr",
     "leptos-use/ssr",
@@ -16,6 +17,8 @@ ssr = [
     "dep:axum-extra",
     "dep:shared",
     "dep:serde_json",
+    "dep:futures-util",
+    "dep:futures-core",
 ]
 
 [dependencies]
@@ -25,8 +28,8 @@ async-trait.workspace = true
 codee.workspace = true
 dashmap.workspace = true
 displaydoc.workspace = true
-futures-core.workspace = true
-futures-util.workspace = true
+futures-core = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
 leptos.workspace = true
 leptos-use.workspace = true
 serde.workspace = true

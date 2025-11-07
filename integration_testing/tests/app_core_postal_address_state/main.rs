@@ -1,3 +1,4 @@
+#![cfg(feature = "ssr")]
 // testing core api for postal address with fake
 
 mod db_wrapper_tests;
