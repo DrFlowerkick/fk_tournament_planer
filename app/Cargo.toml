@@ -5,6 +5,7 @@ edition = "2024"
 
 [features]
 default = []
+test-mock = []
 hydrate = [
     "leptos/hydrate",
     "leptos-axum-socket/hydrate",

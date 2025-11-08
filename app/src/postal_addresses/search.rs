@@ -14,6 +14,7 @@ use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
+    params::ParamsError,
 };
 use uuid::Uuid;
 
@@ -21,7 +22,14 @@ use uuid::Uuid;
 pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
-
+    view! {
+        <SearchPostalAddressInner params=params />
+    }
+}
+#[component]
+pub fn SearchPostalAddressInner(
+    #[prop(into)] params: Signal<Result<AddressParams, ParamsError>>,
+) -> impl IntoView {
     // signals for address fields
     let (name, set_name) = signal(String::new());
     let (id, set_id) = signal(None::<Uuid>);

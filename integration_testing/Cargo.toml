@@ -7,10 +7,13 @@ edition = "2024"
 
 [features]
 default = []
+csr = ["leptos/csr", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
+test-mock = ["app/test-mock"]
 ssr = [
     "app/ssr",
     "leptos/ssr",
     "leptos_router/ssr",
+    "leptos-axum-socket/ssr",
     "dep:tokio",
     "dep:cr_single_instance",
     "dep:db_postgres",
@@ -19,7 +22,7 @@ ssr = [
     "dep:futures-util",
     "dep:shared",
 ]
-hydrate = ["app/hydrate", "leptos/hydrate", "dep:wasm-bindgen-test"]
+hydrate = ["app/hydrate", "leptos/hydrate", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
 
 [dependencies]
 anyhow.workspace = true
@@ -36,6 +39,7 @@ dotenvy.workspace = true
 futures-util = { workspace = true, optional = true}
 leptos.workspace = true
 leptos_router.workspace = true
+leptos-axum-socket.workspace = true
 serde.workspace = true
 shared = { path = "../shared", optional = true}
 thiserror.workspace = true

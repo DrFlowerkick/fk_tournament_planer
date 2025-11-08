@@ -1,6 +1,6 @@
 use app_core::{
     ClientRegistryPort, Core, CoreBuilder, CrMsg, CrTopic, DatabasePort, DbError, DbResult,
-    DbpPostalAddress, PostalAddress, PostalAddressState, utils::id_version::IdVersion,
+    DbpPostalAddress, PostalAddress, InitState, PostalAddressState, utils::id_version::IdVersion,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -21,9 +21,6 @@ impl FakeDatabasePort {
     pub fn new() -> Self {
         Self::default()
     }
-    // keep the seed fn, perhaps we kan use it later
-    // ToDo: check, if seed should be removed
-    #[allow(dead_code)]
     pub fn seed(&self, mut addr: PostalAddress) {
         assert!(addr.get_id().is_none());
         let id_version = IdVersion::new(Uuid::new_v4(), 0);
@@ -162,9 +159,9 @@ impl ClientRegistryPort for FakeClientRegistryPort {
     }
 }
 
-/// Helper: build a Core<PostalAddressState> wired with our trait fakes.
+/// Helper: build a Core<InitState> wired with our trait fakes.
 pub fn make_core_with_fakes() -> (
-    Core<PostalAddressState>,
+    Core<InitState>,
     Arc<FakeDatabasePort>,
     Arc<FakeClientRegistryPort>,
 ) {
@@ -174,9 +171,17 @@ pub fn make_core_with_fakes() -> (
     let core = CoreBuilder::new()
         .set_db(db.clone())
         .set_cr(cr.clone())
-        .build()
-        .as_postal_address_state();
+        .build();
     (core, db, cr)
+}
+
+pub fn make_core_postal_address_state_with_fakes() -> (
+    Core<PostalAddressState>,
+    Arc<FakeDatabasePort>,
+    Arc<FakeClientRegistryPort>,
+) {
+    let (core, db, cr) = make_core_with_fakes();
+    (core.as_postal_address_state(), db, cr)
 }
 
 /// Convenience: construct a realistic PostalAddress for seeding.

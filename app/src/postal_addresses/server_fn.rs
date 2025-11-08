@@ -1,17 +1,18 @@
+#![cfg_attr(feature = "test-mock", allow(unused_imports))]
 // server function for postal address
 
 #[cfg(feature = "ssr")]
 use crate::AppError;
 use crate::AppResult;
 use app_core::PostalAddress;
-#[cfg(feature = "ssr")]
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
 use tracing::instrument;
-#[cfg(feature = "ssr")]
 use tracing::{error, info};
 use uuid::Uuid;
 
+#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "postal_address.load",
@@ -19,9 +20,51 @@ use uuid::Uuid;
     fields(id = %id)
 )]
 pub async fn load_postal_address(id: Uuid) -> AppResult<Option<PostalAddress>> {
+    load_postal_address_inner(id).await
+}
+
+#[cfg(feature = "test-mock")]
+pub async fn load_postal_address(id: Uuid) -> AppResult<Option<PostalAddress>> {
+    load_postal_address_inner(id).await
+}
+
+pub async fn load_postal_address_inner(id: Uuid) -> AppResult<Option<PostalAddress>> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
     let pa = core.load(id).await?.map(|pa| pa.to_owned());
     Ok(pa)
+}
+
+
+
+#[cfg(not(feature = "test-mock"))]
+#[server]
+#[instrument(
+    name = "postal_address.list",
+    skip_all,
+    fields(q_len = name.len(), limit = 10)
+)]
+pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
+    list_postal_addresses_inner(name).await
+}
+
+#[cfg(feature = "test-mock")]
+pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
+    list_postal_addresses_inner(name).await
+}
+
+pub async fn list_postal_addresses_inner(name: String) -> AppResult<Vec<PostalAddress>> {
+    let core = expect_context::<CoreState>().as_postal_address_state();
+    info!("list_request");
+    match core.list_addresses(Some(&name), Some(10)).await {
+        Ok(list) => {
+            info!(count = list.len(), "list_ok");
+            Ok(list)
+        }
+        Err(e) => {
+            error!(error = %e, "list_failed");
+            Err(e.into())
+        }
+    }
 }
 
 #[server]
@@ -34,7 +77,7 @@ pub async fn load_postal_address(id: Uuid) -> AppResult<Option<PostalAddress>> {
         // capture intent without logging full payloads
         intent = intent.as_deref().unwrap_or(""),
         // tiny hints only; avoid PII/body dumps
-        name_len = name.as_deref().map(|s| s.len()).unwrap_or(0),
+        name_len = name.len(),
         locality_len = locality.len()
     )
 )]
@@ -44,8 +87,7 @@ pub async fn save_postal_address(
     id: Uuid,
     // hidden in the form
     version: u32,
-    // optional text field: treat "" as None
-    name: Option<String>,
+    name: String,
     street: String,
     postal_code: String,
     locality: String,
@@ -76,7 +118,7 @@ pub async fn save_postal_address(
 
     // set address data from Form inputs
     mut_pa_core
-        .set_name(name.unwrap_or_default())
+        .set_name(name)
         .set_street(street)
         .set_postal_code(postal_code)
         .set_locality(locality)
@@ -95,27 +137,6 @@ pub async fn save_postal_address(
         Err(e) => {
             // Primary goal failed -> error
             error!(error = %e, "save_failed");
-            Err(e.into())
-        }
-    }
-}
-
-#[server]
-#[instrument(
-    name = "postal_address.list",
-    skip_all,
-    fields(q_len = name.len(), limit = 10)
-)]
-pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
-    let core = expect_context::<CoreState>().as_postal_address_state();
-    info!("list_request");
-    match core.list_addresses(Some(&name), Some(10)).await {
-        Ok(list) => {
-            info!(count = list.len(), "list_ok");
-            Ok(list)
-        }
-        Err(e) => {
-            error!(error = %e, "list_failed");
             Err(e.into())
         }
     }

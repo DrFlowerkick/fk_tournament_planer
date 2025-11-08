@@ -1,25 +1,16 @@
-// This is required for wasm-bindgen-test
-//#![cfg(test)]
-use wasm_bindgen_test::*;
-
+use crate::common::get_element_by_test_id;
 use app::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner};
 use gloo_timers::future::sleep;
-use leptos::{mount::mount_to_body, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlElement};
+use leptos::{mount::mount_to_body, prelude::*};
 use leptos_router::components::Router;
-use std::{time::Duration, sync::{Arc, RwLock}};
+use std::{
+    sync::{Arc, RwLock},
+    time::Duration,
+};
+use wasm_bindgen_test::*;
 
 // Configure wasm-pack-test to run in a browser
 wasm_bindgen_test_configure!(run_in_browser);
-
-fn get_element_by_test_id(id: &str) -> HtmlElement {
-    let document = document();
-    document
-        .query_selector(&format!("[data-testid='{}']", id))
-        .unwrap()
-        .unwrap_or_else(|| panic!("Element with test-id '{}' not found", id))
-        .dyn_into::<HtmlElement>()
-        .unwrap()
-}
 
 #[wasm_bindgen_test]
 async fn test_acknowledgment_banner_display_and_acknowledge() {

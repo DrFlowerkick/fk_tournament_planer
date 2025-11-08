@@ -1,2 +1,4 @@
-#![cfg(feature = "hydrate")]
+#![cfg(feature = "csr")]
 mod banner;
+mod search;
+mod common;

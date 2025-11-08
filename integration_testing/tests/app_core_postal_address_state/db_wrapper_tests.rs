@@ -6,7 +6,7 @@ use integration_testing::port_fakes::*;
 /// 1) load(): found → state replaced, Some returned
 #[tokio::test]
 async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned() {
-    let (mut core, _db_fake, _cr_fake) = make_core_with_fakes();
+    let (mut core, _db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Seed via DB fake:
     let a = make_addr("Alpha", "Street 1", "10115", "Berlin", "BE", "DE");
@@ -33,7 +33,7 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
 /// 2) load(): not found → None, state unchanged
 #[tokio::test]
 async fn given_missing_id_when_load_then_none_and_state_unchanged() {
-    let (mut core, _db_fake, _cr_fake) = make_core_with_fakes();
+    let (mut core, _db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Prepare a known state
     let known = make_addr("Alpha", "Street 1", "10115", "Berlin", "BE", "DE");
@@ -50,7 +50,7 @@ async fn given_missing_id_when_load_then_none_and_state_unchanged() {
 /// 3) load(): DB error propagates, state unchanged
 #[tokio::test]
 async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchanged() {
-    let (mut core, db_fake, _cr_fake) = make_core_with_fakes();
+    let (mut core, db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Keep baseline
     let before = core.get().clone();
@@ -79,7 +79,7 @@ async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchang
 /// 4) save(): persists & replaces state with DB result
 #[tokio::test]
 async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_returned() {
-    let (mut core, _db_fake, _cr_fake) = make_core_with_fakes();
+    let (mut core, _db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Arrange a new address in state
     core.get_mut()
@@ -101,7 +101,7 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
 /// 5) save(): DB error propagates, state unchanged
 #[tokio::test]
 async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchanged() {
-    let (mut core, db_fake, _cr_fake) = make_core_with_fakes();
+    let (mut core, db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Seed state
     let before = core.get().clone();
@@ -126,7 +126,7 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 /// 6) list_addresses(): passthrough w/ filter+limit
 #[tokio::test]
 async fn given_filter_and_limit_when_list_addresses_then_db_fake_results_are_forwarded() {
-    let (mut core, _db_fake, _cr_fake) = make_core_with_fakes();
+    let (mut core, _db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Seed via saves:
     for (nm, st, pc) in [
@@ -154,7 +154,7 @@ async fn given_filter_and_limit_when_list_addresses_then_db_fake_results_are_for
 /// 7) list_addresses(): only limit
 #[tokio::test]
 async fn given_only_limit_when_list_addresses_then_limit_is_respected() {
-    let (mut core, _db_fake, _cr_fake) = make_core_with_fakes();
+    let (mut core, _db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     for i in 0..5 {
         let nm = format!("Name{i}");
@@ -169,7 +169,7 @@ async fn given_only_limit_when_list_addresses_then_limit_is_respected() {
 /// 8) list_addresses(): DB error propagates
 #[tokio::test]
 async fn given_db_fake_failure_when_list_addresses_then_error_propagates() {
-    let (core, db_fake, _cr_fake) = make_core_with_fakes();
+    let (core, db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // let (db_fake, _cr_fake_fake) = extract_fakes(&core);
     db_fake.fail_list_once();
