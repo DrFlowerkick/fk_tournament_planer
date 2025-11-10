@@ -1,5 +1,5 @@
-use app_core::{CrMsg, CrTopic};
 use crate::SseUrl;
+use app_core::{CrMsg, CrTopic};
 use codee::string::JsonSerdeCodec;
 use leptos::logging::log;
 use leptos::prelude::*;
@@ -15,9 +15,7 @@ pub fn use_client_registry_sse(
     version: ReadSignal<u32>,
     refetch: Arc<dyn Fn() + Send + Sync + 'static>,
 ) {
-    let url = Signal::derive({
-        move || topic.get().map(|t| t.sse_url()).unwrap_or_default()
-    });
+    let url = Signal::derive(move || topic.get().map(|t| t.sse_url()).unwrap_or_default());
 
     // ToDo: to clean up: remove url effect and log!
     Effect::new(move || {
@@ -33,13 +31,14 @@ pub fn use_client_registry_sse(
         UseEventSourceOnEventReturn::ProcessMessage
     };
 
-    let UseEventSourceReturn { message, close, .. } = use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
-        url,
-        UseEventSourceOptions::default()
-            .immediate(true)
-            .named_events(["changed".to_string()])
-            .on_event(changed_handler),
-    );
+    let UseEventSourceReturn { message, close, .. } =
+        use_event_source_with_options::<CrMsg, JsonSerdeCodec>(
+            url,
+            UseEventSourceOptions::default()
+                .immediate(true)
+                .named_events(["changed".to_string()])
+                .on_event(changed_handler),
+        );
 
     Effect::new(move || {
         if let Some(event) = message.get() {

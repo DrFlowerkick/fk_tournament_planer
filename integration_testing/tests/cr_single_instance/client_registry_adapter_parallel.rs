@@ -10,8 +10,8 @@
 //! - Comments are in English by request.
 //! - Make sure to run with `--features ssr`.
 
-use integration_testing::cr_single_instance_test_support::*;
 use futures_util::StreamExt;
+use integration_testing::cr_single_instance_test_support::*;
 
 /// P2.1: Many parallel publishers on the same topic should not deadlock,
 /// and the subscriber observes exactly `K` distinct versions (1..=K).

@@ -7,8 +7,7 @@ edition = "2024"
 
 [features]
 default = []
-csr = ["leptos/csr", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
-test-mock = ["app/test-mock"]
+test-mock = ["app/test-mock", "leptos/csr", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
 ssr = [
     "app/ssr",
     "leptos/ssr",
@@ -50,3 +49,6 @@ url.workspace = true
 uuid.workspace = true
 wasm-bindgen-test = { workspace = true, optional = true }
 gloo-timers.workspace = true
+
+[dev-dependencies]
+web-sys = { workspace = true, features = ["KeyboardEventInit"]}

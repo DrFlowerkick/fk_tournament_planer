@@ -7,7 +7,7 @@ edition = "2024"
 
 [features]
 default = []
-hydrate = ["leptos/hydrate", "leptos-use/use_event_source"]
+hydrate = ["leptos/hydrate", "leptos-use/use_event_source", "uuid/js"]
 ssr = [
     "leptos/ssr",
     "leptos-use/ssr",

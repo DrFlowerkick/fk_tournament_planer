@@ -85,7 +85,7 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          key: unit-release-ssr_test_support
+          key: unit-release-ssr
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9

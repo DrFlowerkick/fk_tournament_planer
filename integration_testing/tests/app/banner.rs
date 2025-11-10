@@ -1,7 +1,7 @@
 use crate::common::get_element_by_test_id;
 use app::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner};
 use gloo_timers::future::sleep;
-use leptos::{mount::mount_to_body, prelude::*};
+use leptos::{mount::mount_to, prelude::*, tachys::dom::body};
 use leptos_router::components::Router;
 use std::{
     sync::{Arc, RwLock},
@@ -21,7 +21,7 @@ async fn test_acknowledgment_banner_display_and_acknowledge() {
         *ack_called = true;
     };
 
-    mount_to_body(move || {
+    let _mount_guard = mount_to(body(), move || {
         view! {
             <AcknowledgmentBanner
                 msg="Test Message"
@@ -50,7 +50,7 @@ async fn test_acknowledgment_and_navigate_banner_display_and_acknowledge() {
         *ack_called = true;
     };
 
-    mount_to_body(move || {
+    let _mount_guard = mount_to(body(), move || {
         view! {
             <Router>
                 <AcknowledgmentAndNavigateBanner

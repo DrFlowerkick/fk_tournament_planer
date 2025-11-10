@@ -99,4 +99,3 @@ fn map_db_err(e: DE) -> DbError {
         _ => DbError::Other(anyhow::anyhow!(e)),
     }
 }
-

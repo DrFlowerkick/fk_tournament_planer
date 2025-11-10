@@ -7,7 +7,7 @@ edition = "2024"
 
 [features]
 default = []
-hydrate = ["leptos/hydrate", "leptos-axum-socket/hydrate"]
+hydrate = ["leptos/hydrate", "leptos-axum-socket/hydrate", "uuid/js"]
 ssr = ["leptos/ssr", "leptos-axum-socket/ssr", "dep:axum", "dep:shared"]
 
 [dependencies]

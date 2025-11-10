@@ -2,8 +2,8 @@
 //! Basic P1 tests for the real Client Registry adapter.
 
 use app_core::CrMsg;
-use integration_testing::cr_single_instance_test_support::*;
 use futures_util::StreamExt;
+use integration_testing::cr_single_instance_test_support::*;
 use std::time::Duration;
 use uuid::Uuid;
 

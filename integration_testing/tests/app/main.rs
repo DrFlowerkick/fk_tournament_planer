@@ -1,4 +1,4 @@
-#![cfg(feature = "csr")]
+#![cfg(feature = "test-mock")]
 mod banner;
-mod search;
 mod common;
+mod search;

@@ -9,6 +9,7 @@ use app_core::PostalAddress;
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
 use tracing::instrument;
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -28,13 +29,12 @@ pub async fn load_postal_address(id: Uuid) -> AppResult<Option<PostalAddress>> {
     load_postal_address_inner(id).await
 }
 
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
 pub async fn load_postal_address_inner(id: Uuid) -> AppResult<Option<PostalAddress>> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
     let pa = core.load(id).await?.map(|pa| pa.to_owned());
     Ok(pa)
 }
-
-
 
 #[cfg(not(feature = "test-mock"))]
 #[server]
@@ -52,6 +52,7 @@ pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>
     list_postal_addresses_inner(name).await
 }
 
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
 pub async fn list_postal_addresses_inner(name: String) -> AppResult<Vec<PostalAddress>> {
     let core = expect_context::<CoreState>().as_postal_address_state();
     info!("list_request");

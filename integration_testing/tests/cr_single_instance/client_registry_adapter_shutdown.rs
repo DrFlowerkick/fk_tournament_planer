@@ -6,8 +6,8 @@
 //! Since after the last handle is gone we cannot call methods anymore, the
 //! assertion focuses on stream termination behavior.
 
-use integration_testing::cr_single_instance_test_support::*;
 use futures_util::StreamExt;
+use integration_testing::cr_single_instance_test_support::*;
 use std::time::Duration;
 
 /// S1: Dropping the *last* adapter handle should make active streams end quickly.

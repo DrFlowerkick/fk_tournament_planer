@@ -10,6 +10,8 @@ hydrate = [
     "leptos/hydrate",
     "leptos-axum-socket/hydrate",
     "cr_leptos_axum_socket/hydrate",
+    "cr_single_instance/hydrate",
+    "uuid/js",
 ]
 ssr = [
     "leptos/ssr",

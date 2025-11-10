@@ -9,8 +9,8 @@
 //! - These tests assume an in-memory single-process adapter with per-subscriber
 //!   broadcast buffers and a drop policy on overflow.
 
-use integration_testing::cr_single_instance_test_support::*;
 use futures_util::StreamExt;
+use integration_testing::cr_single_instance_test_support::*;
 use std::time::Duration;
 
 /// R1: A lagging subscriber that drops (due to overflow or explicit drop)

@@ -1,6 +1,6 @@
 use app_core::{
     ClientRegistryPort, Core, CoreBuilder, CrMsg, CrTopic, DatabasePort, DbError, DbResult,
-    DbpPostalAddress, PostalAddress, InitState, PostalAddressState, utils::id_version::IdVersion,
+    DbpPostalAddress, InitState, PostalAddress, PostalAddressState, utils::id_version::IdVersion,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -21,14 +21,16 @@ impl FakeDatabasePort {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn seed(&self, mut addr: PostalAddress) {
+    pub fn seed(&self, mut addr: PostalAddress) -> Uuid {
         assert!(addr.get_id().is_none());
-        let id_version = IdVersion::new(Uuid::new_v4(), 0);
+        let id = Uuid::new_v4();
+        let id_version = IdVersion::new(id, 0);
         addr.set_id_version(id_version);
         self.inner
             .lock()
             .unwrap()
             .insert(addr.get_id().unwrap(), addr);
+        id
     }
 
     pub fn fail_get_once(&self) {

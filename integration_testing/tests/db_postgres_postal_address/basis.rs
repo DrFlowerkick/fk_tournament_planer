@@ -2,9 +2,9 @@
 //! Focus: insert/read roundtrip, optimistic update (version++),
 //! conflict on stale version, not-found read, simple list with filter & limit.
 
-use integration_testing::db_postgres_test_support::{common::*, postal_address::*};
 use anyhow::Result;
 use app_core::{DatabasePort, DbError, DbpPostalAddress};
+use integration_testing::db_postgres_test_support::{common::*, postal_address::*};
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread")]

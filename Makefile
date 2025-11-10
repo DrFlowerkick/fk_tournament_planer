@@ -103,6 +103,14 @@ test:
 test-release:
 	cargo nextest run --workspace --locked --release --features "ssr"
 
+.PHONY: test-wasm
+test-wasm:
+	cargo test --package integration_testing --target wasm32-unknown-unknown --features "test-mock"
+
+.PHONY: test-wasm-release
+test-wasm-release:
+	cargo test --package integration_testing --target wasm32-unknown-unknown --release --features "test-mock"
+
 .PHONY: coverage
 coverage:
 	cargo llvm-cov nextest --workspace --locked --features "ssr" --lcov --output-path coverage/lcov.info

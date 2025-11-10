@@ -5,6 +5,9 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - leptos_axum_socket
 
 env:
   CARGO_TERM_COLOR: always
@@ -27,6 +30,12 @@ jobs:
     uses: ./.github/workflows/_unit_and_integration_tests.yml
     with:
       features: "ssr"
+
+  wasm_tests:
+    uses: ./.github/workflows/_wasm_tests.yml
+    with:
+      package: "integration_testing"
+      features: "test-mock"
 
   end_to_end_tests:
     uses: ./.github/workflows/_end_to_end_tests.yml

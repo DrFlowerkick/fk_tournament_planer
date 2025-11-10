@@ -22,9 +22,7 @@ use uuid::Uuid;
 pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url
     let params = use_params::<AddressParams>();
-    view! {
-        <SearchPostalAddressInner params=params />
-    }
+    view! { <SearchPostalAddressInner params=params /> }
 }
 #[component]
 pub fn SearchPostalAddressInner(
