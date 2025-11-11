@@ -7,7 +7,7 @@ use crate::{
     banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
 };
 use app_core::{PaValidationField, PostalAddress};
-use leptos::{leptos_dom::helpers::set_timeout, prelude::*, web_sys};
+use leptos::{leptos_dom::helpers::set_timeout, prelude::*, wasm_bindgen::JsCast, web_sys};
 use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_params},
@@ -29,13 +29,13 @@ pub fn PostalAddressEdit() -> impl IntoView {
 
 // Wrapper component to provide type safe refetch function via context
 #[component]
-pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
+pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
     let navigate = use_navigate();
 
     // --- Server Actions & Resources ---
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
     let addr_res = Resource::new(
-        move || id,
+        move || id.get(),
         |maybe_id| async move {
             match maybe_id {
                 Some(id) => match load_postal_address(id).await {
@@ -64,7 +64,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
 
     // --- Signals for UI state & errors ---
     let pending = save_postal_address.pending();
-    let is_new = id.is_none();
+    let is_new = move || id.get().is_none();
 
     // --- Derived Signals for Error States ---
     // reset these signals with save_postal_address.clear() when needed
@@ -140,7 +140,8 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
     let is_valid_country = move || is_field_valid(PaValidationField::Country);
 
     let cancel_target = move || {
-        id.map(|id| format!("/postal-address/{}", id))
+        id.get()
+            .map(|id| format!("/postal-address/{}", id))
             .unwrap_or_else(|| "/postal-address".to_string())
     };
 
@@ -177,13 +178,38 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                         }
                     })
             }} // --- Address Form ---
-            <ActionForm action=save_postal_address attr:data-testid="form-address">
+            //<ActionForm action=save_postal_address attr:data-testid="form-address">
+            <form
+                data-testid="form-address"
+                on:submit=move |ev| {
+                    ev.prevent_default();
+
+                    // Get the value from the button that triggered the submit
+                    let intent = ev
+                        .submitter()
+                        .and_then(|el| el.dyn_into::<web_sys::HtmlButtonElement>().ok())
+                        .map(|btn| btn.value());
+
+                    let data = SavePostalAddress {
+                        id: id.get().unwrap_or(Uuid::nil()),
+                        version: version.get(),
+                        name: name.get(),
+                        street: street.get(),
+                        postal_code: postal_code.get(),
+                        locality: locality.get(),
+                        region: Some(region.get()).filter(|r| !r.is_empty()),
+                        country: country.get(),
+                        intent: intent,
+                    };
+                    save_postal_address.dispatch(data);
+                }
+            >
                 // Hidden meta fields the server expects (id / version / intent)
                 <input
                     type="hidden"
                     name="id"
                     data-testid="hidden-id"
-                    prop:value=id.unwrap_or(Uuid::nil()).to_string()
+                    prop:value=move || id.get().unwrap_or(Uuid::nil()).to_string()
                 />
                 <input
                     type="hidden"
@@ -259,7 +285,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                             placeholder=move || {
                                 if addr_res.get().is_none() {
                                     "Loading..."
-                                } else if is_new {
+                                } else if is_new() {
                                     "Enter name..."
                                 } else {
                                     ""
@@ -282,7 +308,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                             placeholder=move || {
                                 if addr_res.get().is_none() {
                                     "Loading..."
-                                } else if is_new {
+                                } else if is_new() {
                                     "Enter street and number..."
                                 } else {
                                     ""
@@ -308,7 +334,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                                 placeholder=move || {
                                     if addr_res.get().is_none() {
                                         "Loading..."
-                                    } else if is_new {
+                                    } else if is_new() {
                                         "Enter postal code..."
                                     } else {
                                         ""
@@ -334,7 +360,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                                 placeholder=move || {
                                     if addr_res.get().is_none() {
                                         "Loading..."
-                                    } else if is_new {
+                                    } else if is_new() {
                                         "Enter city..."
                                     } else {
                                         ""
@@ -357,7 +383,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                             placeholder=move || {
                                 if addr_res.get().is_none() {
                                     "Loading..."
-                                } else if is_new {
+                                } else if is_new() {
                                     "Enter region (optional)..."
                                 } else {
                                     ""
@@ -386,7 +412,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                             placeholder=move || {
                                 if addr_res.get().is_none() {
                                     "Loading..."
-                                } else if is_new {
+                                } else if is_new() {
                                     "Enter country..."
                                 } else {
                                     ""
@@ -403,7 +429,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                         <button
                             type="submit"
                             name="intent"
-                            value=move || if is_new { "create" } else { "update" }
+                            value=move || if is_new() { "create" } else { "update" }
                             data-testid="btn-save"
                             class="btn"
                             prop:disabled=move || is_disabled() || !is_valid_addr()
@@ -418,7 +444,7 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                             value="create"
                             data-testid="btn-save-as-new"
                             class="btn"
-                            prop:disabled=move || is_disabled() || is_new || !is_valid_addr()
+                            prop:disabled=move || is_disabled() || is_new() || !is_valid_addr()
                             prop:hidden=move || is_new
                         >
                             "Save as new"
@@ -470,7 +496,8 @@ pub fn AddressForm(id: Option<Uuid>) -> impl IntoView {
                         </button>
                     </div>
                 </fieldset>
-            </ActionForm>
+            //</ActionForm>
+            </form>
         </Transition>
     }
 }

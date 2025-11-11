@@ -1,13 +1,15 @@
 #![cfg_attr(feature = "test-mock", allow(unused_imports))]
 // server function for postal address
 
-#[cfg(feature = "ssr")]
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
 use crate::AppError;
 use crate::AppResult;
 use app_core::PostalAddress;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
+#[cfg(feature = "test-mock")]
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -68,6 +70,7 @@ pub async fn list_postal_addresses_inner(name: String) -> AppResult<Vec<PostalAd
     }
 }
 
+#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "postal_address.save",
@@ -96,6 +99,63 @@ pub async fn save_postal_address(
     region: Option<String>,
     country: String,
     // which submit button was clicked: "update" | "create"
+    intent: Option<String>,
+) -> AppResult<()> {
+    save_postal_address_inner(
+        id,
+        version,
+        name,
+        street,
+        postal_code,
+        locality,
+        region,
+        country,
+        intent,
+    )
+    .await
+}
+
+#[cfg(feature = "test-mock")]
+pub use super::server_fn_test_support::SavePostalAddress;
+
+#[cfg(feature = "test-mock")]
+#[allow(clippy::too_many_arguments)]
+pub async fn save_postal_address(
+    id: Uuid,
+    version: u32,
+    name: String,
+    street: String,
+    postal_code: String,
+    locality: String,
+    region: Option<String>,
+    country: String,
+    intent: Option<String>,
+) -> AppResult<()> {
+    save_postal_address_inner(
+        id,
+        version,
+        name,
+        street,
+        postal_code,
+        locality,
+        region,
+        country,
+        intent,
+    )
+    .await
+}
+
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
+#[allow(clippy::too_many_arguments)]
+pub async fn save_postal_address_inner(
+    id: Uuid,
+    version: u32,
+    name: String,
+    street: String,
+    postal_code: String,
+    locality: String,
+    region: Option<String>,
+    country: String,
     intent: Option<String>,
 ) -> AppResult<()> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
@@ -132,6 +192,12 @@ pub async fn save_postal_address(
         Ok(saved) => {
             info!(saved_id = %saved.get_id().unwrap(), "save_ok_redirect");
             let route = format!("/postal-address/{}", saved.get_id().unwrap());
+            #[cfg(feature = "test-mock")]
+            {
+                let navigate = use_navigate();
+                navigate(&route, NavigateOptions::default());
+            }
+            #[cfg(not(feature = "test-mock"))]
             leptos_axum::redirect(&route);
             Ok(())
         }

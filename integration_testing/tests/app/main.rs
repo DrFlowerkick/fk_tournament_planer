@@ -2,3 +2,4 @@
 mod banner;
 mod common;
 mod search;
+mod edit;

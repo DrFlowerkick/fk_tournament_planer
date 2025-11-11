@@ -13,11 +13,11 @@ export const ROUTES = {
 export async function openPostalAddressList(page: Page) {
   // Navigate to "list" route and assert elements exist
   await page.goto(ROUTES.list);
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId(T.search.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnModify)).toBeDisabled();
+  await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
+  await expect(page.getByTestId(T.search.btnEdit)).toBeDisabled();
 }
 
 /**
@@ -25,11 +25,11 @@ export async function openPostalAddressList(page: Page) {
  */
 export async function waitForPostalAddressListUrl(page: Page) {
   await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId(T.search.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnModify)).toBeEnabled();
+  await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
+  await expect(page.getByTestId(T.search.btnEdit)).toBeEnabled();
 }
 
 /**
@@ -47,18 +47,18 @@ export function extractUuidFromUrl(url: string): string {
 export async function openNewForm(page: Page) {
   // Navigate to "new" route and assert the form exists
   await page.goto(ROUTES.newAddress);
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId(T.form.root)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeHidden();
 }
 
 /**
- * Enter modify mode from a detail page (if you have a dedicated edit button).
+ * Enter edit mode from a detail page (if you have a dedicated edit button).
  */
-export async function openModifyForm(page: Page) {
-  await expect(page.getByTestId(T.search.btnModify)).toBeVisible();
-  await page.getByTestId(T.search.btnModify).click();
+export async function openEditForm(page: Page) {
+  await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
+  await page.getByTestId(T.search.btnEdit).click();
   // Assert the form is shown again
   await waitForPostalAddressEditUrl(page);
 }
@@ -68,7 +68,7 @@ export async function openModifyForm(page: Page) {
  */
 export async function waitForPostalAddressEditUrl(page: Page) {
   await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}\/edit$/);
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId(T.form.root)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
@@ -204,17 +204,14 @@ export async function fillFields(
  * Fill all required fields with valid normalized values (DE-specific ZIP example).
  */
 export async function fillAllRequiredValid(page: Page, name: string) {
-  await fillFields(
-    page,
-    {
-      name,
-      street: "Beispielstr. 1",
-      postal_code: "10115",
-      locality: "Berlin Mitte",
-      region: "",
-      country: "DE"
-    }
-  );
+  await fillFields(page, {
+    name,
+    street: "Beispielstr. 1",
+    postal_code: "10115",
+    locality: "Berlin Mitte",
+    region: "",
+    country: "DE",
+  });
 }
 
 /**

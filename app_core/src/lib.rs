@@ -26,8 +26,8 @@ pub use tournament::*;
 use std::sync::Arc;
 
 /// Core does provide on server context:
-/// - API to create, modify, delete, schedule, and orchestrate tournaments
-/// - API to create, modify, delete entrants and members
+/// - API to create, edit, delete, schedule, and orchestrate tournaments
+/// - API to create, edit, delete entrants and members
 /// - API for entrants to participate at a tournament
 /// - input validators
 /// - Administration API

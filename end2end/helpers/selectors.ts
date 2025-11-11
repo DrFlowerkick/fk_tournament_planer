@@ -27,7 +27,7 @@ export const T = {
     },
     // Actions
     btnNew: "btn-new-address", // <a href="/postal-address/new">New</a>
-    btnModify: "btn-modify-address", // <button>Modify</button>
+    btnEdit: "btn-edit-address", // <button>Edit</button>
   },
 
   // edit.rs (AddressForm)
@@ -76,7 +76,7 @@ export function selectors(page: Page) {
         country: root.getByTestId(T.search.preview.country),
       },
       btnNew: root.getByTestId(T.search.btnNew),
-      btnModify: root.getByTestId(T.search.btnModify),
+      btnEdit: root.getByTestId(T.search.btnEdit),
     },
     form: {
       root,
@@ -95,9 +95,15 @@ export function selectors(page: Page) {
     banner: {
       acknowledgmentBanner: root.getByTestId(T.banner.acknowledgmentBanner),
       btnAcknowledgment: root.getByTestId(T.banner.btnAcknowledgment),
-      acknowledgmentNavigateBanner: root.getByTestId(T.banner.acknowledgmentNavigateBanner),
-      btnAcknowledgmentNavigateAction: root.getByTestId(T.banner.btnAcknowledgmentNavigateAction),
-      btnAcknowledgmentNavigate: root.getByTestId(T.banner.btnAcknowledgmentNavigate),
+      acknowledgmentNavigateBanner: root.getByTestId(
+        T.banner.acknowledgmentNavigateBanner
+      ),
+      btnAcknowledgmentNavigateAction: root.getByTestId(
+        T.banner.btnAcknowledgmentNavigateAction
+      ),
+      btnAcknowledgmentNavigate: root.getByTestId(
+        T.banner.btnAcknowledgmentNavigate
+      ),
     },
   });
 
@@ -118,7 +124,7 @@ export function selectors(page: Page) {
         country: page.getByTestId(T.search.preview.country),
       },
       btnNew: page.getByTestId(T.search.btnNew),
-      btnModify: page.getByTestId(T.search.btnModify),
+      btnEdit: page.getByTestId(T.search.btnEdit),
     },
 
     // edit.rs
@@ -141,9 +147,15 @@ export function selectors(page: Page) {
     banner: {
       acknowledgmentBanner: page.getByTestId(T.banner.acknowledgmentBanner),
       btnAcknowledgment: page.getByTestId(T.banner.btnAcknowledgment),
-      acknowledgmentNavigateBanner: page.getByTestId(T.banner.acknowledgmentNavigateBanner),
-      btnAcknowledgmentNavigateAction: page.getByTestId(T.banner.btnAcknowledgmentNavigateAction),
-      btnAcknowledgmentNavigate: page.getByTestId(T.banner.btnAcknowledgmentNavigate),
+      acknowledgmentNavigateBanner: page.getByTestId(
+        T.banner.acknowledgmentNavigateBanner
+      ),
+      btnAcknowledgmentNavigateAction: page.getByTestId(
+        T.banner.btnAcknowledgmentNavigateAction
+      ),
+      btnAcknowledgmentNavigate: page.getByTestId(
+        T.banner.btnAcknowledgmentNavigate
+      ),
     },
 
     // scopers

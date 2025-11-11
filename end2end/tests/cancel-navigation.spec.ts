@@ -26,7 +26,7 @@ test.describe("Cancel button navigation", () => {
     await searchAndOpenByNameOnCurrentPage(page, name);
 
     // -------------------- Act: Go to edit and click cancel --------------------
-    await page.getByTestId(T.search.btnModify).click();
+    await page.getByTestId(T.search.btnEdit).click();
     await expect(page.getByTestId(T.form.root)).toBeVisible();
     await page.getByTestId(T.form.btnCancel).click();
 
@@ -41,7 +41,7 @@ test.describe("Cancel button navigation", () => {
     await page.goto(`${url}/edit`);
     await expect(page.getByTestId(T.form.root)).toBeVisible();
     await page.getByTestId(T.form.btnCancel).click();
-    
+
     // -------------------- Assert: We are on the main list page --------------------
     await expect(page).toHaveURL("/postal-address");
     await expect(page.getByTestId(T.search.input)).toBeVisible();

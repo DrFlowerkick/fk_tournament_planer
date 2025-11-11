@@ -373,10 +373,10 @@ pub fn SearchPostalAddressInner(
                     "New"
                 </button>
 
-                // MODIFY: only active, if valid address is selected and no error
+                // Edit: only active, if valid address is selected and no error
                 <button
                     class="btn btn-secondary btn-sm"
-                    data-testid="btn-modify-address"
+                    data-testid="btn-edit-address"
                     disabled=move || is_disabled() || id.get().is_none()
                     on:click=move |_| {
                         let id = id
@@ -388,7 +388,7 @@ pub fn SearchPostalAddressInner(
                         navigate(&format!("/postal-address/{id}/edit"), NavigateOptions::default());
                     }
                 >
-                    "Modify"
+                    "Edit"
                 </button>
             </div>
         </Transition>
