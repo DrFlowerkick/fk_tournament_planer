@@ -1,10 +1,6 @@
 use super::server_fn::save_postal_address_inner;
 use crate::AppError;
-use leptos::server_fn::{
-    Protocol, ServerFn,
-    client::Client,
-    server::Server,
-};
+use leptos::server_fn::{Protocol, ServerFn, client::Client, server::Server};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -20,15 +16,15 @@ where
 {
     const METHOD: http::Method = http::Method::POST;
 
-    fn run_server<F, Fut>(
+    async fn run_server<F, Fut>(
         _request: <SS as Server<AppError>>::Request,
         _server_fn: F,
-    ) -> impl Future<Output = Result<<SS as Server<AppError>>::Response, AppError>> + Send
+    ) -> Result<<SS as Server<AppError>>::Response, AppError>
     where
         F: Fn(SavePostalAddress) -> Fut + Send,
         Fut: Future<Output = Result<(), AppError>> + Send,
     {
-        async { unimplemented!("MockProtocol cannot run server functions") }
+        unimplemented!("MockProtocol cannot run server functions")
     }
     fn run_client(
         _path: &str,

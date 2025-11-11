@@ -58,6 +58,6 @@ pub fn init_test_state() -> InitialTestState {
         postal: postal.into(),
         city: city.into(),
         region: region.into(),
-        country: country.to_uppercase().into(),
+        country: country.to_uppercase(),
     }
 }

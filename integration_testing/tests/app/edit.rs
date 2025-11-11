@@ -1,5 +1,6 @@
 use crate::common::{get_element_by_test_id, init_test_state};
 use app::postal_addresses::AddressForm;
+use app_core::DbpPostalAddress;
 use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,
@@ -13,7 +14,6 @@ use leptos_router::components::Router;
 use std::time::Duration;
 use uuid::Uuid;
 use wasm_bindgen_test::*;
-use app_core::DbpPostalAddress;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
@@ -85,7 +85,11 @@ async fn test_edit_postal_address() {
 
     sleep(Duration::from_millis(10)).await;
 
-    let new_address = ts.db.list_postal_addresses(Some("New"), None).await.unwrap();
+    let new_address = ts
+        .db
+        .list_postal_addresses(Some("New"), None)
+        .await
+        .unwrap();
     assert_eq!(new_address.len(), 1);
     assert_eq!(new_address[0].get_name(), "New Name");
 
@@ -106,7 +110,12 @@ async fn test_edit_postal_address() {
     save_button.click();
 
     sleep(Duration::from_millis(10)).await;
-    let updated_address = ts.db.get_postal_address(existing_id).await.unwrap().unwrap();
+    let updated_address = ts
+        .db
+        .get_postal_address(existing_id)
+        .await
+        .unwrap()
+        .unwrap();
     assert_eq!(updated_address.get_street(), "456 Another St");
     assert_eq!(updated_address.get_version().unwrap(), 1);
 
@@ -123,10 +132,13 @@ async fn test_edit_postal_address() {
     let save_as_new_button = get_element_by_test_id("btn-save-as-new");
     save_as_new_button.click();
     sleep(Duration::from_millis(10)).await;
-    let cloned_addresses = ts.db.list_postal_addresses(Some("Cloned"), None).await.unwrap();
+    let cloned_addresses = ts
+        .db
+        .list_postal_addresses(Some("Cloned"), None)
+        .await
+        .unwrap();
     assert_eq!(cloned_addresses.len(), 1);
     assert_eq!(cloned_addresses[0].get_name(), "Cloned Address");
     assert_eq!(updated_address.get_street(), "456 Another St");
     assert_eq!(cloned_addresses[0].get_version().unwrap(), 0);
-    
 }
