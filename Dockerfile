@@ -44,11 +44,13 @@ COPY --from=builder /app/target/site /app/site
 #COPY --from=builder /app/Cargo.toml /app/
 
 # Set Leptos runtime environment variables (can be overridden!)
-ENV RUST_LOG="info"
+#ENV RUST_LOG="info"
+ENV RUST_LOG="info,server=info,app=info,app_core=info,db_postgres=debug,tower_http=warn,hyper=warn,diesel=debug"
 ENV LEPTOS_ENV="PROD"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:8080"
 ENV LEPTOS_SITE_ROOT="site"
 ENV LEPTOS_OUTPUT_NAME="fk_tournament_planer"
+ENV DATABASE_NAME="fk_tournament_planer"
 
 # Expose SSR port
 EXPOSE 8080
