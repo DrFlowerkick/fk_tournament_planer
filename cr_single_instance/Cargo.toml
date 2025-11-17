@@ -1,0 +1,47 @@
+[package]
+name = "cr_single_instance"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+hydrate = ["leptos/hydrate", "leptos-use/use_event_source", "uuid/js"]
+ssr = [
+    "leptos/ssr",
+    "leptos-use/ssr",
+    "dep:tokio",
+    "dep:tokio-stream",
+    "dep:axum",
+    "dep:axum-extra",
+    "dep:shared",
+    "dep:serde_json",
+    "dep:futures-util",
+    "dep:futures-core",
+]
+
+[dependencies]
+anyhow.workspace = true
+app_core = { path = "../app_core" }
+async-trait.workspace = true
+codee.workspace = true
+dashmap.workspace = true
+displaydoc.workspace = true
+futures-core = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
+leptos.workspace = true
+leptos-use.workspace = true
+serde.workspace = true
+tokio = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
+tracing.workspace = true
+tracing-subscriber = { workspace = true, optional = true }
+uuid.workspace = true
+axum ={ workspace = true, optional = true }
+axum-extra ={ workspace = true, optional = true }
+shared = { path = "../shared", optional = true }
+serde_json = { workspace = true, optional = true }
+
+[dev-dependencies]
+tracing-subscriber.workspace = true

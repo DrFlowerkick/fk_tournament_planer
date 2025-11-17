@@ -2,7 +2,7 @@
 FROM rust:1.88-bookworm AS builder
 
 # Install system dependencies
-RUN apt-get update -y && apt-get install -y --no-install-recommends   clang   npm   wget   ca-certificates   && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y --no-install-recommends clang npm wget ca-certificates && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 ENV CARGO_TERM_COLOR=always
 
@@ -13,8 +13,7 @@ RUN tar -xvf cargo-binstall-x86_64-unknown-linux-musl.tgz
 RUN cp cargo-binstall /usr/local/cargo/bin
 
 # get github token from publish.yml and install cargo-leptos
-RUN --mount=type=secret,id=github_token   GITHUB_TOKEN=$(cat /run/secrets/github_token)   cargo binstall cargo-leptos -y
-
+RUN --mount=type=secret,id=github_token GITHUB_TOKEN=$(cat /run/secrets/github_token) cargo binstall cargo-leptos -y
 
 # Add the WASM target
 RUN rustup target add wasm32-unknown-unknown
@@ -34,7 +33,7 @@ RUN cargo leptos build --release
 FROM debian:bookworm-slim AS runtime
 
 # Install runtime dependencies (for OpenSSL etc.)
-RUN apt-get update -y && apt-get install -y --no-install-recommends   openssl ca-certificates   && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -45,11 +44,13 @@ COPY --from=builder /app/target/site /app/site
 #COPY --from=builder /app/Cargo.toml /app/
 
 # Set Leptos runtime environment variables (can be overridden!)
-ENV RUST_LOG="info"
+#ENV RUST_LOG="info"
+ENV RUST_LOG="info,server=info,app=info,app_core=info,db_postgres=debug,tower_http=warn,hyper=warn,diesel=debug"
 ENV LEPTOS_ENV="PROD"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:8080"
 ENV LEPTOS_SITE_ROOT="site"
 ENV LEPTOS_OUTPUT_NAME="fk_tournament_planer"
+ENV DATABASE_NAME="fk_tournament_planer"
 
 # Expose SSR port
 EXPOSE 8080

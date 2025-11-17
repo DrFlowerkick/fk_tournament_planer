@@ -1,0 +1,24 @@
+[package]
+name = "cr_leptos_axum_socket"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+hydrate = ["leptos/hydrate", "leptos-axum-socket/hydrate", "uuid/js"]
+ssr = ["leptos/ssr", "leptos-axum-socket/ssr", "dep:axum", "dep:shared"]
+
+[dependencies]
+anyhow.workspace = true
+app_core = { path = "../app_core" }
+async-trait.workspace = true
+axum = { workspace = true, optional = true }
+leptos.workspace = true
+leptos-axum-socket.workspace = true
+serde.workspace = true
+shared = { path = "../shared", optional = true }
+tracing.workspace = true
+uuid.workspace = true
+

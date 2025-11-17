@@ -1,0 +1,133 @@
+# .github/workflows/_test.yml
+name: unit_and_integration_tests
+
+on:
+  # Reusable workflow
+  workflow_call:
+    inputs:
+      rust_toolchain:
+        description: "Rust toolchain channel (e.g., stable, beta, 1.80.0)"
+        required: false
+        type: string
+        default: "stable"
+      release_profile:
+        description: "Run tests with --release for parity with prod-like builds"
+        required: false
+        type: boolean
+        default: true
+      features:
+        description: "Comma-separated Cargo features to enable (empty = default features)"
+        required: false
+        type: string
+        default: ""
+      locked:
+        description: "Use --locked to enforce Cargo.lock"
+        required: false
+        type: boolean
+        default: true
+      nextest_status_level:
+        description: "nextest --status-level (e.g., all, final, none)"
+        required: false
+        type: string
+        default: "all"
+      nextest_failure_output:
+        description: "nextest --failure-output (e.g., final, immediate, immediate-final)"
+        required: false
+        type: string
+        default: "final"
+      run_doctests:
+        description: "Also run cargo test --doc"
+        required: false
+        type: boolean
+        default: true
+      extra_args:
+        description: "Extra arguments passed to cargo nextest run"
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  tests:
+    name: Unit & Integration (nextest)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      POSTGRES_URL: postgres://postgres:postgres@localhost:5432/
+      RUST_LOG: info,db_postgres=debug,db_port=debug,diesel=warn
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      DISABLE_DB_CLEANUP: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ inputs.rust_toolchain }}
+          profile: minimal
+          override: true
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: unit-release-ssr
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Install psql client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        uses: ./.github/actions/wait-for-postgres
+        with:
+          host: localhost
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: Run tests with nextest
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLAGS="--workspace"
+          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
+          if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
+          if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
+          if [ -n "${{ inputs.extra_args }}" ]; then FLAGS="$FLAGS ${{ inputs.extra_args }}"; fi
+
+          echo "cargo nextest run $FLAGS --status-level=${{ inputs.nextest_status_level }} --failure-output=${{ inputs.nextest_failure_output }} --jobs=2"
+          bash -c "cargo nextest run $FLAGS --status-level=${{ inputs.nextest_status_level }} --failure-output=${{ inputs.nextest_failure_output }} --jobs=2"
+
+      - name: Run doctests (separately)
+        if: ${{ inputs.run_doctests }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLAGS="--workspace"
+          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
+          if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
+          if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
+
+          echo "cargo test --doc $FLAGS"
+          bash -c "cargo test --doc $FLAGS"

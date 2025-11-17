@@ -1,15 +1,17 @@
 {
   "rust-analyzer.procMacro.ignored": {
-    "leptos_macro": [
-      "server"
-    ]
+    "leptos_macro": ["server"]
   },
-  "rust-analyzer.cargo.features": ["ssr"],
-  "rust-analyzer.rustfmt.overrideCommand": [
+  // uncomment this if working on test cases
+  //"rust-analyzer.cargo.features": ["ssr", "hydrate"],
+  // Enable all features
+  "rust-analyzer.cargo.features": "all",
+  //"rust-analyzer.cargo.features": ["hydrate"],
+  /*"rust-analyzer.rustfmt.overrideCommand": [
     "leptosfmt",
     "--stdin",
     "--rustfmt"
-  ],
+  ],*/
   "css.validate": false,
   "makefile.configureOnOpen": false,
   "tailwindCSS.includeLanguages": {
@@ -26,11 +28,78 @@
   "cSpell.dictionaries": ["en", "de-de"],
   "cSpell.enabled": true,
   "cSpell.words": [
-    "axum", "bindgen", "browserlist", "browserquery", "buildx",
-    "Buildx", "cdylib", "codegen", "daisyui", "drflowerkick",
-    "dtolnay", "github", "GITHUB", "leptos", "leptosfmt",
-    "linux", "prefersdark", "rlib", "rustc", "srcset",
-    "stylesheet", "Swatinem", "taiki", "tailwindcss", "tokio"
+    "autoreload",
+    "autoremove",
+    "axum",
+    "backpressure",
+    "bindgen",
+    "binstall",
+    "browserlist",
+    "browserquery",
+    "btrim",
+    "buildx",
+    "Buildx",
+    "bunyan",
+    "cdylib",
+    "citext",
+    "codee",
+    "codegen",
+    "daisyui",
+    "dashmap",
+    "datistemplate",
+    "datname",
+    "debian",
+    "displaydoc",
+    "doctests",
+    "domcontentloaded",
+    "drflowerkick",
+    "dtolnay",
+    "fieldset",
+    "firefox",
+    "fullwidth",
+    "github",
+    "GITHUB",
+    "gloo",
+    "healthcheck",
+    "Insertable",
+    "isready",
+    "leptos",
+    "leptosfmt",
+    "linux",
+    "mousedown",
+    "mouseenter",
+    "mozilla",
+    "Mü𝖓chen",
+    "Münchën",
+    "openssl",
+    "pgcrypto",
+    "pgid",
+    "PGID",
+    "PGPASSWORD",
+    "PIDS",
+    "pipefail",
+    "plpgsql",
+    "postgresql",
+    "prefersdark",
+    "psql",
+    "rlib",
+    "rustc",
+    "sccache",
+    "scopers",
+    "srcset",
+    "stylesheet",
+    "Swatinem",
+    "swiss",
+    "tachys",
+    "taiki",
+    "tailwindcss",
+    "testid",
+    "Timestamptz",
+    "tokio",
+    "unicode",
+    "uuidgen",
+    "viewports",
+    "workdir"
   ],
   "cSpell.ignorePaths": [
     "package-lock.json",
@@ -41,6 +110,7 @@
     ".vscode",
     ".vscode-insiders",
     "**/*.lock",
-    "LICENSE"
+    "LICENSE",
+    "./coverage/**"
   ]
 }

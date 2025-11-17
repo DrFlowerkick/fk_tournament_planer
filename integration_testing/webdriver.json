@@ -1,0 +1,11 @@
+{
+  "moz:firefoxOptions": {
+    "args": [],
+    "log": {"level": "trace"}
+  },
+  "goog:chromeOptions": {
+    "args": [
+      "--also-emit-success-logs"
+    ]
+  }
+}

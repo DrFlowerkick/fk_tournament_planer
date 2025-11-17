@@ -1,0 +1,54 @@
+[package]
+name = "integration_testing"
+version = "0.1.0"
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+test-mock = ["app/test-mock", "leptos/csr", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
+ssr = [
+    "app/ssr",
+    "leptos/ssr",
+    "leptos_router/ssr",
+    "leptos-axum-socket/ssr",
+    "dep:tokio",
+    "dep:cr_single_instance",
+    "dep:db_postgres",
+    "dep:diesel",
+    "dep:diesel-async",
+    "dep:futures-util",
+    "dep:shared",
+]
+hydrate = ["app/hydrate", "leptos/hydrate", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
+
+[dependencies]
+anyhow.workspace = true
+app = { path = "../app", default-features = false }
+app_core = { path = "../app_core" }
+async-trait.workspace = true
+chrono.workspace = true
+cr_single_instance = { path = "../cr_single_instance", optional = true }
+db_postgres = { path = "../db_postgres", optional = true }
+diesel = { workspace = true, optional = true }
+diesel-async = { workspace = true, optional = true }
+displaydoc.workspace = true
+dotenvy.workspace = true
+futures-util = { workspace = true, optional = true}
+leptos.workspace = true
+leptos_router.workspace = true
+leptos-axum-socket.workspace = true
+serde.workspace = true
+shared = { path = "../shared", optional = true}
+thiserror.workspace = true
+tokio = { workspace = true, optional = true }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+url.workspace = true
+uuid.workspace = true
+wasm-bindgen-test = { workspace = true, optional = true }
+gloo-timers.workspace = true
+
+[dev-dependencies]
+web-sys = { workspace = true, features = ["KeyboardEventInit"]}

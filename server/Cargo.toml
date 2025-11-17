@@ -1,18 +1,35 @@
 [package]
 name = "server"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+anyhow.workspace = true
 app = { path = "../app", default-features = false, features = ["ssr"] }
-leptos = { workspace = true, features = [ "ssr" ]}
-leptos_axum.workspace = true
-
+app_core = { path = "../app_core" }
 axum.workspace = true
-simple_logger.workspace = true
+axum-extra.workspace = true
+cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket", features = ["ssr"] }
+cr_single_instance = { path = "../cr_single_instance", features = ["ssr"] }
+db_postgres = { path = "../db_postgres" }
+dotenvy.workspace = true
+futures-core.workspace = true
+futures-util.workspace = true
+leptos = { workspace = true, features = [ "ssr" ] }
+leptos-axum-socket = { workspace = true, features = [ "ssr" ] }
+leptos_axum.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shared = { path = "../shared" }
 tokio.workspace = true
+tokio-stream.workspace = true
 tower.workspace = true
 tower-http.workspace = true
-log.workspace = true
+tracing.workspace = true
+tracing-bunyan-formatter.workspace = true
+tracing-error.workspace = true
+tracing-log.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true

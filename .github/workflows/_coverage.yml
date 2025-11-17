@@ -1,25 +1,150 @@
 # .github/workflows/_coverage.yml
-name: Code Coverage
+# Reusable coverage workflow using cargo-llvm-cov + nextest
+# All comments are in English as requested.
+
+name: coverage
 
 on:
+  # Reusable workflow: can be called from other workflows via "uses:"
   workflow_call:
-
-env:
-  CARGO_TERM_COLOR: always
+    # inputs can be changed with the "with" statement in calling workflow
+    inputs:
+      upload_artifacts:
+        description: "Upload HTML and LCOV artifacts"
+        required: false
+        type: boolean
+        default: true
+      fail_under_lines:
+        description: "Global minimum line coverage percentage to gate the build"
+        required: false
+        type: number
+        default: 70
+      features:
+        description: "Cargo features to use (empty = default features)"
+        required: false
+        type: string
+        default: ""
+      release_profile:
+        description: "Run coverage with --release for parity with tests"
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   coverage:
-    name: Code Coverage
+    name: Coverage (llvm-cov)
     runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      POSTGRES_URL: postgres://postgres:postgres@localhost:5432/
+      RUST_LOG: info,db_postgres=debug,db_port=debug,diesel=warn
+      # uncomment the following if you use sccache (see below)
+      #SCCACHE_GHA_ENABLED: "true"
+      #RUSTC_WRAPPER: "sccache"
+      DISABLE_DB_CLEANUP: "1"
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Set up Rust (nightly)
+        uses: actions-rs/toolchain@v1
+        with:
+          # Nightly is required for doctest coverage
+          toolchain: nightly
+          profile: minimal
+          override: true
+          components: llvm-tools-preview
+      
+      # commented cache, because coverage is run only on push to main, which does not happen often
+      # -> no big benefit to cache, but using up precious cache space
+      # uncomment caching, if you run coverage in PR workflow
+      #- name: Cache Rust build
+      #  uses: Swatinem/rust-cache@v2
+      #  with:
+      #    key: coverage-release-ssr
+      #
+      #- name: Run sccache-cache
+      #  uses: mozilla-actions/sccache-action@v0.0.9
 
-      - uses: Swatinem/rust-cache@v2
 
-      - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
 
-      - name: Run tarpaulin
-        run: cargo tarpaulin --verbose --workspace
+      - name: Install cargo-nextest
+        # Needed because we'll run coverage with the nextest subcommand.
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      
+      - name: Install psql client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for Postgres
+        uses: ./.github/actions/wait-for-postgres
+        with:
+          host: localhost
+
+      - name: Run coverage (nextest + doctests)
+        shell: bash
+        run: |
+          set -euo pipefail
+          REPORT_FLAGS=""
+          FLAGS=""
+          if [ "${{ inputs.release_profile }}" = "true" ]; then
+            FLAGS="$FLAGS --release"
+            REPORT_FLAGS="$REPORT_FLAGS --release"
+          fi
+          if [ -n "${{ inputs.features }}" ]; then
+            FLAGS="$FLAGS --features \"${{ inputs.features }}\""
+          fi
+          mkdir -p coverage
+
+          # 1. Run unit/integration tests via nextest.
+          # The --fail-under-lines gate remains here to fail the build early.
+          echo "cargo llvm-cov nextest --workspace --locked --lcov --output-path ./coverage/lcov.info --fail-under-lines ${{ inputs.fail_under_lines }} $FLAGS --jobs=2"
+          bash -c "cargo llvm-cov nextest \
+            --workspace \
+            --locked \
+            --lcov \
+            --output-path ./coverage/lcov.info \
+            --fail-under-lines ${{ inputs.fail_under_lines }} \
+            --jobs=2 \
+            $FLAGS"
+
+          # 2. Run doctests and merge coverage data automatically.
+          echo "cargo llvm-cov test --doc --workspace --locked $FLAGS"
+          bash -c "cargo llvm-cov test --doc --workspace --locked $FLAGS"
+
+          # 3. Generate the final HTML report from the combined data.
+          echo "cargo llvm-cov report --html --output-dir coverage $REPORT_FLAGS"
+          bash -c "cargo llvm-cov report --html --output-dir coverage $REPORT_FLAGS"
+
+      # Upload HTML report in ./coverage/ and LCOV file ./lcov.info
+      - name: Upload coverage artifacts
+        if: ${{ inputs.upload_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage/**
+          if-no-files-found: error
+          retention-days: 10

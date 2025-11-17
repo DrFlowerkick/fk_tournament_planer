@@ -23,11 +23,16 @@ jobs:
   lint_leptos:
     uses: ./.github/workflows/_lint_leptos.yml
 
-  test:
-    uses: ./.github/workflows/_test.yml
+  unit_and_integration_tests:
+    uses: ./.github/workflows/_unit_and_integration_tests.yml
+    with:
+      features: "ssr"
 
-  end_to_end_test:
-    uses: ./.github/workflows/_end_to_end_test.yml
+  wasm_tests:
+    uses: ./.github/workflows/_wasm_tests.yml
+    with:
+      package: "integration_testing"
+      features: "test-mock"
 
-  coverage:
-    uses: ./.github/workflows/_coverage.yml
+  end_to_end_tests:
+    uses: ./.github/workflows/_end_to_end_tests.yml
