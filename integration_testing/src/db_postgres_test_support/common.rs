@@ -50,6 +50,10 @@ pub fn init_db_testing() {
     // Global one-time bootstrap that clears stale UUID-named test DBs.
     BOOTSTRAP.call_once(|| {
         // Fire-and-forget task; runs at first `init_db_testing()` call.
+        if std::env::var("DISABLE_DB_CLEANUP").is_ok() {
+            info!("DISABLE_DB_CLEANUP is set; skipping stale test database cleanup");
+            return;
+        }
         // We block on it shortly to avoid interleaving with first DB creation.
         let fut = async {
             if let Err(e) = clear_stale_test_databases().await {

@@ -55,6 +55,7 @@ jobs:
       # uncomment the following if you use sccache (see below)
       #SCCACHE_GHA_ENABLED: "true"
       #RUSTC_WRAPPER: "sccache"
+      DISABLE_DB_CLEANUP: "1"   # <--- Hier hinzufügen
 
     steps:
       - name: Checkout
