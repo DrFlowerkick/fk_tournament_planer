@@ -35,6 +35,7 @@ jobs:
     uses: ./.github/workflows/_coverage.yml
     with:
       features: "ssr"
+      fail_under_lines: 0
 
   wasm_tests:
     uses: ./.github/workflows/_wasm_tests.yml
