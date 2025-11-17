@@ -55,7 +55,7 @@ jobs:
       # uncomment the following if you use sccache (see below)
       #SCCACHE_GHA_ENABLED: "true"
       #RUSTC_WRAPPER: "sccache"
-      DISABLE_DB_CLEANUP: "1"   # <--- Hier hinzufügen
+      DISABLE_DB_CLEANUP: "1"
 
     steps:
       - name: Checkout
@@ -133,8 +133,8 @@ jobs:
           bash -c "cargo llvm-cov test --doc --workspace --locked $FLAGS"
 
           # 3. Generate the final HTML report from the combined data.
-          echo "cargo llvm-cov report --html --output-dir coverage $FLAGS"
-          bash -c "cargo llvm-cov report --html --output-dir coverage $FLAGS"
+          echo "cargo llvm-cov report --html --output-dir coverage"
+          bash -c "cargo llvm-cov report --html --output-dir coverage"
 
       # Upload HTML report in ./coverage/ and LCOV file ./lcov.info
       - name: Upload coverage artifacts
