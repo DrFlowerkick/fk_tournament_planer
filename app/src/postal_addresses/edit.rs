@@ -86,7 +86,15 @@ pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
     view! {
         <div class="card w-full bg-base-100 shadow-xl">
             <div class="card-body">
-                <h2 class="card-title">{move || if id.get().is_some() { "Edit Postal Address" } else { "New Postal Address" }}</h2>
+                <h2 class="card-title">
+                    {move || {
+                        if id.get().is_some() {
+                            "Edit Postal Address"
+                        } else {
+                            "New Postal Address"
+                        }
+                    }}
+                </h2>
                 <Transition fallback=move || {
                     view! {
                         <div class="flex justify-center items-center p-4">
@@ -102,7 +110,9 @@ pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
                                     // --- General Load Error Banner ---
                                     view! {
                                         <AcknowledgmentAndNavigateBanner
-                                            msg=format!("An unexpected error occurred during load: {msg}")
+                                            msg=format!(
+                                                "An unexpected error occurred during load: {msg}",
+                                            )
                                             ack_btn_text="Reload"
                                             ack_action=refetch_and_reset
                                             nav_btn_text="Cancel"
@@ -116,7 +126,8 @@ pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
                                     set_street.set(addr.get_street().to_string());
                                     set_postal_code.set(addr.get_postal_code().to_string());
                                     set_locality.set(addr.get_locality().to_string());
-                                    set_region.set(addr.get_region().unwrap_or_default().to_string());
+                                    set_region
+                                        .set(addr.get_region().unwrap_or_default().to_string());
                                     set_country.set(addr.get_country().to_string());
                                     set_version.set(addr.get_version().unwrap_or_default());
                                     ().into_any()
@@ -140,7 +151,9 @@ pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
                                         ev.prevent_default();
                                         let intent = ev
                                             .submitter()
-                                            .and_then(|el| el.dyn_into::<web_sys::HtmlButtonElement>().ok())
+                                            .and_then(|el| {
+                                                el.dyn_into::<web_sys::HtmlButtonElement>().ok()
+                                            })
                                             .map(|btn| btn.value());
                                         let data = SavePostalAddress {
                                             id: id.get().unwrap_or(Uuid::nil()),

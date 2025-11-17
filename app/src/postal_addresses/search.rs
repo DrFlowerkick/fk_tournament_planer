@@ -190,7 +190,9 @@ pub fn SearchPostalAddressInner(
                                     // --- General Load Error Banner ---
                                     view! {
                                         <AcknowledgmentAndNavigateBanner
-                                            msg=format!("An unexpected error occurred during load: {msg}")
+                                            msg=format!(
+                                                "An unexpected error occurred during load: {msg}",
+                                            )
                                             ack_btn_text="Reload"
                                             ack_action=move || addr_res.refetch()
                                             nav_btn_text="Reset"
@@ -327,10 +329,17 @@ pub fn SearchPostalAddressInner(
                         if let Some(Ok(addr)) = addr_res.get() {
                             if addr.get_id().is_some() {
                                 view! {
-                                    <div class="card w-full bg-base-200 shadow-md mt-4" data-testid="address-preview">
+                                    <div
+                                        class="card w-full bg-base-200 shadow-md mt-4"
+                                        data-testid="address-preview"
+                                    >
                                         <div class="card-body">
-                                            <h3 class="card-title" data-testid="preview-name">{addr.get_name().to_string()}</h3>
-                                            <p data-testid="preview-street">{addr.get_street().to_string()}</p>
+                                            <h3 class="card-title" data-testid="preview-name">
+                                                {addr.get_name().to_string()}
+                                            </h3>
+                                            <p data-testid="preview-street">
+                                                {addr.get_street().to_string()}
+                                            </p>
                                             <p data-testid="preview-postal_locality">
                                                 <span data-testid="preview-postal_code">
                                                     {addr.get_postal_code().to_string()}
@@ -343,7 +352,9 @@ pub fn SearchPostalAddressInner(
                                             <p data-testid="preview-region">
                                                 {addr.get_region().unwrap_or_default().to_string()}
                                             </p>
-                                            <p data-testid="preview-country">{addr.get_country().to_string()}</p>
+                                            <p data-testid="preview-country">
+                                                {addr.get_country().to_string()}
+                                            </p>
                                             <p class="hidden" data-testid="preview-id">
                                                 {addr.get_id().unwrap_or_default().to_string()}
                                             </p>
@@ -352,15 +363,20 @@ pub fn SearchPostalAddressInner(
                                             </p>
                                         </div>
                                     </div>
-                                }.into_any()
+                                }
+                                    .into_any()
                             } else {
-                                view! { <div class="mt-4"><p>"No address selected."</p></div> }.into_any()
+                                view! {
+                                    <div class="mt-4">
+                                        <p>"No address selected."</p>
+                                    </div>
+                                }
+                                    .into_any()
                             }
                         } else {
                             ().into_any()
                         }
-                    }}
-                    <div class="card-actions justify-end mt-4">
+                    }} <div class="card-actions justify-end mt-4">
                         <button
                             class="btn btn-primary"
                             data-testid="btn-new-address"
@@ -384,7 +400,10 @@ pub fn SearchPostalAddressInner(
                                         "Save expect, since id.get() returns Some(). Otherwise button would be disabled.",
                                     );
                                 let navigate = use_navigate();
-                                navigate(&format!("/postal-address/{id}/edit"), NavigateOptions::default());
+                                navigate(
+                                    &format!("/postal-address/{id}/edit"),
+                                    NavigateOptions::default(),
+                                );
                             }
                         >
                             "Edit"

@@ -115,27 +115,24 @@ jobs:
           fi
           mkdir -p coverage
 
-          echo "::group::Running nextest for coverage"
           # 1. Run unit/integration tests via nextest.
           # The --fail-under-lines gate remains here to fail the build early.
-          cargo llvm-cov nextest \
+          echo "cargo llvm-cov nextest --workspace --locked --lcov --output-path ./coverage/lcov.info --fail-under-lines ${{ inputs.fail_under_lines }} $FLAGS"
+          bash -c "cargo llvm-cov nextest \
             --workspace \
             --locked \
             --lcov \
             --output-path ./coverage/lcov.info \
             --fail-under-lines ${{ inputs.fail_under_lines }} \
-            $FLAGS
-          echo "::endgroup::"
+            $FLAGS"
 
-          echo "::group::Adding doctests to coverage"
           # 2. Run doctests and merge coverage data automatically.
-          cargo llvm-cov test --doc --workspace --locked $FLAGS
-          echo "::endgroup::"
+          echo "cargo llvm-cov test --doc --workspace --locked $FLAGS"
+          bash -c "cargo llvm-cov test --doc --workspace --locked $FLAGS"
 
-          echo "::group::Generating final HTML report"
           # 3. Generate the final HTML report from the combined data.
-          cargo llvm-cov report --html --output-dir coverage $FLAGS
-          echo "::endgroup::"
+          echo "cargo llvm-cov report --html --output-dir coverage $FLAGS"
+          bash -c "cargo llvm-cov report --html --output-dir coverage $FLAGS"
 
       # Upload HTML report in ./coverage/ and LCOV file ./lcov.info
       - name: Upload coverage artifacts

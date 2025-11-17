@@ -44,7 +44,7 @@ pub fn App() -> impl IntoView {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
 
         // sets the document title
-        <Title text="Welcome to FK Tournament Planer" />
+        <Title text="FK Tournament Planer" />
 
         // routing
         <Router>
@@ -52,11 +52,15 @@ pub fn App() -> impl IntoView {
                 // navigation
                 <header class="navbar bg-base-200">
                     <div class="flex-1">
-                        <a href="/" class="btn btn-ghost normal-case text-xl">"Turnierplaner"</a>
+                        <a href="/" class="btn btn-ghost normal-case text-xl">
+                            "Turnierplaner"
+                        </a>
                     </div>
                     <div class="flex-none">
                         <ul class="menu menu-horizontal px-1">
-                            <li><A href="/postal-address">"Postadressen"</A></li>
+                            <li>
+                                <A href="/postal-address">"Postadressen"</A>
+                            </li>
                         </ul>
                     </div>
                 </header>
@@ -92,10 +96,12 @@ fn HomePage() -> impl IntoView {
         <div class="hero min-h-fit bg-base-100">
             <div class="hero-content text-center">
                 <div class="max-w-md">
-                    <h1 class="text-5xl font-bold">"Willkommen!"</h1>
-                    <p class="py-6">"Dies ist der Entwicklungs-Release des FK Turnierplaners. Die Anwendung befindet sich in aktiver Entwicklung."</p>
+                    <h1 class="text-5xl font-bold">"Welcome!"</h1>
+                    <p class="py-6">
+                        "This is the development release of the FK Tournament Planner. The application is under active development."
+                    </p>
                     <button class="btn btn-primary" on:click=on_click>
-                        "Klick mich: "
+                        "Click me: "
                         {count}
                     </button>
                 </div>
