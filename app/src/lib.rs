@@ -18,7 +18,7 @@ use leptos_router::{
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
         <!DOCTYPE html>
-        <html lang="en">
+        <html lang="en" data-theme="fantasy">
             <head>
                 <meta charset="utf-8" />
                 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -48,21 +48,35 @@ pub fn App() -> impl IntoView {
 
         // routing
         <Router>
+            <div class="flex flex-col min-h-screen">
+                // navigation
+                <header class="navbar bg-base-200">
+                    <div class="flex-1">
+                        <a href="/" class="btn btn-ghost normal-case text-xl">"Turnierplaner"</a>
+                    </div>
+                    <div class="flex-none">
+                        <ul class="menu menu-horizontal px-1">
+                            <li><A href="/postal-address">"Postadressen"</A></li>
+                        </ul>
+                    </div>
+                </header>
 
-            // navigation
-            <nav>
-                <A href="/">"Home"</A>
-                <A href="/postal-address">"Postal Address"</A>
-            </nav>
-            <main>
-                <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=StaticSegment("/") view=HomePage />
-                    <Route path=path!("/postal-address") view=SearchPostalAddress />
-                    <Route path=path!("/postal-address/new") view=NewPostalAddress />
-                    <Route path=path!("/postal-address/:uuid/edit") view=PostalAddressEdit />
-                    <Route path=path!("/postal-address/:uuid") view=SearchPostalAddress />
-                </Routes>
-            </main>
+                <main class="flex-grow p-4">
+                    <Routes fallback=|| "Page not found.".into_view()>
+                        <Route path=StaticSegment("/") view=HomePage />
+                        <Route path=path!("/postal-address") view=SearchPostalAddress />
+                        <Route path=path!("/postal-address/new") view=NewPostalAddress />
+                        <Route path=path!("/postal-address/:uuid/edit") view=PostalAddressEdit />
+                        <Route path=path!("/postal-address/:uuid") view=SearchPostalAddress />
+                    </Routes>
+                </main>
+
+                <footer class="footer footer-center p-4 bg-base-300 text-base-content">
+                    <div>
+                        <p>"© 2025 FK-Tournament-Planer - Alle Rechte vorbehalten"</p>
+                    </div>
+                </footer>
+            </div>
         </Router>
     }
 }
@@ -75,10 +89,17 @@ fn HomePage() -> impl IntoView {
     let on_click = move |_| *count.write() += 1;
 
     view! {
-        <h1>"Welcome to FK Tournament Planer!"</h1>
-        <button class="btn" on:click=on_click>
-            "Click Me: "
-            {count}
-        </button>
+        <div class="hero min-h-fit bg-base-100">
+            <div class="hero-content text-center">
+                <div class="max-w-md">
+                    <h1 class="text-5xl font-bold">"Willkommen!"</h1>
+                    <p class="py-6">"Dies ist der Entwicklungs-Release des FK Turnierplaners. Die Anwendung befindet sich in aktiver Entwicklung."</p>
+                    <button class="btn btn-primary" on:click=on_click>
+                        "Klick mich: "
+                        {count}
+                    </button>
+                </div>
+            </div>
+        </div>
     }
 }

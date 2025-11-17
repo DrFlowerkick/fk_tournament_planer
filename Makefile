@@ -113,13 +113,25 @@ test-wasm-release:
 
 .PHONY: coverage
 coverage:
-	cargo llvm-cov nextest --workspace --locked --features "ssr" --lcov --output-path coverage/lcov.info
-	cargo llvm-cov report --release --html --output-dir coverage
+	# Clean previous coverage artifacts
+	cargo +nightly llvm-cov clean --workspace
+	# 1. Run unit and integration tests via nextest
+	cargo +nightly llvm-cov nextest --workspace --locked --features "ssr" --lcov --output-path coverage/lcov.info
+	# 2. Run doctests and merge coverage data
+	cargo +nightly llvm-cov test --doc --workspace --locked --features "ssr"
+	# 3. Generate the final HTML report from the merged data
+	cargo +nightly llvm-cov report --html --output-dir coverage
 
 .PHONY: coverage-release
 coverage-release:
-	cargo llvm-cov nextest --workspace --locked --release --features "ssr" --lcov --output-path coverage/lcov.info
-	cargo llvm-cov report --release --html --output-dir coverage
+	# Clean previous coverage artifacts
+	cargo +nightly llvm-cov clean --workspace
+	# 1. Run unit and integration tests via nextest (release profile)
+	cargo +nightly llvm-cov nextest --workspace --locked --release --features "ssr" --lcov --output-path coverage/lcov.info
+	# 2. Run doctests and merge coverage data (release profile)
+	cargo +nightly llvm-cov test --doc --workspace --locked --release --features "ssr"
+	# 3. Generate the final HTML report from the merged data (release profile)
+	cargo +nightly llvm-cov report --release --html --output-dir coverage
 
 # -------- Webserver Monitoring & Control --------
 

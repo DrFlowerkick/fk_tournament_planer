@@ -172,225 +172,226 @@ pub fn SearchPostalAddressInner(
     };
 
     view! {
-        <Transition fallback=move || {
-            view! {
-                <div>
-                    <p>"Searching for address..."</p>
-                </div>
-            }
-        }>
-            {move || {
-                addr_res
-                    .get()
-                    .map(|res| match res {
-                        Err(msg) => {
-                            // --- General Load Error Banner ---
-                            view! {
-                                <AcknowledgmentAndNavigateBanner
-                                    msg=format!("An unexpected error occurred during load: {msg}")
-                                    ack_btn_text="Reload"
-                                    ack_action=move || addr_res.refetch()
-                                    nav_btn_text="Reset"
-                                    navigate_url="/postal-address".into()
-                                />
-                            }
-                                .into_any()
-                        }
-                        Ok(addr) => {
-                            set_name.set(addr.get_name().to_string());
-                            set_id.set(addr.get_id());
-                            set_version.set(addr.get_version().unwrap_or_default());
-                            if let Some(id) = addr.get_id() {
-                                let new_topic = CrTopic::Address(id);
-                                set_topic.set(Some(new_topic));
-                            }
-                            ().into_any()
-                        }
-                    })
-            }} // DaisyUI dropdown container
-            <div class=move || {
-                format!("dropdown w-full {}", if open.get() { "dropdown-open" } else { "" })
-            }>
-                // input for name
-                <input
-                    type="text"
-                    class="input input-bordered w-full"
-                    prop:value=move || name.get()
-                    data-testid="search-input"
-                    placeholder="Enter name of address you are searching..."
-                    on:input=move |ev| {
-                        set_query.set(event_target_value(&ev));
-                        set_open.set(true);
-                        set_hi.set(None);
-                    }
-                    on:focus=move |_| {
-                        if query.get().is_empty() {
-                            set_query.set(name.get());
-                        }
-                        set_open.set(true);
-                    }
-                    on:keydown=on_key
-                    on:blur=on_blur
-                    autocomplete="off"
-                    role="combobox"
-                    aria-expanded=move || {
-                        if open.get() && !results().is_empty() { "true" } else { "false" }
-                    }
-                    aria-controls="addr-suggest"
-                />
-
-                // dropdown list
-                {move || {
-                    open.get()
-                        .then(|| {
-                            view! {
-                                <ul
-                                    id="addr-suggest"
-                                    data-testid="search-suggest"
-                                    // aria-busy=true while loading resource, otherwise false
-                                    aria-busy=move || {
-                                        if results().is_empty() { "true" } else { "false" }
-                                    }
-                                    class="dropdown-content menu menu-sm bg-base-100 rounded-box z-[1] mt-1 w-full p-0 shadow max-h-72 overflow-auto"
-                                    role="listbox"
-                                >
-                                    {move || {
-                                        if results().is_empty() {
-                                            view! {
-                                                <li class="px-3 py-2 text-sm text-base-content/70">
-                                                    "Searching…"
-                                                </li>
-                                            }
-                                                .into_any()
-                                        } else {
-                                            view! {
-                                                <For
-                                                    each=move || results().clone().into_iter().enumerate()
-                                                    key=|(_i, a)| a.get_id_version()
-                                                    children=move |(i, a)| {
-                                                        let is_hi = move || {
-                                                            hi.get().map(|j| j == i).unwrap_or(false)
-                                                        };
-                                                        let opt_id = format!("addr-option-{}", i);
-                                                        // for a11y
-
-                                                        view! {
-                                                            <li
-                                                                id=opt_id.clone()
-                                                                data-testid="search-suggest-item"
-                                                                role="option"
-                                                                // a11y: mark current „active“ option element
-                                                                aria-selected=move || if is_hi() { "true" } else { "false" }
-                                                                class:active=move || is_hi()
-                                                            >
-                                                                <a
-                                                                    class="flex flex-col items-start gap-0.5"
-                                                                    class:active=move || is_hi()
-                                                                    class:bg-base-200=move || is_hi()
-                                                                    on:mouseenter=move |_| set_hi.set(Some(i))
-                                                                    // before blur
-                                                                    on:mousedown=move |_| select_idx(i)
-                                                                >
-                                                                    <span class="font-medium">{a.get_name().to_string()}</span>
-                                                                    <span class="text-xs text-base-content/70">
-                                                                        {match a.get_region() {
-                                                                            Some(region) => {
-                                                                                format!(
-                                                                                    "{} {} · {region} · {}",
-                                                                                    a.get_postal_code(),
-                                                                                    a.get_locality(),
-                                                                                    a.get_country(),
-                                                                                )
-                                                                            }
-                                                                            None => {
-                                                                                format!(
-                                                                                    "{} {} {}",
-                                                                                    a.get_postal_code(),
-                                                                                    a.get_locality(),
-                                                                                    a.get_country(),
-                                                                                )
-                                                                            }
-                                                                        }}
-                                                                    </span>
-                                                                </a>
-                                                            </li>
-                                                        }
-                                                    }
-                                                />
-                                            }
-                                                .into_any()
-                                        }
-                                    }}
-                                </ul>
-                            }
-                        })
-                }}
-            // current selected address
-            </div>
-            {move || {
-                if let Some(Ok(addr)) = addr_res.get() {
+        <div class="card w-full bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">"Search Postal Address"</h2>
+                <Transition fallback=move || {
                     view! {
-                        <div class="mt-3 space-y-1 text-sm" data-testid="address-preview">
-                            <h2 data-testid="preview-name">{addr.get_name().to_string()}</h2>
-                            <p data-testid="preview-street">{addr.get_street().to_string()}</p>
-                            <p data-testid="preview-postal_locality">
-                                <span data-testid="preview-postal_code">
-                                    {addr.get_postal_code().to_string()}
-                                </span>
-                                " "
-                                <span data-testid="preview-locality">
-                                    {addr.get_locality().to_string()}
-                                </span>
-                            </p>
-                            <p data-testid="preview-region">
-                                {addr.get_region().unwrap_or_default().to_string()}
-                            </p>
-                            <p data-testid="preview-country">{addr.get_country().to_string()}</p>
-                            <p class="hidden" data-testid="preview-id">
-                                {addr.get_id().unwrap_or_default().to_string()}
-                            </p>
-                            <p class="hidden" data-testid="preview-version">
-                                {addr.get_version().unwrap_or_default()}
-                            </p>
+                        <div class="flex justify-center items-center p-4">
+                            <span class="loading loading-spinner loading-lg"></span>
                         </div>
                     }
-                        .into_any()
-                } else {
-                    ().into_any()
-                }
-            }} // --- Action Buttons ---
-            <div class="mt-4 flex gap-2">
-                // NEW: always clickable (if now error)
-                <button
-                    class="btn btn-secondary btn-sm"
-                    data-testid="btn-new-address"
-                    disabled=is_disabled
-                    on:click=move |_| {
-                        let navigate = use_navigate();
-                        navigate("/postal-address/new", NavigateOptions::default());
-                    }
-                >
-                    "New"
-                </button>
-
-                // Edit: only active, if valid address is selected and no error
-                <button
-                    class="btn btn-secondary btn-sm"
-                    data-testid="btn-edit-address"
-                    disabled=move || is_disabled() || id.get().is_none()
-                    on:click=move |_| {
-                        let id = id
+                }>
+                    {move || {
+                        addr_res
                             .get()
-                            .expect(
-                                "Save expect, since id.get() returns Some(). Otherwise button would be disabled.",
-                            );
-                        let navigate = use_navigate();
-                        navigate(&format!("/postal-address/{id}/edit"), NavigateOptions::default());
-                    }
-                >
-                    "Edit"
-                </button>
+                            .map(|res| match res {
+                                Err(msg) => {
+                                    // --- General Load Error Banner ---
+                                    view! {
+                                        <AcknowledgmentAndNavigateBanner
+                                            msg=format!("An unexpected error occurred during load: {msg}")
+                                            ack_btn_text="Reload"
+                                            ack_action=move || addr_res.refetch()
+                                            nav_btn_text="Reset"
+                                            navigate_url="/postal-address".into()
+                                        />
+                                    }
+                                        .into_any()
+                                }
+                                Ok(addr) => {
+                                    set_name.set(addr.get_name().to_string());
+                                    set_id.set(addr.get_id());
+                                    set_version.set(addr.get_version().unwrap_or_default());
+                                    if let Some(id) = addr.get_id() {
+                                        let new_topic = CrTopic::Address(id);
+                                        set_topic.set(Some(new_topic));
+                                    }
+                                    ().into_any()
+                                }
+                            })
+                    }}
+                    <div class=move || {
+                        format!("dropdown w-full {}", if open.get() { "dropdown-open" } else { "" })
+                    }>
+                        <input
+                            type="text"
+                            class="input input-bordered w-full"
+                            prop:value=move || name.get()
+                            data-testid="search-input"
+                            placeholder="Enter name of address you are searching..."
+                            on:input=move |ev| {
+                                set_query.set(event_target_value(&ev));
+                                set_open.set(true);
+                                set_hi.set(None);
+                            }
+                            on:focus=move |_| {
+                                if query.get().is_empty() {
+                                    set_query.set(name.get());
+                                }
+                                set_open.set(true);
+                            }
+                            on:keydown=on_key
+                            on:blur=on_blur
+                            autocomplete="off"
+                            role="combobox"
+                            aria-expanded=move || {
+                                if open.get() && !results().is_empty() { "true" } else { "false" }
+                            }
+                            aria-controls="addr-suggest"
+                        />
+
+                        {move || {
+                            open.get()
+                                .then(|| {
+                                    view! {
+                                        <ul
+                                            id="addr-suggest"
+                                            data-testid="search-suggest"
+                                            aria-busy=move || {
+                                                if results().is_empty() { "true" } else { "false" }
+                                            }
+                                            class="dropdown-content menu menu-sm bg-base-100 rounded-box z-[1] mt-1 w-full p-0 shadow max-h-72 overflow-auto"
+                                            role="listbox"
+                                        >
+                                            {move || {
+                                                if results().is_empty() {
+                                                    view! {
+                                                        <li class="px-3 py-2 text-sm text-base-content/70">
+                                                            "Searching…"
+                                                        </li>
+                                                    }
+                                                        .into_any()
+                                                } else {
+                                                    view! {
+                                                        <For
+                                                            each=move || results().clone().into_iter().enumerate()
+                                                            key=|(_i, a)| a.get_id_version()
+                                                            children=move |(i, a)| {
+                                                                let is_hi = move || {
+                                                                    hi.get().map(|j| j == i).unwrap_or(false)
+                                                                };
+                                                                let opt_id = format!("addr-option-{}", i);
+
+                                                                view! {
+                                                                    <li
+                                                                        id=opt_id.clone()
+                                                                        data-testid="search-suggest-item"
+                                                                        role="option"
+                                                                        aria-selected=move || if is_hi() { "true" } else { "false" }
+                                                                        class:active=move || is_hi()
+                                                                    >
+                                                                        <a
+                                                                            class="flex flex-col items-start gap-0.5"
+                                                                            class:active=move || is_hi()
+                                                                            class:bg-base-200=move || is_hi()
+                                                                            on:mouseenter=move |_| set_hi.set(Some(i))
+                                                                            on:mousedown=move |_| select_idx(i)
+                                                                        >
+                                                                            <span class="font-medium">{a.get_name().to_string()}</span>
+                                                                            <span class="text-xs text-base-content/70">
+                                                                                {match a.get_region() {
+                                                                                    Some(region) => {
+                                                                                        format!(
+                                                                                            "{} {} · {region} · {}",
+                                                                                            a.get_postal_code(),
+                                                                                            a.get_locality(),
+                                                                                            a.get_country(),
+                                                                                        )
+                                                                                    }
+                                                                                    None => {
+                                                                                        format!(
+                                                                                            "{} {} {}",
+                                                                                            a.get_postal_code(),
+                                                                                            a.get_locality(),
+                                                                                            a.get_country(),
+                                                                                        )
+                                                                                    }
+                                                                                }}
+                                                                            </span>
+                                                                        </a>
+                                                                    </li>
+                                                                }
+                                                            }
+                                                        />
+                                                    }
+                                                        .into_any()
+                                                }
+                                            }}
+                                        </ul>
+                                    }
+                                })
+                        }}
+                    </div>
+                    {move || {
+                        if let Some(Ok(addr)) = addr_res.get() {
+                            if addr.get_id().is_some() {
+                                view! {
+                                    <div class="card w-full bg-base-200 shadow-md mt-4" data-testid="address-preview">
+                                        <div class="card-body">
+                                            <h3 class="card-title" data-testid="preview-name">{addr.get_name().to_string()}</h3>
+                                            <p data-testid="preview-street">{addr.get_street().to_string()}</p>
+                                            <p data-testid="preview-postal_locality">
+                                                <span data-testid="preview-postal_code">
+                                                    {addr.get_postal_code().to_string()}
+                                                </span>
+                                                " "
+                                                <span data-testid="preview-locality">
+                                                    {addr.get_locality().to_string()}
+                                                </span>
+                                            </p>
+                                            <p data-testid="preview-region">
+                                                {addr.get_region().unwrap_or_default().to_string()}
+                                            </p>
+                                            <p data-testid="preview-country">{addr.get_country().to_string()}</p>
+                                            <p class="hidden" data-testid="preview-id">
+                                                {addr.get_id().unwrap_or_default().to_string()}
+                                            </p>
+                                            <p class="hidden" data-testid="preview-version">
+                                                {addr.get_version().unwrap_or_default()}
+                                            </p>
+                                        </div>
+                                    </div>
+                                }.into_any()
+                            } else {
+                                view! { <div class="mt-4"><p>"No address selected."</p></div> }.into_any()
+                            }
+                        } else {
+                            ().into_any()
+                        }
+                    }}
+                    <div class="card-actions justify-end mt-4">
+                        <button
+                            class="btn btn-primary"
+                            data-testid="btn-new-address"
+                            disabled=is_disabled
+                            on:click=move |_| {
+                                let navigate = use_navigate();
+                                navigate("/postal-address/new", NavigateOptions::default());
+                            }
+                        >
+                            "New"
+                        </button>
+
+                        <button
+                            class="btn btn-secondary"
+                            data-testid="btn-edit-address"
+                            disabled=move || is_disabled() || id.get().is_none()
+                            on:click=move |_| {
+                                let id = id
+                                    .get()
+                                    .expect(
+                                        "Save expect, since id.get() returns Some(). Otherwise button would be disabled.",
+                                    );
+                                let navigate = use_navigate();
+                                navigate(&format!("/postal-address/{id}/edit"), NavigateOptions::default());
+                            }
+                        >
+                            "Edit"
+                        </button>
+                    </div>
+                </Transition>
             </div>
-        </Transition>
+        </div>
     }
 }

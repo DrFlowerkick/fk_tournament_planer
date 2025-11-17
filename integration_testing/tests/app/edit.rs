@@ -15,8 +15,6 @@ use std::time::Duration;
 use uuid::Uuid;
 use wasm_bindgen_test::*;
 
-wasm_bindgen_test_configure!(run_in_browser);
-
 #[wasm_bindgen_test]
 async fn test_edit_postal_address() {
     let ts = init_test_state();

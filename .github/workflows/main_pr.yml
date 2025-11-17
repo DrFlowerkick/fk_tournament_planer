@@ -31,6 +31,11 @@ jobs:
     with:
       features: "ssr"
 
+  coverage:
+    uses: ./.github/workflows/_coverage.yml
+    with:
+      features: "ssr"
+
   wasm_tests:
     uses: ./.github/workflows/_wasm_tests.yml
     with:

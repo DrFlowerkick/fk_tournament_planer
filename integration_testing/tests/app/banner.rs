@@ -9,9 +9,6 @@ use std::{
 };
 use wasm_bindgen_test::*;
 
-// Configure wasm-pack-test to run in a browser
-wasm_bindgen_test_configure!(run_in_browser);
-
 #[wasm_bindgen_test]
 async fn test_acknowledgment_banner_display_and_acknowledge() {
     let ack_called = Arc::new(RwLock::new(false));

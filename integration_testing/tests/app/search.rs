@@ -13,8 +13,6 @@ use leptos_router::components::Router;
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
-wasm_bindgen_test_configure!(run_in_browser);
-
 #[wasm_bindgen_test]
 async fn test_search_postal_address() {
     let ts = init_test_state();

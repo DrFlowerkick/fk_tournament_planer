@@ -84,78 +84,86 @@ pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
     };
 
     view! {
-        <Transition fallback=move || {
-            view! { <p>"Loading..."</p> }
-        }>
-            {move || {
-                addr_res
-                    .get()
-                    .map(|res| match res {
-                        Err(msg) => {
-                            // --- General Load Error Banner ---
-                            view! {
-                                <AcknowledgmentAndNavigateBanner
-                                    msg=format!("An unexpected error occurred during load: {msg}")
-                                    ack_btn_text="Reload"
-                                    ack_action=refetch_and_reset
-                                    nav_btn_text="Cancel"
-                                    navigate_url=cancel_target()
-                                />
+        <div class="card w-full bg-base-100 shadow-xl">
+            <div class="card-body">
+                <h2 class="card-title">{move || if id.get().is_some() { "Edit Postal Address" } else { "New Postal Address" }}</h2>
+                <Transition fallback=move || {
+                    view! {
+                        <div class="flex justify-center items-center p-4">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    }
+                }>
+                    {move || {
+                        addr_res
+                            .get()
+                            .map(|res| match res {
+                                Err(msg) => {
+                                    // --- General Load Error Banner ---
+                                    view! {
+                                        <AcknowledgmentAndNavigateBanner
+                                            msg=format!("An unexpected error occurred during load: {msg}")
+                                            ack_btn_text="Reload"
+                                            ack_action=refetch_and_reset
+                                            nav_btn_text="Cancel"
+                                            navigate_url=cancel_target()
+                                        />
+                                    }
+                                        .into_any()
+                                }
+                                Ok(addr) => {
+                                    set_name.set(addr.get_name().to_string());
+                                    set_street.set(addr.get_street().to_string());
+                                    set_postal_code.set(addr.get_postal_code().to_string());
+                                    set_locality.set(addr.get_locality().to_string());
+                                    set_region.set(addr.get_region().unwrap_or_default().to_string());
+                                    set_country.set(addr.get_country().to_string());
+                                    set_version.set(addr.get_version().unwrap_or_default());
+                                    ().into_any()
+                                }
+                            })
+                    }}
+                    <div data-testid="form-address">
+                        {
+                            #[cfg(not(feature = "test-mock"))]
+                            {
+                                view! {
+                                    <ActionForm action=save_postal_address>
+                                        <FormFields props=props.clone() />
+                                    </ActionForm>
+                                }
                             }
-                                .into_any()
+                            #[cfg(feature = "test-mock")]
+                            {
+                                view! {
+                                    <form on:submit=move |ev| {
+                                        ev.prevent_default();
+                                        let intent = ev
+                                            .submitter()
+                                            .and_then(|el| el.dyn_into::<web_sys::HtmlButtonElement>().ok())
+                                            .map(|btn| btn.value());
+                                        let data = SavePostalAddress {
+                                            id: id.get().unwrap_or(Uuid::nil()),
+                                            version: set_version.get(),
+                                            name: set_name.get(),
+                                            street: set_street.get(),
+                                            postal_code: set_postal_code.get(),
+                                            locality: set_locality.get(),
+                                            region: Some(set_region.get()).filter(|r| !r.is_empty()),
+                                            country: set_country.get(),
+                                            intent,
+                                        };
+                                        save_postal_address.dispatch(data);
+                                    }>
+                                        <FormFields props=props />
+                                    </form>
+                                }
+                            }
                         }
-                        Ok(addr) => {
-                            set_name.set(addr.get_name().to_string());
-                            set_street.set(addr.get_street().to_string());
-                            set_postal_code.set(addr.get_postal_code().to_string());
-                            set_locality.set(addr.get_locality().to_string());
-                            set_region.set(addr.get_region().unwrap_or_default().to_string());
-                            set_country.set(addr.get_country().to_string());
-                            set_version.set(addr.get_version().unwrap_or_default());
-                            ().into_any()
-                        }
-                    })
-            }} // --- Address Form ---
-
-            <div data-testid="form-address">
-                {
-                    #[cfg(not(feature = "test-mock"))]
-                    {
-                        view! {
-                            <ActionForm action=save_postal_address>
-                                <FormFields props=props.clone() />
-                            </ActionForm>
-                        }
-                    }
-                    #[cfg(feature = "test-mock")]
-                    {
-                        view! {
-                            <form on:submit=move |ev| {
-                                ev.prevent_default();
-                                let intent = ev
-                                    .submitter()
-                                    .and_then(|el| el.dyn_into::<web_sys::HtmlButtonElement>().ok())
-                                    .map(|btn| btn.value());
-                                let data = SavePostalAddress {
-                                    id: id.get().unwrap_or(Uuid::nil()),
-                                    version: set_version.get(),
-                                    name: set_name.get(),
-                                    street: set_street.get(),
-                                    postal_code: set_postal_code.get(),
-                                    locality: set_locality.get(),
-                                    region: Some(set_region.get()).filter(|r| !r.is_empty()),
-                                    country: set_country.get(),
-                                    intent,
-                                };
-                                save_postal_address.dispatch(data);
-                            }>
-                                <FormFields props=props />
-                            </form>
-                        }
-                    }
-                }
+                    </div>
+                </Transition>
             </div>
-        </Transition>
+        </div>
     }
 }
 
@@ -340,12 +348,15 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
         }
 
         // --- Address Form Fields ---
-        // Disable the whole form while loading existing data or some conflict/error state
-        <fieldset prop:disabled=is_disabled>
-            <label class="block">
-                <span class="block text-sm">"Name"</span>
+        <fieldset class="space-y-4" prop:disabled=is_disabled>
+            <div class="form-control w-full">
+                <label class="label">
+                    <span class="label-text">"Name"</span>
+                </label>
                 <input
-                    class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+                    type="text"
+                    class="input input-bordered w-full"
+                    class:input-error=move || !is_valid_name()
                     name="name"
                     data-testid="input-name"
                     aria-invalid=move || if is_valid_name() { "false" } else { "true" }
@@ -364,11 +375,15 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                         set_name.set(current_address().get_name().to_string());
                     }
                 />
-            </label>
-            <label class="block">
-                <span class="block text-sm">"Street & number"</span>
+            </div>
+            <div class="form-control w-full">
+                <label class="label">
+                    <span class="label-text">"Street & number"</span>
+                </label>
                 <input
-                    class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+                    type="text"
+                    class="input input-bordered w-full"
+                    class:input-error=move || !is_valid_street()
                     name="street"
                     data-testid="input-street"
                     aria-invalid=move || if is_valid_street() { "false" } else { "true" }
@@ -387,12 +402,16 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                         set_street.set(current_address().get_street().to_string());
                     }
                 />
-            </label>
-            <div class="grid grid-cols-2 gap-3">
-                <label class="block">
-                    <span class="block text-sm">"Postal code"</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-control w-full">
+                    <label class="label">
+                        <span class="label-text">"Postal code"</span>
+                    </label>
                     <input
-                        class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+                        type="text"
+                        class="input input-bordered w-full"
+                        class:input-error=move || !is_valid_postal_code()
                         name="postal_code"
                         data-testid="input-postal_code"
                         aria-invalid=move || {
@@ -413,11 +432,15 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                             set_postal_code.set(current_address().get_postal_code().to_string());
                         }
                     />
-                </label>
-                <label class="block">
-                    <span class="block text-sm">"City"</span>
+                </div>
+                <div class="form-control w-full">
+                    <label class="label">
+                        <span class="label-text">"City"</span>
+                    </label>
                     <input
-                        class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+                        type="text"
+                        class="input input-bordered w-full"
+                        class:input-error=move || !is_valid_locality()
                         name="locality"
                         data-testid="input-locality"
                         aria-invalid=move || { if is_valid_locality() { "false" } else { "true" } }
@@ -436,12 +459,15 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                             set_locality.set(current_address().get_locality().to_string());
                         }
                     />
-                </label>
+                </div>
             </div>
-            <label class="block">
-                <span class="block text-sm">"Region (optional)"</span>
+            <div class="form-control w-full">
+                <label class="label">
+                    <span class="label-text">"Region (optional)"</span>
+                </label>
                 <input
-                    class="w-full border rounded p-2"
+                    type="text"
+                    class="input input-bordered w-full"
                     name="region"
                     data-testid="input-region"
                     prop:value=set_region
@@ -460,11 +486,15 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                             .set(current_address().get_region().unwrap_or_default().to_string());
                     }
                 />
-            </label>
-            <label class="block">
-                <span class="block text-sm">"Country (ISO/name)"</span>
+            </div>
+            <div class="form-control w-full">
+                <label class="label">
+                    <span class="label-text">"Country (ISO/name)"</span>
+                </label>
                 <input
-                    class="w-full border rounded p-2 input aria-[invalid=true]:border-error aria-[invalid=true]:focus:outline-error"
+                    type="text"
+                    class="input input-bordered w-full"
+                    class:input-error=move || !is_valid_country()
                     name="country"
                     data-testid="input-country"
                     aria-invalid=move || if is_valid_country() { "false" } else { "true" }
@@ -483,27 +513,25 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                         set_country.set(current_address().get_country().to_string());
                     }
                 />
-            </label>
-            <div class="flex gap-2">
-                // Update existing
+            </div>
+            <div class="card-actions justify-end mt-4">
                 <button
                     type="submit"
                     name="intent"
                     value=move || if is_new() { "create" } else { "update" }
                     data-testid="btn-save"
-                    class="btn"
+                    class="btn btn-primary"
                     prop:disabled=move || is_disabled() || !is_valid_addr()
                 >
                     "Save"
                 </button>
 
-                // "save as new" (disabled in "new" mode)
                 <button
                     type="submit"
                     name="intent"
                     value="create"
                     data-testid="btn-save-as-new"
-                    class="btn"
+                    class="btn btn-secondary"
                     prop:disabled=move || is_disabled() || is_new() || !is_valid_addr()
                     prop:hidden=move || is_new
                 >
@@ -515,7 +543,7 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                     name="intent"
                     value="cancel"
                     data-testid="btn-cancel"
-                    class="btn"
+                    class="btn btn-ghost"
                     on:click={
                         let cancel_target = cancel_target.clone();
                         move |_| {
