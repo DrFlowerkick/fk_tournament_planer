@@ -115,8 +115,8 @@ jobs:
           if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
           if [ -n "${{ inputs.extra_args }}" ]; then FLAGS="$FLAGS ${{ inputs.extra_args }}"; fi
 
-          echo "cargo nextest run $FLAGS --status-level=${{ inputs.nextest_status_level }} --failure-output=${{ inputs.nextest_failure_output }}"
-          bash -c "cargo nextest run $FLAGS --status-level=${{ inputs.nextest_status_level }} --failure-output=${{ inputs.nextest_failure_output }}"
+          echo "cargo nextest run $FLAGS --status-level=${{ inputs.nextest_status_level }} --failure-output=${{ inputs.nextest_failure_output }} --jobs=2"
+          bash -c "cargo nextest run $FLAGS --status-level=${{ inputs.nextest_status_level }} --failure-output=${{ inputs.nextest_failure_output }} --jobs=2"
 
       - name: Run doctests (separately)
         if: ${{ inputs.run_doctests }}
