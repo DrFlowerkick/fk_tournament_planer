@@ -107,9 +107,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          REPORT_FLAGS=""
           FLAGS=""
           if [ "${{ inputs.release_profile }}" = "true" ]; then
             FLAGS="$FLAGS --release"
+            REPORT_FLAGS="$REPORT_FLAGS --release"
           fi
           if [ -n "${{ inputs.features }}" ]; then
             FLAGS="$FLAGS --features \"${{ inputs.features }}\""
@@ -133,8 +135,8 @@ jobs:
           bash -c "cargo llvm-cov test --doc --workspace --locked $FLAGS"
 
           # 3. Generate the final HTML report from the combined data.
-          echo "cargo llvm-cov report --html --output-dir coverage"
-          bash -c "cargo llvm-cov report --html --output-dir coverage"
+          echo "cargo llvm-cov report --html --output-dir coverage $REPORT_FLAGS"
+          bash -c "cargo llvm-cov report --html --output-dir coverage $REPORT_FLAGS"
 
       # Upload HTML report in ./coverage/ and LCOV file ./lcov.info
       - name: Upload coverage artifacts
