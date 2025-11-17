@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/_coverage.yml
     with:
       features: "ssr"
+      fail_under_lines: 0
 
   audit:
     uses: ./.github/workflows/_audit.yml

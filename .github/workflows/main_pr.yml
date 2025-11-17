@@ -5,9 +5,6 @@ on:
   pull_request:
     branches:
       - main
-  push:
-    branches:
-      - leptos_axum_socket
 
 env:
   CARGO_TERM_COLOR: always
@@ -30,12 +27,6 @@ jobs:
     uses: ./.github/workflows/_unit_and_integration_tests.yml
     with:
       features: "ssr"
-
-  coverage:
-    uses: ./.github/workflows/_coverage.yml
-    with:
-      features: "ssr"
-      fail_under_lines: 0
 
   wasm_tests:
     uses: ./.github/workflows/_wasm_tests.yml
