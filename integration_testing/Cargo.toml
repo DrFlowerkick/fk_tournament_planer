@@ -2,12 +2,18 @@
 name = "integration_testing"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
 default = []
-test-mock = ["app/test-mock", "leptos/csr", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
+test-mock = [
+    "app/test-mock",
+    "leptos/csr",
+    "dep:wasm-bindgen-test",
+    "leptos-axum-socket/hydrate",
+]
 ssr = [
     "app/ssr",
     "leptos/ssr",
@@ -21,7 +27,12 @@ ssr = [
     "dep:futures-util",
     "dep:shared",
 ]
-hydrate = ["app/hydrate", "leptos/hydrate", "dep:wasm-bindgen-test", "leptos-axum-socket/hydrate"]
+hydrate = [
+    "app/hydrate",
+    "leptos/hydrate",
+    "dep:wasm-bindgen-test",
+    "leptos-axum-socket/hydrate",
+]
 
 [dependencies]
 anyhow.workspace = true
@@ -35,12 +46,13 @@ diesel = { workspace = true, optional = true }
 diesel-async = { workspace = true, optional = true }
 displaydoc.workspace = true
 dotenvy.workspace = true
-futures-util = { workspace = true, optional = true}
+futures-util = { workspace = true, optional = true }
+gloo-timers.workspace = true
 leptos.workspace = true
-leptos_router.workspace = true
 leptos-axum-socket.workspace = true
+leptos_router.workspace = true
 serde.workspace = true
-shared = { path = "../shared", optional = true}
+shared = { path = "../shared", optional = true }
 thiserror.workspace = true
 tokio = { workspace = true, optional = true }
 tracing.workspace = true
@@ -48,7 +60,6 @@ tracing-subscriber.workspace = true
 url.workspace = true
 uuid.workspace = true
 wasm-bindgen-test = { workspace = true, optional = true }
-gloo-timers.workspace = true
 
 [dev-dependencies]
-web-sys = { workspace = true, features = ["KeyboardEventInit"]}
+web-sys = { workspace = true, features = ["KeyboardEventInit"] }
