@@ -16,7 +16,7 @@ members = [
 anyhow = "1.0"
 async-trait = "0.1.89"
 axum = "0.8.7"
-axum-extra = { version = "0.10.3", features = ["typed-routing"] }
+axum-extra = { version = "0.12", features = ["routing", "typed-routing"] }
 axum-macros = "0.5.0"
 cfg-if = "1.0.4"
 chrono = "0.4"
