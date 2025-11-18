@@ -1,0 +1,19 @@
+[licenses]
+allow = [
+     "MIT",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "BSL-1.0"
+]
+
+[sources]
+allow-git = [
+    "https://github.com/DrFlowerkick/leptos-axum-socket?branch=refactor_context",
+    "https://github.com/DrFlowerkick/leptos-use/?branch=main"
+]
+
+[bans]
+skip = ["paste"]

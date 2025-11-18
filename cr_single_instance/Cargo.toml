@@ -2,6 +2,7 @@
 name = "cr_single_instance"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -25,6 +26,8 @@ ssr = [
 anyhow.workspace = true
 app_core = { path = "../app_core" }
 async-trait.workspace = true
+axum = { workspace = true, optional = true }
+axum-extra = { workspace = true, optional = true }
 codee.workspace = true
 dashmap.workspace = true
 displaydoc.workspace = true
@@ -33,15 +36,13 @@ futures-util = { workspace = true, optional = true }
 leptos.workspace = true
 leptos-use.workspace = true
 serde.workspace = true
+serde_json = { workspace = true, optional = true }
+shared = { path = "../shared", optional = true }
 tokio = { workspace = true, optional = true }
 tokio-stream = { workspace = true, optional = true }
 tracing.workspace = true
 tracing-subscriber = { workspace = true, optional = true }
 uuid.workspace = true
-axum ={ workspace = true, optional = true }
-axum-extra ={ workspace = true, optional = true }
-shared = { path = "../shared", optional = true }
-serde_json = { workspace = true, optional = true }
 
 [dev-dependencies]
 tracing-subscriber.workspace = true
