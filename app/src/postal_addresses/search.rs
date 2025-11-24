@@ -9,6 +9,7 @@ use super::{
 use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
 use app_core::{CrTopic, PostalAddress};
 use cr_leptos_axum_socket::use_client_registry_socket;
+use isocountry::CountryCode;
 //use cr_single_instance::use_client_registry_sse;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
@@ -17,6 +18,12 @@ use leptos_router::{
     params::ParamsError,
 };
 use uuid::Uuid;
+
+fn display_country(code: &str) -> String {
+    CountryCode::for_alpha2(code)
+        .map(|c| c.name().to_string())
+        .unwrap_or_else(|_| code.to_string()) // Fallback to Code, if invalid
+}
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
@@ -298,7 +305,7 @@ pub fn SearchPostalAddressInner(
                                                                                             "{} {} · {region} · {}",
                                                                                             a.get_postal_code(),
                                                                                             a.get_locality(),
-                                                                                            a.get_country(),
+                                                                                            display_country(a.get_country()),
                                                                                         )
                                                                                     }
                                                                                     None => {
@@ -306,7 +313,7 @@ pub fn SearchPostalAddressInner(
                                                                                             "{} {} {}",
                                                                                             a.get_postal_code(),
                                                                                             a.get_locality(),
-                                                                                            a.get_country(),
+                                                                                            display_country(a.get_country()),
                                                                                         )
                                                                                     }
                                                                                 }}
@@ -353,7 +360,7 @@ pub fn SearchPostalAddressInner(
                                                 {addr.get_region().unwrap_or_default().to_string()}
                                             </p>
                                             <p data-testid="preview-country">
-                                                {addr.get_country().to_string()}
+                                                {display_country(&addr.get_country())}
                                             </p>
                                             <p class="hidden" data-testid="preview-id">
                                                 {addr.get_id().unwrap_or_default().to_string()}

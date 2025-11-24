@@ -3,6 +3,7 @@ import { T } from "../helpers/selectors";
 import {
   openNewForm,
   typeThenBlur,
+  selectThenBlur,
   expectFieldValidity,
   expectSavesDisabled,
   expectSavesEnabled,
@@ -120,7 +121,9 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectSavesDisabled(page);
 
     // blur path
-    await typeThenBlur(page, T.form.inputCountry, "de", T.form.inputStreet);
+    // Note: "uppercase on blur" is no longer relevant for a select field
+    // as the values are predefined ISO codes.
+    await selectThenBlur(page, T.form.inputCountry, "DE", T.form.inputStreet);
     await expectFieldValidity(
       page,
       T.form.inputCountry,
@@ -149,7 +152,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
      */
 
     // set DE
-    await typeThenBlur(page, T.form.inputCountry, "DE", T.form.inputStreet);
+    await selectThenBlur(page, T.form.inputCountry, "DE", T.form.inputStreet);
 
     // Example 1: "   10115    " -> "10115" (valid for DE)
     await typeThenBlur(
@@ -228,7 +231,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     );
 
     // set DE
-    await typeThenBlur(page, T.form.inputCountry, "DE", T.form.inputStreet);
+    await selectThenBlur(page, T.form.inputCountry, "DE", T.form.inputStreet);
 
     await expectFieldValidity(
       page,
