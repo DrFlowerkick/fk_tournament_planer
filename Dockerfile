@@ -43,7 +43,7 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-c
 WORKDIR /app
 
 # Copy runtime files from build container
-COPY --from=builder /app/target/release/fk_tournament_planer /app/
+COPY --from=builder /app/target/release/server /app/fk_tournament_planer
 COPY --from=builder /app/target/site /app/site
 #COPY --from=builder /app/Cargo.toml /app/
 
