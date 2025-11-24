@@ -89,7 +89,7 @@ async fn health_db(State(app_state): State<AppState>) -> impl IntoResponse {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> Result<()> {
     // Load .env first if present; ignore if missing (Docker sets envs)
-    dotenvy::dotenv()?;
+    dotenvy::dotenv().ok();
     // map all log! calls in dependencies to tracing
     LogTracer::init()?;
     // Initialize Bunyan-only tracing before constructing anything else.
