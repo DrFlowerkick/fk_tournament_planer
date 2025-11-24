@@ -2,7 +2,7 @@
 FROM rust:bookworm AS builder
 
 # Install system dependencies
-RUN apt-get update -y && apt-get install -y --no-install-recommends clang npm wget ca-certificates && apt-get clean -y && rm -rf /var/lib/apt/lists/*
+RUN apt-get update -y && apt-get install -y --no-install-recommends clang lld npm wget ca-certificates && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
 ENV CARGO_TERM_COLOR=always
 
