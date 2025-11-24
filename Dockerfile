@@ -45,7 +45,7 @@ WORKDIR /app
 # Copy runtime files from build container
 COPY --from=builder /app/target/release/server /app/fk_tournament_planer
 COPY --from=builder /app/target/site /app/site
-#COPY --from=builder /app/Cargo.toml /app/
+COPY --from=builder /app/Cargo.toml /app/
 
 # Set Leptos runtime environment variables (can be overridden!)
 #ENV RUST_LOG="info"
