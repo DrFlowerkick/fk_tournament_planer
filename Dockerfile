@@ -1,5 +1,5 @@
 # ---------- Stage 1: Build ----------
-FROM rust:1.88-bookworm AS builder
+FROM rust:bookworm AS builder
 
 # Install system dependencies
 RUN apt-get update -y && apt-get install -y --no-install-recommends clang npm wget ca-certificates && apt-get clean -y && rm -rf /var/lib/apt/lists/*
@@ -25,6 +25,10 @@ COPY . .
 # Install frontend dependencies (for Tailwind, daisyUI, etc.)
 # Assumes package.json/package-lock.json in project root
 RUN npm ci
+
+# Set the Leptos WASM Bindgen version via build argument
+ARG LEPTOS_WASM_BINDGEN_VERSION=0.2.105
+ENV LEPTOS_WASM_BINDGEN_VERSION=$LEPTOS_WASM_BINDGEN_VERSION
 
 # Build the Leptos app (WASM + SSR) in release mode
 RUN cargo leptos build --release
