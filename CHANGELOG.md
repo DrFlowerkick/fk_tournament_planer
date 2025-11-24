@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/DrFlowerkick/fk_tournament_planer/compare/v0.2.0...v0.2.1) (2025-11-24)
+
+
+### Bug Fixes
+
+* :green_heart: Add lld to system dependencies. ([#12](https://github.com/DrFlowerkick/fk_tournament_planer/issues/12)) ([a584975](https://github.com/DrFlowerkick/fk_tournament_planer/commit/a58497516b0d8f3f18dfccb12d2461a5d7f88380))
+
 ## [0.2.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/v0.1.0...v0.2.0) (2025-11-24)
 
 
