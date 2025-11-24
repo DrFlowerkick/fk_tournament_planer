@@ -1,14 +1,50 @@
 {
+  "release-type": "rust",
+  "changelog-path": "CHANGELOG.md",
+  "bump-minor-pre-major": false,
+  "bump-patch-for-minor-pre-major": false,
+  "draft": false,
+  "prerelease": false,
   "packages": {
     ".": {
-      "changelog-path": "CHANGELOG.md",
-      "release-type": "rust",
-      "bump-minor-pre-major": false,
-      "bump-patch-for-minor-pre-major": false,
-      "draft": false,
-      "prerelease": false
+    },
+    "packages/app": {
+      "component": "app"
+    },
+    "packages/app_core": {
+      "component": "app_core"
+    },
+    "packages/cr_leptos_axum_socket": {
+      "component": "cr_leptos_axum_socket"
+    },
+    "packages/cr_single_instance": {
+      "component": "cr_single_instance"
+    },
+    "packages/db_postgres": {
+      "component": "db_postgres"
+    },
+    "packages/frontend": {
+      "component": "frontend"
+    },
+    "packages/server": {
+      "component": "server"
+    },
+    "packages/shared": {
+      "component": "shared"
     }
   },
-  "plugins": ["cargo-workspace"],
+  "plugins": [
+    {
+      "type": "cargo-workspace",
+      "merge": false
+    },
+    {
+      "type": "linked-versions",
+      "groupName": "fk_tournament",
+      "components": [
+        "app", "app_core", "cr_leptos_axum_socket", "cr_single_instance", "db_postgres", "frontend", "server", "shared"
+      ]
+    }
+  ],
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json"
 }
