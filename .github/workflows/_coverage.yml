@@ -120,10 +120,9 @@ jobs:
 
           # 1. Run unit/integration tests via nextest.
           # The --fail-under-lines gate remains here to fail the build early.
-          echo "cargo llvm-cov nextest --workspace --locked --lcov --output-path ./coverage/lcov.info --fail-under-lines ${{ inputs.fail_under_lines }} $FLAGS --jobs=2"
+          echo "cargo llvm-cov nextest --workspace --lcov --output-path ./coverage/lcov.info --fail-under-lines ${{ inputs.fail_under_lines }} $FLAGS --jobs=2"
           bash -c "cargo llvm-cov nextest \
             --workspace \
-            --locked \
             --lcov \
             --output-path ./coverage/lcov.info \
             --fail-under-lines ${{ inputs.fail_under_lines }} \
@@ -131,8 +130,8 @@ jobs:
             $FLAGS"
 
           # 2. Run doctests and merge coverage data automatically.
-          echo "cargo llvm-cov test --doc --workspace --locked $FLAGS"
-          bash -c "cargo llvm-cov test --doc --workspace --locked $FLAGS"
+          echo "cargo llvm-cov test --doc --workspace $FLAGS"
+          bash -c "cargo llvm-cov test --doc --workspace $FLAGS"
 
           # 3. Generate the final HTML report from the combined data.
           echo "cargo llvm-cov report --html --output-dir coverage $REPORT_FLAGS"

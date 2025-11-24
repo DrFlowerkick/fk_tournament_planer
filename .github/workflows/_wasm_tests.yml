@@ -24,11 +24,6 @@ on:
         required: false
         type: string
         default: ""
-      locked:
-        description: "Use --locked to enforce Cargo.lock"
-        required: false
-        type: boolean
-        default: true
       extra_args:
         description: "Extra arguments passed to cargo test"
         required: false
@@ -76,7 +71,6 @@ jobs:
         run: |
           set -euo pipefail
           FLAGS=""
-          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
           if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
           if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
           if [ -n "${{ inputs.extra_args }}" ]; then FLAGS="$FLAGS ${{ inputs.extra_args }}"; fi
