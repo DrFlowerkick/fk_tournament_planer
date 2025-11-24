@@ -119,6 +119,8 @@ jobs:
       
       - name: Run cargo leptos end-to-end
         shell: bash
+        env:
+          LEPTOS_WASM_BINDGEN_VERSION: "0.2.105"
         run: |
           set -euo pipefail
 
