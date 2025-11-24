@@ -6,6 +6,10 @@
   "draft": false,
   "prerelease": false,
   "packages": {
+    ".": {
+      "component": "fk_tournament_planer", 
+      "include-component-in-tag": false
+    },
     "app": {
       "component": "app"
     },
@@ -40,6 +44,7 @@
       "type": "linked-versions",
       "groupName": "fk_tournament",
       "components": [
+        "fk_tournament_planer",
         "app",
         "app_core",
         "cr_leptos_axum_socket",
