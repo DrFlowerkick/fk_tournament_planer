@@ -6,30 +6,28 @@
   "draft": false,
   "prerelease": false,
   "packages": {
-    ".": {
-    },
-    "packages/app": {
+    "app": {
       "component": "app"
     },
-    "packages/app_core": {
+    "app_core": {
       "component": "app_core"
     },
-    "packages/cr_leptos_axum_socket": {
+    "cr_leptos_axum_socket": {
       "component": "cr_leptos_axum_socket"
     },
-    "packages/cr_single_instance": {
+    "cr_single_instance": {
       "component": "cr_single_instance"
     },
-    "packages/db_postgres": {
+    "db_postgres": {
       "component": "db_postgres"
     },
-    "packages/frontend": {
+    "frontend": {
       "component": "frontend"
     },
-    "packages/server": {
+    "server": {
       "component": "server"
     },
-    "packages/shared": {
+    "shared": {
       "component": "shared"
     }
   },
@@ -42,7 +40,14 @@
       "type": "linked-versions",
       "groupName": "fk_tournament",
       "components": [
-        "app", "app_core", "cr_leptos_axum_socket", "cr_single_instance", "db_postgres", "frontend", "server", "shared"
+        "app",
+        "app_core",
+        "cr_leptos_axum_socket",
+        "cr_single_instance",
+        "db_postgres",
+        "frontend",
+        "server",
+        "shared"
       ]
     }
   ],
