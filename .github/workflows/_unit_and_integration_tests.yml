@@ -20,11 +20,6 @@ on:
         required: false
         type: string
         default: ""
-      locked:
-        description: "Use --locked to enforce Cargo.lock"
-        required: false
-        type: boolean
-        default: true
       nextest_status_level:
         description: "nextest --status-level (e.g., all, final, none)"
         required: false
@@ -111,7 +106,6 @@ jobs:
         run: |
           set -euo pipefail
           FLAGS="--workspace"
-          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
           if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
           if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
           if [ -n "${{ inputs.extra_args }}" ]; then FLAGS="$FLAGS ${{ inputs.extra_args }}"; fi
@@ -125,7 +119,6 @@ jobs:
         run: |
           set -euo pipefail
           FLAGS="--workspace"
-          if [ "${{ inputs.locked }}" = "true" ]; then FLAGS="$FLAGS --locked"; fi
           if [ "${{ inputs.release_profile }}" = "true" ]; then FLAGS="$FLAGS --release"; fi
           if [ -n "${{ inputs.features }}" ]; then FLAGS="$FLAGS --features \"${{ inputs.features }}\""; fi
 
