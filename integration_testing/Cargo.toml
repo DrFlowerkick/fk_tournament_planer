@@ -48,6 +48,7 @@ displaydoc.workspace = true
 dotenvy.workspace = true
 futures-util = { workspace = true, optional = true }
 gloo-timers.workspace = true
+isocountry.workspace = true
 leptos.workspace = true
 leptos-axum-socket.workspace = true
 leptos_router.workspace = true

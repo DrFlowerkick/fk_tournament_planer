@@ -7,7 +7,7 @@ use leptos::{
     prelude::*,
     tachys::dom::body,
     wasm_bindgen::JsCast,
-    web_sys::{Event, HtmlInputElement},
+    web_sys::{Event, HtmlInputElement, HtmlSelectElement},
 };
 use leptos_axum_socket::provide_socket_context;
 use leptos_router::components::Router;
@@ -70,12 +70,12 @@ async fn test_edit_postal_address() {
     let event = Event::new("input").unwrap();
     region_input.dispatch_event(&event).unwrap();
 
-    let country_input = get_element_by_test_id("input-country")
-        .dyn_into::<HtmlInputElement>()
+    let country_select = get_element_by_test_id("input-country")
+        .dyn_into::<HtmlSelectElement>()
         .unwrap();
-    country_input.set_value(&ts.country);
-    let event = Event::new("input").unwrap();
-    country_input.dispatch_event(&event).unwrap();
+    country_select.set_value(&ts.country);
+    let event = Event::new("change").unwrap();
+    country_select.dispatch_event(&event).unwrap();
 
     sleep(Duration::from_millis(10)).await;
     let save_button = get_element_by_test_id("btn-save");

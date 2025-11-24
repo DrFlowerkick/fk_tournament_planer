@@ -1508,6 +1508,7 @@ dependencies = [
  "dotenvy",
  "futures-util",
  "gloo-timers",
+ "isocountry",
  "leptos",
  "leptos-axum-socket",
  "leptos_router",
