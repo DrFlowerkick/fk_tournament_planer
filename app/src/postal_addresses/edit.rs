@@ -7,6 +7,7 @@ use crate::{
     banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
 };
 use app_core::{PaValidationField, PostalAddress};
+use isocountry::CountryCode;
 #[cfg(feature = "test-mock")]
 use leptos::wasm_bindgen::JsCast;
 use leptos::{leptos_dom::helpers::set_timeout, prelude::*, web_sys};
@@ -15,6 +16,15 @@ use leptos_router::{
     hooks::{use_navigate, use_params},
 };
 use uuid::Uuid;
+
+fn get_sorted_countries() -> Vec<(String, String)> {
+    let mut countries: Vec<(String, String)> = CountryCode::iter()
+        .map(|c| (c.alpha2().to_string(), c.name().to_string()))
+        .collect();
+    // sort by country name
+    countries.sort_by(|a, b| a.1.cmp(&b.1));
+    countries
+}
 
 #[component]
 pub fn NewPostalAddress() -> impl IntoView {
@@ -294,6 +304,8 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
     let is_valid_locality = move || is_field_valid(PaValidationField::Locality);
     let is_valid_country = move || is_field_valid(PaValidationField::Country);
 
+    let countries = get_sorted_countries();
+
     view! {
         // Hidden meta fields the server expects (id / version / intent)
         <input
@@ -502,30 +514,34 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
             </div>
             <div class="form-control w-full">
                 <label class="label">
-                    <span class="label-text">"Country (ISO/name)"</span>
+                    <span class="label-text">"Country"</span>
                 </label>
-                <input
-                    type="text"
-                    class="input input-bordered w-full"
-                    class:input-error=move || !is_valid_country()
+                <select
+                    class="select select-bordered w-full"
+                    class:select-error=move || !is_valid_country()
                     name="country"
                     data-testid="input-country"
                     aria-invalid=move || if is_valid_country() { "false" } else { "true" }
+                    on:change=move |ev| set_country.set(event_target_value(&ev))
                     prop:value=set_country
-                    placeholder=move || {
-                        if addr_res.get().is_none() {
-                            "Loading..."
-                        } else if is_new() {
-                            "Enter country..."
-                        } else {
-                            ""
-                        }
-                    }
-                    on:input=move |ev| set_country.set(event_target_value(&ev))
-                    on:blur=move |_| {
-                        set_country.set(current_address().get_country().to_string());
-                    }
-                />
+                >
+                    <option disabled selected value="">
+                        "Select a country..."
+                    </option>
+                    {countries
+                        .into_iter()
+                        .map(|(code, name)| {
+                            view! {
+                                <option
+                                    value=code.clone()
+                                    selected=move || set_country.get() == code
+                                >
+                                    {name}
+                                </option>
+                            }
+                        })
+                        .collect_view()}
+                </select>
             </div>
             <div class="card-actions justify-end mt-4">
                 <button

@@ -112,6 +112,23 @@ export async function typeThenBlur(
 }
 
 /**
+ * Select a value in a dropdown, then blur by focusing another field.
+ * Necessary because .fill() does not work on <select> elements.
+ */
+export async function selectThenBlur(
+  page: Page,
+  selectTid: string,
+  value: string,
+  blurToTid: string
+) {
+  await expect(page.getByTestId(selectTid)).toBeVisible();
+  // Playwright specific method for <select>
+  await page.getByTestId(selectTid).selectOption(value);
+  // Focus next element to trigger blur/validation
+  await page.getByTestId(blurToTid).focus();
+}
+
+/**
  * Assert a field's normalized value and validation state using aria-invalid.
  */
 export async function expectFieldValidity(
@@ -161,7 +178,7 @@ export async function fillFields(
 
   // Country before postal code (for postal code validation)
   if (fields.country !== undefined) {
-    await typeThenBlur(
+    await selectThenBlur(
       page,
       T.form.inputCountry,
       fields.country,
@@ -285,6 +302,25 @@ export async function searchAndOpenByNameOnCurrentPage(
   await row.first().click();
 }
 
+// mapping of countries used in tests
+const COUNTRY_CODE_TO_NAME: Record<string, string> = {
+  DE: "Germany",
+  US: "United States",
+  FR: "France",
+  // add more as needed
+};
+
+/**
+ * Helper to resolve expected display text from input value.
+ * Handles special cases like Country Codes -> Names.
+ */
+function resolveExpectedPreviewText(field: "country" | "other", value: string): string {
+  if (field === "country") {
+    return COUNTRY_CODE_TO_NAME[value] || value; // Fallback auf Code, falls nicht im Mapping
+  }
+  return value;
+}
+
 /**
  * Assert preview view shows specific field values
  */
@@ -332,8 +368,9 @@ export async function expectPreviewShows(
   }
 
   if (expected.country !== undefined) {
+    const expectedText = resolveExpectedPreviewText("country", expected.country);
     await expect(page.getByTestId(T.search.preview.country)).toHaveText(
-      expected.country!
+      expectedText
     );
   }
 }

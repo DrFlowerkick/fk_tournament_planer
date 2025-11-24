@@ -46,3 +46,4 @@ serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+isocountry.workspace = true

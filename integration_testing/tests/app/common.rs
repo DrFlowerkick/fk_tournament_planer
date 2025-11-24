@@ -40,7 +40,7 @@ pub fn init_test_state() -> InitialTestState {
     let postal = "12345";
     let city = "Testcity";
     let region = "TS";
-    let country = "Testland";
+    let country = "DE";
     let mut entries = Vec::new();
     for index in 0..=2 {
         let name = format!("{name_base}{}", index + 1);

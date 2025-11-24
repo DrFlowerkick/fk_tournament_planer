@@ -84,6 +84,7 @@ dependencies = [
  "getrandom",
  "gloo-timers",
  "http",
+ "isocountry",
  "leptos",
  "leptos-axum-socket",
  "leptos_axum",
@@ -1507,6 +1508,7 @@ dependencies = [
  "dotenvy",
  "futures-util",
  "gloo-timers",
+ "isocountry",
  "leptos",
  "leptos-axum-socket",
  "leptos_router",
@@ -1551,6 +1553,16 @@ checksum = "4f867b9d1d896b67beb18518eda36fdb77a32ea590de864f1325b294a6d14397"
 dependencies = [
  "memchr",
  "serde",
+]
+
+[[package]]
+name = "isocountry"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1ea1dc4bf0fb4904ba83ffdb98af3d9c325274e92e6e295e4151e86c96363e04"
+dependencies = [
+ "serde",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
