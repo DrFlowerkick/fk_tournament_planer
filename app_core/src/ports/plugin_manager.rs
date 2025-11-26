@@ -1,4 +1,4 @@
-/// Sport Plugin Manager Port
+//! Sport Plugin Manager Port
 
 use crate::ports::sport::SportPort;
 use std::{any::Any, sync::Arc};

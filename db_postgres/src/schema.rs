@@ -14,3 +14,17 @@ diesel::table! {
         updated_at -> Timestamptz,
     }
 }
+
+diesel::table! {
+    sport_configs (id) {
+        id -> Uuid,
+        version -> Int8,
+        sport_id -> Uuid,
+        name -> Citext,
+        config -> Jsonb,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(postal_addresses, sport_configs,);

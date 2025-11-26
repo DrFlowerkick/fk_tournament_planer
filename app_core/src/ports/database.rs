@@ -28,7 +28,7 @@ pub trait DbpPostalAddress: Send + Sync {
 #[async_trait]
 pub trait DbpSportConfig: Send + Sync {
     async fn get_sport_config(&self, config_id: Uuid) -> DbResult<Option<SportConfig>>;
-    async fn save_sport_config(&self, config: &SportConfig) -> DbResult<SportConfig>;
+    async fn save_sport_config(&self, sport_config: &SportConfig) -> DbResult<SportConfig>;
     async fn list_sport_configs(
         &self,
         name_filter: Option<&str>,

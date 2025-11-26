@@ -2,6 +2,7 @@
 
 pub mod helpers;
 pub mod postal_address;
+pub mod sport_config;
 pub mod schema;
 
 pub use helpers::*;
