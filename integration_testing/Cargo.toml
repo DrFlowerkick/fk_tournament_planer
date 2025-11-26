@@ -54,6 +54,7 @@ leptos-axum-socket.workspace = true
 leptos_router.workspace = true
 serde.workspace = true
 shared = { path = "../shared", optional = true }
+sport_plugin_manager = { path = "../sport_plugin_manager" }
 thiserror.workspace = true
 tokio = { workspace = true, optional = true }
 tracing.workspace = true
@@ -61,6 +62,4 @@ tracing-subscriber.workspace = true
 url.workspace = true
 uuid.workspace = true
 wasm-bindgen-test = { workspace = true, optional = true }
-
-[dev-dependencies]
 web-sys = { workspace = true, features = ["KeyboardEventInit"] }

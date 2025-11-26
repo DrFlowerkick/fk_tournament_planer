@@ -1,75 +1,114 @@
 use app_core::{
     ClientRegistryPort, Core, CoreBuilder, CrMsg, CrTopic, DatabasePort, DbError, DbResult,
-    DbpPostalAddress, InitState, PostalAddress, PostalAddressState, utils::id_version::IdVersion,
+    DbpPostalAddress, DbpSportConfig, InitState, PostalAddress, PostalAddressState, SportConfig,
+    utils::id_version::IdVersion,
 };
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use async_trait::async_trait;
+use sport_plugin_manager::SportPluginManagerMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use uuid::Uuid;
 
-use async_trait::async_trait;
-
-/// In-memory DB fake implementing your DbpPostalAddress trait.
+/// In-memory DB fake implementing DbpPostalAddress and DbpSportConfig traits.
 #[derive(Clone, Default)]
 pub struct FakeDatabasePort {
-    inner: Arc<Mutex<HashMap<Uuid, PostalAddress>>>,
-    fail_next_get: Arc<Mutex<bool>>,
-    fail_next_save: Arc<Mutex<bool>>,
-    fail_next_list: Arc<Mutex<bool>>,
+    // for postal addresses
+    postal_addresses: Arc<Mutex<HashMap<Uuid, PostalAddress>>>,
+    fail_next_get_pa: Arc<Mutex<bool>>,
+    fail_next_save_pa: Arc<Mutex<bool>>,
+    fail_next_list_pa: Arc<Mutex<bool>>,
+    // for sport configs
+    sport_configs: Arc<Mutex<HashMap<Uuid, SportConfig>>>,
+    fail_next_get_sc: Arc<Mutex<bool>>,
+    fail_next_save_sc: Arc<Mutex<bool>>,
+    fail_next_list_sc: Arc<Mutex<bool>>,
 }
 
 impl FakeDatabasePort {
     pub fn new() -> Self {
         Self::default()
     }
-    pub fn seed(&self, mut addr: PostalAddress) -> Uuid {
+
+    // --- Postal Address Helpers ---
+
+    pub fn seed_postal_address(&self, mut addr: PostalAddress) -> Uuid {
         assert!(addr.get_id().is_none());
         let id = Uuid::new_v4();
         let id_version = IdVersion::new(id, 0);
         addr.set_id_version(id_version);
-        self.inner
+        self.postal_addresses
             .lock()
             .unwrap()
             .insert(addr.get_id().unwrap(), addr);
         id
     }
 
-    pub fn fail_get_once(&self) {
-        *self.fail_next_get.lock().unwrap() = true;
+    pub fn fail_get_pa_once(&self) {
+        *self.fail_next_get_pa.lock().unwrap() = true;
     }
-    pub fn fail_save_once(&self) {
-        *self.fail_next_save.lock().unwrap() = true;
+    pub fn fail_save_pa_once(&self) {
+        *self.fail_next_save_pa.lock().unwrap() = true;
     }
-    pub fn fail_list_once(&self) {
-        *self.fail_next_list.lock().unwrap() = true;
+    pub fn fail_list_pa_once(&self) {
+        *self.fail_next_list_pa.lock().unwrap() = true;
+    }
+
+    // --- Sport Config Helpers ---
+
+    pub fn seed_sport_config(&self, mut config: SportConfig) -> Uuid {
+        assert!(config.id_version.get_id().is_none());
+        let id = Uuid::new_v4();
+        let id_version = IdVersion::new(id, 0);
+        config.id_version = id_version;
+        self.sport_configs
+            .lock()
+            .unwrap()
+            .insert(config.id_version.get_id().unwrap(), config);
+        id
+    }
+
+    pub fn fail_get_sc_once(&self) {
+        *self.fail_next_get_sc.lock().unwrap() = true;
+    }
+    pub fn fail_save_sc_once(&self) {
+        *self.fail_next_save_sc.lock().unwrap() = true;
+    }
+    pub fn fail_list_sc_once(&self) {
+        *self.fail_next_list_sc.lock().unwrap() = true;
     }
 }
 
 #[async_trait]
 impl DbpPostalAddress for FakeDatabasePort {
     async fn get_postal_address(&self, id: Uuid) -> DbResult<Option<PostalAddress>> {
-        let mut guard = self.fail_next_get.lock().unwrap();
+        let mut guard = self.fail_next_get_pa.lock().unwrap();
         if *guard {
             *guard = false;
-            // Construct a deterministic DbError variant from your enum.
             return Err(DbError::Other(anyhow::anyhow!("injected get failure")));
         }
-        Ok(self.inner.lock().unwrap().get(&id).cloned())
+        Ok(self.postal_addresses.lock().unwrap().get(&id).cloned())
     }
 
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress> {
-        let mut guard = self.fail_next_save.lock().unwrap();
+        let mut guard = self.fail_next_save_pa.lock().unwrap();
         if *guard {
             *guard = false;
             return Err(DbError::Other(anyhow::anyhow!("injected save failure")));
         }
 
-        let mut guard = self.inner.lock().unwrap();
+        let mut guard = self.postal_addresses.lock().unwrap();
         let mut new = address.clone();
-        if let Some(id) = address.get_id()
-            && let Some(existing) = guard.get(&id)
-        {
-            let version = existing.get_version().unwrap() + 1;
-            new.set_id_version(IdVersion::new(id, version));
+        if let Some(id) = address.get_id() {
+            if let Some(existing) = guard.get(&id) {
+                let version = existing.get_version().unwrap() + 1;
+                new.set_id_version(IdVersion::new(id, version));
+            } else {
+                // This case can happen if an ID is provided but not found (e.g., update on non-existent row)
+                // For simplicity, we treat it as an insert, but a real DB might error.
+                new.set_id_version(IdVersion::new(id, 0));
+            }
         } else {
             new.set_id_version(IdVersion::new(Uuid::new_v4(), 0));
         }
@@ -83,7 +122,7 @@ impl DbpPostalAddress for FakeDatabasePort {
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<PostalAddress>> {
-        let mut guard = self.fail_next_list.lock().unwrap();
+        let mut guard = self.fail_next_list_pa.lock().unwrap();
         if *guard {
             *guard = false;
             return Err(DbError::Other(anyhow::anyhow!("injected list failure")));
@@ -91,7 +130,7 @@ impl DbpPostalAddress for FakeDatabasePort {
 
         let filter = name_filter.map(|s| s.to_lowercase());
         let mut rows: Vec<_> = self
-            .inner
+            .postal_addresses
             .lock()
             .unwrap()
             .values()
@@ -105,7 +144,6 @@ impl DbpPostalAddress for FakeDatabasePort {
             .cloned()
             .collect();
 
-        // deterministic order: by name, then id
         rows.sort_by(|a, b| match a.get_name().cmp(b.get_name()) {
             std::cmp::Ordering::Equal => a.get_id().cmp(&b.get_id()),
             cmp => cmp,
@@ -118,7 +156,81 @@ impl DbpPostalAddress for FakeDatabasePort {
     }
 }
 
-// Blanket impl: your DatabasePort is a supertrait of DbpPostalAddress.
+#[async_trait]
+impl DbpSportConfig for FakeDatabasePort {
+    async fn get_sport_config(&self, id: Uuid) -> DbResult<Option<SportConfig>> {
+        let mut guard = self.fail_next_get_sc.lock().unwrap();
+        if *guard {
+            *guard = false;
+            return Err(DbError::Other(anyhow::anyhow!("injected get failure")));
+        }
+        Ok(self.sport_configs.lock().unwrap().get(&id).cloned())
+    }
+
+    async fn save_sport_config(&self, config: &SportConfig) -> DbResult<SportConfig> {
+        let mut guard = self.fail_next_save_sc.lock().unwrap();
+        if *guard {
+            *guard = false;
+            return Err(DbError::Other(anyhow::anyhow!("injected save failure")));
+        }
+
+        let mut guard = self.sport_configs.lock().unwrap();
+        let mut new = config.clone();
+        if let Some(id) = config.id_version.get_id() {
+            if let Some(existing) = guard.get(&id) {
+                let version = existing.id_version.get_version().unwrap() + 1;
+                new.id_version = IdVersion::new(id, version);
+            } else {
+                new.id_version = IdVersion::new(id, 0);
+            }
+        } else {
+            new.id_version = IdVersion::new(Uuid::new_v4(), 0);
+        }
+
+        guard.insert(new.id_version.get_id().unwrap(), new.clone());
+        Ok(new)
+    }
+
+    async fn list_sport_configs(
+        &self,
+        name_filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> DbResult<Vec<SportConfig>> {
+        let mut guard = self.fail_next_list_sc.lock().unwrap();
+        if *guard {
+            *guard = false;
+            return Err(DbError::Other(anyhow::anyhow!("injected list failure")));
+        }
+
+        let filter = name_filter.map(|s| s.to_lowercase());
+        let mut rows: Vec<_> = self
+            .sport_configs
+            .lock()
+            .unwrap()
+            .values()
+            .filter(|sc| {
+                if let Some(ref f) = filter {
+                    sc.name.to_lowercase().contains(f)
+                } else {
+                    true
+                }
+            })
+            .cloned()
+            .collect();
+
+        rows.sort_by(|a, b| match a.name.cmp(&b.name) {
+            std::cmp::Ordering::Equal => a.id_version.get_id().cmp(&b.id_version.get_id()),
+            cmp => cmp,
+        });
+
+        if let Some(l) = limit {
+            rows.truncate(l);
+        }
+        Ok(rows)
+    }
+}
+
+// Blanket impl: your DatabasePort is a supertrait of DbpPostalAddress and DbpSportConfig.
 #[async_trait]
 impl DatabasePort for FakeDatabasePort {
     async fn ping_db(&self) -> DbResult<()> {
@@ -126,7 +238,7 @@ impl DatabasePort for FakeDatabasePort {
     }
 }
 
-/// Minimal ClientRegistry fake (not used by these DB tests, but needed to build Core).
+/// Minimal ClientRegistry fake.
 #[derive(Clone, Default)]
 pub struct FakeClientRegistryPort {
     published: Arc<Mutex<Vec<CrMsg>>>,
@@ -166,15 +278,17 @@ pub fn make_core_with_fakes() -> (
     Core<InitState>,
     Arc<FakeDatabasePort>,
     Arc<FakeClientRegistryPort>,
+    Arc<SportPluginManagerMap>,
 ) {
     let db = Arc::new(FakeDatabasePort::new());
     let cr = Arc::new(FakeClientRegistryPort::new());
-
+    let spm = Arc::new(SportPluginManagerMap::new());
     let core = CoreBuilder::new()
         .set_db(db.clone())
         .set_cr(cr.clone())
+        .set_spm(spm.clone())
         .build();
-    (core, db, cr)
+    (core, db, cr, spm)
 }
 
 pub fn make_core_postal_address_state_with_fakes() -> (
@@ -182,7 +296,7 @@ pub fn make_core_postal_address_state_with_fakes() -> (
     Arc<FakeDatabasePort>,
     Arc<FakeClientRegistryPort>,
 ) {
-    let (core, db, cr) = make_core_with_fakes();
+    let (core, db, cr, _spm) = make_core_with_fakes();
     (core.as_postal_address_state(), db, cr)
 }
 

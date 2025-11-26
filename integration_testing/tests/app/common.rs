@@ -32,7 +32,7 @@ pub struct InitialTestState {
 
 pub fn init_test_state() -> InitialTestState {
     // All initialization logic is encapsulated here.
-    let (core, mock_db, _) = make_core_with_fakes();
+    let (core, mock_db, _, _) = make_core_with_fakes();
     let core_arc = Arc::new(core);
 
     let name_base = "Test Address";
@@ -45,7 +45,7 @@ pub fn init_test_state() -> InitialTestState {
     for index in 0..=2 {
         let name = format!("{name_base}{}", index + 1);
         let address = make_addr(&name, street, postal, city, region, country);
-        let id = mock_db.seed(address);
+        let id = mock_db.seed_postal_address(address);
         entries.push(id);
     }
 

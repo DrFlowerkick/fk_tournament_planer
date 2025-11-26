@@ -37,6 +37,7 @@ cr_single_instance = { path = "../cr_single_instance" }
 db_postgres = { path = "../db_postgres", optional = true }
 gloo-timers.workspace = true
 http.workspace = true
+isocountry.workspace = true
 leptos.workspace = true
 leptos-axum-socket.workspace = true
 leptos_axum = { workspace = true, optional = true }
@@ -46,4 +47,3 @@ serde.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
-isocountry.workspace = true

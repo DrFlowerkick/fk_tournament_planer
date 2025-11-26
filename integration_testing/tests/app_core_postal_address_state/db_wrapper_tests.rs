@@ -56,7 +56,7 @@ async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchang
     let before = core.get().clone();
 
     // Inject failure into fake
-    db_fake.fail_get_once();
+    db_fake.fail_get_pa_once();
 
     // Act
     let err = core
@@ -108,7 +108,7 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 
     // Act
     // Inject failure (see note in test 3)
-    db_fake.fail_save_once();
+    db_fake.fail_save_pa_once();
     let err = core.save().await.expect_err("expected DB error");
 
     // Assert propagated and state unchanged
@@ -172,7 +172,7 @@ async fn given_db_fake_failure_when_list_addresses_then_error_propagates() {
     let (core, db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // let (db_fake, _cr_fake_fake) = extract_fakes(&core);
-    db_fake.fail_list_once();
+    db_fake.fail_list_pa_once();
 
     let err = core
         .list_addresses(None, None)

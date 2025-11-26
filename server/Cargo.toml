@@ -24,6 +24,7 @@ leptos_axum.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 shared = { path = "../shared" }
+sport_plugin_manager = { path = "../sport_plugin_manager" }
 tokio.workspace = true
 tokio-stream.workspace = true
 tower.workspace = true
@@ -34,4 +35,3 @@ tracing-error.workspace = true
 tracing-log.workspace = true
 tracing-subscriber.workspace = true
 uuid.workspace = true
-sport_plugin_manager = { path = "../sport_plugin_manager" }

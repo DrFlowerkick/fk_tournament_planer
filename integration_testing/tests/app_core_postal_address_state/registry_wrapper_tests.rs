@@ -47,7 +47,7 @@ async fn given_db_failure_when_save_then_no_publish_occurs() {
     let (mut core, db_fake, cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Arrange: ensure DB save fails once
-    db_fake.fail_save_once();
+    db_fake.fail_save_pa_once();
 
     // Put something in state so that save attempts to persist
     *core.get_mut() = make_addr("Beta", "Street 2", "10247", "Berlin", "BE", "DE");
