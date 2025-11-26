@@ -17,6 +17,7 @@ members = [
     "integration_testing",
     "server",
     "shared",
+    "sport_plugin_manager"
 ]
 
 [workspace.dependencies]

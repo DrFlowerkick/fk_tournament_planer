@@ -2758,6 +2758,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shared",
+ "sport_plugin_manager",
  "tokio",
  "tokio-stream",
  "tower",
@@ -2940,6 +2941,17 @@ name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+
+[[package]]
+name = "sport_plugin_manager"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "app_core",
+ "serde",
+ "serde_json",
+ "uuid",
+]
 
 [[package]]
 name = "stable_deref_trait"

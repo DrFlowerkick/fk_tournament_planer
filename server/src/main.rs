@@ -28,6 +28,7 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{EnvFilter, Registry, prelude::*};
+use sport_plugin_manager::SportPluginManagerMap;
 
 use anyhow::Context;
 use std::env;
@@ -104,9 +105,13 @@ async fn main() -> Result<()> {
     db.run_migration().await?;
     let _cr_single = Arc::new(CrSingleInstance::new());
     let cr = Arc::new(ClientRegistrySocket {});
+    let spm = SportPluginManagerMap::new();
+    // ToDo: register sport plugins here!!
+
     let core = CoreBuilder::new()
         .set_db(Arc::new(db))
         .set_cr(cr.clone())
+        .set_spm(Arc::new(spm))
         .build();
     let app_state = AppState {
         core: Arc::new(core),

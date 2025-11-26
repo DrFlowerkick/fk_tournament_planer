@@ -51,7 +51,7 @@ pub trait SportPort: Send + Sync + Any {
     /// Gathers and calculates entrant group score
     fn get_entrant_group_score(
         &self,
-        group: Uuid,
+        group_id: Uuid,
         entrant_id: Uuid,
         all_matches: &[Match],
     ) -> SportResult<EntrantGroupScore>;
