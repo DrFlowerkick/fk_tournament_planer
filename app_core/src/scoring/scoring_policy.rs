@@ -2,6 +2,8 @@
 
 use uuid::Uuid;
 
+/// ToDo: scoring policy will be integrated in SportPort. We can use this for GenericSportPort implementation.
+
 /// There are several kinds of scoring systems in sport. MatchScoring a general
 /// purpose data type to satisfy a broad range of different sports.
 /// Scoring describes how score points are collected and an optional end of match

@@ -2,9 +2,12 @@
 
 use uuid::Uuid;
 
-/// EntrantGroupScore may be used to collect the total score of an entrant over
-/// all matches of one group. It describes although options of comparing of
-/// comparing EntrantGroupScore.
+/// EntrantGroupScore is used to collect the total score of an entrant over
+/// all matches of one group. Together with TieBreakerPolicy this is used to
+/// rank entrants within a group.
+/// This data is not saved to database, but calculated on the fly when ranking
+/// entrants within a group.
+///
 // ToDo: remove allow(dead_code) flag
 #[allow(dead_code)]
 #[derive(Debug, Clone)]

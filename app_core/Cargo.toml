@@ -13,4 +13,5 @@ chrono.workspace = true
 displaydoc.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+serde_json = { workspace = true, features = ["std"] }
 uuid.workspace = true

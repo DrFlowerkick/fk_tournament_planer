@@ -1,6 +1,6 @@
 // database port
 
-use crate::{PostalAddress, utils::validation::ValidationErrors};
+use crate::{PostalAddress, utils::validation::ValidationErrors, SportConfig};
 use async_trait::async_trait;
 use std::{any::Any, fmt::Display};
 use thiserror::Error;
@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 /// database port trait
 #[async_trait]
-pub trait DatabasePort: DbpPostalAddress + Any {
+pub trait DatabasePort: DbpPostalAddress + DbpSportConfig + Any {
     async fn ping_db(&self) -> DbResult<()>;
 }
 
@@ -22,6 +22,18 @@ pub trait DbpPostalAddress: Send + Sync {
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<PostalAddress>>;
+}
+
+/// database port trait for sport config
+#[async_trait]
+pub trait DbpSportConfig: Send + Sync {
+    async fn get_sport_config(&self, config_id: Uuid) -> DbResult<Option<SportConfig>>;
+    async fn save_sport_config(&self, config: &SportConfig) -> DbResult<SportConfig>;
+    async fn list_sport_configs(
+        &self,
+        name_filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> DbResult<Vec<SportConfig>>;
 }
 
 #[derive(Debug, Error)]
