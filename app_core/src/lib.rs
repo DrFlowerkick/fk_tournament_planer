@@ -100,7 +100,10 @@ impl<DB, CR, SPM> CoreBuilder<DB, CR, SPM> {
         }
     }
 
-    pub fn set_cr(self, client_registry: Arc<dyn ClientRegistryPort>) -> CoreBuilder<DB, DynCR, SPM> {
+    pub fn set_cr(
+        self,
+        client_registry: Arc<dyn ClientRegistryPort>,
+    ) -> CoreBuilder<DB, DynCR, SPM> {
         CoreBuilder {
             state_db: self.state_db,
             state_cr: DynCR(client_registry),

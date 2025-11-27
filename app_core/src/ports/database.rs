@@ -1,6 +1,6 @@
 // database port
 
-use crate::{PostalAddress, utils::validation::ValidationErrors, SportConfig};
+use crate::{PostalAddress, SportConfig, utils::validation::ValidationErrors};
 use async_trait::async_trait;
 use std::{any::Any, fmt::Display};
 use thiserror::Error;

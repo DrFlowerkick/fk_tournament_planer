@@ -4,7 +4,7 @@
 //! It allows the core application to handle sport-specific rules for scoring,
 //! timing, and ranking without needing to know the specifics of each sport.
 
-use crate::{Match, EntrantGroupScore, SportConfig};
+use crate::{EntrantGroupScore, Match, SportConfig};
 use serde_json::Value;
 use std::{any::Any, time::Duration};
 use thiserror::Error;
@@ -31,10 +31,6 @@ pub trait SportPort: Send + Sync + Any {
     /// Returns a user-friendly name for the sport.
     fn name(&self) -> &'static str;
 
-    /// Provides a JSON Schema describing the structure and rules of the configuration object.
-    /// The UI can use this to dynamically generate a configuration form.
-    fn get_config_schema(&self) -> Value;
-
     /// Returns a default, valid configuration for this sport.
     /// Useful for creating a new tournament configuration from a template.
     fn get_default_config(&self) -> Value;
@@ -46,11 +42,12 @@ pub trait SportPort: Send + Sync + Any {
     fn estimate_match_duration(&self, config: &SportConfig) -> SportResult<Duration>;
 
     /// Validates a final score against the rules defined in the configuration.
-    fn validate_final_score(&self, config: &SportConfig, score: &Match) -> SportResult<bool>;
+    fn validate_final_score(&self, config: &SportConfig, score: &Match) -> SportResult<()>;
 
     /// Gathers and calculates entrant group score
     fn get_entrant_group_score(
         &self,
+        config: &SportConfig,
         group_id: Uuid,
         entrant_id: Uuid,
         all_matches: &[Match],

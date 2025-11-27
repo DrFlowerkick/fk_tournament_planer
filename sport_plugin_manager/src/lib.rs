@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 /// A concrete implementation of the `SportPluginManagerPort` that uses a `HashMap`
 /// to store and retrieve sport plugins.
+#[derive(Clone, Default)]
 pub struct SportPluginManagerMap {
     plugins: HashMap<Uuid, Arc<dyn SportPort>>,
 }
@@ -43,12 +44,11 @@ impl SportPluginManagerMap {
     /// # impl SportPort for MockSport {
     /// #     fn id(&self) -> Uuid { self.id }
     /// #     fn name(&self) -> &'static str { self.name }
-    /// #     fn get_config_schema(&self) -> Value { serde_json::json!({}) }
     /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
-    /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<bool> { Ok(true) }
-    /// #     fn get_entrant_group_score(&self, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
+    /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
+    /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
     /// #     }
     /// # }
@@ -63,12 +63,6 @@ impl SportPluginManagerMap {
     /// ```
     pub fn register(&mut self, plugin: Arc<dyn SportPort>) {
         self.plugins.insert(plugin.id(), plugin);
-    }
-}
-
-impl Default for SportPluginManagerMap {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -90,12 +84,11 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # impl SportPort for MockSport {
     /// #     fn id(&self) -> Uuid { self.id }
     /// #     fn name(&self) -> &'static str { self.name }
-    /// #     fn get_config_schema(&self) -> Value { serde_json::json!({}) }
     /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
-    /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<bool> { Ok(true) }
-    /// #     fn get_entrant_group_score(&self, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
+    /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
+    /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
     /// #     }
     /// # }
@@ -135,12 +128,11 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # impl SportPort for MockSport {
     /// #     fn id(&self) -> Uuid { self.id }
     /// #     fn name(&self) -> &'static str { self.name }
-    /// #     fn get_config_schema(&self) -> Value { serde_json::json!({}) }
     /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
-    /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<bool> { Ok(true) }
-    /// #     fn get_entrant_group_score(&self, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
+    /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
+    /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
     /// #     }
     /// # }
@@ -179,10 +171,6 @@ mod tests {
             self.name
         }
 
-        fn get_config_schema(&self) -> Value {
-            serde_json::json!({})
-        }
-
         fn get_default_config(&self) -> Value {
             serde_json::json!({})
         }
@@ -195,12 +183,13 @@ mod tests {
             Ok(Duration::from_secs(0))
         }
 
-        fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<bool> {
-            Ok(true)
+        fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> {
+            Ok(())
         }
 
         fn get_entrant_group_score(
             &self,
+            _config: &SportConfig,
             group_id: Uuid,
             entrant_id: Uuid,
             _all_matches: &[Match],

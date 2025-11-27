@@ -18,6 +18,7 @@ db_postgres = { path = "../db_postgres" }
 dotenvy.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
+generic_sport_plugin = { path = "../generic_sport_plugin" }
 leptos = { workspace = true, features = [ "ssr" ] }
 leptos-axum-socket = { workspace = true, features = [ "ssr" ] }
 leptos_axum.workspace = true

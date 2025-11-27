@@ -27,3 +27,16 @@ pub struct EntrantGroupScore {
     /// total own score points over all matches
     pub total_score: u16,
 }
+
+impl EntrantGroupScore {
+    /// Creates a new EntrantGroupScore with zeroed scores.
+    pub fn new(entrant_id: Uuid, group_id: Uuid) -> Self {
+        EntrantGroupScore {
+            entrant_id,
+            group_id,
+            victory_points: 0.0,
+            relative_score: 0,
+            total_score: 0,
+        }
+    }
+}
