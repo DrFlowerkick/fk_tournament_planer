@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/shared-v0.2.0...shared-v0.3.0) (2025-11-28)
+
+
+### Miscellaneous Chores
+
+* **shared:** Synchronize fk_tournament versions
+
 ## [0.2.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/shared-v0.1.0...shared-v0.2.0) (2025-11-24)
 
 

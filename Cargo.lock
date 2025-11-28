@@ -74,7 +74,7 @@ checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
 name = "app"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "app_core",
  "cfg-if",
@@ -98,7 +98,7 @@ dependencies = [
 
 [[package]]
 name = "app_core"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -572,7 +572,7 @@ dependencies = [
 
 [[package]]
 name = "cr_leptos_axum_socket"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "app_core",
@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "cr_single_instance"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "app_core",
@@ -729,7 +729,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "db_postgres"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "app_core",
@@ -979,7 +979,7 @@ checksum = "3a3076410a55c90011c298b04d0cfa770b00fa04e1e3c97d3f6c9de105a03844"
 
 [[package]]
 name = "fk_tournament_planer"
-version = "0.2.1"
+version = "0.3.0"
 
 [[package]]
 name = "flate2"
@@ -1008,7 +1008,7 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "app",
  "console_error_panic_hook",
@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "generic_sport_plugin"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "app_core",
@@ -1506,7 +1506,7 @@ dependencies = [
 
 [[package]]
 name = "integration_testing"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "app",
@@ -2751,7 +2751,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "app",
@@ -2888,7 +2888,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "app_core",
  "axum",
@@ -2963,7 +2963,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sport_plugin_manager"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "app_core",
