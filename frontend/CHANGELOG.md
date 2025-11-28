@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/frontend-v0.2.0...frontend-v0.3.0) (2025-11-28)
+
+
+### Miscellaneous Chores
+
+* **frontend:** Synchronize fk_tournament versions
+
 ## [0.2.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/frontend-v0.1.0...frontend-v0.2.0) (2025-11-24)
 
 

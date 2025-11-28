@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_single_instance-v0.2.0...cr_single_instance-v0.3.0) (2025-11-28)
+
+
+### Miscellaneous Chores
+
+* **cr_single_instance:** Synchronize fk_tournament versions
+
 ## [0.2.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_single_instance-v0.1.0...cr_single_instance-v0.2.0) (2025-11-24)
 
 
