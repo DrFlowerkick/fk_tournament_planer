@@ -1,4 +1,4 @@
-// configuration and handing of sport specific settings
+// configuration and handling of sport specific settings
 
 use crate::utils::id_version::IdVersion;
 use serde::{Deserialize, Serialize};
@@ -18,3 +18,4 @@ pub struct SportConfig {
     /// JSON value containing sport-specific configuration details.
     pub config: Value,
 }
+
