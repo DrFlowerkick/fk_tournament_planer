@@ -12,10 +12,60 @@ on:
         required: true
 
 jobs:
-  release:
-    name: Create release PR (release-please)
+  release-please:
+    name: Create release PR
     runs-on: ubuntu-latest
+    outputs:
+      # 'pr' is a JSON-String, when a PR was created/found.
+      pr: ${{ steps.release.outputs.pr }}
+      # 'releases_created' is true when a release was created (after the merge).
+      releases_created: ${{ steps.release.outputs.releases_created }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: release
         with:
           token: ${{ secrets.token }}
+
+  update-lockfile:
+    name: Update Cargo.lock
+    needs: release-please
+    # Run this job only if a PR was created/updated
+    # AND no release was created (i.e., we are in the PR flow).
+    if: ${{ needs.release-please.outputs.pr && !needs.release-please.outputs.releases_created }}
+    runs-on: ubuntu-latest
+    steps:
+      # The 'pr' output is a JSON object. We parse it to get the branch name.
+      - name: Get release PR branch name
+        id: pr_branch
+        run: |
+          pr_json='${{ needs.release-please.outputs.pr }}'
+          branch_name=$(echo "$pr_json" | jq -r '.head.ref')
+          echo "branch=$branch_name" >> $GITHUB_OUTPUT
+
+      - name: Checkout release-please branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr_branch.outputs.branch }}
+          token: ${{ secrets.token }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Update Cargo.lock
+        run: cargo update
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          # Prüfen, ob es Änderungen gibt (nur die Cargo.lock sollte sich geändert haben)
+          if ! git diff --quiet; then
+            git add Cargo.lock
+            git commit -m "chore: update Cargo.lock"
+            git push
+          else
+            echo "No changes to Cargo.lock needed."
+          fi

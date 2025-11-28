@@ -1120,7 +1120,7 @@ dependencies = [
 
 [[package]]
 name = "generic_sport_plugin"
-version = "0.1.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "app_core",
@@ -1506,7 +1506,7 @@ dependencies = [
 
 [[package]]
 name = "integration_testing"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "app",
@@ -2963,7 +2963,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sport_plugin_manager"
-version = "0.1.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "app_core",
