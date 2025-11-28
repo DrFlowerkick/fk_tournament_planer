@@ -18,4 +18,3 @@ pub struct SportConfig {
     /// JSON value containing sport-specific configuration details.
     pub config: Value,
 }
-
