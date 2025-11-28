@@ -18,12 +18,14 @@ db_postgres = { path = "../db_postgres" }
 dotenvy.workspace = true
 futures-core.workspace = true
 futures-util.workspace = true
+generic_sport_plugin = { path = "../generic_sport_plugin" }
 leptos = { workspace = true, features = [ "ssr" ] }
 leptos-axum-socket = { workspace = true, features = [ "ssr" ] }
 leptos_axum.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 shared = { path = "../shared" }
+sport_plugin_manager = { path = "../sport_plugin_manager" }
 tokio.workspace = true
 tokio-stream.workspace = true
 tower.workspace = true

@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use app::*;
 use app_core::*;
 use axum::{
@@ -13,11 +13,14 @@ use axum_extra::routing::RouterExt;
 use cr_leptos_axum_socket::{ClientRegistrySocket, connect_to_websocket};
 use cr_single_instance::*;
 use db_postgres::*;
+use generic_sport_plugin::GenericSportPlugin;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
 use leptos_axum_socket::{ServerSocket, SocketRoute};
 use serde::Serialize;
 use shared::*;
+use sport_plugin_manager::SportPluginManagerMap;
+use std::env;
 use std::{sync::Arc, time::Duration};
 use tower_http::{
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
@@ -28,9 +31,6 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_error::ErrorLayer;
 use tracing_log::LogTracer;
 use tracing_subscriber::{EnvFilter, Registry, prelude::*};
-
-use anyhow::Context;
-use std::env;
 
 fn init_tracing_bunyan() -> Result<()> {
     // Read level configuration from env (.env via dotenvy or docker sets env)
@@ -104,9 +104,14 @@ async fn main() -> Result<()> {
     db.run_migration().await?;
     let _cr_single = Arc::new(CrSingleInstance::new());
     let cr = Arc::new(ClientRegistrySocket {});
+    let mut spm = SportPluginManagerMap::new();
+    // register sport plugins
+    spm.register(Arc::new(GenericSportPlugin::new()));
+
     let core = CoreBuilder::new()
         .set_db(Arc::new(db))
         .set_cr(cr.clone())
+        .set_spm(Arc::new(spm))
         .build();
     let app_state = AppState {
         core: Arc::new(core),

@@ -107,11 +107,11 @@ impl DbpPostalAddress for PgDb {
         match res {
             Some(res) => {
                 let res = PostalAddress::try_from(res)?;
-                debug!("row_found");
+                debug!("found_postal_address");
                 Ok(Some(res))
             }
             None => {
-                debug!("row_not_found");
+                debug!("postal_address_not_found");
                 Ok(None)
             }
         }
@@ -242,9 +242,6 @@ impl DbpPostalAddress for PgDb {
             .map_err(map_db_err)?;
 
         info!(count = rows.len(), "list_ok");
-        Ok(rows
-            .into_iter()
-            .map(PostalAddress::try_from)
-            .collect::<Result<Vec<PostalAddress>, _>>()?)
+        rows.into_iter().map(PostalAddress::try_from).collect()
     }
 }

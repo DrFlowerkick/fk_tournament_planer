@@ -14,9 +14,11 @@ members = [
     "cr_single_instance",
     "db_postgres",
     "frontend",
+    "generic_sport_plugin",
     "integration_testing",
     "server",
     "shared",
+    "sport_plugin_manager",
 ]
 
 [workspace.dependencies]
@@ -66,7 +68,7 @@ tracing-error = "0.2"
 tracing-log = "0.2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 url = "2.5"
-uuid = { version = "1.18.1", features = ["serde", "v4", "rng-getrandom"] }
+uuid = { version = "1.18.1", features = ["serde", "v4", "v5", "rng-getrandom"] }
 wasm-bindgen = "=0.2.105"
 wasm-bindgen-test = "0.3"
 web-sys = "0.3"

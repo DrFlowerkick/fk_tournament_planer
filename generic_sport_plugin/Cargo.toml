@@ -1,6 +1,6 @@
 [package]
-name = "app_core"
-version = "0.2.1"
+name = "generic_sport_plugin"
+version = "0.1.0"
 edition = "2024"
 license = "MIT"
 
@@ -8,10 +8,7 @@ license = "MIT"
 
 [dependencies]
 anyhow.workspace = true
-async-trait.workspace = true
-chrono.workspace = true
-displaydoc.workspace = true
+app_core = { path = "../app_core" }
 serde.workspace = true
-serde_json = { workspace = true, features = ["std"] }
-thiserror.workspace = true
+serde_json.workspace = true
 uuid.workspace = true
