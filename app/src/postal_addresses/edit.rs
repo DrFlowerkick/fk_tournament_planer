@@ -4,17 +4,20 @@ use super::{
 };
 use crate::{
     AppError,
-    banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
+    components::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
+    global_state::{GlobalState, GlobalStateStoreFields},
+    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
 };
 use app_core::{PaValidationField, PostalAddress};
 use isocountry::CountryCode;
+use leptos::prelude::*;
 #[cfg(feature = "test-mock")]
-use leptos::wasm_bindgen::JsCast;
-use leptos::{leptos_dom::helpers::set_timeout, prelude::*, web_sys};
+use leptos::{wasm_bindgen::JsCast, web_sys};
 use leptos_router::{
     NavigateOptions,
-    hooks::{use_navigate, use_params},
+    hooks::{use_navigate, use_query},
 };
+use reactive_stores::Store;
 use uuid::Uuid;
 
 fn get_sorted_countries() -> Vec<(String, String)> {
@@ -26,30 +29,71 @@ fn get_sorted_countries() -> Vec<(String, String)> {
     countries
 }
 
-#[component]
-pub fn NewPostalAddress() -> impl IntoView {
-    view! { <AddressForm id=None /> }
-}
-
-#[component]
-pub fn PostalAddressEdit() -> impl IntoView {
-    // get id from url
-    let params = use_params::<AddressParams>();
-    let id = params.get_untracked().map(|ap| ap.uuid).unwrap_or(None);
-    view! { <AddressForm id=id /> }
-}
-
 // Wrapper component to provide type safe refetch function via context
 #[component]
-pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
+pub fn PostalAddressForm() -> impl IntoView {
+    // --- Hooks, Navigation & global state ---
+    let UseQueryNavigationReturn {
+        update,
+        path,
+        query_string,
+        ..
+    } = use_query_navigation();
+
+    let is_new = move || path.read().ends_with("/new_pa") || path.read().is_empty();
+    let query = use_query::<AddressParams>();
+    let id = Signal::derive(move || {
+        if is_new() {
+            None
+        } else {
+            query.get().map(|ap| ap.address_id).unwrap_or(None)
+        }
+    });
+
+    let state = expect_context::<Store<GlobalState>>();
+    let return_after_address_edit = state.return_after_address_edit();
+    let cancel_target =
+        move || format!("{}{}", return_after_address_edit.get(), query_string.get());
+
+    // --- Signals for form fields ---
+    let set_name = RwSignal::new(String::new());
+    let set_street = RwSignal::new(String::new());
+    let set_postal_code = RwSignal::new(String::new());
+    let set_locality = RwSignal::new(String::new());
+    let set_region = RwSignal::new(String::new());
+    let set_country = RwSignal::new(String::new());
+    let set_version = RwSignal::new(0);
+
     // --- Server Actions & Resources ---
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
+
+    Effect::new(move || {
+        if let Some(Ok(pa)) = save_postal_address.value().get() {
+            update(
+                "address_id",
+                &pa.get_id().map(|id| id.to_string()).unwrap_or_default(),
+            );
+            let nav_url = format!("{}{}", return_after_address_edit.get(), query_string.get());
+            let navigate = use_navigate();
+            navigate(&nav_url, NavigateOptions::default());
+        }
+    });
+
     let addr_res = Resource::new(
         move || id.get(),
-        |maybe_id| async move {
+        move |maybe_id| async move {
             match maybe_id {
                 Some(id) => match load_postal_address(id).await {
-                    Ok(Some(addr)) => Ok(addr),
+                    Ok(Some(addr)) => {
+                        set_name.set(addr.get_name().to_string());
+                        set_street.set(addr.get_street().to_string());
+                        set_postal_code.set(addr.get_postal_code().to_string());
+                        set_locality.set(addr.get_locality().to_string());
+                        set_region.set(addr.get_region().unwrap_or_default().to_string());
+                        set_country.set(addr.get_country().to_string());
+                        set_version.set(addr.get_version().unwrap_or_default());
+                        Ok(addr)
+                    }
                     Ok(None) => Err(AppError::Db("Not found".to_string())),
                     Err(e) => Err(e),
                 },
@@ -63,21 +107,7 @@ pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
         save_postal_address.clear();
     };
 
-    let cancel_target = move || {
-        id.get()
-            .map(|id| format!("/postal-address/{}", id))
-            .unwrap_or_else(|| "/postal-address".to_string())
-    };
-
-    // --- Signals for form fields ---
-    let set_name = RwSignal::new(String::new());
-    let set_street = RwSignal::new(String::new());
-    let set_postal_code = RwSignal::new(String::new());
-    let set_locality = RwSignal::new(String::new());
-    let set_region = RwSignal::new(String::new());
-    let set_country = RwSignal::new(String::new());
-    let set_version = RwSignal::new(0);
-
+    // --- Props for form fields ---
     let props = FormFieldsProperties {
         id,
         save_postal_address,
@@ -131,59 +161,55 @@ pub fn AddressForm(#[prop(into)] id: Signal<Option<Uuid>>) -> impl IntoView {
                                     }
                                         .into_any()
                                 }
-                                Ok(addr) => {
-                                    set_name.set(addr.get_name().to_string());
-                                    set_street.set(addr.get_street().to_string());
-                                    set_postal_code.set(addr.get_postal_code().to_string());
-                                    set_locality.set(addr.get_locality().to_string());
-                                    set_region
-                                        .set(addr.get_region().unwrap_or_default().to_string());
-                                    set_country.set(addr.get_country().to_string());
-                                    set_version.set(addr.get_version().unwrap_or_default());
-                                    ().into_any()
+                                Ok(_addr) => {
+                                    let props = props.clone();
+                                    view! {
+                                        <div data-testid="form-address">
+                                            {
+                                                #[cfg(not(feature = "test-mock"))]
+                                                {
+                                                    view! {
+                                                        <ActionForm action=save_postal_address>
+                                                            <FormFields props=props />
+                                                        </ActionForm>
+                                                    }
+                                                }
+                                                #[cfg(feature = "test-mock")]
+                                                {
+                                                    view! {
+                                                        <form on:submit=move |ev| {
+                                                            ev.prevent_default();
+                                                            let intent = ev
+                                                                .submitter()
+                                                                .and_then(|el| {
+                                                                    el.dyn_into::<web_sys::HtmlButtonElement>().ok()
+                                                                })
+                                                                .map(|btn| btn.value());
+                                                            let data = SavePostalAddress {
+                                                                id: id.get().unwrap_or(Uuid::nil()),
+                                                                version: set_version.get(),
+                                                                name: set_name.get(),
+                                                                street: set_street.get(),
+                                                                postal_code: set_postal_code.get(),
+                                                                locality: set_locality.get(),
+                                                                region: Some(set_region.get()).filter(|r| !r.is_empty()),
+                                                                country: set_country.get(),
+                                                                intent,
+                                                            };
+                                                            save_postal_address.dispatch(data);
+                                                        }>
+                                                            <FormFields props=props />
+                                                        </form>
+                                                    }
+                                                }
+                                            }
+                                        </div>
+                                    }
+                                        .into_any()
                                 }
                             })
                     }}
-                    <div data-testid="form-address">
-                        {
-                            #[cfg(not(feature = "test-mock"))]
-                            {
-                                view! {
-                                    <ActionForm action=save_postal_address>
-                                        <FormFields props=props.clone() />
-                                    </ActionForm>
-                                }
-                            }
-                            #[cfg(feature = "test-mock")]
-                            {
-                                view! {
-                                    <form on:submit=move |ev| {
-                                        ev.prevent_default();
-                                        let intent = ev
-                                            .submitter()
-                                            .and_then(|el| {
-                                                el.dyn_into::<web_sys::HtmlButtonElement>().ok()
-                                            })
-                                            .map(|btn| btn.value());
-                                        let data = SavePostalAddress {
-                                            id: id.get().unwrap_or(Uuid::nil()),
-                                            version: set_version.get(),
-                                            name: set_name.get(),
-                                            street: set_street.get(),
-                                            postal_code: set_postal_code.get(),
-                                            locality: set_locality.get(),
-                                            region: Some(set_region.get()).filter(|r| !r.is_empty()),
-                                            country: set_country.get(),
-                                            intent,
-                                        };
-                                        save_postal_address.dispatch(data);
-                                    }>
-                                        <FormFields props=props />
-                                    </form>
-                                }
-                            }
-                        }
-                    </div>
+
                 </Transition>
             </div>
         </div>
@@ -573,44 +599,7 @@ fn FormFields<RR: Fn() + Clone + Send + 'static, CT: Fn() -> String + Clone + Se
                     value="cancel"
                     data-testid="btn-cancel"
                     class="btn btn-ghost"
-                    on:click={
-                        let cancel_target = cancel_target.clone();
-                        move |_| {
-                            let Some(win) = web_sys::window() else {
-                                navigate(&cancel_target.clone()(), NavigateOptions::default());
-                                return;
-                            };
-                            let before = win.location().href().unwrap_or_default();
-                            let used_back = win
-                                .history()
-                                .ok()
-                                .and_then(|h| h.length().ok())
-                                .map(|len| {
-                                    if len > 1 {
-                                        let _ = win.history().unwrap().back();
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                })
-                                .unwrap_or(false);
-                            let nav = navigate.clone();
-                            let target = cancel_target();
-                            set_timeout(
-                                move || {
-                                    if let Some(win2) = web_sys::window() {
-                                        let after = win2.location().href().unwrap_or_default();
-                                        if !used_back || after == before {
-                                            nav(&target, NavigateOptions::default());
-                                        }
-                                    } else {
-                                        nav(&target, NavigateOptions::default());
-                                    }
-                                },
-                                std::time::Duration::from_millis(300),
-                            );
-                        }
-                    }
+                    on:click=move |_| navigate(&cancel_target.clone()(), NavigateOptions::default())
                 >
                     "Cancel"
                 </button>

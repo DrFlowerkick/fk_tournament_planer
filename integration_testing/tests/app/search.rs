@@ -1,5 +1,5 @@
-use crate::common::{get_element_by_test_id, init_test_state};
-use app::postal_addresses::{AddressParams, SearchPostalAddressInner};
+use crate::common::{get_element_by_test_id, init_test_state, set_url};
+use app::{global_state::GlobalState, postal_addresses::SearchPostalAddress};
 use gloo_timers::future::sleep;
 use isocountry::CountryCode;
 use leptos::{
@@ -7,26 +7,29 @@ use leptos::{
     prelude::*,
     tachys::dom::body,
     wasm_bindgen::JsCast,
-    web_sys::{Event, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
+    web_sys::{Event, HtmlAnchorElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
 use leptos_axum_socket::provide_socket_context;
 use leptos_router::components::Router;
+use reactive_stores::Store;
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn test_search_postal_address() {
     let ts = init_test_state();
-    let (params, set_params) = signal(Ok(AddressParams { uuid: None }));
+
+    // 1. Set initial URL for searching addresses
+    set_url("/postal-address");
 
     let core = ts.core.clone();
-
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
+        provide_context(Store::new(GlobalState::default()));
         view! {
             <Router>
-                <SearchPostalAddressInner params=params />
+                <SearchPostalAddress />
             </Router>
         }
     });
@@ -92,15 +95,19 @@ async fn test_search_postal_address() {
             .unwrap()
             .href()
             .unwrap()
-            .split("postal-address/")
+            .split("address_id=")
             .last()
             .unwrap()
             .to_string();
         assert_eq!(url_id, id.to_string());
 
-        // set address
-        set_params.set(Ok(AddressParams { uuid: Some(id) }));
-        sleep(Duration::from_millis(10)).await;
+        // set address_id back to search page for next iteration
+        set_url(&format!("/postal-address?address_id={}", id));
+
+        // The component should react to the URL change.
+        // A small delay helps ensure all reactive updates are processed.
+        sleep(Duration::from_millis(20)).await;
+
         let preview_name = get_element_by_test_id("preview-name")
             .text_content()
             .unwrap();
@@ -137,29 +144,17 @@ async fn test_search_postal_address() {
     }
 
     // test buttons
-    let edit_button = get_element_by_test_id("btn-edit-address");
-    assert_eq!(edit_button.text_content().unwrap(), "Edit");
-    edit_button.click();
-    sleep(Duration::from_millis(10)).await;
-    let url_id = document()
-        .location()
-        .unwrap()
-        .href()
-        .unwrap()
-        .split("postal-address/")
-        .last()
-        .unwrap()
-        .split("/edit")
-        .next()
-        .unwrap()
-        .to_string();
-    let first_id = ts.entries[0];
-    assert_eq!(url_id, first_id.to_string());
+    let edit_button = get_element_by_test_id("btn-edit-address")
+        .dyn_into::<HtmlAnchorElement>()
+        .unwrap();
+    let href = edit_button.href();
+    println!("Edit-Button href: {}", href);
+    assert!(href.ends_with(&format!("edit_pa?address_id={}", ts.entries[0])));
 
-    let new_button = get_element_by_test_id("btn-new-address");
+    let new_button = get_element_by_test_id("btn-new-address")
+        .dyn_into::<HtmlAnchorElement>()
+        .unwrap();
+    let href = new_button.href();
+    assert!(href.ends_with(&format!("new_pa?address_id={}", ts.entries[0])));
     assert_eq!(new_button.text_content().unwrap(), "New");
-    new_button.click();
-    sleep(Duration::from_millis(10)).await;
-    let url = document().location().unwrap().href().unwrap();
-    assert!(url.ends_with("/postal-address/new"));
 }

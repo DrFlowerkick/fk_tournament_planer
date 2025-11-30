@@ -1,5 +1,6 @@
 use super::server_fn::save_postal_address_inner;
 use crate::AppError;
+use app_core::PostalAddress;
 use leptos::server_fn::{Protocol, ServerFn, client::Client, server::Server};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -9,7 +10,7 @@ pub struct MockProtocol<SC, SS> {
     _phantom: std::marker::PhantomData<(SC, SS)>,
 }
 
-impl<SC, SS> Protocol<SavePostalAddress, (), SC, SS, AppError> for MockProtocol<SC, SS>
+impl<SC, SS> Protocol<SavePostalAddress, PostalAddress, SC, SS, AppError> for MockProtocol<SC, SS>
 where
     SS: Server<AppError>,
     SC: Client<AppError>,
@@ -22,14 +23,14 @@ where
     ) -> Result<<SS as Server<AppError>>::Response, AppError>
     where
         F: Fn(SavePostalAddress) -> Fut + Send,
-        Fut: Future<Output = Result<(), AppError>> + Send,
+        Fut: Future<Output = Result<PostalAddress, AppError>> + Send,
     {
         unimplemented!("MockProtocol cannot run server functions")
     }
     fn run_client(
         _path: &str,
         input: SavePostalAddress,
-    ) -> impl Future<Output = Result<(), AppError>> + Send {
+    ) -> impl Future<Output = Result<PostalAddress, AppError>> + Send {
         input.run_body()
     }
 }
@@ -51,7 +52,7 @@ impl ServerFn for SavePostalAddress {
     type Client = leptos::server_fn::client::browser::BrowserClient;
     type Server = leptos::server_fn::mock::BrowserMockServer;
     type Protocol = MockProtocol<Self::Client, Self::Server>;
-    type Output = ();
+    type Output = PostalAddress;
     type Error = AppError;
     type InputStreamError = AppError;
     type OutputStreamError = AppError;

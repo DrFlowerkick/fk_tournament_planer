@@ -52,6 +52,7 @@ isocountry.workspace = true
 leptos.workspace = true
 leptos-axum-socket.workspace = true
 leptos_router.workspace = true
+reactive_stores.workspace = true
 serde.workspace = true
 shared = { path = "../shared", optional = true }
 sport_plugin_manager = { path = "../sport_plugin_manager" }

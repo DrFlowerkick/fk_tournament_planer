@@ -1,22 +1,28 @@
 // search for postal address by name
 
-use std::sync::Arc;
-
 use super::{
     AddressParams,
     server_fn::{list_postal_addresses, load_postal_address},
 };
-use crate::{AppError, banner::AcknowledgmentAndNavigateBanner};
+use crate::{
+    AppError,
+    components::banner::AcknowledgmentAndNavigateBanner,
+    global_state::{GlobalState, GlobalStateStoreFields},
+    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+};
 use app_core::{CrTopic, PostalAddress};
 use cr_leptos_axum_socket::use_client_registry_socket;
 use isocountry::CountryCode;
+use std::sync::Arc;
 //use cr_single_instance::use_client_registry_sse;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{
     NavigateOptions,
-    hooks::{use_navigate, use_params},
-    params::ParamsError,
+    components::A,
+    hooks::{use_navigate, use_query},
+    nested_router::Outlet,
 };
+use reactive_stores::Store;
 use uuid::Uuid;
 
 fn display_country(code: &str) -> String {
@@ -27,14 +33,43 @@ fn display_country(code: &str) -> String {
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
-    // get id from url
-    let params = use_params::<AddressParams>();
-    view! { <SearchPostalAddressInner params=params /> }
-}
-#[component]
-pub fn SearchPostalAddressInner(
-    #[prop(into)] params: Signal<Result<AddressParams, ParamsError>>,
-) -> impl IntoView {
+    // get id from url query parameters & navigation helpers
+    let query = use_query::<AddressParams>();
+    let UseQueryNavigationReturn {
+        update,
+        remove,
+        relative_sub_url,
+        path,
+        nav_url,
+        ..
+    } = use_query_navigation();
+
+    // get global state and set return_after_address_edit
+    let state = expect_context::<Store<GlobalState>>();
+    let return_after_address_edit = state.return_after_address_edit();
+    Effect::watch(
+        move || path.get(),
+        move |path, prev_path, _| {
+            if path.ends_with("new_pa") || path.ends_with("edit_pa") {
+                if let Some(prev) = prev_path {
+                    if prev.ends_with("new_pa") || prev.ends_with("edit_pa") {
+                        // do not update return_after_address_edit when navigating between new/edit forms
+                        return;
+                    }
+                    return_after_address_edit.set(prev.clone());
+                } else {
+                    let super_path = path
+                        .rsplit_once('/')
+                        .map(|(p, _)| p)
+                        .unwrap_or("/")
+                        .to_string();
+                    return_after_address_edit.set(super_path);
+                }
+            }
+        },
+        true,
+    );
+
     // signals for address fields
     let (name, set_name) = signal(String::new());
     let (id, set_id) = signal(None::<Uuid>);
@@ -45,21 +80,24 @@ pub fn SearchPostalAddressInner(
     let (open, set_open) = signal(false);
     let (hi, set_hi) = signal::<Option<usize>>(None);
 
-    // query to search address & loaded / selected address
-    let (query, set_query) = signal(String::new());
+    // search_text to search address & loaded / selected address
+    let (search_text, set_search_text) = signal(String::new());
 
     // load existing address when `id` is Some(...)
     let addr_res: Resource<Result<PostalAddress, AppError>> = Resource::new(
-        move || params.get(),
+        move || query.get(),
         move |maybe_id| async move {
             let navigate = use_navigate();
             match maybe_id {
                 // AppResult<PostalAddress>
-                Ok(AddressParams { uuid: Some(id) }) => match load_postal_address(id).await {
+                Ok(AddressParams {
+                    address_id: Some(id),
+                }) => match load_postal_address(id).await {
                     Ok(Some(pa)) => Ok(pa),
                     Ok(None) => {
+                        remove("address_id");
                         navigate(
-                            "/postal-address",
+                            &nav_url.get(),
                             NavigateOptions {
                                 replace: true,
                                 ..Default::default()
@@ -67,8 +105,7 @@ pub fn SearchPostalAddressInner(
                         );
                         Ok(Default::default())
                     }
-                    Err(_e) => Ok(Default::default()),
-                    //Err(e) => Err(e),
+                    Err(e) => Err(e),
                 },
                 // new form or bad uuid: no loading delay
                 _ => Ok(Default::default()),
@@ -88,9 +125,9 @@ pub fn SearchPostalAddressInner(
     let _refetch = move || addr_res.refetch();
     let _topic = move || id.get().map(CrTopic::Address);
 
-    // load possible addresses from query
+    // load possible addresses from search_text
     let addr_list = Resource::new(
-        move || query.get(),
+        move || search_text.get(),
         |name| async move {
             if name.len() > 2 {
                 list_postal_addresses(name).await
@@ -111,7 +148,7 @@ pub fn SearchPostalAddressInner(
             && let Some(item) = list.get(i)
         {
             // 1) update UI state
-            set_query.set(item.get_name().to_string());
+            set_search_text.set(item.get_name().to_string());
             set_open.set(false);
             if let Some(Ok(addr)) = addr_res.get()
                 && addr.get_id() == item.get_id()
@@ -119,10 +156,10 @@ pub fn SearchPostalAddressInner(
                 addr_res.notify();
             } else {
                 // 2) update URL
-                let id_str = item.get_id().map(|id| id.to_string()).unwrap_or_default();
+                update("address_id", &item.get_id().unwrap_or_default().to_string());
                 let navigate = use_navigate();
                 navigate(
-                    &format!("/postal-address/{}", id_str),
+                    &nav_url.get(),
                     NavigateOptions {
                         // replace=true prevents „history spam“
                         replace: true,
@@ -203,7 +240,7 @@ pub fn SearchPostalAddressInner(
                                             ack_btn_text="Reload"
                                             ack_action=move || addr_res.refetch()
                                             nav_btn_text="Reset"
-                                            navigate_url="/postal-address".into()
+                                            navigate_url="/ToDo".into()
                                         />
                                     }
                                         .into_any()
@@ -230,13 +267,13 @@ pub fn SearchPostalAddressInner(
                             data-testid="search-input"
                             placeholder="Enter name of address you are searching..."
                             on:input=move |ev| {
-                                set_query.set(event_target_value(&ev));
+                                set_search_text.set(event_target_value(&ev));
                                 set_open.set(true);
                                 set_hi.set(None);
                             }
                             on:focus=move |_| {
-                                if query.get().is_empty() {
-                                    set_query.set(name.get());
+                                if search_text.get().is_empty() {
+                                    set_search_text.set(name.get());
                                 }
                                 set_open.set(true);
                             }
@@ -384,40 +421,31 @@ pub fn SearchPostalAddressInner(
                             ().into_any()
                         }
                     }} <div class="card-actions justify-end mt-4">
-                        <button
-                            class="btn btn-primary"
-                            data-testid="btn-new-address"
-                            disabled=is_disabled
-                            on:click=move |_| {
-                                let navigate = use_navigate();
-                                navigate("/postal-address/new", NavigateOptions::default());
-                            }
+                        <A
+                            href=move || relative_sub_url("new_pa")
+                            attr:class="btn btn-primary"
+                            attr:data-testid="btn-new-address"
+                            attr:disabled=is_disabled
                         >
                             "New"
-                        </button>
-
-                        <button
-                            class="btn btn-secondary"
-                            data-testid="btn-edit-address"
-                            disabled=move || is_disabled() || id.get().is_none()
-                            on:click=move |_| {
-                                let id = id
-                                    .get()
-                                    .expect(
-                                        "Save expect, since id.get() returns Some(). Otherwise button would be disabled.",
-                                    );
-                                let navigate = use_navigate();
-                                navigate(
-                                    &format!("/postal-address/{id}/edit"),
-                                    NavigateOptions::default(),
-                                );
-                            }
+                        </A>
+                        <A
+                            href=move || relative_sub_url("edit_pa")
+                            attr:class="btn btn-secondary"
+                            attr:data-testid="btn-edit-address"
+                            attr:disabled=move || is_disabled() || id.get().is_none()
                         >
                             "Edit"
-                        </button>
+                        </A>
                     </div>
                 </Transition>
             </div>
         </div>
+        <div class="my-4"></div>
+        {if cfg!(not(feature = "test-mock")) {
+            view! { <Outlet /> }.into_any()
+        } else {
+            ().into_any()
+        }}
     }
 }

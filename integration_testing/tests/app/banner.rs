@@ -1,5 +1,5 @@
 use crate::common::get_element_by_test_id;
-use app::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner};
+use app::components::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner};
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, tachys::dom::body};
 use leptos_router::components::Router;
