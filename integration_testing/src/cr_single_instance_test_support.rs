@@ -41,6 +41,7 @@ pub fn build_address_updated(id: Uuid, version: u32) -> CrMsg {
 pub fn notice_version(n: &CrMsg) -> u32 {
     match n {
         CrMsg::AddressUpdated { version, .. } => *version,
+        CrMsg::SportConfigUpdated { version, .. } => *version,
     }
 }
 

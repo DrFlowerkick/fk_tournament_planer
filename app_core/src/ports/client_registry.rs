@@ -10,12 +10,14 @@ use uuid::Uuid;
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum CrTopic {
     Address(Uuid),
+    SportConfig(Uuid),
 }
 
 impl Display for CrTopic {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CrTopic::Address(id) => write!(f, "address: {id}"),
+            CrTopic::SportConfig(id) => write!(f, "sport_config: {id}"),
         }
     }
 }
@@ -24,6 +26,7 @@ impl CrTopic {
     pub fn id(&self) -> &Uuid {
         match self {
             CrTopic::Address(id) => id,
+            CrTopic::SportConfig(id) => id,
         }
     }
 }
@@ -32,6 +35,7 @@ impl CrTopic {
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum CrMsg {
     AddressUpdated { id: Uuid, version: u32 },
+    SportConfigUpdated { id: Uuid, version: u32 },
 }
 
 /// client registry port trait

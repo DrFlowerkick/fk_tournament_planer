@@ -36,8 +36,8 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
                 Some(0),
                 "insert should start at version 0"
             );
-        } // uncomment this, when CrPushNotice is extended
-          //other => panic!("unexpected notice variant: {:?}", other),
+        }
+        CrMsg::SportConfigUpdated { .. } => panic!("unexpected notice variant: SportConfigUpdated"),
     }
 }
 
@@ -175,7 +175,7 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
         CrMsg::AddressUpdated { id: nid, version } => {
             assert_eq!(*nid, id);
             assert_eq!(Some(*version), second.get_version());
-        } // uncomment this, when CrPushNotice is extended
-          //other => panic!("unexpected notice variant: {:?}", other),
+        }
+        CrMsg::SportConfigUpdated { .. } => panic!("unexpected notice variant: SportConfigUpdated"),
     }
 }

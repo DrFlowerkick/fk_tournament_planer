@@ -35,8 +35,8 @@ async fn given_subscribed_when_publish_then_one_notice_received() -> anyhow::Res
         } => {
             assert_eq!(got_id, id, "received unexpected id");
             assert_eq!(version, 1, "unexpected version");
-        } // uncomment this, when CrPushNotice is extended
-          //_ => anyhow::bail!("unexpected notice variant"),
+        }
+        _ => anyhow::bail!("unexpected notice variant"),
     }
 
     Ok(())
@@ -103,8 +103,8 @@ async fn given_two_subscribers_when_publish_then_both_receive_one() -> anyhow::R
             assert_eq!(*id2, id);
             assert_eq!(*v1 as u64, 1);
             assert_eq!(*v2 as u64, 1);
-        } // uncomment this, when CrPushNotice is extended
-          //_ => anyhow::bail!("unexpected notice variant(s)"),
+        }
+        _ => anyhow::bail!("unexpected notice variant(s)"),
     }
 
     Ok(())
@@ -215,8 +215,8 @@ async fn given_subscription_when_drop_then_no_more_events() -> anyhow::Result<()
         CrMsg::AddressUpdated { id: got, version } => {
             assert_eq!(got, id);
             assert_eq!(version, 5);
-        } // uncomment this, when CrPushNotice is extended
-          //_ => anyhow::bail!("unexpected notice variant"),
+        }
+        _ => anyhow::bail!("unexpected notice variant"),
     }
 
     Ok(())

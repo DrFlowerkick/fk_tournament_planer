@@ -1528,6 +1528,7 @@ dependencies = [
  "leptos_router",
  "reactive_stores",
  "serde",
+ "serde_json",
  "shared",
  "sport_plugin_manager",
  "thiserror 2.0.17",
