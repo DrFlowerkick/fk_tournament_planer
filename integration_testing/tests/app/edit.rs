@@ -94,7 +94,6 @@ async fn test_new_postal_address() {
     assert_eq!(new_address[0].get_name(), "New Name");
 }
 
-
 #[wasm_bindgen_test]
 async fn test_edit_postal_address() {
     let ts = init_test_state();
