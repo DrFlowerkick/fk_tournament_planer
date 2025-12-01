@@ -2,13 +2,11 @@ import { test, expect, Page } from "@playwright/test";
 import { T } from "../helpers/selectors";
 import {
   openNewForm,
-  typeThenBlur,
-  selectThenBlur,
-  expectFieldValidity,
   expectSavesDisabled,
   expectSavesEnabled,
   fillAllRequiredValid,
-} from "../helpers/form";
+} from "../helpers/postal_address";
+import { typeThenBlur, selectThenBlur, expectFieldValidity } from "../helpers/utils";
 
 const NEW_ROUTE = "/postal-address/new";
 

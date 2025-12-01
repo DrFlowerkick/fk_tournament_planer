@@ -1,6 +1,6 @@
 // e2e/tests/keyboard-navigation-search.spec.ts
 import { test, expect } from "@playwright/test";
-import { openPostalAddressList } from "../helpers/form";
+import { openPostalAddressList } from "../helpers/postal_address";
 import { T } from "../helpers/selectors";
 
 test.describe("Search list keyboard navigation", () => {

@@ -1,6 +1,11 @@
 // e2e/create-duplicate-address.spec.ts
 import { test, expect } from "@playwright/test";
-import { openNewForm, fillFields, clickSave } from "../helpers/form";
+import {
+  openNewForm,
+  fillFields,
+  clickSave,
+  waitForPostalAddressListUrl,
+} from "../helpers/postal_address";
 import { T } from "../helpers/selectors";
 
 test.describe("Uniqueness constraint violation", () => {
@@ -25,7 +30,7 @@ test.describe("Uniqueness constraint violation", () => {
     await openNewForm(page);
     await fillFields(page, initial);
     await clickSave(page);
-    await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+    await waitForPostalAddressListUrl(page);
 
     // -------------------- Act: Try to create duplicate --------------------
     await openNewForm(page);
@@ -43,9 +48,7 @@ test.describe("Uniqueness constraint violation", () => {
     // -------------------- Assert: Duplicate error UI appears --------------------
     // A banner should appear, and the dismiss button should be visible.
     await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toBeVisible();
-    await expect(
-      page.getByTestId(T.banner.btnAcknowledgment)
-    ).toBeVisible();
+    await expect(page.getByTestId(T.banner.btnAcknowledgment)).toBeVisible();
 
     // The banner should contain a warning message.
     await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toContainText(

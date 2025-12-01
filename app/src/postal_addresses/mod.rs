@@ -16,5 +16,5 @@ use uuid::Uuid;
 
 #[derive(Params, Clone, PartialEq, Eq, Debug)]
 pub struct AddressParams {
-    pub uuid: Option<Uuid>,
+    pub address_id: Option<Uuid>,
 }

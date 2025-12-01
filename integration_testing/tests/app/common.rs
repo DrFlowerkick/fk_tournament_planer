@@ -2,7 +2,11 @@
 
 use app_core::{Core, InitState};
 use integration_testing::port_fakes::{FakeDatabasePort, make_addr, make_core_with_fakes};
-use leptos::{prelude::*, wasm_bindgen::JsCast, web_sys::HtmlElement};
+use leptos::{
+    prelude::*,
+    wasm_bindgen::{JsCast, JsValue},
+    web_sys::{HtmlElement, window},
+};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -17,7 +21,16 @@ pub fn get_element_by_test_id(id: &str) -> HtmlElement {
         .unwrap()
 }
 
-// A struct to hold all initial test data.
+/// Helper function to set the browser URL for testing purposes.
+pub fn set_url(path: &str) {
+    let window = window().expect("no window");
+    let history = window.history().expect("no history");
+    history
+        .push_state_with_url(&JsValue::NULL, "", Some(path))
+        .expect("could not push state");
+}
+
+/// A struct to hold all initial test data.
 pub struct InitialTestState {
     pub core: Arc<Core<InitState>>,
     pub db: Arc<FakeDatabasePort>,

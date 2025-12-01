@@ -4,12 +4,13 @@ import {
   openNewForm,
   fillAllRequiredValid,
   clickSave,
+  extractUuidFromUrl,
+  openEditForm,
   openPostalAddressList,
   searchAndOpenByNameOnCurrentPage,
   waitForPostalAddressListUrl,
-} from "../helpers/form";
+} from "../helpers/postal_address";
 import { T } from "../helpers/selectors";
-import exp from "constants";
 
 test.describe("Cancel button navigation", () => {
   test("returns to the previous page (search list)", async ({ page }) => {
@@ -20,6 +21,7 @@ test.describe("Cancel button navigation", () => {
     await clickSave(page);
     await waitForPostalAddressListUrl(page);
     const url = page.url();
+    const uuid = extractUuidFromUrl(url);
 
     // Go to list and search for it to create a history entry
     await expect(page.getByTestId(T.search.input)).toBeVisible();
@@ -38,12 +40,15 @@ test.describe("Cancel button navigation", () => {
 
     // -------------------- Act: Open edit page directly and cancel --------------------
     await openPostalAddressList(page); // Ensure we have no uuid in current url
-    await page.goto(`${url}/edit`);
+    await openEditForm(page, uuid);
+
     await expect(page.getByTestId(T.form.root)).toBeVisible();
     await page.getByTestId(T.form.btnCancel).click();
 
-    // -------------------- Assert: We are on the main list page --------------------
-    await expect(page).toHaveURL("/postal-address");
-    await expect(page.getByTestId(T.search.input)).toBeVisible();
+    // -------------------- Assert: We are on the main list page now with id in url --------------------
+    await waitForPostalAddressListUrl(page);
+    const url_after_cancel = page.url();
+    const uuid_after_cancel = extractUuidFromUrl(url_after_cancel);
+    expect(uuid_after_cancel).toBe(uuid);
   });
 });

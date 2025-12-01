@@ -8,8 +8,6 @@ use app_core::PostalAddress;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
-#[cfg(feature = "test-mock")]
-use leptos_router::{NavigateOptions, hooks::use_navigate};
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -100,7 +98,7 @@ pub async fn save_postal_address(
     country: String,
     // which submit button was clicked: "update" | "create"
     intent: Option<String>,
-) -> AppResult<()> {
+) -> AppResult<PostalAddress> {
     save_postal_address_inner(
         id,
         version,
@@ -130,7 +128,7 @@ pub async fn save_postal_address(
     region: Option<String>,
     country: String,
     intent: Option<String>,
-) -> AppResult<()> {
+) -> AppResult<PostalAddress> {
     save_postal_address_inner(
         id,
         version,
@@ -157,7 +155,7 @@ pub async fn save_postal_address_inner(
     region: Option<String>,
     country: String,
     intent: Option<String>,
-) -> AppResult<()> {
+) -> AppResult<PostalAddress> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
 
     // get mut handle to wrapped PostalAddress
@@ -190,16 +188,8 @@ pub async fn save_postal_address_inner(
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {
         Ok(saved) => {
-            info!(saved_id = %saved.get_id().unwrap(), "save_ok_redirect");
-            let route = format!("/postal-address/{}", saved.get_id().unwrap());
-            #[cfg(feature = "test-mock")]
-            {
-                let navigate = use_navigate();
-                navigate(&route, NavigateOptions::default());
-            }
-            #[cfg(not(feature = "test-mock"))]
-            leptos_axum::redirect(&route);
-            Ok(())
+            info!(saved_id = %saved.get_id().unwrap(), "save_ok");
+            Ok(saved.clone())
         }
         Err(e) => {
             // Primary goal failed -> error

@@ -1,5 +1,5 @@
-use crate::common::{get_element_by_test_id, init_test_state};
-use app::postal_addresses::AddressForm;
+use crate::common::{get_element_by_test_id, init_test_state, set_url};
+use app::{global_state::GlobalState, postal_addresses::PostalAddressForm};
 use app_core::DbpPostalAddress;
 use gloo_timers::future::sleep;
 use leptos::{
@@ -11,23 +11,25 @@ use leptos::{
 };
 use leptos_axum_socket::provide_socket_context;
 use leptos_router::components::Router;
+use reactive_stores::Store;
 use std::time::Duration;
-use uuid::Uuid;
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
-async fn test_edit_postal_address() {
+async fn test_new_postal_address() {
     let ts = init_test_state();
-    let (id, set_id) = signal(None::<Uuid>);
+
+    // 1. Set initial URL for creating a new address
+    set_url("/postal-address/new_pa");
 
     let core = ts.core.clone();
-
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
+        provide_context(Store::new(GlobalState::default()));
         view! {
             <Router>
-                <AddressForm id=id />
+                <PostalAddressForm />
             </Router>
         }
     });
@@ -90,12 +92,44 @@ async fn test_edit_postal_address() {
         .unwrap();
     assert_eq!(new_address.len(), 1);
     assert_eq!(new_address[0].get_name(), "New Name");
+}
 
-    // now edit an existing address
+#[wasm_bindgen_test]
+async fn test_edit_postal_address() {
+    let ts = init_test_state();
+
+    // 1. Set initial URL for creating a new address
     let existing_id = ts.entries[0];
-    set_id.set(Some(existing_id));
+    set_url(&format!(
+        "/postal-address/edit_pa?address_id={}",
+        existing_id
+    ));
+
+    let core = ts.core.clone();
+    let _mount_guard = mount_to(body(), move || {
+        provide_socket_context();
+        provide_context(core.clone());
+        provide_context(Store::new(GlobalState::default()));
+        view! {
+            <Router>
+                <PostalAddressForm />
+            </Router>
+        }
+    });
+
     sleep(Duration::from_millis(10)).await;
 
+    // The component should react to the URL change.
+    // A small delay helps ensure all reactive updates are processed.
+    sleep(Duration::from_millis(10)).await;
+
+    // verify that the form is populated with existing data
+    let name_input = get_element_by_test_id("input-name")
+        .dyn_into::<HtmlInputElement>()
+        .unwrap();
+    assert_eq!(name_input.value(), format!("{}1", ts.name_base));
+
+    // modify some data and save
     let street_input = get_element_by_test_id("input-street")
         .dyn_into::<HtmlInputElement>()
         .unwrap();

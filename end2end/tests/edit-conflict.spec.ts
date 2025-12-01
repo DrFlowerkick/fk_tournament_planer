@@ -4,12 +4,13 @@ import {
   openNewForm,
   fillFields,
   clickSave,
-  typeThenBlur,
   extractUuidFromUrl,
   expectSavesDisabled,
+  openEditForm,
   waitForPostalAddressListUrl,
-} from "../helpers/form";
+} from "../helpers/postal_address";
 import { T } from "../helpers/selectors";
+import { typeThenBlur } from "../helpers/utils";
 
 test.describe("Edit conflict shows proper fallback reaction", () => {
   test("A on stale version gets conflict banner and disabled save", async ({
@@ -42,14 +43,12 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       const id = extractUuidFromUrl(pageA.url());
 
       // A opens edit for this id. Expect form-version "0".
-      await pageA.goto(`/postal-address/${id}/edit`);
-      await pageA.waitForLoadState('domcontentloaded');
+      await openEditForm(pageA, id);
       // The version is in a hidden input field. We check its value attribute.
       await expect(pageA.locator('input[name="version"]')).toHaveValue("0");
 
       // -------------------- B updates first -----------------------
-      await pageB.goto(`/postal-address/${id}/edit`);
-      await pageB.waitForLoadState('domcontentloaded');
+      await openEditForm(pageB, id);
       // The version is in a hidden input field. We check its value attribute.
       await expect(pageB.locator('input[name="version"]')).toHaveValue("0");
 

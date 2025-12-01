@@ -6,10 +6,11 @@ import {
   clickSave,
   clickSaveAsNew,
   extractUuidFromUrl,
-  typeThenBlur,
+  openEditForm,
   waitForPostalAddressListUrl,
-} from "../helpers/form";
+} from "../helpers/postal_address";
 import { T } from "../helpers/selectors";
+import { typeThenBlur } from "../helpers/utils";
 
 test.describe('"Save as new" functionality', () => {
   test("creates a new address from an existing one", async ({ page }) => {
@@ -30,8 +31,7 @@ test.describe('"Save as new" functionality', () => {
     const originalId = extractUuidFromUrl(page.url());
 
     // -------------------- Act: Edit and "Save as new" --------------------
-    await page.goto(`/postal-address/${originalId}/edit`);
-    await page.waitForLoadState('domcontentloaded');
+    await openEditForm(page, originalId);
 
     // Ensure we are on the edit page for the original address
     await expect(page.getByTestId(T.form.hiddenId)).toHaveValue(originalId);
@@ -54,7 +54,7 @@ test.describe('"Save as new" functionality', () => {
     await expect(page.getByTestId(T.search.preview.name)).toHaveText(newName);
 
     // -------------------- Assert: Original address is unchanged --------------------
-    await page.goto(`/postal-address/${originalId}/edit`);
+    await openEditForm(page, originalId);
     await expect(page.getByTestId(T.form.inputName)).toHaveValue(initial.name);
   });
 });

@@ -1,19 +1,23 @@
 // web app ui
 
-pub mod banner;
+pub mod components;
 mod error;
+pub mod global_state;
+pub mod hooks;
 pub mod postal_addresses;
-use error::*;
-use postal_addresses::*;
 
+use error::*;
+use global_state::GlobalState;
 use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
     StaticSegment,
-    components::{A, Route, Router, Routes},
+    components::{A, ParentRoute, Route, Router, Routes},
     path,
 };
+use postal_addresses::*;
+use reactive_stores::Store;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -39,6 +43,8 @@ pub fn App() -> impl IntoView {
     provide_meta_context();
     // Provides the WebSocket socket context for client registry communication
     provide_socket_context();
+    // provide global state context
+    provide_context(Store::new(GlobalState::default()));
 
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
@@ -68,10 +74,16 @@ pub fn App() -> impl IntoView {
                 <main class="flex-grow p-4">
                     <Routes fallback=|| "Page not found.".into_view()>
                         <Route path=StaticSegment("/") view=HomePage />
-                        <Route path=path!("/postal-address") view=SearchPostalAddress />
-                        <Route path=path!("/postal-address/new") view=NewPostalAddress />
-                        <Route path=path!("/postal-address/:uuid/edit") view=PostalAddressEdit />
-                        <Route path=path!("/postal-address/:uuid") view=SearchPostalAddress />
+                        <ParentRoute path=path!("/postal-address") view=SearchPostalAddress>
+                            <Route
+                                path=path!("")
+                                view={
+                                    view! {}
+                                }
+                            />
+                            <Route path=path!("new_pa") view=PostalAddressForm />
+                            <Route path=path!("edit_pa") view=PostalAddressForm />
+                        </ParentRoute>
                     </Routes>
                 </main>
 

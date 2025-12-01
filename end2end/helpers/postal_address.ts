@@ -1,9 +1,14 @@
 // Shared helpers for address form flows
 import { expect, Page } from "@playwright/test";
 import { T } from "./selectors";
+import {
+  typeThenBlur,
+  selectThenBlur,
+  extractQueryParamFromUrl,
+} from "./utils";
 
 export const ROUTES = {
-  newAddress: "/postal-address/new",
+  newAddress: "/postal-address/new_pa",
   list: "/postal-address",
 };
 
@@ -17,35 +22,35 @@ export async function openPostalAddressList(page: Page) {
   await expect(page.getByTestId(T.search.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
   await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnEdit)).toBeDisabled();
+  await expect(page.getByTestId(T.search.btnEdit)).toHaveAttribute("disabled");
 }
 
 /**
  * Wait for navigation to a postal address detail page (UUID URL).
  */
 export async function waitForPostalAddressListUrl(page: Page) {
-  await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}$/);
+  await page.waitForURL(/\/postal-address\?address_id=[0-9a-f-]{36}$/);
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId(T.search.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
   await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnEdit)).toBeEnabled();
+  await expect(page.getByTestId(T.search.btnEdit)).not.toHaveAttribute(
+    "disabled"
+  );
 }
 
 /**
  * Extracts the UUID from a /postal-address/<uuid> URL.
  */
 export function extractUuidFromUrl(url: string): string {
-  const m = url.match(/\/postal-address\/([0-9a-f-]{36})(?:$|\/)/i);
-  if (!m) throw new Error(`No UUID found in URL: ${url}`);
-  return m[1];
+  return extractQueryParamFromUrl(url, "address_id");
 }
 
 /**
  * Open the "New Postal Address" form directly.
  */
 export async function openNewForm(page: Page) {
-  // Navigate to "new" route and assert the form exists
+  // Navigate to "new_pa" route and assert the form exists
   await page.goto(ROUTES.newAddress);
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId(T.form.root)).toBeVisible();
@@ -56,7 +61,7 @@ export async function openNewForm(page: Page) {
 /**
  * Enter edit mode from a detail page (if you have a dedicated edit button).
  */
-export async function openEditForm(page: Page) {
+export async function clickEditToOpenEditForm(page: Page) {
   await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
   await page.getByTestId(T.search.btnEdit).click();
   // Assert the form is shown again
@@ -64,10 +69,20 @@ export async function openEditForm(page: Page) {
 }
 
 /**
+ * Enter edit mode directly by navigating to the edit URL.
+ */
+export async function openEditForm(page: Page, id: string) {
+  await page.goto(`/postal-address/edit_pa?address_id=${id}`);
+  // Assert the form is shown again
+  await waitForPostalAddressEditUrl(page);
+  await page.waitForLoadState("domcontentloaded");
+}
+
+/**
  * Wait for navigation to a edit postal address page (UUID URL).
  */
 export async function waitForPostalAddressEditUrl(page: Page) {
-  await page.waitForURL(/\/postal-address\/[0-9a-f-]{36}\/edit$/);
+  await page.waitForURL(/\/postal-address\/edit_pa\?address_id=[0-9a-f-]{36}$/);
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId(T.form.root)).toBeVisible();
   await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
@@ -93,57 +108,6 @@ export async function expectSavesEnabled(page: Page) {
   const save = page.getByTestId(T.form.btnSaveAsNew);
   if (await save.isVisible()) {
     await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeEnabled();
-  }
-}
-
-/**
- * Type a value into a field, then blur by focusing another field.
- * Simulates: focus → type → blur -> normalize -> validate for that field.
- */
-export async function typeThenBlur(
-  page: Page,
-  inputTid: string,
-  value: string,
-  blurToTid: string
-) {
-  await expect(page.getByTestId(inputTid)).toBeVisible();
-  await page.getByTestId(inputTid).fill(value);
-  await page.getByTestId(blurToTid).focus();
-}
-
-/**
- * Select a value in a dropdown, then blur by focusing another field.
- * Necessary because .fill() does not work on <select> elements.
- */
-export async function selectThenBlur(
-  page: Page,
-  selectTid: string,
-  value: string,
-  blurToTid: string
-) {
-  await expect(page.getByTestId(selectTid)).toBeVisible();
-  // Playwright specific method for <select>
-  await page.getByTestId(selectTid).selectOption(value);
-  // Focus next element to trigger blur/validation
-  await page.getByTestId(blurToTid).focus();
-}
-
-/**
- * Assert a field's normalized value and validation state using aria-invalid.
- */
-export async function expectFieldValidity(
-  page: Page,
-  inputTid: string,
-  expectedValue: string,
-  isInvalid: boolean
-) {
-  const input = page.getByTestId(inputTid);
-  await expect(input).toHaveValue(expectedValue);
-  if (isInvalid) {
-    await expect(input).toHaveAttribute("aria-invalid", "true");
-  } else {
-    const ariaInvalid = await input.getAttribute("aria-invalid");
-    expect(ariaInvalid === null || ariaInvalid === "false").toBeTruthy();
   }
 }
 
@@ -314,7 +278,10 @@ const COUNTRY_CODE_TO_NAME: Record<string, string> = {
  * Helper to resolve expected display text from input value.
  * Handles special cases like Country Codes -> Names.
  */
-function resolveExpectedPreviewText(field: "country" | "other", value: string): string {
+function resolveExpectedPreviewText(
+  field: "country" | "other",
+  value: string
+): string {
   if (field === "country") {
     return COUNTRY_CODE_TO_NAME[value] || value; // Fallback auf Code, falls nicht im Mapping
   }
@@ -368,7 +335,10 @@ export async function expectPreviewShows(
   }
 
   if (expected.country !== undefined) {
-    const expectedText = resolveExpectedPreviewText("country", expected.country);
+    const expectedText = resolveExpectedPreviewText(
+      "country",
+      expected.country
+    );
     await expect(page.getByTestId(T.search.preview.country)).toHaveText(
       expectedText
     );
