@@ -7,5 +7,5 @@ wasm_bindgen_test_configure!(run_in_browser);
 
 mod banner;
 mod common;
-mod edit;
-mod search;
+mod postal_address;
+mod sport_config;
