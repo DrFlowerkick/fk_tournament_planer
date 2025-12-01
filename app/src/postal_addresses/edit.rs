@@ -129,11 +129,7 @@ pub fn PostalAddressForm() -> impl IntoView {
             <div class="card-body">
                 <h2 class="card-title">
                     {move || {
-                        if is_new() {
-                            "New Postal Address"
-                        } else {
-                            "Edit Postal Address"
-                        }
+                        if is_new() { "New Postal Address" } else { "Edit Postal Address" }
                     }}
                 </h2>
                 <Transition fallback=move || {
