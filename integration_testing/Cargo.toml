@@ -47,6 +47,7 @@ diesel-async = { workspace = true, optional = true }
 displaydoc.workspace = true
 dotenvy.workspace = true
 futures-util = { workspace = true, optional = true }
+generic_sport_plugin = { path = "../generic_sport_plugin" }
 gloo-timers.workspace = true
 isocountry.workspace = true
 leptos.workspace = true

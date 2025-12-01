@@ -5,6 +5,7 @@ mod error;
 pub mod global_state;
 pub mod hooks;
 pub mod postal_addresses;
+pub mod sport_config;
 
 use error::*;
 use global_state::GlobalState;

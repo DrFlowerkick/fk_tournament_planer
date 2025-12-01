@@ -1521,6 +1521,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "futures-util",
+ "generic_sport_plugin",
  "gloo-timers",
  "isocountry",
  "leptos",

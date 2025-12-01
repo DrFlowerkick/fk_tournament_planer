@@ -1,12 +1,14 @@
 // common helpers for tests
 
-use app_core::{Core, InitState};
-use integration_testing::port_fakes::{FakeDatabasePort, make_addr, make_core_with_fakes};
+use app_core::{Core, CoreBuilder, InitState, SportPort};
+use generic_sport_plugin::GenericSportPlugin;
+use integration_testing::port_fakes::{FakeClientRegistryPort, FakeDatabasePort, make_addr};
 use leptos::{
     prelude::*,
     wasm_bindgen::{JsCast, JsValue},
     web_sys::{HtmlElement, window},
 };
+use sport_plugin_manager::SportPluginManagerMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -41,12 +43,29 @@ pub struct InitialTestState {
     pub city: String,
     pub region: String,
     pub country: String,
+    pub generic_sport_id: Uuid,
 }
 
 pub fn init_test_state() -> InitialTestState {
     // All initialization logic is encapsulated here.
-    let (core, mock_db, _, _) = make_core_with_fakes();
+    let db = Arc::new(FakeDatabasePort::new());
+    let cr = Arc::new(FakeClientRegistryPort::new());
+
+    // Register Generic Sport Plugin
+    let mut spm_map = SportPluginManagerMap::new();
+    let generic_plugin = Arc::new(GenericSportPlugin::new());
+    let generic_sport_id = generic_plugin.id();
+    spm_map.register(generic_plugin);
+    let spm = Arc::new(spm_map);
+
+    let core = CoreBuilder::new()
+        .set_db(db.clone())
+        .set_cr(cr.clone())
+        .set_spm(spm.clone())
+        .build();
+
     let core_arc = Arc::new(core);
+    let mock_db = db; // alias to match previous code style if needed
 
     let name_base = "Test Address";
     let street = "123 Main St";
@@ -72,5 +91,6 @@ pub fn init_test_state() -> InitialTestState {
         city: city.into(),
         region: region.into(),
         country: country.to_uppercase(),
+        generic_sport_id,
     }
 }
