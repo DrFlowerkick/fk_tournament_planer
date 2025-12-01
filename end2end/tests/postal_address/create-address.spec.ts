@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
-import { selectors } from "../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 import {
   searchAndOpenByNameOnCurrentPage,
   fillFields,
   clickSave,
   expectPreviewShows,
   openPostalAddressList,
-} from "../helpers/postal_address";
+} from "../../helpers/postal_address";
 
 test("Create Address (happy path): New → Fill → Save → Verify in search", async ({
   page,

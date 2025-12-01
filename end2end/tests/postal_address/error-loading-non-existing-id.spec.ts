@@ -1,10 +1,12 @@
 // e2e/tests/error-loading-non-existing-id.spec.ts
 import { test, expect } from "@playwright/test";
-import { openPostalAddressList } from "../helpers/postal_address";
-import { T } from "../helpers/selectors";
+import { openPostalAddressList } from "../../helpers/postal_address";
+import { T } from "../../helpers/selectors";
 
 test.describe("Error loading non-existing postal address ID", () => {
-  test("shows error message when navigating to non-existing ID", async ({ page }) => {
+  test("shows error message when navigating to non-existing ID", async ({
+    page,
+  }) => {
     // Open the postal address list first
     await openPostalAddressList(page);
 
@@ -26,7 +28,7 @@ test.describe("Error loading non-existing postal address ID", () => {
     await expect(
       page.getByTestId(T.banner.btnAcknowledgmentNavigate)
     ).toBeVisible();
-    
+
     // -------------------- Act: Dismiss the banner --------------------
     await page.getByTestId(T.banner.btnAcknowledgmentNavigate).click();
 

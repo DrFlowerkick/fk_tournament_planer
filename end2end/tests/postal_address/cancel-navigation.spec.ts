@@ -9,8 +9,8 @@ import {
   openPostalAddressList,
   searchAndOpenByNameOnCurrentPage,
   waitForPostalAddressListUrl,
-} from "../helpers/postal_address";
-import { T } from "../helpers/selectors";
+} from "../../helpers/postal_address";
+import { T } from "../../helpers/selectors";
 
 test.describe("Cancel button navigation", () => {
   test("returns to the previous page (search list)", async ({ page }) => {

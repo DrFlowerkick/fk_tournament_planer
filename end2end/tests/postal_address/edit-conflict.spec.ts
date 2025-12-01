@@ -8,9 +8,9 @@ import {
   expectSavesDisabled,
   openEditForm,
   waitForPostalAddressListUrl,
-} from "../helpers/postal_address";
-import { T } from "../helpers/selectors";
-import { typeThenBlur } from "../helpers/utils";
+} from "../../helpers/postal_address";
+import { T } from "../../helpers/selectors";
+import { typeThenBlur } from "../../helpers/utils";
 
 test.describe("Edit conflict shows proper fallback reaction", () => {
   test("A on stale version gets conflict banner and disabled save", async ({

@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { T } from "../helpers/selectors";
+import { T } from "../../helpers/selectors";
 import {
   openNewForm,
   fillAllRequiredValid,
@@ -10,8 +10,8 @@ import {
   expectPreviewShows,
   waitForPostalAddressListUrl,
   extractUuidFromUrl,
-} from "../helpers/postal_address";
-import { typeThenBlur, expectFieldValidity } from "../helpers/utils";
+} from "../../helpers/postal_address";
+import { typeThenBlur, expectFieldValidity } from "../../helpers/utils";
 
 /**
  * Flow:

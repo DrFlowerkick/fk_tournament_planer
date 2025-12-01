@@ -8,9 +8,9 @@ import {
   extractUuidFromUrl,
   openEditForm,
   waitForPostalAddressListUrl,
-} from "../helpers/postal_address";
-import { T } from "../helpers/selectors";
-import { typeThenBlur } from "../helpers/utils";
+} from "../../helpers/postal_address";
+import { T } from "../../helpers/selectors";
+import { typeThenBlur } from "../../helpers/utils";
 
 test.describe('"Save as new" functionality', () => {
   test("creates a new address from an existing one", async ({ page }) => {

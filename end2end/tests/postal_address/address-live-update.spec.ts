@@ -1,5 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
-import { T } from "../helpers/selectors";
+import { T } from "../../helpers/selectors";
 import {
   openNewForm,
   fillFields,
@@ -10,8 +10,8 @@ import {
   expectSavesEnabled,
   openEditForm,
   waitForPostalAddressListUrl,
-} from "../helpers/postal_address";
-import { typeThenBlur } from "../helpers/utils";
+} from "../../helpers/postal_address";
+import { typeThenBlur } from "../../helpers/utils";
 
 // --- Test data ---------------------------------------------------------------
 // Unique test data (avoid partial-unique collisions)
@@ -63,7 +63,7 @@ test.describe("postal address live update (Preview-only UI)", () => {
       await expect(pageA.getByTestId(T.search.preview.version)).toHaveText("0");
 
       // ----------------------- Act (B edits & saves) -------------------------
-      // B opens the edit route directly for the same UUID.      
+      // B opens the edit route directly for the same UUID.
       await openEditForm(pageB, id);
       // now save button should be enabled
       await expectSavesEnabled(pageB);

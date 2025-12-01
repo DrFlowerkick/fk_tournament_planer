@@ -1,7 +1,7 @@
 // e2e/tests/keyboard-navigation-search.spec.ts
 import { test, expect } from "@playwright/test";
-import { openPostalAddressList } from "../helpers/postal_address";
-import { T } from "../helpers/selectors";
+import { openPostalAddressList } from "../../helpers/postal_address";
+import { T } from "../../helpers/selectors";
 
 test.describe("Search list keyboard navigation", () => {
   // We need to create three entries first to have something to navigate
