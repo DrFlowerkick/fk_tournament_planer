@@ -25,6 +25,10 @@ pub enum AppError {
     /// Your own DB/domain errors (serialized as string over the wire)
     #[error("database error: {0}")]
     Db(String),
+
+    /// generic error
+    #[error("generic error: {0}")]
+    Generic(String),
 }
 
 // Let Leptos server functions know how to encode this error type

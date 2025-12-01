@@ -6,7 +6,7 @@ import {
   clickSave,
   expectPreviewShows,
   openPostalAddressList,
-} from "../helpers/form";
+} from "../helpers/postal_address";
 
 test("Create Address (happy path): New → Fill → Save → Verify in search", async ({
   page,

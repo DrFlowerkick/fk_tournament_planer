@@ -69,6 +69,7 @@ pub fn PostalAddressForm() -> impl IntoView {
 
     Effect::new(move || {
         if let Some(Ok(pa)) = save_postal_address.value().get() {
+            save_postal_address.clear();
             update(
                 "address_id",
                 &pa.get_id().map(|id| id.to_string()).unwrap_or_default(),
@@ -103,8 +104,8 @@ pub fn PostalAddressForm() -> impl IntoView {
     );
 
     let refetch_and_reset = move || {
-        addr_res.refetch();
         save_postal_address.clear();
+        addr_res.refetch();
     };
 
     // --- Props for form fields ---
@@ -128,10 +129,10 @@ pub fn PostalAddressForm() -> impl IntoView {
             <div class="card-body">
                 <h2 class="card-title">
                     {move || {
-                        if id.get().is_some() {
-                            "Edit Postal Address"
-                        } else {
+                        if is_new() {
                             "New Postal Address"
+                        } else {
+                            "Edit Postal Address"
                         }
                     }}
                 </h2>

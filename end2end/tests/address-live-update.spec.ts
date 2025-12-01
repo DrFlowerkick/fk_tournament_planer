@@ -4,13 +4,14 @@ import {
   openNewForm,
   fillFields,
   clickSave,
-  typeThenBlur,
   expectPreviewShows,
   extractUuidFromUrl,
   expectSavesDisabled,
   expectSavesEnabled,
+  openEditForm,
   waitForPostalAddressListUrl,
-} from "../helpers/form";
+} from "../helpers/postal_address";
+import { typeThenBlur } from "../helpers/utils";
 
 // --- Test data ---------------------------------------------------------------
 // Unique test data (avoid partial-unique collisions)
@@ -62,9 +63,8 @@ test.describe("postal address live update (Preview-only UI)", () => {
       await expect(pageA.getByTestId(T.search.preview.version)).toHaveText("0");
 
       // ----------------------- Act (B edits & saves) -------------------------
-      // B opens the edit route directly for the same UUID.
-      await pageB.goto(`/postal-address/${id}/edit`);
-      await pageB.waitForLoadState('domcontentloaded');
+      // B opens the edit route directly for the same UUID.      
+      await openEditForm(pageB, id);
       // now save button should be enabled
       await expectSavesEnabled(pageB);
 
@@ -76,8 +76,6 @@ test.describe("postal address live update (Preview-only UI)", () => {
         T.form.inputStreet
       );
 
-      // Start latency timer immediately before the save action.
-      //const t0 = Date.now();
       await clickSave(pageB);
 
       // ----------------------- Assert (A updates via SSE) --------------------

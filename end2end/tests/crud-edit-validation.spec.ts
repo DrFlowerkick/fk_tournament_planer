@@ -5,14 +5,13 @@ import {
   fillAllRequiredValid,
   expectSavesDisabled,
   expectSavesEnabled,
-  expectFieldValidity,
-  typeThenBlur,
   clickSave,
-  openEditForm,
+  clickEditToOpenEditForm,
   expectPreviewShows,
   waitForPostalAddressListUrl,
   extractUuidFromUrl,
-} from "../helpers/form";
+} from "../helpers/postal_address";
+import { typeThenBlur, expectFieldValidity } from "../helpers/utils";
 
 /**
  * Flow:
@@ -45,7 +44,7 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
     });
 
     // Step 2: Enter edit mode
-    await openEditForm(page);
+    await clickEditToOpenEditForm(page);
 
     // Step 3: Make a field invalid → save buttons must be disabled
     /**

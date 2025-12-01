@@ -87,28 +87,22 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let addr_res: Resource<Result<PostalAddress, AppError>> = Resource::new(
         move || query.get(),
         move |maybe_id| async move {
-            let navigate = use_navigate();
             match maybe_id {
                 // AppResult<PostalAddress>
                 Ok(AddressParams {
                     address_id: Some(id),
                 }) => match load_postal_address(id).await {
                     Ok(Some(pa)) => Ok(pa),
-                    Ok(None) => {
-                        remove("address_id");
-                        navigate(
-                            &nav_url.get(),
-                            NavigateOptions {
-                                replace: true,
-                                ..Default::default()
-                            },
-                        );
-                        Ok(Default::default())
-                    }
+                    Ok(None) => Err(AppError::Generic("Postal Address ID not found".to_string())),
                     Err(e) => Err(e),
                 },
+                Ok(AddressParams { address_id: None }) => {
+                    // no address id: no loading delay
+                    Ok(Default::default())
+                }
                 // new form or bad uuid: no loading delay
-                _ => Ok(Default::default()),
+                //_ => Ok(Default::default()),
+                Err(e) => Err(AppError::Generic(e.to_string())),
             }
         },
     );
@@ -208,11 +202,18 @@ pub fn SearchPostalAddress() -> impl IntoView {
         });
     };
 
+    // list of postal addresses matching search_text
     let results = move || {
         addr_list
             .get()
             .map(|res| res.unwrap_or_default())
             .unwrap_or_default()
+    };
+
+    // reset url when unepectedly no address found
+    let reset_url = move || {
+        remove("address_id");
+        nav_url.get()
     };
 
     view! {
@@ -240,7 +241,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                             ack_btn_text="Reload"
                                             ack_action=move || addr_res.refetch()
                                             nav_btn_text="Reset"
-                                            navigate_url="/ToDo".into()
+                                            navigate_url=reset_url()
                                         />
                                     }
                                         .into_any()
