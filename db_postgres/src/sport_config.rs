@@ -170,11 +170,14 @@ impl DbpSportConfig for PgDb {
     #[instrument(name = "db.sc.list", skip(self, name_filter, limit))]
     async fn list_sport_configs(
         &self,
+        sport: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<SportConfig>> {
         let mut conn = self.new_connection().await?;
         let mut query = sport_configs.into_boxed::<diesel::pg::Pg>();
+
+        query = query.filter(sport_id.eq(sport));
 
         if let Some(f) = name_filter
             && !f.is_empty()

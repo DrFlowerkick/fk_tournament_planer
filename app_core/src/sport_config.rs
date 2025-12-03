@@ -2,7 +2,7 @@
 
 use crate::{
     Core, CrMsg, CrTopic, DbResult,
-    utils::id_version::IdVersion,
+    utils::id_version::{IdVersion, VersionId},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -30,6 +30,12 @@ impl Default for SportConfig {
             name: "".into(),
             config: Value::Null,
         }
+    }
+}
+
+impl VersionId for SportConfig {
+    fn get_id_version(&self) -> IdVersion {
+        self.id_version
     }
 }
 
@@ -67,12 +73,18 @@ impl Core<SportConfigState> {
     pub async fn save(&mut self) -> DbResult<&SportConfig> {
         self.state.config = self.database.save_sport_config(&self.state.config).await?;
 
-        let id = self.state.config.id_version.get_id().expect(
-            "expecting save_sport_config to return always an existing id and version",
-        );
-        let version = self.state.config.id_version.get_version().expect(
-            "expecting save_sport_config to return always an existing id and version",
-        );
+        let id = self
+            .state
+            .config
+            .id_version
+            .get_id()
+            .expect("expecting save_sport_config to return always an existing id and version");
+        let version = self
+            .state
+            .config
+            .id_version
+            .get_version()
+            .expect("expecting save_sport_config to return always an existing id and version");
 
         let notice = CrTopic::SportConfig(id);
         let msg = CrMsg::SportConfigUpdated { id, version };
@@ -83,11 +95,12 @@ impl Core<SportConfigState> {
 
     pub async fn list_sport_configs(
         &self,
+        sport_id: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<SportConfig>> {
         self.database
-            .list_sport_configs(name_filter, limit)
+            .list_sport_configs(sport_id, name_filter, limit)
             .await
     }
 }

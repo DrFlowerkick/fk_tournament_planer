@@ -4,7 +4,10 @@
 
 use app_core::{
     EntrantGroupScore, Match, SportConfig, SportError, SportPort, SportResult,
-    utils::namespace::project_namespace,
+    utils::{
+        id_version::{IdVersion, VersionId},
+        namespace::project_namespace,
+    },
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -67,6 +70,11 @@ impl GenericSportPlugin {
     pub fn new() -> Self {
         Self {}
     }
+    fn id(&self) -> Uuid {
+        // The generic sport plugin must use a fixed UUID.
+        let sport_name = "generic_sport";
+        Uuid::new_v5(&project_namespace(), sport_name.as_bytes())
+    }
     fn validate_config(&self, config: &SportConfig) -> SportResult<GenericSportConfig> {
         if config.sport_id != self.id() {
             return Err(SportError::InvalidConfig(
@@ -125,12 +133,13 @@ impl GenericSportPlugin {
     }
 }
 
-impl SportPort for GenericSportPlugin {
-    fn id(&self) -> Uuid {
-        // The generic sport plugin must use a fixed UUID.
-        let sport_name = "generic_sport";
-        Uuid::new_v5(&project_namespace(), sport_name.as_bytes())
+impl VersionId for GenericSportPlugin {
+    fn get_id_version(&self) -> IdVersion {
+        IdVersion::new(self.id(), 0)
     }
+}
+
+impl SportPort for GenericSportPlugin {
     fn name(&self) -> &'static str {
         "Generic Sport"
     }

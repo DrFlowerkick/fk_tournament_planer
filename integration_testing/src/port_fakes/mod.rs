@@ -64,10 +64,7 @@ impl FakeDatabasePort {
         let id = Uuid::new_v4();
         let id_version = IdVersion::new(id, 0);
         config.id_version = id_version;
-        self.sport_configs
-            .lock()
-            .unwrap()
-            .insert(config.id_version.get_id().unwrap(), config);
+        self.sport_configs.lock().unwrap().insert(id, config);
         id
     }
 

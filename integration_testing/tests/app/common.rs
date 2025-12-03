@@ -1,6 +1,6 @@
 // common helpers for tests
 
-use app_core::{Core, CoreBuilder, InitState, SportPort};
+use app_core::{Core, CoreBuilder, InitState, utils::id_version::VersionId};
 use generic_sport_plugin::GenericSportPlugin;
 use integration_testing::port_fakes::{FakeClientRegistryPort, FakeDatabasePort, make_addr};
 use leptos::{
@@ -54,8 +54,8 @@ pub fn init_test_state() -> InitialTestState {
     // Register Generic Sport Plugin
     let mut spm_map = SportPluginManagerMap::new();
     let generic_plugin = Arc::new(GenericSportPlugin::new());
-    let generic_sport_id = generic_plugin.id();
-    spm_map.register(generic_plugin);
+    let generic_sport_id = generic_plugin.get_id_version().get_id().unwrap();
+    spm_map.register(generic_plugin).unwrap();
     let spm = Arc::new(spm_map);
 
     let core = CoreBuilder::new()

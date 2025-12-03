@@ -42,6 +42,7 @@ impl DbpSportConfig for FakeDatabasePort {
 
     async fn list_sport_configs(
         &self,
+        sport_id: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<SportConfig>> {
@@ -57,6 +58,7 @@ impl DbpSportConfig for FakeDatabasePort {
             .lock()
             .unwrap()
             .values()
+            .filter(|sc| sc.sport_id == sport_id)
             .filter(|sc| {
                 if let Some(ref f) = filter {
                     sc.name.to_lowercase().contains(f)

@@ -142,25 +142,20 @@ pub fn SearchPostalAddress() -> impl IntoView {
             && let Some(item) = list.get(i)
         {
             // 1) update UI state
-            set_search_text.set(item.get_name().to_string());
+            set_search_text.set("".to_string());
             set_open.set(false);
-            if let Some(Ok(addr)) = addr_res.get()
-                && addr.get_id() == item.get_id()
-            {
-                addr_res.notify();
-            } else {
-                // 2) update URL
-                update("address_id", &item.get_id().unwrap_or_default().to_string());
-                let navigate = use_navigate();
-                navigate(
-                    &nav_url.get(),
-                    NavigateOptions {
-                        // replace=true prevents „history spam“
-                        replace: true,
-                        ..Default::default()
-                    },
-                );
-            }
+            set_hi.set(None);
+            // 2) update URL
+            update("address_id", &item.get_id().unwrap_or_default().to_string());
+            let navigate = use_navigate();
+            navigate(
+                &nav_url.get(),
+                NavigateOptions {
+                    // replace=true prevents „history spam“
+                    replace: true,
+                    ..Default::default()
+                },
+            );
         }
     };
 
@@ -187,7 +182,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         select_idx(i);
                     }
                 }
-                "Escape" => set_open.set(false),
                 _ => {}
             }
         }
@@ -197,8 +191,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let on_blur = move |_| {
         spawn_local(async move {
             gloo_timers::future::TimeoutFuture::new(0).await;
+            set_search_text.set("".to_string());
             set_open.set(false);
-            addr_res.notify();
+            set_hi.set(None);
+            set_name.notify();
         });
     };
 
@@ -210,7 +206,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
             .unwrap_or_default()
     };
 
-    // reset url when unepectedly no address found
+    // reset url when unexpectedly no address found
     let reset_url = move || {
         remove("address_id");
         nav_url.get()
@@ -328,7 +324,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                                                         aria-selected=move || if is_hi() { "true" } else { "false" }
                                                                         class:active=move || is_hi()
                                                                     >
-                                                                        <a
+                                                                        <p
                                                                             class="flex flex-col items-start gap-0.5"
                                                                             class:active=move || is_hi()
                                                                             class:bg-base-200=move || is_hi()
@@ -356,7 +352,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                                                                     }
                                                                                 }}
                                                                             </span>
-                                                                        </a>
+                                                                        </p>
                                                                     </li>
                                                                 }
                                                             }

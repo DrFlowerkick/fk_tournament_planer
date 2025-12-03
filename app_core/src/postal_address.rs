@@ -2,7 +2,11 @@
 
 use crate::{
     Core, CrMsg, CrTopic, DbResult,
-    utils::{id_version::IdVersion, normalize::*, validation::*},
+    utils::{
+        id_version::{IdVersion, VersionId},
+        normalize::*,
+        validation::*,
+    },
 };
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
@@ -51,6 +55,12 @@ impl Default for PostalAddress {
             region: None,
             country: "".into(),
         }
+    }
+}
+
+impl VersionId for PostalAddress {
+    fn get_id_version(&self) -> IdVersion {
+        self.id_version
     }
 }
 

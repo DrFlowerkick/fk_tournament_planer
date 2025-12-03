@@ -28,7 +28,11 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
     let got = core.get().clone();
     assert_eq!(got.id_version.get_id(), Some(id));
     assert_eq!(got.name, "Config A");
-    assert_eq!(got.id_version.get_version(), Some(0), "initial insert sets version 0");
+    assert_eq!(
+        got.id_version.get_version(),
+        Some(0),
+        "initial insert sets version 0"
+    );
 }
 
 /// 2) load(): not found → None, state unchanged
@@ -133,7 +137,7 @@ async fn given_filter_and_limit_when_list_sport_configs_then_db_fake_results_are
 
     // Act
     let got = core
-        .list_sport_configs(Some("ma"), Some(2))
+        .list_sport_configs(sport_id, Some("ma"), Some(2))
         .await
         .expect("db ok");
 
@@ -156,7 +160,10 @@ async fn given_only_limit_when_list_sport_configs_then_limit_is_respected() {
         core.save().await.expect("seed save");
     }
 
-    let got = core.list_sport_configs(None, Some(3)).await.expect("db ok");
+    let got = core
+        .list_sport_configs(sport_id, None, Some(3))
+        .await
+        .expect("db ok");
     assert_eq!(got.len(), 3);
 }
 
@@ -168,7 +175,7 @@ async fn given_db_fake_failure_when_list_sport_configs_then_error_propagates() {
     db_fake.fail_list_sc_once();
 
     let err = core
-        .list_sport_configs(None, None)
+        .list_sport_configs(Uuid::new_v4(), None, None)
         .await
         .expect_err("expected DB error");
 

@@ -23,7 +23,10 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
 
     match &notices[0] {
         CrMsg::SportConfigUpdated { id, version } => {
-            let persisted_id = saved.id_version.get_id().expect("id should exist after insert");
+            let persisted_id = saved
+                .id_version
+                .get_id()
+                .expect("id should exist after insert");
             assert_eq!(*id, persisted_id, "published id must match saved id");
             assert_eq!(
                 Some(*version),
@@ -136,7 +139,10 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     // Act: load (existing id) and list
     let any_id = core.get().id_version.get_id().unwrap_or_else(Uuid::new_v4);
     let _ = core.load(any_id).await.expect("load ok");
-    let _ = core.list_sport_configs(None, Some(10)).await.expect("list ok");
+    let _ = core
+        .list_sport_configs(sport_id, None, Some(10))
+        .await
+        .expect("list ok");
 
     // Assert: still no publish after read-only operations
     assert!(
@@ -153,7 +159,10 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
     // First insert
     *core.get_mut() = make_sport_config("Delta", Uuid::new_v4());
     let first = core.save().await.expect("first save").clone();
-    let id = first.id_version.get_id().expect("id assigned on first save");
+    let id = first
+        .id_version
+        .get_id()
+        .expect("id assigned on first save");
     assert_eq!(first.id_version.get_version(), Some(0));
 
     // Update same config (simulate a small change)
