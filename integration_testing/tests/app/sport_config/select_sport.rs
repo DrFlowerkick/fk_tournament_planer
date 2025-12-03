@@ -41,7 +41,7 @@ async fn test_plugin_selection_renders() {
         "Enter name of sport you are searching..."
     );
 
-    // simulate input: cast to HtmlInputElement and set value
+    // simulate input: cast to HtmlInputElement, set value, and check suggestions
     let input_elem = input.dyn_into::<HtmlInputElement>().unwrap();
 
     input_elem.set_value("gen");

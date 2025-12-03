@@ -36,112 +36,96 @@ async fn test_search_postal_address() {
 
     sleep(Duration::from_millis(10)).await;
 
-    let input = get_element_by_test_id("search-input");
+    let input = get_element_by_test_id("address_id-search-input");
     assert_eq!(
         input.get_attribute("placeholder").unwrap(),
         "Enter name of address you are searching..."
     );
-    // simulate input: cast to HtmlInputElement and set value
+    // simulate input: cast to HtmlInputElement, set value, and check suggestions
     let input_elem = input.dyn_into::<HtmlInputElement>().unwrap();
 
-    for index in -1..=(ts.entries.len() as i32) {
-        input_elem.set_value(&ts.name_base);
-        let event = Event::new("input").unwrap();
-        input_elem.dispatch_event(&event).unwrap();
-        sleep(Duration::from_millis(50)).await;
-        let suggest = get_element_by_test_id("search-suggest");
-        for num in 1..=ts.entries.len() {
-            assert!(
-                suggest
-                    .text_content()
-                    .unwrap()
-                    .contains(&format!("{}{}", ts.name_base, num))
-            );
-        }
-
-        // simulate selection of first suggestion via keyboard events
-        // 1. ArrowUp / ArrowDown Event
-        let key = if index < 0 { "ArrowUp" } else { "ArrowDown" };
-        let num_key_down = if index < 0 { index.abs() } else { index + 1 };
-        let index = index.rem_euclid(ts.entries.len() as i32) as usize;
-        let id = ts.entries[index];
-        let init_down = KeyboardEventInit::new();
-        init_down.set_key(key);
-        init_down.set_code(key);
-        init_down.set_bubbles(true);
-        init_down.set_cancelable(true);
-        let event_down =
-            KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init_down).unwrap();
-        for _ in 0..num_key_down {
-            input_elem.dispatch_event(&event_down).unwrap();
-        }
-
-        sleep(Duration::from_millis(10)).await;
-
-        // 2. Enter Event
-        let init_enter = KeyboardEventInit::new();
-        init_enter.set_key("Enter");
-        init_enter.set_code("Enter");
-        init_enter.set_bubbles(true);
-        init_enter.set_cancelable(true);
-        let event_enter =
-            KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init_enter).unwrap();
-        input_elem.dispatch_event(&event_enter).unwrap();
-
-        sleep(Duration::from_millis(10)).await;
-
-        let url_id = document()
-            .location()
-            .unwrap()
-            .href()
-            .unwrap()
-            .split("address_id=")
-            .last()
-            .unwrap()
-            .to_string();
-        assert_eq!(url_id, id.to_string());
-
-        // set address_id back to search page for next iteration
-        set_url(&format!("/postal-address?address_id={}", id));
-
-        // The component should react to the URL change.
-        // A small delay helps ensure all reactive updates are processed.
-        sleep(Duration::from_millis(20)).await;
-
-        let preview_name = get_element_by_test_id("preview-name")
-            .text_content()
-            .unwrap();
-        assert!(preview_name.contains(&format!("{}{}", ts.name_base, index + 1)));
-        let preview_street = get_element_by_test_id("preview-street")
-            .text_content()
-            .unwrap();
-        assert!(preview_street.contains(&ts.street));
-        let preview_postal = get_element_by_test_id("preview-postal_code")
-            .text_content()
-            .unwrap();
-        assert!(preview_postal.contains(&ts.postal));
-        let preview_locality = get_element_by_test_id("preview-locality")
-            .text_content()
-            .unwrap();
-        assert!(preview_locality.contains(&ts.city));
-        let preview_region = get_element_by_test_id("preview-region")
-            .text_content()
-            .unwrap();
-        assert!(preview_region.contains(&ts.region));
-        let preview_country = get_element_by_test_id("preview-country")
-            .text_content()
-            .unwrap();
-        let expected_country_name = CountryCode::for_alpha2(&ts.country)
-            .map(|c| c.name())
-            .unwrap_or(&ts.country);
-        assert!(preview_country.contains(expected_country_name));
-        let preview_id = get_element_by_test_id("preview-id").text_content().unwrap();
-        assert!(preview_id.contains(&id.to_string()));
-        let preview_version = get_element_by_test_id("preview-version")
-            .text_content()
-            .unwrap();
-        assert!(preview_version.contains("0"));
+    input_elem.set_value(&ts.name_base);
+    let event = Event::new("input").unwrap();
+    input_elem.dispatch_event(&event).unwrap();
+    sleep(Duration::from_millis(50)).await;
+    let suggest = get_element_by_test_id("address_id-search-suggest");
+    for num in 1..=ts.entries.len() {
+        assert!(
+            suggest
+                .text_content()
+                .unwrap()
+                .contains(&format!("{}{}", ts.name_base, num))
+        );
     }
+
+    // Select first address: press ArrowDown and Enter
+    let id = ts.entries[0];
+    let init_down = KeyboardEventInit::new();
+    init_down.set_key("ArrowDown");
+    init_down.set_code("ArrowDown");
+    init_down.set_bubbles(true);
+    init_down.set_cancelable(true);
+    let event_down =
+        KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init_down).unwrap();
+    input_elem.dispatch_event(&event_down).unwrap();
+    sleep(Duration::from_millis(10)).await;
+
+    let init_enter = KeyboardEventInit::new();
+    init_enter.set_key("Enter");
+    init_enter.set_code("Enter");
+    init_enter.set_bubbles(true);
+    init_enter.set_cancelable(true);
+    let event_enter =
+        KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init_enter).unwrap();
+    input_elem.dispatch_event(&event_enter).unwrap();
+    sleep(Duration::from_millis(10)).await;
+
+    let url_id = document()
+        .location()
+        .unwrap()
+        .href()
+        .unwrap()
+        .split("address_id=")
+        .last()
+        .unwrap()
+        .to_string();
+    assert_eq!(url_id, id.to_string());
+    assert_eq!(input_elem.value(), format!("{}{}", ts.name_base, 1));
+
+    // check preview
+    let preview_name = get_element_by_test_id("preview-name")
+        .text_content()
+        .unwrap();
+    assert!(preview_name.contains(&format!("{}{}", ts.name_base, 1)));
+    let preview_street = get_element_by_test_id("preview-street")
+        .text_content()
+        .unwrap();
+    assert!(preview_street.contains(&ts.street));
+    let preview_postal = get_element_by_test_id("preview-postal_code")
+        .text_content()
+        .unwrap();
+    assert!(preview_postal.contains(&ts.postal));
+    let preview_locality = get_element_by_test_id("preview-locality")
+        .text_content()
+        .unwrap();
+    assert!(preview_locality.contains(&ts.city));
+    let preview_region = get_element_by_test_id("preview-region")
+        .text_content()
+        .unwrap();
+    assert!(preview_region.contains(&ts.region));
+    let preview_country = get_element_by_test_id("preview-country")
+        .text_content()
+        .unwrap();
+    let expected_country_name = CountryCode::for_alpha2(&ts.country)
+        .map(|c| c.name())
+        .unwrap_or(&ts.country);
+    assert!(preview_country.contains(expected_country_name));
+    let preview_id = get_element_by_test_id("preview-id").text_content().unwrap();
+    assert!(preview_id.contains(&id.to_string()));
+    let preview_version = get_element_by_test_id("preview-version")
+        .text_content()
+        .unwrap();
+    assert!(preview_version.contains("0"));
 
     // test buttons
     let edit_button = get_element_by_test_id("btn-edit-address")

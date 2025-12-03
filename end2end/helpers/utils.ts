@@ -1,5 +1,6 @@
 // shared utils for end2end tests
 import { expect, Page } from "@playwright/test";
+import { DropdownLocators } from "./selectors";
 
 /**
  * Type a value into a field, then blur by focusing another field.
@@ -61,4 +62,56 @@ export function extractQueryParamFromUrl(url: string, key: string): string {
   const value = u.searchParams.get(key);
   if (!value) throw new Error(`No value for key "${key}" found in URL: ${url}`);
   return value;
+}
+
+/**
+ * Search on the *current page* and open the unique match.
+ * - Does not navigate.
+ * - Optionally clears the input before typing.
+ * - If your dropdown uses aria-busy, we wait for it to be "false".
+ */
+export async function searchAndOpenByNameOnCurrentPage(
+  dropdown: DropdownLocators,
+  term: string,
+  opts: {
+    clearFirst?: boolean;
+    expectUnique?: boolean;
+    waitAriaBusy?: boolean;
+  } = {}
+) {
+  const { input, list, items } = dropdown;
+  const { clearFirst = true, expectUnique = true, waitAriaBusy = true } = opts;
+
+  await expect(input).toBeVisible();
+
+  // Clear input if requested
+  if (clearFirst) {
+    await input.fill("");
+  }
+
+  // Type the search term
+  await input.fill(term);
+
+  // Ensure list is present
+  await expect(list).toBeAttached();
+
+  // If your dropdown marks loading via aria-busy, wait until it's finished
+  if (waitAriaBusy) {
+    await expect(list).toHaveAttribute("aria-busy", "false");
+  }
+
+  // Filter rows by visible text
+  const row = items.filter({ hasText: term });
+
+  // Option A: enforce uniqueness (assert exactly one)
+  if (expectUnique) {
+    await expect(row.first()).toBeVisible();
+    await expect(row).toHaveCount(1);
+    await row.first().click();
+    return;
+  }
+
+  // Option B: just take the first visible match
+  await expect(row.first()).toBeVisible();
+  await row.first().click();
 }

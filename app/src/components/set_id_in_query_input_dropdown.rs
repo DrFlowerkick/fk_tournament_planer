@@ -89,7 +89,7 @@ where
         }
     };
 
-    // keyboard control ("Escape" is handled by on_blur)
+    // keyboard control
     let on_key = move |ev: web_sys::KeyboardEvent| {
         let len = list_items.read_untracked().len();
         match ev.key().as_str() {
@@ -111,6 +111,13 @@ where
                     log!("Selecting index via Enter: {}", i);
                     select_idx(i);
                 }
+            }
+            "Escape" => {
+                search_text.set("".to_string());
+                set_open.set(false);
+                set_hi.set(None);
+                // reset name to last selected item
+                name.notify();
             }
             _ => {}
         }

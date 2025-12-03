@@ -6,8 +6,8 @@ import { T } from "../../helpers/selectors";
 test.describe("Search query behavior", () => {
   test("does not trigger search for short queries", async ({ page }) => {
     await openPostalAddressList(page);
-    const input = page.getByTestId(T.search.input);
-    const list = page.getByTestId(T.search.suggestList);
+    const input = page.getByTestId(T.search.dropdown.input);
+    const list = page.getByTestId(T.search.dropdown.suggestList);
 
     // Type two characters
     await input.fill("AB");
@@ -32,8 +32,8 @@ test.describe("Search query behavior", () => {
 
   test("clears results when query is deleted", async ({ page }) => {
     await openPostalAddressList(page);
-    const input = page.getByTestId(T.search.input);
-    const list = page.getByTestId(T.search.suggestList);
+    const input = page.getByTestId(T.search.dropdown.input);
+    const list = page.getByTestId(T.search.dropdown.suggestList);
 
     // Get some results
     await input.fill("Test");

@@ -11,8 +11,8 @@ test.describe("Search list keyboard navigation", () => {
     page,
   }) => {
     await openPostalAddressList(page);
-    const input = page.getByTestId(T.search.input);
-    const list = page.getByTestId(T.search.suggestList);
+    const input = page.getByTestId(T.search.dropdown.input);
+    const list = page.getByTestId(T.search.dropdown.suggestList);
 
     // Type to get results
     await input.fill("E2E Nav");

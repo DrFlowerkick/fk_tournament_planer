@@ -1,6 +1,13 @@
 // e2e/helpers/selectors.ts
 import type { Page, Locator } from "@playwright/test";
 
+// Interface grouping dropdown-related locators 
+export interface DropdownLocators {
+  input: Locator;
+  list: Locator;
+  items: Locator;
+}
+
 /**
  * Central registry of data-testid values aligned with your current components.
  * (search.rs, edit.rs)
@@ -9,9 +16,11 @@ export const T = {
   // search.rs
   search: {
     root: "search-address", // optional wrapper (div/section)
-    input: "search-input", // <input type="text" ...> (query)
-    suggestList: "search-suggest", // <ul id="addr-suggest" ...>
-    suggestItem: "search-suggest-item", // each <li> entry
+    dropdown: {
+      input: "address_id-search-input", // <input type="text" ...> (query)
+      suggestList: "address_id-search-suggest", // <ul id="addr-suggest" ...>
+      suggestItem: "address_id-search-suggest-item", // each <li> entry
+    },
     // The right-hand "preview" (current selected/loaded address)
     preview: {
       root: "address-preview",
@@ -54,6 +63,13 @@ export const T = {
     btnAcknowledgmentNavigateAction: "btn-acknowledgment-navigate-action",
     btnAcknowledgmentNavigate: "btn-acknowledgment-navigate",
   },
+
+  // sport selector (sport_config.rs)
+  sportSelector: {
+    input: "sport_id-search-input",
+    suggestList: "sport_id-search-suggest",
+    suggestItem: "sport_id-search-suggest-item",
+  },
 } as const;
 
 export const byTestId = (id: string) => `[data-testid="${id}"]`;
@@ -62,9 +78,11 @@ export function selectors(page: Page) {
   const within = (root: Locator) => ({
     search: {
       root,
-      input: root.getByTestId(T.search.input),
-      suggestList: root.getByTestId(T.search.suggestList),
-      suggestItems: root.getByTestId(T.search.suggestItem),
+      dropdown: {
+        input: root.getByTestId(T.search.dropdown.input),
+        list: root.getByTestId(T.search.dropdown.suggestList),
+        items: root.getByTestId(T.search.dropdown.suggestItem),
+      },
       preview: {
         root: root.getByTestId(T.search.preview.root),
         id: root.getByTestId(T.search.preview.id),
@@ -105,14 +123,21 @@ export function selectors(page: Page) {
         T.banner.btnAcknowledgmentNavigate
       ),
     },
+    sportSelector: {
+      input: root.getByTestId(T.sportSelector.input),
+      suggestList: root.getByTestId(T.sportSelector.suggestList),
+      suggestItem: root.getByTestId(T.sportSelector.suggestItem),
+    },
   });
 
   return {
     // search.rs (global access)
     search: {
-      input: page.getByTestId(T.search.input),
-      suggestList: page.getByTestId(T.search.suggestList),
-      suggestItems: page.getByTestId(T.search.suggestItem),
+      dropdown: {
+        input: page.getByTestId(T.search.dropdown.input),
+        list: page.getByTestId(T.search.dropdown.suggestList),
+        items: page.getByTestId(T.search.dropdown.suggestItem),
+      },
       preview: {
         root: page.getByTestId(T.search.preview.root),
         id: page.getByTestId(T.search.preview.id),
@@ -156,6 +181,11 @@ export function selectors(page: Page) {
       btnAcknowledgmentNavigate: page.getByTestId(
         T.banner.btnAcknowledgmentNavigate
       ),
+    },
+    sportSelector: {
+      input: page.getByTestId(T.sportSelector.input),
+      list: page.getByTestId(T.sportSelector.suggestList),
+      items: page.getByTestId(T.sportSelector.suggestItem),
     },
 
     // scopers

@@ -36,14 +36,18 @@ impl SportPluginManagerMap {
     ///
     /// ```
     /// # use sport_plugin_manager::SportPluginManagerMap;
-    /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore};
+    /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore, utils::id_version::{IdVersion, VersionId}};
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use serde_json::Value;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
+    /// # impl VersionId for MockSport {
+    /// #     fn get_id_version(&self) -> IdVersion {
+    /// #         IdVersion::new(self.id, 0)
+    /// #     }
+    /// # }
     /// # impl SportPort for MockSport {
-    /// #     fn id(&self) -> Uuid { self.id }
     /// #     fn name(&self) -> &'static str { self.name }
     /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
@@ -90,14 +94,18 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     ///
     /// ```
     /// # use sport_plugin_manager::SportPluginManagerMap;
-    /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore};
+    /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore, utils::id_version::{IdVersion, VersionId}};
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use serde_json::Value;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
+    /// # impl VersionId for MockSport {
+    /// #     fn get_id_version(&self) -> IdVersion {
+    /// #         IdVersion::new(self.id, 0)
+    /// #     }
+    /// # }
     /// # impl SportPort for MockSport {
-    /// #     fn id(&self) -> Uuid { self.id }
     /// #     fn name(&self) -> &'static str { self.name }
     /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
@@ -116,7 +124,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// // Get an existing plugin
     /// let found_plugin = manager.get(&sport_id);
     /// assert!(found_plugin.is_some());
-    /// assert_eq!(found_plugin.unwrap().id(), sport_id);
+    /// assert_eq!(found_plugin.unwrap().get_id_version().get_id().unwrap(), sport_id);
     ///
     /// // Try to get a non-existent plugin
     /// let not_found_plugin = manager.get(&Uuid::new_v4());
@@ -134,14 +142,18 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     ///
     /// ```
     /// # use sport_plugin_manager::SportPluginManagerMap;
-    /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore};
+    /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore, utils::id_version::{IdVersion, VersionId}};
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use serde_json::Value;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
+    /// # impl VersionId for MockSport {
+    /// #     fn get_id_version(&self) -> IdVersion {
+    /// #         IdVersion::new(self.id, 0)
+    /// #     }
+    /// # }
     /// # impl SportPort for MockSport {
-    /// #     fn id(&self) -> Uuid { self.id }
     /// #     fn name(&self) -> &'static str { self.name }
     /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
@@ -284,7 +296,7 @@ mod tests {
     }
 
     #[test]
-    fn test_overwrite_plugin() {
+    fn test_overwrite_plugin_should_fail() {
         let mut manager = SportPluginManagerMap::new();
         let sport_id = Uuid::new_v4();
         let plugin1 = Arc::new(MockSport {
@@ -299,8 +311,6 @@ mod tests {
         manager.register(plugin1).unwrap();
         assert_eq!(manager.get(&sport_id).unwrap().name(), "OldSport");
 
-        manager.register(plugin2).unwrap();
-        assert_eq!(manager.get(&sport_id).unwrap().name(), "NewSport");
-        assert_eq!(manager.list().len(), 1);
+        assert!(manager.register(plugin2).is_err());
     }
 }

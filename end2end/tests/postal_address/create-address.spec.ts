@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { selectors } from "../../helpers/selectors";
 import {
-  searchAndOpenByNameOnCurrentPage,
   fillFields,
   clickSave,
   expectPreviewShows,
   openPostalAddressList,
 } from "../../helpers/postal_address";
+import { searchAndOpenByNameOnCurrentPage } from "../../helpers/utils";
 
 test("Create Address (happy path): New → Fill → Save → Verify in search", async ({
   page,
@@ -38,11 +38,11 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
     await clickSave(page);
     // The app may stay on the form or navigate; we normalize by going to search.
     await page.goto("/postal-address");
-    await expect(S.search.input).toBeVisible();
+    await expect(S.search.dropdown.input).toBeVisible();
   });
 
   await test.step("Find the created address via search", async () => {
-    await searchAndOpenByNameOnCurrentPage(page, initial.name, {
+    await searchAndOpenByNameOnCurrentPage(selectors(page).search.dropdown, initial.name, {
       clearFirst: true,
       expectUnique: true,
       waitAriaBusy: true,

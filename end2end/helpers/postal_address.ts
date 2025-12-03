@@ -19,7 +19,7 @@ export async function openPostalAddressList(page: Page) {
   // Navigate to "list" route and assert elements exist
   await page.goto(ROUTES.list);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByTestId(T.search.input)).toBeVisible();
+  await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
   await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
   await expect(page.getByTestId(T.search.btnEdit)).toHaveAttribute("disabled");
@@ -31,7 +31,7 @@ export async function openPostalAddressList(page: Page) {
 export async function waitForPostalAddressListUrl(page: Page) {
   await page.waitForURL(/\/postal-address\?address_id=[0-9a-f-]{36}$/);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByTestId(T.search.input)).toBeVisible();
+  await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
   await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
   await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
   await expect(page.getByTestId(T.search.btnEdit)).not.toHaveAttribute(
@@ -209,61 +209,6 @@ export async function clickSaveAsNew(page: Page) {
   await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
   await expectSavesEnabled(page);
   await page.getByTestId(T.form.btnSaveAsNew).click();
-}
-
-/**
- * Search on the *current page* and open the unique match.
- * - Does not navigate.
- * - Optionally clears the input before typing.
- * - If your dropdown uses aria-busy, we wait for it to be "false".
- */
-export async function searchAndOpenByNameOnCurrentPage(
-  page: Page,
-  term: string,
-  opts: {
-    clearFirst?: boolean;
-    expectUnique?: boolean;
-    waitAriaBusy?: boolean;
-  } = {}
-) {
-  const { clearFirst = true, expectUnique = true, waitAriaBusy = true } = opts;
-
-  const input = page.getByTestId(T.search.input);
-  const list = page.getByTestId(T.search.suggestList);
-  const items = page.getByTestId(T.search.suggestItem);
-
-  await expect(input).toBeVisible();
-
-  // Clear input if requested
-  if (clearFirst) {
-    await input.fill("");
-  }
-
-  // Type the search term
-  await input.fill(term);
-
-  // Ensure list is present
-  await expect(list).toBeAttached();
-
-  // If your dropdown marks loading via aria-busy, wait until it's finished
-  if (waitAriaBusy) {
-    await expect(list).toHaveAttribute("aria-busy", "false");
-  }
-
-  // Filter rows by visible text
-  const row = items.filter({ hasText: term });
-
-  // Option A: enforce uniqueness (assert exactly one)
-  if (expectUnique) {
-    await expect(row.first()).toBeVisible();
-    await expect(row).toHaveCount(1);
-    await row.first().click();
-    return;
-  }
-
-  // Option B: just take the first visible match
-  await expect(row.first()).toBeVisible();
-  await row.first().click();
 }
 
 // mapping of countries used in tests

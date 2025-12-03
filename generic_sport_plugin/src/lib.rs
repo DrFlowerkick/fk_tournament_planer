@@ -26,12 +26,12 @@ use uuid::Uuid;
 /// ```
 /// use generic_sport_plugin::GenericSportPlugin;
 /// use app_core::{SportPort, SportConfig, Match};
-/// use app_core::utils::id_version::IdVersion;
+/// use app_core::utils::id_version::{IdVersion, VersionId};
 /// use serde_json::json;
 /// use uuid::Uuid;
 ///
 /// let plugin = GenericSportPlugin::new();
-/// let sport_id = plugin.id();
+/// let sport_id = plugin.get_id_version().get_id().unwrap();
 ///
 /// let config_json = json!({
 ///     "sets_to_win": 1,

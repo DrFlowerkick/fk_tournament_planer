@@ -1,7 +1,9 @@
 //! Server functions for sport configuration.
 
 use crate::error::AppResult;
-use app_core::{CoreState, SportPluginInfo};
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
+use app_core::CoreState;
+use app_core::SportPluginInfo;
 use leptos::prelude::*;
 #[cfg(not(feature = "test-mock"))]
 use tracing::instrument;

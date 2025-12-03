@@ -91,6 +91,6 @@ test.describe("Generic error handling saving address", () => {
 
     // -------------------- Assert: We are back on the main list page --------------------
     await expect(page).toHaveURL(`/postal-address`);
-    await expect(page.getByTestId(T.search.input)).toBeVisible();
+    await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
   });
 });

@@ -7,10 +7,10 @@ import {
   extractUuidFromUrl,
   openEditForm,
   openPostalAddressList,
-  searchAndOpenByNameOnCurrentPage,
   waitForPostalAddressListUrl,
 } from "../../helpers/postal_address";
-import { T } from "../../helpers/selectors";
+import { T, selectors } from "../../helpers/selectors";
+import { searchAndOpenByNameOnCurrentPage } from "../../helpers/utils";
 
 test.describe("Cancel button navigation", () => {
   test("returns to the previous page (search list)", async ({ page }) => {
@@ -24,8 +24,8 @@ test.describe("Cancel button navigation", () => {
     const uuid = extractUuidFromUrl(url);
 
     // Go to list and search for it to create a history entry
-    await expect(page.getByTestId(T.search.input)).toBeVisible();
-    await searchAndOpenByNameOnCurrentPage(page, name);
+    await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
+    await searchAndOpenByNameOnCurrentPage(selectors(page).search.dropdown, name);
 
     // -------------------- Act: Go to edit and click cancel --------------------
     await page.getByTestId(T.search.btnEdit).click();
@@ -36,7 +36,7 @@ test.describe("Cancel button navigation", () => {
     // The URL should be the search/list URL, not the edit URL
     await expect(page).toHaveURL(url);
     // The search input should be visible again
-    await expect(page.getByTestId(T.search.input)).toBeVisible();
+    await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
 
     // -------------------- Act: Open edit page directly and cancel --------------------
     await openPostalAddressList(page); // Ensure we have no uuid in current url

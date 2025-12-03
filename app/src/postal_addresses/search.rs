@@ -6,7 +6,12 @@ use super::{
 };
 use crate::{
     AppError,
-    components::banner::AcknowledgmentAndNavigateBanner,
+    components::{
+        banner::AcknowledgmentAndNavigateBanner,
+        set_id_in_query_input_dropdown::{
+            SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
+        },
+    },
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
 };
@@ -15,13 +20,8 @@ use cr_leptos_axum_socket::use_client_registry_socket;
 use isocountry::CountryCode;
 use std::sync::Arc;
 //use cr_single_instance::use_client_registry_sse;
-use leptos::{prelude::*, task::spawn_local, web_sys};
-use leptos_router::{
-    NavigateOptions,
-    components::A,
-    hooks::{use_navigate, use_query},
-    nested_router::Outlet,
-};
+use leptos::prelude::*;
+use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
 use reactive_stores::Store;
 use uuid::Uuid;
 
@@ -36,7 +36,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url query parameters & navigation helpers
     let query = use_query::<AddressParams>();
     let UseQueryNavigationReturn {
-        update,
         remove,
         relative_sub_url,
         path,
@@ -70,18 +69,14 @@ pub fn SearchPostalAddress() -> impl IntoView {
         true,
     );
 
-    // signals for address fields
-    let (name, set_name) = signal(String::new());
+    // signals for dropdown
+    let name = RwSignal::new(String::new());
+    let search_text = RwSignal::new(String::new());
+
+    // signals for client registry
     let (id, set_id) = signal(None::<Uuid>);
     let (topic, set_topic) = signal(None::<CrTopic>);
     let (version, set_version) = signal(0_u32);
-
-    // dropdown-status & keyboard-highlight
-    let (open, set_open) = signal(false);
-    let (hi, set_hi) = signal::<Option<usize>>(None);
-
-    // search_text to search address & loaded / selected address
-    let (search_text, set_search_text) = signal(String::new());
 
     // load existing address when `id` is Some(...)
     let addr_res: Resource<Result<PostalAddress, AppError>> = Resource::new(
@@ -107,17 +102,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
         },
     );
 
+    let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
+
     let refetch = Arc::new(move || addr_res.refetch());
     // update address via socket
     use_client_registry_socket(topic, version, refetch);
     // update address via sse
     //use_client_registry_sse(topic, version, refetch);
-
-    let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
-
-    // these function are required by sse_listener to refetch addr_res after changes to it at server side
-    let _refetch = move || addr_res.refetch();
-    let _topic = move || id.get().map(CrTopic::Address);
 
     // load possible addresses from search_text
     let addr_list = Resource::new(
@@ -136,75 +127,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let is_disabled =
         move || addr_res.get().is_none() || is_addr_res_error() || is_addr_list_error();
 
-    // selection handler
-    let select_idx = move |i: usize| {
-        if let Some(Ok(list)) = addr_list.get_untracked()
-            && let Some(item) = list.get(i)
-        {
-            // 1) update UI state
-            set_search_text.set("".to_string());
-            set_open.set(false);
-            set_hi.set(None);
-            // 2) update URL
-            update("address_id", &item.get_id().unwrap_or_default().to_string());
-            let navigate = use_navigate();
-            navigate(
-                &nav_url.get(),
-                NavigateOptions {
-                    // replace=true prevents „history spam“
-                    replace: true,
-                    ..Default::default()
-                },
-            );
-        }
-    };
-
-    // keyboard control
-    let on_key = move |ev: web_sys::KeyboardEvent| {
-        if let Some(Ok(list)) = addr_list.get_untracked() {
-            let len = list.len();
-            match ev.key().as_str() {
-                "ArrowDown" if len > 0 => {
-                    ev.prevent_default();
-                    let next = hi.get().map(|i| (i + 1) % len).unwrap_or(0);
-                    set_hi.set(Some(next));
-                    set_open.set(true);
-                }
-                "ArrowUp" if len > 0 => {
-                    ev.prevent_default();
-                    let next = hi.get().map(|i| (i + len - 1) % len).unwrap_or(len - 1);
-                    set_hi.set(Some(next));
-                    set_open.set(true);
-                }
-                "Enter" => {
-                    if let Some(i) = hi.get() {
-                        ev.prevent_default();
-                        select_idx(i);
-                    }
-                }
-                _ => {}
-            }
-        }
-    };
-
-    // handle blur
-    let on_blur = move |_| {
-        spawn_local(async move {
-            gloo_timers::future::TimeoutFuture::new(0).await;
-            set_search_text.set("".to_string());
-            set_open.set(false);
-            set_hi.set(None);
-            set_name.notify();
-        });
-    };
-
     // list of postal addresses matching search_text
-    let results = move || {
+    let results = Signal::derive(move || {
         addr_list
             .get()
             .map(|res| res.unwrap_or_default())
             .unwrap_or_default()
-    };
+    });
 
     // reset url when unexpectedly no address found
     let reset_url = move || {
@@ -212,8 +141,42 @@ pub fn SearchPostalAddress() -> impl IntoView {
         nav_url.get()
     };
 
+    let props = SetIdInQueryInputDropdownProperties {
+        key: "address_id",
+        name,
+        placeholder: "Enter name of address you are searching...",
+        search_text,
+        list_items: results,
+        render_item: |a| {
+            view! {
+                <span class="font-medium">{a.get_name().to_string()}</span>
+                <span class="text-xs text-base-content/70">
+                    {match a.get_region() {
+                        Some(region) => {
+                            format!(
+                                "{} {} · {region} · {}",
+                                a.get_postal_code(),
+                                a.get_locality(),
+                                display_country(a.get_country()),
+                            )
+                        }
+                        None => {
+                            format!(
+                                "{} {} {}",
+                                a.get_postal_code(),
+                                a.get_locality(),
+                                display_country(a.get_country()),
+                            )
+                        }
+                    }}
+                </span>
+            }
+            .into_any()
+        },
+    };
+
     view! {
-        <div class="card w-full bg-base-100 shadow-xl">
+        <div class="card w-full bg-base-100 shadow-xl" data-testid="search-address">
             <div class="card-body">
                 <h2 class="card-title">"Search Postal Address"</h2>
                 <Transition fallback=move || {
@@ -243,7 +206,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                         .into_any()
                                 }
                                 Ok(addr) => {
-                                    set_name.set(addr.get_name().to_string());
+                                    name.set(addr.get_name().to_string());
                                     set_id.set(addr.get_id());
                                     set_version.set(addr.get_version().unwrap_or_default());
                                     if let Some(id) = addr.get_id() {
@@ -253,119 +216,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                     ().into_any()
                                 }
                             })
-                    }}
-                    <div class=move || {
-                        format!("dropdown w-full {}", if open.get() { "dropdown-open" } else { "" })
-                    }>
-                        <input
-                            type="text"
-                            class="input input-bordered w-full"
-                            prop:value=move || name.get()
-                            data-testid="search-input"
-                            placeholder="Enter name of address you are searching..."
-                            on:input=move |ev| {
-                                set_search_text.set(event_target_value(&ev));
-                                set_open.set(true);
-                                set_hi.set(None);
-                            }
-                            on:focus=move |_| {
-                                if search_text.get().is_empty() {
-                                    set_search_text.set(name.get());
-                                }
-                                set_open.set(true);
-                            }
-                            on:keydown=on_key
-                            on:blur=on_blur
-                            autocomplete="off"
-                            role="combobox"
-                            aria-expanded=move || {
-                                if open.get() && !results().is_empty() { "true" } else { "false" }
-                            }
-                            aria-controls="addr-suggest"
-                        />
-
-                        {move || {
-                            open.get()
-                                .then(|| {
-                                    view! {
-                                        <ul
-                                            id="addr-suggest"
-                                            data-testid="search-suggest"
-                                            aria-busy=move || {
-                                                if results().is_empty() { "true" } else { "false" }
-                                            }
-                                            class="dropdown-content menu menu-sm bg-base-100 rounded-box z-[1] mt-1 w-full p-0 shadow max-h-72 overflow-auto"
-                                            role="listbox"
-                                        >
-                                            {move || {
-                                                if results().is_empty() {
-                                                    view! {
-                                                        <li class="px-3 py-2 text-sm text-base-content/70">
-                                                            "Searching…"
-                                                        </li>
-                                                    }
-                                                        .into_any()
-                                                } else {
-                                                    view! {
-                                                        <For
-                                                            each=move || results().clone().into_iter().enumerate()
-                                                            key=|(_i, a)| a.get_id_version()
-                                                            children=move |(i, a)| {
-                                                                let is_hi = move || {
-                                                                    hi.get().map(|j| j == i).unwrap_or(false)
-                                                                };
-                                                                let opt_id = format!("addr-option-{}", i);
-
-                                                                view! {
-                                                                    <li
-                                                                        id=opt_id.clone()
-                                                                        data-testid="search-suggest-item"
-                                                                        role="option"
-                                                                        aria-selected=move || if is_hi() { "true" } else { "false" }
-                                                                        class:active=move || is_hi()
-                                                                    >
-                                                                        <p
-                                                                            class="flex flex-col items-start gap-0.5"
-                                                                            class:active=move || is_hi()
-                                                                            class:bg-base-200=move || is_hi()
-                                                                            on:mouseenter=move |_| set_hi.set(Some(i))
-                                                                            on:mousedown=move |_| select_idx(i)
-                                                                        >
-                                                                            <span class="font-medium">{a.get_name().to_string()}</span>
-                                                                            <span class="text-xs text-base-content/70">
-                                                                                {match a.get_region() {
-                                                                                    Some(region) => {
-                                                                                        format!(
-                                                                                            "{} {} · {region} · {}",
-                                                                                            a.get_postal_code(),
-                                                                                            a.get_locality(),
-                                                                                            display_country(a.get_country()),
-                                                                                        )
-                                                                                    }
-                                                                                    None => {
-                                                                                        format!(
-                                                                                            "{} {} {}",
-                                                                                            a.get_postal_code(),
-                                                                                            a.get_locality(),
-                                                                                            display_country(a.get_country()),
-                                                                                        )
-                                                                                    }
-                                                                                }}
-                                                                            </span>
-                                                                        </p>
-                                                                    </li>
-                                                                }
-                                                            }
-                                                        />
-                                                    }
-                                                        .into_any()
-                                                }
-                                            }}
-                                        </ul>
-                                    }
-                                })
-                        }}
-                    </div>
+                    }} <SetIdInQueryInputDropdown props=props />
                     {move || {
                         if let Some(Ok(addr)) = addr_res.get() {
                             if addr.get_id().is_some() {

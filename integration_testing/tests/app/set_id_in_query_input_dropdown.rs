@@ -77,19 +77,12 @@ fn WasmTestWrapper(items: Vec<TestItem>) -> impl IntoView {
         name,
         search_text,
         list_items,
-        render_item: move |item: &TestItem| {
-            view! {
-                <div>{item.name.clone()}</div>
-            }
-            .into_any()
-        },
+        render_item: move |item: &TestItem| view! { <div>{item.name.clone()}</div> }.into_any(),
     };
     view! {
         <div>
             <h2>"Test SetIdInQueryInputDropdown Component"</h2>
-            <p data-testid="name">
-                {move || format!("Selected Name: {}", props.name.read())}
-            </p>
+            <p data-testid="name">{move || format!("Selected Name: {}", props.name.read())}</p>
             <p data-testid="query">
                 {move || {
                     if let Ok(params) = test_id_query.get() {
