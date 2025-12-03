@@ -41,14 +41,25 @@ pub fn SearchSportConfig(sport_id: Uuid) -> impl IntoView {
                             </tr>
                         </thead>
                         <tbody>
-                            <Transition fallback=move || view! { <tr><td colspan="2">"Loading..."</td></tr> }>
+                            <Transition fallback=move || {
+                                view! {
+                                    <tr>
+                                        <td colspan="2">"Loading..."</td>
+                                    </tr>
+                                }
+                            }>
                                 {move || {
                                     configs
                                         .get()
                                         .map(|res| match res {
                                             Ok(list) => {
                                                 if list.is_empty() {
-                                                    view! { <tr><td colspan="2">"No configurations found."</td></tr> }.into_any()
+                                                    view! {
+                                                        <tr>
+                                                            <td colspan="2">"No configurations found."</td>
+                                                        </tr>
+                                                    }
+                                                        .into_any()
                                                 } else {
                                                     list.into_iter()
                                                         .map(|config| {
@@ -65,7 +76,16 @@ pub fn SearchSportConfig(sport_id: Uuid) -> impl IntoView {
                                                         .into_any()
                                                 }
                                             }
-                                            Err(e) => view! { <tr><td colspan="2" class="text-error">{format!("Error: {}", e)}</td></tr> }.into_any(),
+                                            Err(e) => {
+                                                view! {
+                                                    <tr>
+                                                        <td colspan="2" class="text-error">
+                                                            {format!("Error: {}", e)}
+                                                        </td>
+                                                    </tr>
+                                                }
+                                                    .into_any()
+                                            }
                                         })
                                 }}
                             </Transition>
@@ -73,7 +93,9 @@ pub fn SearchSportConfig(sport_id: Uuid) -> impl IntoView {
                     </table>
                 </div>
                 <div class="card-actions justify-end">
-                    <button class="btn btn-primary" data-testid="new-sport-config-btn">"New Configuration"</button>
+                    <button class="btn btn-primary" data-testid="new-sport-config-btn">
+                        "New Configuration"
+                    </button>
                 </div>
             </div>
         </div>

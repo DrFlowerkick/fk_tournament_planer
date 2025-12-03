@@ -62,8 +62,7 @@ where
             set_hi.set(None);
             // 2) check if id has changed
             let item_id = item.get_id_version().get_id();
-            let current_id = get(key)
-                .and_then(|v| Uuid::parse_str(&v).ok());
+            let current_id = get(key).and_then(|v| Uuid::parse_str(&v).ok());
             if item_id == current_id {
                 // no change -> just reset name
                 name.notify();
@@ -160,8 +159,7 @@ where
                 aria-controls=format!("{}-suggest", key)
             />
 
-            {
-                move || {
+            {move || {
                 let render_item = render_item.clone();
                 open.get()
                     .then(|| {
@@ -187,7 +185,9 @@ where
                                     } else {
                                         view! {
                                             <For
-                                                each=move || list_items.get().clone().into_iter().enumerate()
+                                                each=move || {
+                                                    list_items.get().clone().into_iter().enumerate()
+                                                }
                                                 key=|(_i, a)| a.get_id_version()
                                                 children=move |(i, a)| {
                                                     let is_hi = move || {
@@ -216,14 +216,15 @@ where
                                                     }
                                                 }
                                             />
-                                        }.into_any()
+                                        }
+                                            .into_any()
                                     }
                                 }}
                             </ul>
-                        }.into_any()
+                        }
+                            .into_any()
                     })
-                }
-            }
+            }}
         </div>
     }
 }
