@@ -46,3 +46,13 @@ impl IdVersion {
         }
     }
 }
+
+impl VersionId for IdVersion {
+    fn get_id_version(&self) -> IdVersion {
+        *self
+    }
+}
+
+pub trait VersionId {
+    fn get_id_version(&self) -> IdVersion;
+}

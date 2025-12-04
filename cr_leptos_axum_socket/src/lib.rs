@@ -90,6 +90,18 @@ pub fn use_client_registry_socket(
                         refetch();
                     }
                 }
+                CrMsg::SportConfigUpdated {
+                    version: meta_version,
+                    ..
+                } => {
+                    if meta_version > version {
+                        log!(
+                            "SportConfigUpdated received: refetching config expecting version: {}",
+                            meta_version
+                        );
+                        refetch();
+                    }
+                }
             };
             log!("Subscribing to topic: {:?}", topic);
             socket.subscribe(topic, socket_handler);

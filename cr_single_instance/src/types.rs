@@ -9,12 +9,15 @@ use serde::{Deserialize, Serialize};
 pub enum CrKind {
     /// address
     Address,
+    /// sport-config
+    SportConfig,
 }
 
 impl From<&CrTopic> for CrKind {
     fn from(value: &CrTopic) -> Self {
         match value {
             CrTopic::Address(_) => CrKind::Address,
+            CrTopic::SportConfig(_) => CrKind::SportConfig,
         }
     }
 }
@@ -30,6 +33,7 @@ impl SseUrl for CrTopic {
     fn sse_url(&self) -> String {
         let id = match self {
             CrTopic::Address(id) => *id,
+            CrTopic::SportConfig(id) => *id,
         };
         CR_TOPIC_URL_TEMPLATE
             .replace("{kind}", CrKind::from(self).to_string().as_str())

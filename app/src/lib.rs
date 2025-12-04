@@ -5,6 +5,7 @@ mod error;
 pub mod global_state;
 pub mod hooks;
 pub mod postal_addresses;
+pub mod sport_config;
 
 use error::*;
 use global_state::GlobalState;
@@ -18,6 +19,7 @@ use leptos_router::{
 };
 use postal_addresses::*;
 use reactive_stores::Store;
+use sport_config::*;
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -59,13 +61,16 @@ pub fn App() -> impl IntoView {
                 <header class="navbar bg-base-200">
                     <div class="flex-1">
                         <a href="/" class="btn btn-ghost normal-case text-xl">
-                            "Turnierplaner"
+                            "Tournament Planner"
                         </a>
                     </div>
                     <div class="flex-none">
                         <ul class="menu menu-horizontal px-1">
                             <li>
-                                <A href="/postal-address">"Postadressen"</A>
+                                <A href="/postal-address">"Postal Addresses"</A>
+                            </li>
+                            <li>
+                                <A href="/sport">"Sports"</A>
                             </li>
                         </ul>
                     </div>
@@ -83,6 +88,14 @@ pub fn App() -> impl IntoView {
                             />
                             <Route path=path!("new_pa") view=PostalAddressForm />
                             <Route path=path!("edit_pa") view=PostalAddressForm />
+                        </ParentRoute>
+                        <ParentRoute path=path!("/sport") view=SportConfigPage>
+                            <Route
+                                path=path!("")
+                                view={
+                                    view! {}
+                                }
+                            />
                         </ParentRoute>
                     </Routes>
                 </main>

@@ -31,6 +31,7 @@ pub trait DbpSportConfig: Send + Sync {
     async fn save_sport_config(&self, sport_config: &SportConfig) -> DbResult<SportConfig>;
     async fn list_sport_configs(
         &self,
+        sport_id: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<SportConfig>>;

@@ -106,7 +106,7 @@ async fn main() -> Result<()> {
     let cr = Arc::new(ClientRegistrySocket {});
     let mut spm = SportPluginManagerMap::new();
     // register sport plugins
-    spm.register(Arc::new(GenericSportPlugin::new()));
+    spm.register(Arc::new(GenericSportPlugin::new()))?;
 
     let core = CoreBuilder::new()
         .set_db(Arc::new(db))
