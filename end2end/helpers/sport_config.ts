@@ -1,6 +1,6 @@
 // Shared helpers for sport config form flows
 import { expect, Page } from "@playwright/test";
-import { T } from "./selectors";
+import { selectors } from "./selectors";
 import {
   typeThenBlur,
   selectThenBlur,
@@ -16,8 +16,9 @@ export const ROUTES = {
  * Open the "Sport Selection and Config List".
  */
 export async function openSportSelectionAndConfigList(page: Page) {
+  const SC = selectors(page).sportConfig;
   // Navigate to "list" route and assert elements exist
   await page.goto(ROUTES.list);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByTestId(T.sportSelector.input)).toBeVisible();
+  await expect(SC.pluginSelector.input).toBeVisible();
 }

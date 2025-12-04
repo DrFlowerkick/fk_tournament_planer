@@ -6,12 +6,15 @@ import {
   clickSave,
   waitForPostalAddressListUrl,
 } from "../../helpers/postal_address";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 
 test.describe("Uniqueness constraint violation", () => {
   test("shows error banner on duplicate name, postal code, and locality", async ({
     page,
   }) => {
+    const PA = selectors(page).postalAddress;
+    const BA = selectors(page).banners;
+
     // -------------------- Arrange: Create first address --------------------
     const uniqueData = {
       name: `E2E Unique ${Date.now()}`,
@@ -47,25 +50,25 @@ test.describe("Uniqueness constraint violation", () => {
 
     // -------------------- Assert: Duplicate error UI appears --------------------
     // A banner should appear, and the dismiss button should be visible.
-    await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toBeVisible();
-    await expect(page.getByTestId(T.banner.btnAcknowledgment)).toBeVisible();
+    await expect(BA.acknowledgment.root).toBeVisible();
+    await expect(BA.acknowledgment.btnAction).toBeVisible();
 
     // The banner should contain a warning message.
-    await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toContainText(
+    await expect(BA.acknowledgment.root).toContainText(
       `An address with name '${uniqueData.name}' already exists in '${uniqueData.postal_code} ${uniqueData.locality}'.`
     );
 
     // Save must be disabled while the error is present.
-    await expect(page.getByTestId(T.form.btnSave)).toBeDisabled();
+    await expect(PA.form.btnSave).toBeDisabled();
 
     // -------------------- Resolve via dismiss --------------------
-    await page.getByTestId(T.banner.btnAcknowledgment).click();
+    await BA.acknowledgment.btnAction.click();
 
     // After dismiss, the banner should be gone.
-    await expect(page.getByTestId(T.banner.acknowledgmentBanner)).toBeHidden();
+    await expect(BA.acknowledgment.root).toBeHidden();
 
     // The form fields should be enabled again.
-    await expect(page.getByTestId(T.form.inputName)).toBeEnabled();
-    await expect(page.getByTestId(T.form.btnSave)).toBeEnabled();
+    await expect(PA.form.inputName).toBeEnabled();
+    await expect(PA.form.btnSave).toBeEnabled();
   });
 });

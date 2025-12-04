@@ -1,6 +1,6 @@
 // Shared helpers for address form flows
 import { expect, Page } from "@playwright/test";
-import { T } from "./selectors";
+import { selectors } from "./selectors";
 import {
   typeThenBlur,
   selectThenBlur,
@@ -16,27 +16,28 @@ export const ROUTES = {
  * Open the "Postal Address List".
  */
 export async function openPostalAddressList(page: Page) {
+  const PA = selectors(page).postalAddress;
   // Navigate to "list" route and assert elements exist
   await page.goto(ROUTES.list);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnEdit)).toHaveAttribute("disabled");
+  await expect(PA.search.dropdown.input).toBeVisible();
+  await expect(PA.search.btnNew).toBeVisible();
+  await expect(PA.search.btnEdit).toBeVisible();
+  await expect(PA.search.btnEdit).toHaveAttribute("disabled");
 }
 
 /**
  * Wait for navigation to a postal address detail page (UUID URL).
  */
 export async function waitForPostalAddressListUrl(page: Page) {
+  const PA = selectors(page).postalAddress;
+  // Wait for URL like /postal-address?address_id=UUID
   await page.waitForURL(/\/postal-address\?address_id=[0-9a-f-]{36}$/);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnNew)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
-  await expect(page.getByTestId(T.search.btnEdit)).not.toHaveAttribute(
-    "disabled"
-  );
+  await expect(PA.search.dropdown.input).toBeVisible();
+  await expect(PA.search.btnNew).toBeVisible();
+  await expect(PA.search.btnEdit).toBeVisible();
+  await expect(PA.search.btnEdit).not.toHaveAttribute("disabled");
 }
 
 /**
@@ -50,20 +51,22 @@ export function extractUuidFromUrl(url: string): string {
  * Open the "New Postal Address" form directly.
  */
 export async function openNewForm(page: Page) {
+  const PA = selectors(page).postalAddress;
   // Navigate to "new_pa" route and assert the form exists
   await page.goto(ROUTES.newAddress);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByTestId(T.form.root)).toBeVisible();
-  await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
-  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeHidden();
+  await expect(PA.form.root).toBeVisible();
+  await expect(PA.form.btnSave).toBeVisible();
+  await expect(PA.form.btnSaveAsNew).toBeHidden();
 }
 
 /**
  * Enter edit mode from a detail page (if you have a dedicated edit button).
  */
 export async function clickEditToOpenEditForm(page: Page) {
-  await expect(page.getByTestId(T.search.btnEdit)).toBeVisible();
-  await page.getByTestId(T.search.btnEdit).click();
+  const PA = selectors(page).postalAddress;
+  await expect(PA.search.btnEdit).toBeVisible();
+  await PA.search.btnEdit.click();
   // Assert the form is shown again
   await waitForPostalAddressEditUrl(page);
 }
@@ -82,21 +85,23 @@ export async function openEditForm(page: Page, id: string) {
  * Wait for navigation to a edit postal address page (UUID URL).
  */
 export async function waitForPostalAddressEditUrl(page: Page) {
+  const PA = selectors(page).postalAddress;
+  // Wait for URL like /postal-address/edit_pa?address_id=UUID
   await page.waitForURL(/\/postal-address\/edit_pa\?address_id=[0-9a-f-]{36}$/);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByTestId(T.form.root)).toBeVisible();
-  await expect(page.getByTestId(T.form.btnSave)).toBeVisible();
-  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
+  await expect(PA.form.root).toBeVisible();
+  await expect(PA.form.btnSave).toBeVisible();
+  await expect(PA.form.btnSaveAsNew).toBeVisible();
 }
 
 /**
  * Expect that save actions are gated (disabled) while the form is invalid.
  */
 export async function expectSavesDisabled(page: Page) {
-  await expect(page.getByTestId(T.form.btnSave)).toBeDisabled();
-  const save = page.getByTestId(T.form.btnSaveAsNew);
-  if (await save.isVisible()) {
-    await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeDisabled();
+  const PA = selectors(page).postalAddress;
+  await expect(PA.form.btnSave).toBeDisabled();
+  if (await PA.form.btnSaveAsNew.isVisible()) {
+    await expect(PA.form.btnSaveAsNew).toBeDisabled();
   }
 }
 
@@ -104,10 +109,10 @@ export async function expectSavesDisabled(page: Page) {
  * Expect that save actions are allowed (enabled) when the form is valid.
  */
 export async function expectSavesEnabled(page: Page) {
-  await expect(page.getByTestId(T.form.btnSave)).toBeEnabled();
-  const save = page.getByTestId(T.form.btnSaveAsNew);
-  if (await save.isVisible()) {
-    await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeEnabled();
+  const PA = selectors(page).postalAddress;
+  await expect(PA.form.btnSave).toBeEnabled();
+  if (await PA.form.btnSaveAsNew.isVisible()) {
+    await expect(PA.form.btnSaveAsNew).toBeEnabled();
   }
 }
 
@@ -125,58 +130,54 @@ export async function fillFields(
     country?: string;
   }
 ) {
+  const PA = selectors(page).postalAddress;
   // Name
   if (fields.name !== undefined) {
-    await typeThenBlur(page, T.form.inputName, fields.name, T.form.inputStreet);
+    await typeThenBlur(PA.form.inputName, fields.name, PA.form.inputStreet);
   }
 
   // Street
   if (fields.street !== undefined) {
     await typeThenBlur(
-      page,
-      T.form.inputStreet,
+      PA.form.inputStreet,
       fields.street,
-      T.form.inputCountry
+      PA.form.inputCountry
     );
   }
 
   // Country before postal code (for postal code validation)
   if (fields.country !== undefined) {
     await selectThenBlur(
-      page,
-      T.form.inputCountry,
+      PA.form.inputCountry,
       fields.country,
-      T.form.inputPostalCode
+      PA.form.inputPostalCode
     );
   }
 
   // Postal code
   if (fields.postal_code !== undefined) {
     await typeThenBlur(
-      page,
-      T.form.inputPostalCode,
+      PA.form.inputPostalCode,
       fields.postal_code,
-      T.form.inputLocality
+      PA.form.inputLocality
     );
   }
 
   // Locality
   if (fields.locality !== undefined) {
     await typeThenBlur(
-      page,
-      T.form.inputLocality,
+      PA.form.inputLocality,
       fields.locality,
-      T.form.inputRegion
+      PA.form.inputRegion
     );
   }
 
   // region
   if (fields.region !== undefined) {
     await typeThenBlur(
-      page,
-      T.form.inputRegion,
+      PA.form.inputRegion,
       fields.region,
-      T.form.inputName
+      PA.form.inputName
     );
   }
 }
@@ -199,16 +200,18 @@ export async function fillAllRequiredValid(page: Page, name: string) {
  * Save and expect we leave the form or see some Error message.
  */
 export async function clickSave(page: Page) {
+  const PA = selectors(page).postalAddress;
   await expectSavesEnabled(page);
-  await page.getByTestId(T.form.btnSave).click();
+  await PA.form.btnSave.click();
 }
 /**
  * Save and expect we leave the form or see some Error message.
  */
 export async function clickSaveAsNew(page: Page) {
-  await expect(page.getByTestId(T.form.btnSaveAsNew)).toBeVisible();
+  const PA = selectors(page).postalAddress;
+  await expect(PA.form.btnSaveAsNew).toBeVisible();
   await expectSavesEnabled(page);
-  await page.getByTestId(T.form.btnSaveAsNew).click();
+  await PA.form.btnSaveAsNew.click();
 }
 
 // mapping of countries used in tests
@@ -247,34 +250,36 @@ export async function expectPreviewShows(
     country?: string;
   }
 ) {
-  await expect(page.getByTestId(T.search.preview.root)).toBeVisible();
+  const PA = selectors(page).postalAddress;
+  // check preview fields
+  await expect(PA.search.preview.root).toBeVisible();
 
   if (expected.name !== undefined) {
-    await expect(page.getByTestId(T.search.preview.name)).toHaveText(
+    await expect(PA.search.preview.name).toHaveText(
       expected.name!
     );
   }
 
   if (expected.street !== undefined) {
-    await expect(page.getByTestId(T.search.preview.street)).toHaveText(
+    await expect(PA.search.preview.street).toHaveText(
       expected.street!
     );
   }
 
   if (expected.postal_code !== undefined) {
-    await expect(page.getByTestId(T.search.preview.postalCode)).toHaveText(
+    await expect(PA.search.preview.postalCode).toHaveText(
       expected.postal_code!
     );
   }
 
   if (expected.locality !== undefined) {
-    await expect(page.getByTestId(T.search.preview.locality)).toHaveText(
+    await expect(PA.search.preview.locality).toHaveText(
       expected.locality!
     );
   }
 
   if (expected.region !== undefined) {
-    await expect(page.getByTestId(T.search.preview.region)).toHaveText(
+    await expect(PA.search.preview.region).toHaveText(
       expected.region!
     );
   }
@@ -284,7 +289,7 @@ export async function expectPreviewShows(
       "country",
       expected.country
     );
-    await expect(page.getByTestId(T.search.preview.country)).toHaveText(
+    await expect(PA.search.preview.country).toHaveText(
       expectedText
     );
   }

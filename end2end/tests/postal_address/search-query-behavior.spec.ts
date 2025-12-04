@@ -1,13 +1,16 @@
 // e2e/tests/search-query-behavior.spec.ts
 import { test, expect } from "@playwright/test";
 import { openPostalAddressList } from "../../helpers/postal_address";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 
 test.describe("Search query behavior", () => {
   test("does not trigger search for short queries", async ({ page }) => {
+    const PA = selectors(page).postalAddress;
+    
+    // -------------------- Arrange & Act --------------------
     await openPostalAddressList(page);
-    const input = page.getByTestId(T.search.dropdown.input);
-    const list = page.getByTestId(T.search.dropdown.suggestList);
+    const input = PA.search.dropdown.input;
+    const list = PA.search.dropdown.list;
 
     // Type two characters
     await input.fill("AB");
@@ -31,9 +34,12 @@ test.describe("Search query behavior", () => {
   });
 
   test("clears results when query is deleted", async ({ page }) => {
+    const PA = selectors(page).postalAddress;
+    
+    // -------------------- Arrange & Act --------------------
     await openPostalAddressList(page);
-    const input = page.getByTestId(T.search.dropdown.input);
-    const list = page.getByTestId(T.search.dropdown.suggestList);
+    const input = PA.search.dropdown.input;
+    const list = PA.search.dropdown.list;
 
     // Get some results
     await input.fill("Test");

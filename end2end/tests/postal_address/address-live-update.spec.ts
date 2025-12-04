@@ -1,5 +1,5 @@
 import { test, expect, Page } from "@playwright/test";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 import {
   openNewForm,
   fillFields,
@@ -41,6 +41,9 @@ test.describe("postal address live update (Preview-only UI)", () => {
     const pageA = await ctxA.newPage();
     const pageB = await ctxB.newPage();
 
+    const PA_A = selectors(pageA).postalAddress;
+    const PA_B = selectors(pageB).postalAddress;
+
     try {
       // -------------------- Arrange (A creates address) ----------------------
       await pageA.goto("/"); // baseURL is assumed to be configured in Playwright config.
@@ -60,7 +63,7 @@ test.describe("postal address live update (Preview-only UI)", () => {
 
       // Ensure the preview shows the initial values and correct version
       await expectPreviewShows(pageA, initial);
-      await expect(pageA.getByTestId(T.search.preview.version)).toHaveText("0");
+      await expect(PA_A.search.preview.version).toHaveText("0");
 
       // ----------------------- Act (B edits & saves) -------------------------
       // B opens the edit route directly for the same UUID.
@@ -70,19 +73,18 @@ test.describe("postal address live update (Preview-only UI)", () => {
 
       // Change just the name; other fields remain as-is.
       await typeThenBlur(
-        pageB,
-        T.form.inputName,
+        PA_B.form.inputName,
         edited.name,
-        T.form.inputStreet
+        PA_B.form.inputStreet
       );
 
       await clickSave(pageB);
 
       // ----------------------- Assert (A updates via SSE) --------------------
       // wait for new version
-      await expect(pageA.getByTestId(T.search.preview.version)).toHaveText("1");
+      await expect(PA_A.search.preview.version).toHaveText("1");
       // A's preview should reflect the edited name.
-      await expect(pageA.getByTestId(T.search.preview.name)).toHaveText(
+      await expect(PA_A.search.preview.name).toHaveText(
         edited.name
       );
 

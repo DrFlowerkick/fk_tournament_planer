@@ -9,7 +9,7 @@ import {
   openEditForm,
   waitForPostalAddressListUrl,
 } from "../../helpers/postal_address";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 import { typeThenBlur } from "../../helpers/utils";
 
 test.describe("Edit conflict shows proper fallback reaction", () => {
@@ -20,6 +20,9 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
     const ctxB = await browser.newContext();
     const pageA = await ctxA.newPage();
     const pageB = await ctxB.newPage();
+    const PA_A = selectors(pageA).postalAddress;
+    const BA_A = selectors(pageA).banners;
+    const PA_B = selectors(pageB).postalAddress;
 
     try {
       // -------------------- Arrange: A creates --------------------
@@ -53,55 +56,41 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       await expect(pageB.locator('input[name="version"]')).toHaveValue("0");
 
       const editedByB = `${initial.name} (B)`;
-      await typeThenBlur(
-        pageB,
-        T.form.inputName,
-        editedByB,
-        T.form.inputStreet
-      );
+      await typeThenBlur(PA_B.form.inputName, editedByB, PA_B.form.inputStreet);
       await clickSave(pageB); // server -> version 1
 
       // -------------------- A edits stale & tries to save ---------
       const editedByA = `${initial.name} (A)`;
-      await typeThenBlur(
-        pageA,
-        T.form.inputName,
-        editedByA,
-        T.form.inputStreet
-      );
-      await pageA.getByTestId(T.form.btnSave).click(); // expect 409 and conflict UI
+      await typeThenBlur(PA_A.form.inputName, editedByA, PA_A.form.inputStreet);
+      await PA_A.form.btnSave.click(); // expect 409 and conflict UI
 
       // -------------------- Assert minimal conflict UI ------------
       // A banner should appear, and the reload button should be visible.
-      await expect(
-        pageA.getByTestId(T.banner.acknowledgmentBanner)
-      ).toBeVisible();
-      await expect(pageA.getByTestId(T.banner.btnAcknowledgment)).toBeVisible();
+      await expect(BA_A.acknowledgment.root).toBeVisible();
+      await expect(BA_A.acknowledgment.btnAction).toBeVisible();
 
       // The banner should contain a warning message.
-      await expect(
-        pageA.getByTestId(T.banner.acknowledgmentBanner)
-      ).toContainText(
+      await expect(BA_A.acknowledgment.root).toContainText(
         "A newer version of this address exists. Reloading will discard your changes."
       );
 
       // Save must be disabled while the conflict is unresolved.
-      await expect(pageA.getByTestId(T.form.btnSave)).toBeDisabled();
+      await expect(PA_A.form.btnSave).toBeDisabled();
 
       // -------------------- Resolve via reload --------------------
-      await pageA.getByTestId(T.banner.btnAcknowledgment).click();
+      await BA_A.acknowledgment.btnAction.click();
 
       // After reload, the banner should be gone and the form-version should bump to "1".
       await expect(
-        pageA.getByTestId(T.banner.acknowledgmentBanner)
+        BA_A.acknowledgment.root
       ).toBeHidden();
-      await expect(pageA.getByTestId(T.form.hiddenVersion)).toHaveValue("1");
+      await expect(PA_A.form.hiddenVersion).toHaveValue("1");
 
       // The name input should now reflect B's saved value.
-      await expect(pageA.getByTestId(T.form.inputName)).toHaveValue(editedByB);
+      await expect(PA_A.form.inputName).toHaveValue(editedByB);
 
       // Save becomes enabled again.
-      await expect(pageA.getByTestId(T.form.btnSave)).toBeEnabled();
+      await expect(PA_A.form.btnSave).toBeEnabled();
     } finally {
       await ctxA.close();
       await ctxB.close();

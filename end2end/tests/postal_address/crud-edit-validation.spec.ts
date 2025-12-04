@@ -1,5 +1,5 @@
 import { test } from "@playwright/test";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 import {
   openNewForm,
   fillAllRequiredValid,
@@ -23,6 +23,8 @@ import { typeThenBlur, expectFieldValidity } from "../../helpers/utils";
  */
 test.describe("Create → Edit → Invalid forbids save → Fix → Save → Verify edited address", () => {
   test("end-to-end edit validation gate and final save", async ({ page }) => {
+    const PA = selectors(page).postalAddress;
+
     // Step 1: Create new valid address and save
     const ts = Date.now();
     const name = `E2E Test Address ${ts}`;
@@ -52,20 +54,18 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
      * The next assertion uses a German postal code rule
      * (exactly 5 digits after normalization). This is not generic for all countries.
      */
-    await typeThenBlur(page, T.form.inputStreet, "", T.form.inputLocality);
-    await expectFieldValidity(page, T.form.inputStreet, "", /*invalid*/ true);
+    await typeThenBlur(PA.form.inputStreet, "", PA.form.inputLocality);
+    await expectFieldValidity(PA.form.inputStreet, "", /*invalid*/ true);
     await expectSavesDisabled(page);
 
     // Step 4: Fix invalid field, then save
     await typeThenBlur(
-      page,
-      T.form.inputStreet,
+      PA.form.inputStreet,
       "   Beispielstr.    3   ",
-      T.form.inputLocality
+      PA.form.inputLocality
     );
     await expectFieldValidity(
-      page,
-      T.form.inputStreet,
+      PA.form.inputStreet,
       "Beispielstr. 3",
       /*invalid*/ false
     );

@@ -14,7 +14,7 @@ test("Smoke: Select Plugin -> Search Config -> New -> Cancel", async ({
 
   // 2. Select a Sport Plugin (e.g., "Generic Sport")
   await searchAndOpenByNameOnCurrentPage(
-    selectors(page).sportSelector,
+    selectors(page).sportConfig.pluginSelector,
     "Generic Sport"
   );
   const sport_id = extractQueryParamFromUrl(page.url(), "sport_id");

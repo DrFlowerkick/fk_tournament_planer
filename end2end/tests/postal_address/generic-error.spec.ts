@@ -4,10 +4,13 @@ import {
   openNewForm,
   fillAllRequiredValid,
 } from "../../helpers/postal_address";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 
 test.describe("Generic error handling saving address", () => {
   test("shows a generic error banner on 500 server error", async ({ page }) => {
+    const PA = selectors(page).postalAddress;
+    const BA = selectors(page).banners;
+
     // -------------------- Arrange: Intercept server response --------------------
     await page.route("/api/save_postal_address*", (route) => {
       route.fulfill({
@@ -23,36 +26,28 @@ test.describe("Generic error handling saving address", () => {
     // -------------------- Act: Try to save a new address --------------------
     await openNewForm(page);
     await fillAllRequiredValid(page, `E2E GenericError ${Date.now()}`);
-    await page.getByTestId(T.form.btnSave).click();
+    await PA.form.btnSave.click();
     await page.waitForLoadState("domcontentloaded");
 
     // -------------------- Assert: Generic error banner is shown --------------------
-    await expect(
-      page.getByTestId(T.banner.acknowledgmentNavigateBanner)
-    ).toBeVisible();
-    await expect(
-      page.getByTestId(T.banner.acknowledgmentNavigateBanner)
-    ).toContainText("An unexpected error occurred during saving:");
-    await expect(
-      page.getByTestId(T.banner.btnAcknowledgmentNavigateAction)
-    ).toBeVisible();
-    await expect(
-      page.getByTestId(T.banner.btnAcknowledgmentNavigate)
-    ).toBeVisible();
+    await expect(BA.acknowledgmentNavigate.root).toBeVisible();
+    await expect(BA.acknowledgmentNavigate.root).toContainText(
+      "An unexpected error occurred during saving:"
+    );
+    await expect(BA.acknowledgmentNavigate.btnAction).toBeVisible();
+    await expect(BA.acknowledgmentNavigate.btnNavigate).toBeVisible();
 
     // form should be disabled
-    await expect(page.getByTestId(T.form.btnSave)).toBeDisabled();
+    await expect(PA.form.btnSave).toBeDisabled();
 
     // -------------------- Act: Dismiss the banner --------------------
-    await page.getByTestId(T.banner.btnAcknowledgmentNavigateAction).click();
+    await BA.acknowledgmentNavigate.btnAction.click();
 
     // -------------------- Assert: Banner is gone --------------------
-    await expect(
-      page.getByTestId(T.banner.acknowledgmentNavigateBanner)
-    ).toBeHidden();
+    await expect(BA.acknowledgmentNavigate.root).toBeHidden();
 
     // form should be enabled again
-    await expect(page.getByTestId(T.form.btnSave)).toBeEnabled();
+    await expect(PA.form.btnSave).toBeEnabled();
 
     // -------------------- Arrange: Intercept server response --------------------
     await page.route("/api/save_postal_address*", (route) => {
@@ -67,30 +62,24 @@ test.describe("Generic error handling saving address", () => {
     });
 
     // -------------------- Act: Try to save again --------------------
-    await page.getByTestId(T.form.btnSave).click();
+    await PA.form.btnSave.click();
 
     // -------------------- Assert: Generic error banner is shown --------------------
-    await expect(
-      page.getByTestId(T.banner.acknowledgmentNavigateBanner)
-    ).toBeVisible();
-    await expect(
-      page.getByTestId(T.banner.acknowledgmentNavigateBanner)
-    ).toContainText("An unexpected error occurred during saving:");
-    await expect(
-      page.getByTestId(T.banner.btnAcknowledgmentNavigateAction)
-    ).toBeVisible();
-    await expect(
-      page.getByTestId(T.banner.btnAcknowledgmentNavigate)
-    ).toBeVisible();
+    await expect(BA.acknowledgmentNavigate.root).toBeVisible();
+    await expect(BA.acknowledgmentNavigate.root).toContainText(
+      "An unexpected error occurred during saving:"
+    );
+    await expect(BA.acknowledgmentNavigate.btnAction).toBeVisible();
+    await expect(BA.acknowledgmentNavigate.btnNavigate).toBeVisible();
 
     // form should be disabled
-    await expect(page.getByTestId(T.form.btnSave)).toBeDisabled();
+    await expect(PA.form.btnSave).toBeDisabled();
 
     // -------------------- Act: return to list --------------------
-    await page.getByTestId(T.banner.btnAcknowledgmentNavigate).click();
+    await BA.acknowledgmentNavigate.btnNavigate.click();
 
     // -------------------- Assert: We are back on the main list page --------------------
     await expect(page).toHaveURL(`/postal-address`);
-    await expect(page.getByTestId(T.search.dropdown.input)).toBeVisible();
+    await expect(PA.search.dropdown.input).toBeVisible();
   });
 });

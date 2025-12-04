@@ -11,7 +11,7 @@ import { searchAndOpenByNameOnCurrentPage } from "../../helpers/utils";
 test("Create Address (happy path): New → Fill → Save → Verify in search", async ({
   page,
 }) => {
-  const S = selectors(page);
+  const PA = selectors(page).postalAddress;
 
   // Use values that make assertions obvious and avoid trimming/casing ambiguity.
   const ts = Date.now();
@@ -26,8 +26,8 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
 
   await test.step("Open search and navigate to New", async () => {
     await openPostalAddressList(page);
-    await S.search.btnNew.click();
-    await expect(S.form.root).toBeVisible();
+    await PA.search.btnNew.click();
+    await expect(PA.form.root).toBeVisible();
   });
 
   await test.step("Fill form", async () => {
@@ -38,15 +38,19 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
     await clickSave(page);
     // The app may stay on the form or navigate; we normalize by going to search.
     await page.goto("/postal-address");
-    await expect(S.search.dropdown.input).toBeVisible();
+    await expect(PA.search.dropdown.input).toBeVisible();
   });
 
   await test.step("Find the created address via search", async () => {
-    await searchAndOpenByNameOnCurrentPage(selectors(page).search.dropdown, initial.name, {
-      clearFirst: true,
-      expectUnique: true,
-      waitAriaBusy: true,
-    });
+    await searchAndOpenByNameOnCurrentPage(
+      PA.search.dropdown,
+      initial.name,
+      {
+        clearFirst: true,
+        expectUnique: true,
+        waitAriaBusy: true,
+      }
+    );
   });
 
   await test.step("Verify preview shows the saved data", async () => {

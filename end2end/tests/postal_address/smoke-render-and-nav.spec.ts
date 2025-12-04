@@ -6,7 +6,7 @@ import {
 } from "../../helpers/postal_address";
 
 test("Smoke: Search → New → Cancel", async ({ page }) => {
-  const S = selectors(page);
+  const PA = selectors(page).postalAddress;
 
   await test.step("Open search page", async () => {
     await openPostalAddressList(page);
@@ -17,9 +17,9 @@ test("Smoke: Search → New → Cancel", async ({ page }) => {
   });
 
   await test.step("Cancel back to search/detail context", async () => {
-    await S.form.btnCancel.click();
+    await PA.form.btnCancel.click();
     // Accept either /postal-address or /postal-address?address_id=UUID URL
-    await expect(S.search.dropdown.input).toBeVisible();
+    await expect(PA.search.dropdown.input).toBeVisible();
     const { pathname } = new URL(page.url());
     expect(pathname.startsWith("/postal-address")).toBeTruthy();
   });

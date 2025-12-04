@@ -1,7 +1,7 @@
 // e2e/tests/keyboard-navigation-search.spec.ts
 import { test, expect } from "@playwright/test";
 import { openPostalAddressList } from "../../helpers/postal_address";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 
 test.describe("Search list keyboard navigation", () => {
   // We need to create three entries first to have something to navigate
@@ -10,9 +10,12 @@ test.describe("Search list keyboard navigation", () => {
   test("navigates with arrow keys, selects with Enter, closes with Escape", async ({
     page,
   }) => {
+    const PA = selectors(page).postalAddress;
+
+    // Open search page
     await openPostalAddressList(page);
-    const input = page.getByTestId(T.search.dropdown.input);
-    const list = page.getByTestId(T.search.dropdown.suggestList);
+    const input = PA.search.dropdown.input;
+    const list = PA.search.dropdown.list;
 
     // Type to get results
     await input.fill("E2E Nav");
@@ -45,9 +48,7 @@ test.describe("Search list keyboard navigation", () => {
     // --- Select with Enter ---
     await input.press("Enter");
     await expect(list).toBeHidden();
-    await expect(page.getByTestId(T.search.preview.name)).toHaveText(
-      /^E2E Nav Beta/
-    );
+    await expect(PA.search.preview.name).toHaveText(/^E2E Nav Beta/);
 
     // --- Re-open and close with Escape ---
     await input.fill("E2E Nav");

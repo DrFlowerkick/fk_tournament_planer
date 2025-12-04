@@ -9,11 +9,13 @@ import {
   openEditForm,
   waitForPostalAddressListUrl,
 } from "../../helpers/postal_address";
-import { T } from "../../helpers/selectors";
+import { selectors } from "../../helpers/selectors";
 import { typeThenBlur } from "../../helpers/utils";
 
 test.describe('"Save as new" functionality', () => {
   test("creates a new address from an existing one", async ({ page }) => {
+    const PA = selectors(page).postalAddress;
+
     // -------------------- Arrange: Create an initial address --------------------
     const initial = {
       name: `E2E SaveAsNew Base ${Date.now()}`,
@@ -34,12 +36,12 @@ test.describe('"Save as new" functionality', () => {
     await openEditForm(page, originalId);
 
     // Ensure we are on the edit page for the original address
-    await expect(page.getByTestId(T.form.hiddenId)).toHaveValue(originalId);
-    await expect(page.getByTestId(T.form.inputName)).toHaveValue(initial.name);
+    await expect(PA.form.hiddenId).toHaveValue(originalId);
+    await expect(PA.form.inputName).toHaveValue(initial.name);
 
     // Change the name and click "Save as new"
     const newName = `E2E SaveAsNew Copy ${Date.now()}`;
-    await typeThenBlur(page, T.form.inputName, newName, T.form.btnSaveAsNew);
+    await typeThenBlur(PA.form.inputName, newName, PA.form.btnSaveAsNew);
     await clickSaveAsNew(page);
 
     // -------------------- Assert: A new address was created --------------------
@@ -51,10 +53,10 @@ test.describe('"Save as new" functionality', () => {
     expect(newId).not.toEqual(originalId);
 
     // The preview should show the new name
-    await expect(page.getByTestId(T.search.preview.name)).toHaveText(newName);
+    await expect(PA.search.preview.name).toHaveText(newName);
 
     // -------------------- Assert: Original address is unchanged --------------------
     await openEditForm(page, originalId);
-    await expect(page.getByTestId(T.form.inputName)).toHaveValue(initial.name);
+    await expect(PA.form.inputName).toHaveValue(initial.name);
   });
 });

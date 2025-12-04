@@ -1,5 +1,5 @@
 // shared utils for end2end tests
-import { expect, Page } from "@playwright/test";
+import { expect, Page, Locator } from "@playwright/test";
 import { DropdownLocators } from "./selectors";
 
 /**
@@ -7,14 +7,13 @@ import { DropdownLocators } from "./selectors";
  * Simulates: focus → type → blur -> normalize -> validate for that field.
  */
 export async function typeThenBlur(
-  page: Page,
-  inputTid: string,
+  inputLocator: Locator,
   value: string,
-  blurToTid: string
+  blurToLocator: Locator
 ) {
-  await expect(page.getByTestId(inputTid)).toBeVisible();
-  await page.getByTestId(inputTid).fill(value);
-  await page.getByTestId(blurToTid).focus();
+  await expect(inputLocator).toBeVisible();
+  await inputLocator.fill(value);
+  await blurToLocator.focus();
 }
 
 /**
@@ -22,33 +21,30 @@ export async function typeThenBlur(
  * Necessary because .fill() does not work on <select> elements.
  */
 export async function selectThenBlur(
-  page: Page,
-  selectTid: string,
+  selectLocator: Locator,
   value: string,
-  blurToTid: string
+  blurToLocator: Locator
 ) {
-  await expect(page.getByTestId(selectTid)).toBeVisible();
+  await expect(selectLocator).toBeVisible();
   // Playwright specific method for <select>
-  await page.getByTestId(selectTid).selectOption(value);
+  await selectLocator.selectOption(value);
   // Focus next element to trigger blur/validation
-  await page.getByTestId(blurToTid).focus();
+  await blurToLocator.focus();
 }
 
 /**
  * Assert a field's normalized value and validation state using aria-invalid.
  */
 export async function expectFieldValidity(
-  page: Page,
-  inputTid: string,
+  inputLocator: Locator,
   expectedValue: string,
   isInvalid: boolean
 ) {
-  const input = page.getByTestId(inputTid);
-  await expect(input).toHaveValue(expectedValue);
+  await expect(inputLocator).toHaveValue(expectedValue);
   if (isInvalid) {
-    await expect(input).toHaveAttribute("aria-invalid", "true");
+    await expect(inputLocator).toHaveAttribute("aria-invalid", "true");
   } else {
-    const ariaInvalid = await input.getAttribute("aria-invalid");
+    const ariaInvalid = await inputLocator.getAttribute("aria-invalid");
     expect(ariaInvalid === null || ariaInvalid === "false").toBeTruthy();
   }
 }
