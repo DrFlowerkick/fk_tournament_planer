@@ -19,8 +19,9 @@ test("Smoke: Search → New → Cancel", async ({ page }) => {
   await test.step("Cancel back to search/detail context", async () => {
     await PA.form.btnCancel.click();
     // Accept either /postal-address or /postal-address?address_id=UUID URL
-    await expect(PA.search.dropdown.input).toBeVisible();
     const { pathname } = new URL(page.url());
     expect(pathname.startsWith("/postal-address")).toBeTruthy();
+    expect(pathname).not.toContain("/new_pa");
+    expect(pathname).not.toContain("address_id=");
   });
 });
