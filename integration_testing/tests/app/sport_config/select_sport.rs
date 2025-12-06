@@ -1,5 +1,5 @@
 use crate::common::{get_element_by_test_id, init_test_state, set_url};
-use app::{global_state::GlobalState, sport_config::SportConfigPage};
+use app::{global_state::GlobalState, sport_config::SelectSportPlugin};
 use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,
@@ -25,10 +25,10 @@ async fn test_plugin_selection_renders() {
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
-        provide_context(Store::new(GlobalState::default()));
+        provide_context(Store::new(GlobalState::new()));
         view! {
             <Router>
-                <SportConfigPage />
+                <SelectSportPlugin />
             </Router>
         }
     });

@@ -5,35 +5,38 @@ use crate::{
     components::set_id_in_query_input_dropdown::{
         SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
     },
-    sport_config::server_fn::list_sport_plugins,
+    global_state::{GlobalState, GlobalStateStoreFields},
 };
-use app_core::utils::id_version::VersionId;
+use app_core::{SportPluginManagerPort, SportPort, utils::id_version::VersionId};
 use leptos::prelude::*;
 use leptos_router::hooks::use_query;
+use reactive_stores::Store;
+use std::sync::Arc;
 
 #[component]
 pub fn SelectSportPlugin() -> impl IntoView {
-    let plugins = OnceResource::new(list_sport_plugins());
+    // get global state and sport plugin manager
+    let state = expect_context::<Store<GlobalState>>();
+    let sport_plugin_manager = state.sport_plugin_manager();
+
     let sport_id_query = use_query::<SportParams>();
     let name = RwSignal::new("".to_string());
     let search_text = RwSignal::new("".to_string());
 
-    let sport_list = Signal::derive(move || {
-        if let Some(Ok(sport_plugins)) = plugins.get() {
-            let search_text_lower = search_text.read().to_lowercase();
-            sport_plugins
-                .into_iter()
-                .filter(|spi| {
-                    if search_text_lower.is_empty() {
-                        true
-                    } else {
-                        spi.get_name().to_lowercase().contains(&search_text_lower)
-                    }
-                })
-                .collect()
-        } else {
-            vec![]
-        }
+    let sport_list: Signal<Vec<Arc<dyn SportPort>>> = Signal::derive(move || {
+        let search_text_lower = search_text.read().to_lowercase();
+        sport_plugin_manager
+            .get()
+            .list()
+            .into_iter()
+            .filter(|sp| {
+                if search_text_lower.is_empty() {
+                    true
+                } else {
+                    sp.name().to_lowercase().contains(&search_text_lower)
+                }
+            })
+            .collect()
     });
 
     Effect::new(move || {
@@ -44,9 +47,9 @@ pub fn SelectSportPlugin() -> impl IntoView {
                 .get_untracked()
                 .iter()
                 .find(|spi| spi.get_id_version().get_id() == Some(sport_id))
-                .map(|spi| spi.get_name())
+                .map(|spi| spi.name())
                 .unwrap_or_default();
-            name.set(sport_name);
+            name.set(sport_name.to_string());
         } else {
             name.set("".to_string());
         }
@@ -58,7 +61,7 @@ pub fn SelectSportPlugin() -> impl IntoView {
         placeholder: "Enter name of sport you are searching...",
         search_text: search_text,
         list_items: sport_list,
-        render_item: |spi| view! { <span class="font-medium">{spi.get_name()}</span> }.into_any(),
+        render_item: |spi| view! { <span class="font-medium">{spi.name()}</span> }.into_any(),
     };
 
     view! {

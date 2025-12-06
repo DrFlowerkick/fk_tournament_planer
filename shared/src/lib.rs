@@ -1,13 +1,14 @@
-// shared data types, used by server and client
+// shared data types, used by server and/ or client
 
-use app_core::CoreState;
-use axum_macros::FromRef;
-use leptos::prelude::*;
-use leptos_axum_socket::ServerSocket;
+#[cfg(feature = "hydrate")]
+mod client;
+mod client_and_server;
+#[cfg(feature = "ssr")]
+mod server;
 
-#[derive(FromRef, Clone)]
-pub struct AppState {
-    pub core: CoreState,
-    pub leptos_options: LeptosOptions,
-    pub socket: ServerSocket,
-}
+#[allow(unused_imports)] // currently there is no shared code on client only
+#[cfg(feature = "hydrate")]
+pub use client::*;
+pub use client_and_server::*;
+#[cfg(feature = "ssr")]
+pub use server::*;

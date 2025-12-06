@@ -6,13 +6,18 @@ pub mod server_fn;
 
 use leptos::{Params, prelude::*};
 use leptos_router::{hooks::use_query, params::Params};
-use search::SearchSportConfig;
+pub use search::SearchSportConfig;
 pub use select_sport::SelectSportPlugin;
 use uuid::Uuid;
 
 #[derive(Params, Clone, PartialEq, Eq, Debug)]
 pub struct SportParams {
     pub sport_id: Option<Uuid>,
+}
+
+#[derive(Params, Clone, PartialEq, Eq, Debug)]
+pub struct SportConfigParams {
+    pub sport_config_id: Option<Uuid>,
 }
 
 #[component]
@@ -23,12 +28,11 @@ pub fn SportConfigPage() -> impl IntoView {
         <div>
             <SelectSportPlugin />
         </div>
-        <div class="p-4">
+        <div class="my-4"></div>
+        <div>
             {move || {
-                if let Ok(sport_params) = sport_id_query.get()
-                    && let Some(sport_id) = sport_params.sport_id
-                {
-                    view! { <SearchSportConfig sport_id=sport_id /> }.into_any()
+                if let Ok(sport_params) = sport_id_query.get() && sport_params.sport_id.is_some() {
+                    view! { <SearchSportConfig /> }.into_any()
                 } else {
                     ().into_any()
                 }

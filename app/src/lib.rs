@@ -46,7 +46,7 @@ pub fn App() -> impl IntoView {
     // Provides the WebSocket socket context for client registry communication
     provide_socket_context();
     // provide global state context
-    provide_context(Store::new(GlobalState::default()));
+    provide_context(Store::new(GlobalState::new()));
 
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />

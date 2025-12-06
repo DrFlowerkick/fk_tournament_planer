@@ -2,14 +2,15 @@
 
 use anyhow::{Context, Result, bail};
 use app_core::{SportPluginManagerPort, SportPort};
+use shared::SportConfigPreview;
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 
-/// A concrete implementation of the `SportPluginManagerPort` that uses a `HashMap`
+/// A concrete implementation of the `SportPluginManagerPort` (see mod server) that uses a `HashMap`
 /// to store and retrieve sport plugins.
 #[derive(Clone, Default)]
 pub struct SportPluginManagerMap {
-    plugins: HashMap<Uuid, Arc<dyn SportPort>>,
+    plugins: HashMap<Uuid, Arc<dyn SportConfigPreview>>,
 }
 
 impl SportPluginManagerMap {
@@ -30,7 +31,7 @@ impl SportPluginManagerMap {
 
     /// Registers a new sport plugin with the manager.
     ///
-    /// If a plugin with the same ID already exists, it will be overwritten.
+    /// If a plugin with the same ID already exists, an error is returned.
     ///
     /// # Example
     ///
@@ -39,7 +40,8 @@ impl SportPluginManagerMap {
     /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore, utils::id_version::{IdVersion, VersionId}};
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
-    /// # use serde_json::Value;
+    /// # use leptos::prelude::*;
+    /// # use shared::SportConfigPreview;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl VersionId for MockSport {
@@ -49,12 +51,17 @@ impl SportPluginManagerMap {
     /// # }
     /// # impl SportPort for MockSport {
     /// #     fn name(&self) -> &'static str { self.name }
-    /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
+    /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
     /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
     /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
+    /// #     }
+    /// # }
+    /// # impl SportConfigPreview for MockSport {
+    /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
     /// # }
     /// #
@@ -66,7 +73,7 @@ impl SportPluginManagerMap {
     ///
     /// assert!(manager.get(&sport_id).is_some());
     /// ```
-    pub fn register(&mut self, plugin: Arc<dyn SportPort>) -> Result<()> {
+    pub fn register(&mut self, plugin: Arc<dyn SportConfigPreview>) -> Result<()> {
         let plugin_id = plugin
             .get_id_version()
             .get_id()
@@ -83,6 +90,59 @@ impl SportPluginManagerMap {
         self.plugins.insert(plugin_id, plugin);
         Ok(())
     }
+    /// Retrieves a registered sport configuration preview plugin by its unique ID.
+    ///
+    /// Returns `None` if no plugin with the given ID is found.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use sport_plugin_manager::SportPluginManagerMap;
+    /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore, utils::id_version::{IdVersion, VersionId}};
+    /// # use std::{sync::Arc, time::Duration};
+    /// # use uuid::Uuid;
+    /// # use leptos::prelude::*;
+    /// # use shared::SportConfigPreview;
+    /// #
+    /// # struct MockSport { id: Uuid, name: &'static str };
+    /// # impl VersionId for MockSport {
+    /// #     fn get_id_version(&self) -> IdVersion {
+    /// #         IdVersion::new(self.id, 0)
+    /// #     }
+    /// # }
+    /// # impl SportPort for MockSport {
+    /// #     fn name(&self) -> &'static str { self.name }
+    /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
+    /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
+    /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
+    /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
+    /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
+    /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
+    /// #     }
+    /// # }
+    /// # impl SportConfigPreview for MockSport {
+    /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
+    /// #     }
+    /// # }
+    /// #
+    /// let mut manager = SportPluginManagerMap::new();
+    /// let sport_id = Uuid::new_v4();
+    /// let plugin = Arc::new(MockSport { id: sport_id, name: "MockSport" });
+    /// manager.register(plugin).unwrap();
+    ///
+    /// // Get an existing plugin
+    /// let found_plugin = manager.get_preview(&sport_id);
+    /// assert!(found_plugin.is_some());
+    /// assert_eq!(found_plugin.unwrap().get_id_version().get_id().unwrap(), sport_id);
+    ///
+    /// // Try to get a non-existent plugin
+    /// let not_found_plugin = manager.get_preview(&Uuid::new_v4());
+    /// assert!(not_found_plugin.is_none());
+    /// ```
+    pub fn get_preview(&self, sport_id: &Uuid) -> Option<Arc<dyn SportConfigPreview>> {
+        self.plugins.get(sport_id).cloned()
+    }
 }
 
 impl SportPluginManagerPort for SportPluginManagerMap {
@@ -97,7 +157,8 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore, utils::id_version::{IdVersion, VersionId}};
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
-    /// # use serde_json::Value;
+    /// # use leptos::prelude::*;
+    /// # use shared::SportConfigPreview;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl VersionId for MockSport {
@@ -107,12 +168,17 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # }
     /// # impl SportPort for MockSport {
     /// #     fn name(&self) -> &'static str { self.name }
-    /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
+    /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
     /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
     /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
+    /// #     }
+    /// # }
+    /// # impl SportConfigPreview for MockSport {
+    /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
     /// # }
     /// #
@@ -131,7 +197,9 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// assert!(not_found_plugin.is_none());
     /// ```
     fn get(&self, sport_id: &Uuid) -> Option<Arc<dyn SportPort>> {
-        self.plugins.get(sport_id).cloned()
+        self.plugins
+            .get(sport_id)
+            .map(|p| p.clone() as Arc<dyn SportPort>)
     }
 
     /// Returns a list of all registered sport plugins.
@@ -145,7 +213,8 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use app_core::{SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore, utils::id_version::{IdVersion, VersionId}};
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
-    /// # use serde_json::Value;
+    /// # use leptos::prelude::*;
+    /// # use shared::SportConfigPreview;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl VersionId for MockSport {
@@ -155,12 +224,17 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # }
     /// # impl SportPort for MockSport {
     /// #     fn name(&self) -> &'static str { self.name }
-    /// #     fn get_default_config(&self) -> Value { serde_json::json!({}) }
+    /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
     /// #     fn validate_config_values(&self, _config: &SportConfig) -> SportResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
     /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
     /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
+    /// #     }
+    /// # }
+    /// # impl SportConfigPreview for MockSport {
+    /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
     /// # }
     /// #
@@ -172,7 +246,10 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// assert_eq!(all_plugins.len(), 2);
     /// ```
     fn list(&self) -> Vec<Arc<dyn SportPort>> {
-        self.plugins.values().cloned().collect()
+        self.plugins
+            .values()
+            .map(|p| p.clone() as Arc<dyn SportPort>)
+            .collect()
     }
 }
 
@@ -183,6 +260,7 @@ mod tests {
         EntrantGroupScore, Match, SportConfig, SportResult,
         utils::id_version::{IdVersion, VersionId},
     };
+    use leptos::prelude::*;
     use serde_json::Value;
     use std::time::Duration;
 
@@ -201,6 +279,11 @@ mod tests {
     impl MockSport {
         fn id(&self) -> Uuid {
             self.id
+        }
+    }
+    impl SportConfigPreview for MockSport {
+        fn render_preview(&self, _config: &SportConfig) -> AnyView {
+            view! { <div>{"Mock Preview"}</div> }.into_any()
         }
     }
 

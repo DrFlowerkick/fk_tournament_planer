@@ -1,8 +1,15 @@
 use crate::common::{get_element_by_test_id, init_test_state, set_url};
-use app::{global_state::GlobalState, sport_config::SportConfigPage};
+use app::{global_state::GlobalState, sport_config::SearchSportConfig};
 use app_core::SportConfig;
+use generic_sport_plugin::config::GenericSportConfig;
 use gloo_timers::future::sleep;
-use leptos::{mount::mount_to, prelude::*, tachys::dom::body};
+use leptos::{
+    mount::mount_to,
+    prelude::*,
+    tachys::dom::body,
+    wasm_bindgen::JsCast,
+    web_sys::{Event, HtmlAnchorElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
+};
 use leptos_axum_socket::provide_socket_context;
 use leptos_router::components::Router;
 use reactive_stores::Store;
@@ -14,35 +21,105 @@ async fn test_config_search_renders() {
     let ts = init_test_state();
 
     // Seed a config
+    let config = GenericSportConfig::default();
     let config = SportConfig {
         sport_id: ts.generic_sport_id,
         name: "Test Config 1".to_string(),
+        config: serde_json::to_value(&config).unwrap(),
         ..Default::default()
     };
-    ts.db.seed_sport_config(config);
+    let id = ts.db.seed_sport_config(config.clone());
 
     // 1. Set URL with sport_id
-    set_url(&format!("/sport-config?sport_id={}", ts.generic_sport_id));
+    set_url(&format!("/sport?sport_id={}", ts.generic_sport_id));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
-        provide_context(Store::new(GlobalState::default()));
+        provide_context(Store::new(GlobalState::new()));
         view! {
             <Router>
-                <SportConfigPage />
+                <SearchSportConfig />
             </Router>
         }
     });
 
-    sleep(Duration::from_millis(200)).await;
+    sleep(Duration::from_millis(10)).await;
 
-    // 2. Check if search input exists
-    let input = get_element_by_test_id("search-sport-config-input");
-    assert!(input.is_connected());
+    let input = get_element_by_test_id("sport_config_id-search-input");
+    assert_eq!(
+        input.get_attribute("placeholder").unwrap(),
+        "Enter name of sport configuration you are searching..."
+    );
+    // simulate input: cast to HtmlInputElement, set value, and check suggestions
+    let input_elem = input.dyn_into::<HtmlInputElement>().unwrap();
 
-    // 3. Check if seeded config is listed
-    let row = get_element_by_test_id("config-row-Test Config 1");
-    assert!(row.inner_text().contains("Test Config 1"));
+    input_elem.set_value(&"Test");
+    let event = Event::new("input").unwrap();
+    input_elem.dispatch_event(&event).unwrap();
+    sleep(Duration::from_millis(50)).await;
+    let suggest = get_element_by_test_id("sport_config_id-search-suggest");
+    assert!(suggest.text_content().unwrap().contains("Test Config 1"));
+
+    // Select first sport configuration: press ArrowDown and Enter
+    let init_down = KeyboardEventInit::new();
+    init_down.set_key("ArrowDown");
+    init_down.set_code("ArrowDown");
+    init_down.set_bubbles(true);
+    init_down.set_cancelable(true);
+    let event_down =
+        KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init_down).unwrap();
+    input_elem.dispatch_event(&event_down).unwrap();
+    sleep(Duration::from_millis(10)).await;
+
+    let init_enter = KeyboardEventInit::new();
+    init_enter.set_key("Enter");
+    init_enter.set_code("Enter");
+    init_enter.set_bubbles(true);
+    init_enter.set_cancelable(true);
+    let event_enter =
+        KeyboardEvent::new_with_keyboard_event_init_dict("keydown", &init_enter).unwrap();
+    input_elem.dispatch_event(&event_enter).unwrap();
+    sleep(Duration::from_millis(10)).await;
+
+    let url_id = document()
+        .location()
+        .unwrap()
+        .href()
+        .unwrap()
+        .split("sport_config_id=")
+        .last()
+        .unwrap()
+        .to_string();
+    assert_eq!(url_id, id.to_string());
+    assert_eq!(input_elem.value(), "Test Config 1");
+
+    // check preview
+    let preview = get_element_by_test_id("sport-config-preview")
+        .text_content()
+        .unwrap();
+    assert!(preview.contains("Test Config 1"));
+    assert!(preview.contains("Expected Match Duration: 30 minutes"));
+
+    // test buttons
+    let edit_button = get_element_by_test_id("btn-edit-sport-config")
+        .dyn_into::<HtmlAnchorElement>()
+        .unwrap();
+    let href = edit_button.href();
+    println!("Edit-Button href: {}", href);
+    assert!(href.ends_with(&format!(
+        "edit_sc?sport_id={}&sport_config_id={}",
+        ts.generic_sport_id, id
+    )));
+
+    let new_button = get_element_by_test_id("btn-new-sport-config")
+        .dyn_into::<HtmlAnchorElement>()
+        .unwrap();
+    let href = new_button.href();
+    assert!(href.ends_with(&format!(
+        "new_sc?sport_id={}&sport_config_id={}",
+        ts.generic_sport_id, id
+    )));
+    assert_eq!(new_button.text_content().unwrap(), "New");
 }

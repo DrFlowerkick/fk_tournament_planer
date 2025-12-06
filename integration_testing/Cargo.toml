@@ -14,24 +14,27 @@ test-mock = [
     "dep:wasm-bindgen-test",
     "leptos-axum-socket/hydrate",
 ]
+hydrate = [
+    "app/hydrate",
+    "leptos/hydrate",
+    "dep:wasm-bindgen-test",
+    "leptos-axum-socket/hydrate",
+    "shared/hydrate",
+    "sport_plugin_manager/hydrate",
+]
 ssr = [
     "app/ssr",
     "leptos/ssr",
     "leptos_router/ssr",
     "leptos-axum-socket/ssr",
+    "shared/ssr",
+    "sport_plugin_manager/ssr",
     "dep:tokio",
     "dep:cr_single_instance",
     "dep:db_postgres",
     "dep:diesel",
     "dep:diesel-async",
     "dep:futures-util",
-    "dep:shared",
-]
-hydrate = [
-    "app/hydrate",
-    "leptos/hydrate",
-    "dep:wasm-bindgen-test",
-    "leptos-axum-socket/hydrate",
 ]
 
 [dependencies]
@@ -56,7 +59,7 @@ leptos_router.workspace = true
 reactive_stores.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-shared = { path = "../shared", optional = true }
+shared = { path = "../shared" }
 sport_plugin_manager = { path = "../sport_plugin_manager" }
 thiserror.workspace = true
 tokio = { workspace = true, optional = true }

@@ -8,8 +8,8 @@ license = "MIT"
 
 [features]
 default = []
-hydrate = ["leptos/hydrate", "leptos-axum-socket/hydrate", "uuid/js"]
-ssr = ["leptos/ssr", "leptos-axum-socket/ssr", "dep:axum", "dep:shared"]
+hydrate = ["leptos/hydrate", "leptos-axum-socket/hydrate", "shared/hydrate", "uuid/js"]
+ssr = ["leptos/ssr", "shared/ssr", "leptos-axum-socket/ssr", "dep:axum"]
 
 [dependencies]
 anyhow.workspace = true
@@ -19,7 +19,7 @@ axum = { workspace = true, optional = true }
 leptos.workspace = true
 leptos-axum-socket.workspace = true
 serde.workspace = true
-shared = { path = "../shared", optional = true }
+shared = { path = "../shared" }
 tracing.workspace = true
 uuid.workspace = true
 

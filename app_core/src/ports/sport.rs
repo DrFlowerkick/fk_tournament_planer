@@ -8,7 +8,6 @@ use crate::{
     EntrantGroupScore, Match, SportConfig,
     utils::id_version::{IdVersion, VersionId},
 };
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{any::Any, sync::Arc, time::Duration};
 use thiserror::Error;
@@ -27,39 +26,9 @@ pub enum SportError {
 
 pub type SportResult<T> = Result<T, SportError>;
 
-/// Information about a sport plugin.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SportPluginInfo {
-    id_version: IdVersion,
-    name: String,
-}
-
-impl VersionId for SportPluginInfo {
+impl VersionId for Arc<dyn SportPort> {
     fn get_id_version(&self) -> IdVersion {
-        self.id_version
-    }
-}
-
-impl<T: SportPort + ?Sized> From<&T> for SportPluginInfo {
-    fn from(port: &T) -> Self {
-        SportPluginInfo {
-            id_version: port.get_id_version(),
-            name: port.name().to_string(),
-        }
-    }
-}
-
-impl From<&Arc<dyn SportPort>> for SportPluginInfo {
-    fn from(port: &Arc<dyn SportPort>) -> Self {
-        // Delegiert an die generische Implementierung via Dereferenzierung (as_ref)
-        Self::from(port.as_ref())
-    }
-}
-
-impl SportPluginInfo {
-    /// Returns the name of the sport plugin.
-    pub fn get_name(&self) -> String {
-        self.name.clone()
+        self.as_ref().get_id_version()
     }
 }
 

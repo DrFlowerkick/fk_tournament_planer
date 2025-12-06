@@ -26,7 +26,7 @@ async fn test_new_postal_address() {
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
-        provide_context(Store::new(GlobalState::default()));
+        provide_context(Store::new(GlobalState::new()));
         view! {
             <Router>
                 <PostalAddressForm />
@@ -109,7 +109,7 @@ async fn test_edit_postal_address() {
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
-        provide_context(Store::new(GlobalState::default()));
+        provide_context(Store::new(GlobalState::new()));
         view! {
             <Router>
                 <PostalAddressForm />

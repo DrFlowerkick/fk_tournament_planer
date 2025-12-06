@@ -8,15 +8,15 @@ license = "MIT"
 
 [features]
 default = []
-hydrate = ["leptos/hydrate", "leptos-use/use_event_source", "uuid/js"]
+hydrate = ["leptos/hydrate", "leptos-use/use_event_source", "shared/hydrate", "uuid/js"]
 ssr = [
     "leptos/ssr",
     "leptos-use/ssr",
+    "shared/ssr",
     "dep:tokio",
     "dep:tokio-stream",
     "dep:axum",
     "dep:axum-extra",
-    "dep:shared",
     "dep:serde_json",
     "dep:futures-util",
     "dep:futures-core",
@@ -37,7 +37,7 @@ leptos.workspace = true
 leptos-use.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, optional = true }
-shared = { path = "../shared", optional = true }
+shared = { path = "../shared" }
 tokio = { workspace = true, optional = true }
 tokio-stream = { workspace = true, optional = true }
 tracing.workspace = true

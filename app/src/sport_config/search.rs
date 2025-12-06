@@ -1,103 +1,262 @@
-use crate::sport_config::server_fn::list_sport_configs;
+//! Sport Configuration Search Component
+
+use crate::{
+    AppError,
+    components::{
+        banner::AcknowledgmentAndNavigateBanner,
+        set_id_in_query_input_dropdown::{
+            SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
+        },
+    },
+    global_state::{GlobalState, GlobalStateStoreFields},
+    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    sport_config::{
+        SportConfigParams, SportParams,
+        server_fn::{list_sport_configs, load_sport_config},
+    },
+};
+use app_core::{CrTopic, SportConfig};
+use cr_leptos_axum_socket::use_client_registry_socket;
+//use cr_single_instance::use_client_registry_sse;
 use leptos::prelude::*;
+use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
+use reactive_stores::Store;
+use std::sync::Arc;
 use uuid::Uuid;
 
 #[component]
-pub fn SearchSportConfig(sport_id: Uuid) -> impl IntoView {
-    let (search_text, set_search_text) = signal(String::new());
+pub fn SearchSportConfig() -> impl IntoView {
+    // get id's from query params
+    let sport_query = use_query::<SportParams>();
+    let sport_config_query = use_query::<SportConfigParams>();
+    let UseQueryNavigationReturn {
+        remove,
+        relative_sub_url,
+        path,
+        nav_url,
+        ..
+    } = use_query_navigation();
 
-    let configs = Resource::new(
-        move || (sport_id, search_text.get()),
-        move |(id, filter)| async move {
-            let filter = if filter.is_empty() {
-                None
-            } else {
-                Some(filter)
-            };
-            list_sport_configs(id, filter, Some(50)).await
+    // get global state and sport plugin manager, set return_after_sport_config_edit
+    let state = expect_context::<Store<GlobalState>>();
+    let sport_plugin_manager = state.sport_plugin_manager();
+    let return_after_sport_config_edit = state.return_after_sport_config_edit();
+
+    let sport_plugin = move || {
+        if let Ok(sport_params) = sport_query.get()
+            && let Some(sport_id) = sport_params.sport_id
+        {
+            sport_plugin_manager.get().get_preview(&sport_id)
+        } else {
+            None
+        }
+    };
+    Effect::watch(
+        move || path.get(),
+        move |path, prev_path, _| {
+            if path.ends_with("new_sc") || path.ends_with("edit_sc") {
+                if let Some(prev) = prev_path {
+                    if prev.ends_with("new_sc") || prev.ends_with("edit_sc") {
+                        // do not update return_after_sport_config_edit when navigating between new/edit forms
+                        return;
+                    }
+                    return_after_sport_config_edit.set(prev.clone());
+                } else {
+                    let super_path = path
+                        .rsplit_once('/')
+                        .map(|(p, _)| p)
+                        .unwrap_or("/")
+                        .to_string();
+                    return_after_sport_config_edit.set(super_path);
+                }
+            }
+        },
+        true,
+    );
+
+    // signals for dropdown
+    let name = RwSignal::new(String::new());
+    let search_text = RwSignal::new(String::new());
+
+    // signals for client registry
+    let (id, set_id) = signal(None::<Uuid>);
+    let (topic, set_topic) = signal(None::<CrTopic>);
+    let (version, set_version) = signal(0_u32);
+
+    // load existing sport config when query contains sport_config_id
+    let sport_config_res: Resource<Result<SportConfig, AppError>> = Resource::new(
+        move || sport_config_query.get(),
+        move |maybe_id| async move {
+            match maybe_id {
+                Ok(SportConfigParams {
+                    sport_config_id: Some(id),
+                }) => match load_sport_config(id).await {
+                    Ok(Some(sc)) => Ok(sc),
+                    Ok(None) => Err(AppError::Generic("Sport Config ID not found".to_string())),
+                    Err(e) => Err(e),
+                },
+                Ok(SportConfigParams {
+                    sport_config_id: None,
+                }) => {
+                    // no sport config id: no loading delay
+                    Ok(Default::default())
+                }
+                Err(e) => Err(AppError::Generic(e.to_string())),
+            }
         },
     );
 
+    let is_sport_config_res_error = move || matches!(sport_config_res.get(), Some(Err(_)));
+
+    let refetch = Arc::new(move || sport_config_res.refetch());
+    // update sport config via socket
+    use_client_registry_socket(topic, version, refetch);
+    // update sport config via sse
+    //use_client_registry_sse(topic, version, refetch);
+
+    // load possible sport configs from search_text
+    let sport_config_list = Resource::new(
+        move || (sport_query.get(), search_text.get()),
+        |(sport_params, name)| async move {
+            if name.len() > 0
+                && let Ok(sport_params) = sport_params
+                && let Some(sport_id) = sport_params.sport_id
+            {
+                return list_sport_configs(sport_id, name).await;
+            }
+            Ok(vec![])
+        },
+    );
+
+    let is_sport_config_list_error = move || matches!(sport_config_list.get(), Some(Err(_)));
+
+    let is_disabled = move || {
+        sport_config_res.get().is_none()
+            || is_sport_config_res_error()
+            || is_sport_config_list_error()
+    };
+
+    // list of postal addresses matching search_text
+    let results = Signal::derive(move || {
+        sport_config_list
+            .get()
+            .map(|res| res.unwrap_or_default())
+            .unwrap_or_default()
+    });
+
+    // reset url when unexpectedly no sport config found
+    let reset_url = move || {
+        remove("sport_config_id");
+        nav_url.get()
+    };
+
+    let props = SetIdInQueryInputDropdownProperties {
+        key: "sport_config_id",
+        name,
+        placeholder: "Enter name of sport configuration you are searching...",
+        search_text,
+        list_items: results,
+        render_item: move |c| {
+            view! { <span class="font-medium">{c.name.clone()}</span> }.into_any()
+        },
+    };
+
     view! {
-        <div class="card w-full bg-base-100 shadow-xl mt-4">
+        <div class="card w-full bg-base-100 shadow-xl" data-testid="search-sport-config">
             <div class="card-body">
-                <h2 class="card-title">"Sport Configurations"</h2>
-                <div class="form-control">
-                    <input
-                        type="text"
-                        placeholder="Search configs..."
-                        class="input input-bordered w-full"
-                        prop:value=move || search_text.get()
-                        on:input=move |ev| set_search_text.set(event_target_value(&ev))
-                        data-testid="search-sport-config-input"
-                    />
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="table">
-                        <thead>
-                            <tr>
-                                <th>"Name"</th>
-                                <th>"Actions"</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <Transition fallback=move || {
-                                view! {
-                                    <tr>
-                                        <td colspan="2">"Loading..."</td>
-                                    </tr>
+                <h2 class="card-title">"Search Sport Configuration"</h2>
+                <Transition fallback=move || {
+                    view! {
+                        <div class="flex justify-center items-center p-4">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    }
+                }>
+                    {move || {
+                        sport_config_res
+                            .get()
+                            .map(|res| match res {
+                                Err(msg) => {
+                                    // --- General Load Error Banner ---
+                                    view! {
+                                        <AcknowledgmentAndNavigateBanner
+                                            msg=format!(
+                                                "An unexpected error occurred during load: {msg}",
+                                            )
+                                            ack_btn_text="Reload"
+                                            ack_action=move || sport_config_res.refetch()
+                                            nav_btn_text="Reset"
+                                            navigate_url=reset_url()
+                                        />
+                                    }
+                                        .into_any()
                                 }
-                            }>
-                                {move || {
-                                    configs
-                                        .get()
-                                        .map(|res| match res {
-                                            Ok(list) => {
-                                                if list.is_empty() {
-                                                    view! {
-                                                        <tr>
-                                                            <td colspan="2">"No configurations found."</td>
-                                                        </tr>
-                                                    }
-                                                        .into_any()
-                                                } else {
-                                                    list.into_iter()
-                                                        .map(|config| {
-                                                            view! {
-                                                                <tr data-testid=format!("config-row-{}", config.name)>
-                                                                    <td>{config.name.clone()}</td>
-                                                                    <td>
-                                                                        <button class="btn btn-sm btn-ghost">"Edit"</button>
-                                                                    </td>
-                                                                </tr>
-                                                            }
-                                                        })
-                                                        .collect_view()
-                                                        .into_any()
-                                                }
-                                            }
-                                            Err(e) => {
-                                                view! {
-                                                    <tr>
-                                                        <td colspan="2" class="text-error">
-                                                            {format!("Error: {}", e)}
-                                                        </td>
-                                                    </tr>
-                                                }
-                                                    .into_any()
-                                            }
-                                        })
-                                }}
-                            </Transition>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="card-actions justify-end">
-                    <button class="btn btn-primary" data-testid="new-sport-config-btn">
-                        "New Configuration"
-                    </button>
-                </div>
+                                Ok(sport_config) => {
+                                    name.set(sport_config.name.clone());
+                                    set_id.set(sport_config.id_version.get_id());
+                                    set_version
+                                        .set(
+                                            sport_config.id_version.get_version().unwrap_or_default(),
+                                        );
+                                    if let Some(id) = sport_config.id_version.get_id() {
+                                        let new_topic = CrTopic::SportConfig(id);
+                                        set_topic.set(Some(new_topic));
+                                    }
+                                    ().into_any()
+                                }
+                            })
+                    }} <SetIdInQueryInputDropdown props=props />
+                    {move || {
+                        if let Some(sp) = sport_plugin()
+                            && let Some(Ok(sport_config)) = sport_config_res.get()
+                        {
+                            if sport_config.id_version.get_id().is_some() {
+                                view! {
+                                    <div
+                                        class="card w-full bg-base-200 shadow-md mt-4"
+                                        data-testid="sport-config-preview"
+                                    >
+                                        {sp.render_preview(&sport_config)}
+                                    </div>
+                                }
+                                    .into_any()
+                            } else {
+                                view! {
+                                    <div class="mt-4">
+                                        <p>"No sport configuration selected."</p>
+                                    </div>
+                                }
+                                    .into_any()
+                            }
+                        } else {
+                            ().into_any()
+                        }
+                    }} <div class="card-actions justify-end mt-4">
+                        <A
+                            href=move || relative_sub_url("new_sc")
+                            attr:class="btn btn-primary"
+                            attr:data-testid="btn-new-sport-config"
+                            attr:disabled=is_disabled
+                        >
+                            "New"
+                        </A>
+                        <A
+                            href=move || relative_sub_url("edit_sc")
+                            attr:class="btn btn-secondary"
+                            attr:data-testid="btn-edit-sport-config"
+                            attr:disabled=move || is_disabled() || id.get().is_none()
+                        >
+                            "Edit"
+                        </A>
+                    </div>
+                </Transition>
             </div>
         </div>
+        <div class="my-4"></div>
+        {if cfg!(not(feature = "test-mock")) {
+            view! { <Outlet /> }.into_any()
+        } else {
+            ().into_any()
+        }}
     }
 }

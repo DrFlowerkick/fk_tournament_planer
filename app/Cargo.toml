@@ -12,6 +12,9 @@ hydrate = [
     "leptos-axum-socket/hydrate",
     "cr_leptos_axum_socket/hydrate",
     "cr_single_instance/hydrate",
+    "sport_plugin_manager/hydrate",
+    "generic_sport_plugin/hydrate",
+    "shared/hydrate",
     "uuid/js",
 ]
 ssr = [
@@ -22,6 +25,9 @@ ssr = [
     "dep:leptos_axum",
     "cr_single_instance/ssr",
     "cr_leptos_axum_socket/ssr",
+    "sport_plugin_manager/ssr",
+    "generic_sport_plugin/ssr",
+    "shared/ssr",
 ]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -35,6 +41,7 @@ cfg-if.workspace = true
 cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket" }
 cr_single_instance = { path = "../cr_single_instance" }
 db_postgres = { path = "../db_postgres", optional = true }
+generic_sport_plugin = { path = "../generic_sport_plugin" }
 gloo-timers.workspace = true
 http.workspace = true
 isocountry.workspace = true
@@ -45,6 +52,8 @@ leptos_meta.workspace = true
 leptos_router.workspace = true
 reactive_stores.workspace = true
 serde.workspace = true
+shared = { path = "../shared" }
+sport_plugin_manager = { path = "../sport_plugin_manager" }
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true

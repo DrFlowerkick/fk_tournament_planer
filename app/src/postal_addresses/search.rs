@@ -1,4 +1,4 @@
-// search for postal address by name
+//! Postal Address Search Component
 
 use super::{
     AddressParams,
@@ -17,12 +17,12 @@ use crate::{
 };
 use app_core::{CrTopic, PostalAddress};
 use cr_leptos_axum_socket::use_client_registry_socket;
-use isocountry::CountryCode;
-use std::sync::Arc;
 //use cr_single_instance::use_client_registry_sse;
+use isocountry::CountryCode;
 use leptos::prelude::*;
 use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
 use reactive_stores::Store;
+use std::sync::Arc;
 use uuid::Uuid;
 
 fn display_country(code: &str) -> String {
@@ -78,12 +78,11 @@ pub fn SearchPostalAddress() -> impl IntoView {
     let (topic, set_topic) = signal(None::<CrTopic>);
     let (version, set_version) = signal(0_u32);
 
-    // load existing address when `id` is Some(...)
+    // load existing address when query contains address_id
     let addr_res: Resource<Result<PostalAddress, AppError>> = Resource::new(
         move || query.get(),
         move |maybe_id| async move {
             match maybe_id {
-                // AppResult<PostalAddress>
                 Ok(AddressParams {
                     address_id: Some(id),
                 }) => match load_postal_address(id).await {
@@ -95,8 +94,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
                     // no address id: no loading delay
                     Ok(Default::default())
                 }
-                // new form or bad uuid: no loading delay
-                //_ => Ok(Default::default()),
                 Err(e) => Err(AppError::Generic(e.to_string())),
             }
         },

@@ -6,9 +6,19 @@ license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = []
+hydrate = ["leptos/hydrate"]
+ssr = [
+    "leptos/ssr",
+    "leptos-axum-socket/ssr",
+    "dep:axum",
+    "dep:axum-macros",
+]
+
 [dependencies]
 app_core = { path = "../app_core" }
-axum.workspace = true
-axum-macros.workspace = true
+axum = { workspace = true, optional = true }
+axum-macros = { workspace = true, optional = true }
 leptos.workspace = true
-leptos-axum-socket = { workspace = true, features = ["ssr"] }
+leptos-axum-socket = { workspace = true, optional = true }

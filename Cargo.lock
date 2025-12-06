@@ -81,6 +81,7 @@ dependencies = [
  "cr_leptos_axum_socket",
  "cr_single_instance",
  "db_postgres",
+ "generic_sport_plugin",
  "getrandom",
  "gloo-timers",
  "http",
@@ -92,6 +93,8 @@ dependencies = [
  "leptos_router",
  "reactive_stores",
  "serde",
+ "shared",
+ "sport_plugin_manager",
  "thiserror 2.0.17",
  "tracing",
  "uuid",
@@ -1125,8 +1128,10 @@ version = "0.4.0"
 dependencies = [
  "anyhow",
  "app_core",
+ "leptos",
  "serde",
  "serde_json",
+ "shared",
  "uuid",
 ]
 
@@ -2971,8 +2976,10 @@ version = "0.4.0"
 dependencies = [
  "anyhow",
  "app_core",
+ "leptos",
  "serde",
  "serde_json",
+ "shared",
  "uuid",
 ]
 

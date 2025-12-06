@@ -24,8 +24,8 @@ leptos-axum-socket = { workspace = true, features = [ "ssr" ] }
 leptos_axum.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-shared = { path = "../shared" }
-sport_plugin_manager = { path = "../sport_plugin_manager" }
+shared = { path = "../shared", features = [ "ssr" ] }
+sport_plugin_manager = { path = "../sport_plugin_manager", features = [ "ssr" ] }
 tokio.workspace = true
 tokio-stream.workspace = true
 tower.workspace = true
