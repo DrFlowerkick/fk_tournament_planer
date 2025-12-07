@@ -18,7 +18,7 @@ use crate::{
 use app_core::{CrTopic, SportConfig};
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
-use leptos::prelude::*;
+use leptos::{logging::log, prelude::*};
 use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
 use reactive_stores::Store;
 use std::sync::Arc;
@@ -46,8 +46,9 @@ pub fn SearchSportConfig() -> impl IntoView {
         if let Ok(sport_params) = sport_query.get()
             && let Some(sport_id) = sport_params.sport_id
         {
-            sport_plugin_manager.get().get_preview(&sport_id)
+            sport_plugin_manager.get().get_web_ui(&sport_id)
         } else {
+            log!("No valid sport_id in query params. Searching sport config is disabled.");
             None
         }
     };
@@ -157,106 +158,119 @@ pub fn SearchSportConfig() -> impl IntoView {
         search_text,
         list_items: results,
         render_item: move |c| {
-            view! { <span class="font-medium">{c.name.clone()}</span> }.into_any()
+            if let Some(sp) = sport_plugin() {
+                sp.render_dropdown(&c)
+            } else {
+                view! { <span class="font-medium">{c.name.clone()}</span> }.into_any()
+            }
         },
     };
 
-    view! {
-        <div class="card w-full bg-base-100 shadow-xl" data-testid="search-sport-config">
-            <div class="card-body">
-                <h2 class="card-title">"Search Sport Configuration"</h2>
-                <Transition fallback=move || {
+    {
+        move || {
+            let props = props.clone();
+            sport_plugin()
+                .map(|sp| {
                     view! {
-                        <div class="flex justify-center items-center p-4">
-                            <span class="loading loading-spinner loading-lg"></span>
-                        </div>
-                    }
-                }>
-                    {move || {
-                        sport_config_res
-                            .get()
-                            .map(|res| match res {
-                                Err(msg) => {
-                                    // --- General Load Error Banner ---
+                        <div
+                            class="card w-full bg-base-100 shadow-xl"
+                            data-testid="search-sport-config"
+                        >
+                            <div class="card-body">
+                                <h2 class="card-title">"Search Sport Configuration"</h2>
+                                <Transition fallback=move || {
                                     view! {
-                                        <AcknowledgmentAndNavigateBanner
-                                            msg=format!(
-                                                "An unexpected error occurred during load: {msg}",
-                                            )
-                                            ack_btn_text="Reload"
-                                            ack_action=move || sport_config_res.refetch()
-                                            nav_btn_text="Reset"
-                                            navigate_url=reset_url()
-                                        />
+                                        <div class="flex justify-center items-center p-4">
+                                            <span class="loading loading-spinner loading-lg"></span>
+                                        </div>
                                     }
-                                        .into_any()
-                                }
-                                Ok(sport_config) => {
-                                    name.set(sport_config.name.clone());
-                                    set_id.set(sport_config.id_version.get_id());
-                                    set_version
-                                        .set(
-                                            sport_config.id_version.get_version().unwrap_or_default(),
-                                        );
-                                    if let Some(id) = sport_config.id_version.get_id() {
-                                        let new_topic = CrTopic::SportConfig(id);
-                                        set_topic.set(Some(new_topic));
-                                    }
-                                    ().into_any()
-                                }
-                            })
-                    }} <SetIdInQueryInputDropdown props=props />
-                    {move || {
-                        if let Some(sp) = sport_plugin()
-                            && let Some(Ok(sport_config)) = sport_config_res.get()
-                        {
-                            if sport_config.id_version.get_id().is_some() {
-                                view! {
-                                    <div
-                                        class="card w-full bg-base-200 shadow-md mt-4"
-                                        data-testid="sport-config-preview"
-                                    >
-                                        {sp.render_preview(&sport_config)}
+                                }>
+                                    {move || {
+                                        sport_config_res
+                                            .get()
+                                            .map(|res| match res {
+                                                Err(msg) => {
+                                                    // --- General Load Error Banner ---
+                                                    view! {
+                                                        <AcknowledgmentAndNavigateBanner
+                                                            msg=format!(
+                                                                "An unexpected error occurred during load: {msg}",
+                                                            )
+                                                            ack_btn_text="Reload"
+                                                            ack_action=move || sport_config_res.refetch()
+                                                            nav_btn_text="Reset"
+                                                            navigate_url=reset_url()
+                                                        />
+                                                    }
+                                                        .into_any()
+                                                }
+                                                Ok(sport_config) => {
+                                                    name.set(sport_config.name.clone());
+                                                    set_id.set(sport_config.id_version.get_id());
+                                                    set_version
+                                                        .set(
+                                                            sport_config.id_version.get_version().unwrap_or_default(),
+                                                        );
+                                                    if let Some(id) = sport_config.id_version.get_id() {
+                                                        let new_topic = CrTopic::SportConfig(id);
+                                                        set_topic.set(Some(new_topic));
+                                                    }
+                                                    ().into_any()
+                                                }
+                                            })
+                                    }} <SetIdInQueryInputDropdown props=props />
+                                    {move || {
+                                        if let Some(Ok(sport_config)) = sport_config_res.get() {
+                                            if sport_config.id_version.get_id().is_some() {
+                                                view! {
+                                                    <div
+                                                        class="card w-full bg-base-200 shadow-md mt-4"
+                                                        data-testid="sport-config-preview"
+                                                    >
+                                                        {sp.render_preview(&sport_config)}
+                                                    </div>
+                                                }
+                                                    .into_any()
+                                            } else {
+                                                view! {
+                                                    <div class="mt-4">
+                                                        <p>"No sport configuration selected."</p>
+                                                    </div>
+                                                }
+                                                    .into_any()
+                                            }
+                                        } else {
+                                            ().into_any()
+                                        }
+                                    }} <div class="card-actions justify-end mt-4">
+                                        <A
+                                            href=move || relative_sub_url("new_sc")
+                                            attr:class="btn btn-primary"
+                                            attr:data-testid="btn-new-sport-config"
+                                            attr:disabled=is_disabled
+                                        >
+                                            "New"
+                                        </A>
+                                        <A
+                                            href=move || relative_sub_url("edit_sc")
+                                            attr:class="btn btn-secondary"
+                                            attr:data-testid="btn-edit-sport-config"
+                                            attr:disabled=move || is_disabled() || id.get().is_none()
+                                        >
+                                            "Edit"
+                                        </A>
                                     </div>
-                                }
-                                    .into_any()
-                            } else {
-                                view! {
-                                    <div class="mt-4">
-                                        <p>"No sport configuration selected."</p>
-                                    </div>
-                                }
-                                    .into_any()
-                            }
+                                </Transition>
+                            </div>
+                        </div>
+                        <div class="my-4"></div>
+                        {if cfg!(not(feature = "test-mock")) {
+                            view! { <Outlet /> }.into_any()
                         } else {
                             ().into_any()
-                        }
-                    }} <div class="card-actions justify-end mt-4">
-                        <A
-                            href=move || relative_sub_url("new_sc")
-                            attr:class="btn btn-primary"
-                            attr:data-testid="btn-new-sport-config"
-                            attr:disabled=is_disabled
-                        >
-                            "New"
-                        </A>
-                        <A
-                            href=move || relative_sub_url("edit_sc")
-                            attr:class="btn btn-secondary"
-                            attr:data-testid="btn-edit-sport-config"
-                            attr:disabled=move || is_disabled() || id.get().is_none()
-                        >
-                            "Edit"
-                        </A>
-                    </div>
-                </Transition>
-            </div>
-        </div>
-        <div class="my-4"></div>
-        {if cfg!(not(feature = "test-mock")) {
-            view! { <Outlet /> }.into_any()
-        } else {
-            ().into_any()
-        }}
+                        }}
+                    }
+                })
+        }
     }
 }

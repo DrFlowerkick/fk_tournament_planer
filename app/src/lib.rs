@@ -96,6 +96,8 @@ pub fn App() -> impl IntoView {
                                     view! {}
                                 }
                             />
+                            <Route path=path!("new_sc") view=SportConfigForm />
+                            <Route path=path!("edit_sc") view=SportConfigForm />
                         </ParentRoute>
                     </Routes>
                 </main>

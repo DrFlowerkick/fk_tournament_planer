@@ -1,9 +1,11 @@
 //! Sport Config Module
 
+mod edit;
 mod search;
 mod select_sport;
 pub mod server_fn;
 
+pub use edit::SportConfigForm;
 use leptos::{Params, prelude::*};
 use leptos_router::{hooks::use_query, params::Params};
 pub use search::SearchSportConfig;

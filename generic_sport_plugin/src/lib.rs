@@ -4,7 +4,7 @@
 
 pub mod config;
 pub mod sport_port;
-pub mod sport_preview;
+pub mod sport_web_ui;
 
 use app_core::{
     Match, SportConfig, SportError, SportResult,

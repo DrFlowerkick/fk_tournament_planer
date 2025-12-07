@@ -6,8 +6,6 @@ use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
 
-use leptos::logging::log;
-
 #[derive(Clone)]
 pub struct SetIdInQueryInputDropdownProperties<I, RenderFn>
 where
@@ -108,7 +106,6 @@ where
             "Enter" => {
                 if let Some(i) = hi.get() {
                     ev.prevent_default();
-                    log!("Selecting index via Enter: {}", i);
                     select_idx(i);
                 }
             }

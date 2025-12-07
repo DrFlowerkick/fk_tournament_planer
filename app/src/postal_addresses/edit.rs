@@ -29,7 +29,6 @@ fn get_sorted_countries() -> Vec<(String, String)> {
     countries
 }
 
-// Wrapper component to provide type safe refetch function via context
 #[component]
 pub fn PostalAddressForm() -> impl IntoView {
     // --- Hooks, Navigation & global state ---

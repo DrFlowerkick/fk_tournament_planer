@@ -3,7 +3,9 @@
 use app_core::{SportConfig, SportPort};
 use leptos::prelude::*;
 
-/// Trait for rendering a preview of a sport configuration
-pub trait SportConfigPreview: Send + Sync + SportPort {
+/// Trait for rendering sport configuration in web ui
+pub trait SportConfigWebUi: Send + Sync + SportPort {
     fn render_preview(&self, config: &SportConfig) -> AnyView;
+    fn render_dropdown(&self, config: &SportConfig) -> AnyView;
+    fn render_configuration(&self) -> AnyView;
 }
