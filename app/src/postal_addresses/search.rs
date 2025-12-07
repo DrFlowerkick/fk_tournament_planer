@@ -1,11 +1,9 @@
 //! Postal Address Search Component
 
-use super::{
-    AddressParams,
-    server_fn::{list_postal_addresses, load_postal_address},
-};
-use crate::{
-    AppError,
+use super::server_fn::{list_postal_addresses, load_postal_address};
+use crate::AppError;
+use app_core::{CrTopic, PostalAddress};
+use app_utils::{
     components::{
         banner::AcknowledgmentAndNavigateBanner,
         set_id_in_query_input_dropdown::{
@@ -14,8 +12,8 @@ use crate::{
     },
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    params::AddressParams,
 };
-use app_core::{CrTopic, PostalAddress};
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
 use isocountry::CountryCode;
@@ -223,7 +221,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                         data-testid="address-preview"
                                     >
                                         <div class="card-body">
-                                            <h3 class="card-title" data-testid="preview-name">
+                                            <h3 class="card-title" data-testid="preview-address-name">
                                                 {addr.get_name().to_string()}
                                             </h3>
                                             <p data-testid="preview-street">
@@ -244,10 +242,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                             <p data-testid="preview-country">
                                                 {display_country(&addr.get_country())}
                                             </p>
-                                            <p class="hidden" data-testid="preview-id">
+                                            <p class="hidden" data-testid="preview-address-id">
                                                 {addr.get_id().unwrap_or_default().to_string()}
                                             </p>
-                                            <p class="hidden" data-testid="preview-version">
+                                            <p class="hidden" data-testid="preview-address-version">
                                                 {addr.get_version().unwrap_or_default()}
                                             </p>
                                         </div>

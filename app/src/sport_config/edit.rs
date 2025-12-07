@@ -1,8 +1,8 @@
 //! Sport Config Edit Module
 
-use crate::{
+use app_utils::{
     global_state::{GlobalState, GlobalStateStoreFields},
-    sport_config::SportParams,
+    params::SportParams,
 };
 use leptos::{logging::log, prelude::*};
 use leptos_router::hooks::use_query;

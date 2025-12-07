@@ -1,5 +1,5 @@
 use crate::common::{get_element_by_test_id, init_test_state, set_url};
-use app::{global_state::GlobalState, postal_addresses::SearchPostalAddress};
+use app::{postal_addresses::SearchPostalAddress, provide_global_state};
 use gloo_timers::future::sleep;
 use isocountry::CountryCode;
 use leptos::{
@@ -11,7 +11,6 @@ use leptos::{
 };
 use leptos_axum_socket::provide_socket_context;
 use leptos_router::components::Router;
-use reactive_stores::Store;
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
@@ -26,7 +25,7 @@ async fn test_search_postal_address() {
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
-        provide_context(Store::new(GlobalState::new()));
+        provide_global_state();
         view! {
             <Router>
                 <SearchPostalAddress />
@@ -93,7 +92,7 @@ async fn test_search_postal_address() {
     assert_eq!(input_elem.value(), format!("{}{}", ts.name_base, 1));
 
     // check preview
-    let preview_name = get_element_by_test_id("preview-name")
+    let preview_name = get_element_by_test_id("preview-address-name")
         .text_content()
         .unwrap();
     assert!(preview_name.contains(&format!("{}{}", ts.name_base, 1)));
@@ -120,9 +119,9 @@ async fn test_search_postal_address() {
         .map(|c| c.name())
         .unwrap_or(&ts.country);
     assert!(preview_country.contains(expected_country_name));
-    let preview_id = get_element_by_test_id("preview-id").text_content().unwrap();
+    let preview_id = get_element_by_test_id("preview-address-id").text_content().unwrap();
     assert!(preview_id.contains(&id.to_string()));
-    let preview_version = get_element_by_test_id("preview-version")
+    let preview_version = get_element_by_test_id("preview-address-version")
         .text_content()
         .unwrap();
     assert!(preview_version.contains("0"));

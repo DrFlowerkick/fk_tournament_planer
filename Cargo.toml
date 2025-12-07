@@ -10,6 +10,7 @@ resolver = "2"
 members = [
     "app",
     "app_core",
+    "app_utils",
     "cr_leptos_axum_socket",
     "cr_single_instance",
     "db_postgres",

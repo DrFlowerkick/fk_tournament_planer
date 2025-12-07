@@ -1,8 +1,8 @@
 use crate::common::get_element_by_test_id;
-use app::components::set_id_in_query_input_dropdown::{
+use app_core::utils::id_version::{IdVersion, VersionId};
+use app_utils::components::set_id_in_query_input_dropdown::{
     SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
 };
-use app_core::utils::id_version::{IdVersion, VersionId};
 use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,

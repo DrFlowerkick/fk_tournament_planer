@@ -1,7 +1,7 @@
 //! Component for selecting a sport plugin in the sport configuration flow.
 
-use super::SportParams;
-use crate::{
+use app_core::{SportPluginManagerPort, SportPort, utils::id_version::VersionId};
+use app_utils::{
     components::{
         banner::AcknowledgmentBanner,
         set_id_in_query_input_dropdown::{
@@ -9,8 +9,8 @@ use crate::{
         },
     },
     global_state::{GlobalState, GlobalStateStoreFields},
+    params::SportParams,
 };
-use app_core::{SportPluginManagerPort, SportPort, utils::id_version::VersionId};
 use leptos::prelude::*;
 use leptos_router::{
     NavigateOptions,

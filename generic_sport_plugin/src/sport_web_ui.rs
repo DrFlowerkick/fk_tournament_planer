@@ -2,7 +2,12 @@
 
 use super::GenericSportPlugin;
 use app_core::SportConfig;
+use app_utils::{
+    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    params::{SportConfigParams, SportParams},
+};
 use leptos::prelude::*;
+use leptos_router::hooks::use_query;
 use shared::SportConfigWebUi;
 
 impl SportConfigWebUi for GenericSportPlugin {
@@ -14,7 +19,7 @@ impl SportConfigWebUi for GenericSportPlugin {
         view! {
             <div class="card w-full bg-base-200 shadow-md mt-4" data-testid="sport-config-preview">
                 <div class="card-body">
-                    <h3 class="card-title" data-testid="preview-name">
+                    <h3 class="card-title" data-testid="preview-sport-name">
                         {config.name.clone()}
                     </h3>
                     {move || {
@@ -53,23 +58,23 @@ impl SportConfigWebUi for GenericSportPlugin {
                                                 })
                                         }}
                                     </p>
-                                    <p data-testid="preview-victory-points">
-                                        {format!(
-                                            "Victory Points - Win: {}, Draw: {}",
-                                            generic_config.victory_points_win,
-                                            generic_config.victory_points_draw
-                                        )}
-                                    </p>
-                                    <p data-testid="preview-expected-duration">
-                                        {format!(
-                                            "Expected Match Duration: {} minutes",
-                                            generic_config.expected_match_duration_minutes.as_secs() / 60,
-                                        )}
-                                    </p>
                                 }
                                     .into_any()
                             })
                     }}
+                    <p data-testid="preview-victory-points">
+                        {format!(
+                            "Victory Points - Win: {}, Draw: {}",
+                            generic_config.victory_points_win,
+                            generic_config.victory_points_draw,
+                        )}
+                    </p>
+                    <p data-testid="preview-expected-duration">
+                        {format!(
+                            "Expected Match Duration: {} minutes",
+                            generic_config.expected_match_duration_minutes.as_secs() / 60,
+                        )}
+                    </p>
                 </div>
             </div>
         }
@@ -84,11 +89,27 @@ impl SportConfigWebUi for GenericSportPlugin {
         .into_any()
     }
     fn render_configuration(&self) -> AnyView {
-        view! {
-            <div class="p-4" data-testid="sport-config-configuration">
-                <p>{"Generic Sport Plugin Configuration UI"}</p>
-            </div>
-        }
-        .into_any()
+        view! { <GenericSportConfigForm /> }.into_any()
     }
+}
+
+#[component]
+pub fn GenericSportConfigForm() -> impl IntoView {
+    // --- Hooks, Navigation & global state ---
+    let UseQueryNavigationReturn {
+        update,
+        path,
+        query_string,
+        ..
+    } = use_query_navigation();
+
+    let is_new = move || path.read().ends_with("/new_pa") || path.read().is_empty();
+    let sport_query = use_query::<SportParams>();
+    let id = Signal::derive(move || {
+        if is_new() {
+            None
+        } else {
+            sport_query.get().map(|ap| ap.sport_id).unwrap_or(None)
+        }
+    });
 }

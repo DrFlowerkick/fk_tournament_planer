@@ -10,9 +10,9 @@ export const POSTAL_IDS = {
     btnEdit: "btn-edit-address",
     preview: {
       root: "address-preview",
-      id: "preview-id",
-      version: "preview-version",
-      name: "preview-name",
+      id: "preview-address-id",
+      version: "preview-address-version",
+      name: "preview-address-name",
       street: "preview-street",
       postalLocality: "preview-postal_locality",
       postalCode: "preview-postal_code",

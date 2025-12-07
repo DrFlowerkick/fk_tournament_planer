@@ -9,12 +9,3 @@ pub mod server_fn_test_support;
 
 pub use edit::*;
 pub use search::*;
-
-use leptos::Params;
-use leptos_router::params::Params;
-use uuid::Uuid;
-
-#[derive(Params, Clone, PartialEq, Eq, Debug)]
-pub struct AddressParams {
-    pub address_id: Option<Uuid>,
-}

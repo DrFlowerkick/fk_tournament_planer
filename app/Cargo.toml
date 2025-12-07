@@ -8,6 +8,7 @@ license = "MIT"
 default = []
 test-mock = []
 hydrate = [
+    "app_utils/hydrate",
     "leptos/hydrate",
     "leptos-axum-socket/hydrate",
     "cr_leptos_axum_socket/hydrate",
@@ -18,6 +19,7 @@ hydrate = [
     "uuid/js",
 ]
 ssr = [
+    "app_utils/ssr",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
@@ -58,3 +60,4 @@ thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 serde_json.workspace = true
+app_utils = { path = "../app_utils" }

@@ -4,8 +4,6 @@ use crate::error::{AppError, AppResult};
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::CoreState;
 use app_core::{SportConfig, utils::id_version::IdVersion};
-#[cfg(not(feature = "test-mock"))]
-use db_postgres::schema::sport_configs::config;
 use leptos::prelude::*;
 use serde_json::Value;
 #[cfg(not(feature = "test-mock"))]
@@ -79,7 +77,6 @@ async fn list_sport_configs_inner(
         intent = intent.as_deref().unwrap_or(""),
         // tiny hints only; avoid PII/body dumps
         name_len = name.len(),
-        locality_len = locality.len()
     )
 )]
 #[allow(clippy::too_many_arguments)]

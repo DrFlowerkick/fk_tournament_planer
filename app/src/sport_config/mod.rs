@@ -8,22 +8,12 @@ pub mod server_fn;
 #[cfg(feature = "test-mock")]
 pub mod server_fn_test_support;
 
+use app_utils::params::SportParams;
 pub use edit::SportConfigForm;
-use leptos::{Params, prelude::*};
-use leptos_router::{hooks::use_query, params::Params};
+use leptos::prelude::*;
+use leptos_router::hooks::use_query;
 pub use search::SearchSportConfig;
 pub use select_sport::SelectSportPlugin;
-use uuid::Uuid;
-
-#[derive(Params, Clone, PartialEq, Eq, Debug)]
-pub struct SportParams {
-    pub sport_id: Option<Uuid>,
-}
-
-#[derive(Params, Clone, PartialEq, Eq, Debug)]
-pub struct SportConfigParams {
-    pub sport_config_id: Option<Uuid>,
-}
 
 #[component]
 pub fn SportConfigPage() -> impl IntoView {

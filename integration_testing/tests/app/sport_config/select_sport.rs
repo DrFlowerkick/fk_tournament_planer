@@ -1,5 +1,5 @@
 use crate::common::{get_element_by_test_id, init_test_state, set_url};
-use app::{global_state::GlobalState, sport_config::SelectSportPlugin};
+use app::{provide_global_state, sport_config::SelectSportPlugin};
 use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,
@@ -10,7 +10,6 @@ use leptos::{
 };
 use leptos_axum_socket::provide_socket_context;
 use leptos_router::components::Router;
-use reactive_stores::Store;
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
@@ -19,13 +18,13 @@ async fn test_plugin_selection_renders() {
     let ts = init_test_state();
 
     // Set initial URL
-    set_url("/sport-config");
+    set_url("/sport");
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(body(), move || {
         provide_socket_context();
         provide_context(core.clone());
-        provide_context(Store::new(GlobalState::new()));
+        provide_global_state();
         view! {
             <Router>
                 <SelectSportPlugin />

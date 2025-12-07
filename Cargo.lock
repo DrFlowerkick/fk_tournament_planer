@@ -77,6 +77,7 @@ name = "app"
 version = "0.4.0"
 dependencies = [
  "app_core",
+ "app_utils",
  "cfg-if",
  "cr_leptos_axum_socket",
  "cr_single_instance",
@@ -112,6 +113,19 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
+name = "app_utils"
+version = "0.1.0"
+dependencies = [
+ "app_core",
+ "gloo-timers",
+ "leptos",
+ "leptos_router",
+ "reactive_stores",
+ "sport_plugin_manager",
  "uuid",
 ]
 
@@ -1129,7 +1143,9 @@ version = "0.4.0"
 dependencies = [
  "anyhow",
  "app_core",
+ "app_utils",
  "leptos",
+ "leptos_router",
  "serde",
  "serde_json",
  "shared",
@@ -1518,6 +1534,7 @@ dependencies = [
  "anyhow",
  "app",
  "app_core",
+ "app_utils",
  "async-trait",
  "chrono",
  "cr_single_instance",

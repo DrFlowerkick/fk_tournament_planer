@@ -2,6 +2,10 @@
 
 use crate::{
     AppError,
+    sport_config::server_fn::{list_sport_configs, load_sport_config},
+};
+use app_core::{CrTopic, SportConfig};
+use app_utils::{
     components::{
         banner::AcknowledgmentAndNavigateBanner,
         set_id_in_query_input_dropdown::{
@@ -10,12 +14,8 @@ use crate::{
     },
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    sport_config::{
-        SportConfigParams, SportParams,
-        server_fn::{list_sport_configs, load_sport_config},
-    },
+    params::{SportConfigParams, SportParams},
 };
-use app_core::{CrTopic, SportConfig};
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
 use leptos::{logging::log, prelude::*};
@@ -222,15 +222,7 @@ pub fn SearchSportConfig() -> impl IntoView {
                                     {move || {
                                         if let Some(Ok(sport_config)) = sport_config_res.get() {
                                             if sport_config.id_version.get_id().is_some() {
-                                                view! {
-                                                    <div
-                                                        class="card w-full bg-base-200 shadow-md mt-4"
-                                                        data-testid="sport-config-preview"
-                                                    >
-                                                        {sp.render_preview(&sport_config)}
-                                                    </div>
-                                                }
-                                                    .into_any()
+                                                sp.render_preview(&sport_config)
                                             } else {
                                                 view! {
                                                     <div class="mt-4">

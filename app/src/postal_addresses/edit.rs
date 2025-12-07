@@ -1,14 +1,14 @@
-use super::{
-    AddressParams,
-    server_fn::{SavePostalAddress, load_postal_address},
-};
-use crate::{
-    AppError,
+//! Postal Address Edit Module
+
+use super::server_fn::{SavePostalAddress, load_postal_address};
+use crate::AppError;
+use app_core::{PaValidationField, PostalAddress};
+use app_utils::{
     components::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    params::AddressParams,
 };
-use app_core::{PaValidationField, PostalAddress};
 use isocountry::CountryCode;
 use leptos::prelude::*;
 #[cfg(feature = "test-mock")]

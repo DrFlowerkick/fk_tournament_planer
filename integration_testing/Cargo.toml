@@ -16,6 +16,7 @@ test-mock = [
 ]
 hydrate = [
     "app/hydrate",
+    "app_utils/hydrate",
     "leptos/hydrate",
     "dep:wasm-bindgen-test",
     "leptos-axum-socket/hydrate",
@@ -24,6 +25,7 @@ hydrate = [
 ]
 ssr = [
     "app/ssr",
+    "app_utils/ssr",
     "leptos/ssr",
     "leptos_router/ssr",
     "leptos-axum-socket/ssr",
@@ -69,3 +71,4 @@ url.workspace = true
 uuid.workspace = true
 wasm-bindgen-test = { workspace = true, optional = true }
 web-sys = { workspace = true, features = ["KeyboardEventInit"] }
+app_utils = { path = "../app_utils" }
