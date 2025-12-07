@@ -6,7 +6,7 @@ use server_fn::codec::JsonEncoding;
 use std::fmt::Display;
 use thiserror::Error;
 
-use app_core::{DbError, utils::validation::ValidationErrors};
+use app_core::{DbError, utils::validation::ValidationErrors, SportError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error)]
 pub enum AppError {
@@ -25,6 +25,10 @@ pub enum AppError {
     /// Your own DB/domain errors (serialized as string over the wire)
     #[error("database error: {0}")]
     Db(String),
+
+    /// sport error
+    #[error("sport error: {0}")]
+    Sport(String),
 
     /// generic error
     #[error("generic error: {0}")]
@@ -45,6 +49,13 @@ impl FromServerFnError for AppError {
 impl From<DbError> for AppError {
     fn from(e: DbError) -> Self {
         AppError::Db(e.to_string())
+    }
+}
+
+// since SportError does not support serde, we have to convert SportError to string
+impl From<SportError> for AppError {
+    fn from(e: SportError) -> Self {
+        AppError::Sport(e.to_string())
     }
 }
 

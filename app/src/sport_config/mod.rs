@@ -5,6 +5,9 @@ mod search;
 mod select_sport;
 pub mod server_fn;
 
+#[cfg(feature = "test-mock")]
+pub mod server_fn_test_support;
+
 pub use edit::SportConfigForm;
 use leptos::{Params, prelude::*};
 use leptos_router::{hooks::use_query, params::Params};

@@ -1,4 +1,3 @@
-#![cfg_attr(feature = "test-mock", allow(unused_imports))]
 // server function for postal address
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
@@ -8,6 +7,7 @@ use app_core::PostalAddress;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
+#[cfg(not(feature = "test-mock"))]
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};

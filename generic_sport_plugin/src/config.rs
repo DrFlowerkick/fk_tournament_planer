@@ -16,7 +16,6 @@ use std::time::Duration;
 ///     "hard_cap": 30,
 ///     "victory_points_win": 1.0,
 ///     "victory_points_draw": 0.0,
-///     "score_free_ticket": 8,
 ///     "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
 /// }
 /// ```
@@ -30,7 +29,6 @@ use std::time::Duration;
 ///     "hard_cap": 15,
 ///     "victory_points_win": 1.0,
 ///     "victory_points_draw": 0.0,
-///     "score_free_ticket": 5,
 ///     "expected_match_duration_minutes": { "secs": 1200, "nanos": 0 }
 /// }
 /// ```
@@ -51,9 +49,6 @@ pub struct GenericSportConfig {
     pub victory_points_win: f32,
     /// victory points gained by a draw
     pub victory_points_draw: f32,
-    /// score points gained by a free ticket (see Swiss system)
-    /// Free ticket wins score_free_ticket to 0
-    pub score_free_ticket: u16,
     /// expected maximum duration of a match in minutes
     pub expected_match_duration_minutes: Duration,
 }
@@ -67,7 +62,6 @@ impl Default for GenericSportConfig {
             hard_cap: None,
             victory_points_win: 1.0,
             victory_points_draw: 0.5,
-            score_free_ticket: 1,
             expected_match_duration_minutes: Duration::from_secs(30 * 60),
         }
     }
@@ -125,11 +119,6 @@ impl GenericSportConfig {
             return Err(SportError::InvalidConfig(
                 "victory_points_win must be greater than or equal to victory_points_draw"
                     .to_string(),
-            ));
-        }
-        if self.score_free_ticket == 0 {
-            return Err(SportError::InvalidConfig(
-                "score_free_ticket must be at least 1".to_string(),
             ));
         }
         if self.expected_match_duration_minutes.as_secs() == 0 {

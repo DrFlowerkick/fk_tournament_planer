@@ -1,9 +1,10 @@
 // configuration and handling of sport specific settings
 
 use crate::{
-    Core, CrMsg, CrTopic, DbResult,
+    Core, CrMsg, CrTopic, DbResult, SportResult,
     utils::id_version::{IdVersion, VersionId},
 };
+use anyhow::Context;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use uuid::Uuid;
@@ -59,6 +60,14 @@ impl Core<SportConfigState> {
     }
     pub fn get_mut(&mut self) -> &mut SportConfig {
         &mut self.state.config
+    }
+    pub fn validate(&self) -> SportResult<()> {
+        let sport_plugin = self
+            .sport_plugins
+            .get(&self.state.config.sport_id)
+            .context("Invalid sport id")?;
+        sport_plugin.validate_config_values(&self.state.config)?;
+        Ok(())
     }
 
     pub async fn load(&mut self, id: Uuid) -> DbResult<Option<&SportConfig>> {

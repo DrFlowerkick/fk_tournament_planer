@@ -26,7 +26,5 @@ pub fn SportConfigForm() -> impl IntoView {
             None
         }
     };
-    view! {
-        {move || sport_plugin().map(|plugin| plugin.render_configuration())}
-    }
+    view! { {move || sport_plugin().map(|plugin| plugin.render_configuration())} }
 }
