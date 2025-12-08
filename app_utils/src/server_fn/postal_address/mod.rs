@@ -1,8 +1,13 @@
+//! Postal Address Server Functions Module
+
+#[cfg(feature = "test-mock")]
+pub mod test_support;
+
 // server function for postal address
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-use crate::AppError;
-use crate::AppResult;
+use crate::error::AppError;
+use crate::error::AppResult;
 use app_core::PostalAddress;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
@@ -114,7 +119,7 @@ pub async fn save_postal_address(
 }
 
 #[cfg(feature = "test-mock")]
-pub use super::server_fn_test_support::SavePostalAddress;
+pub use test_support::SavePostalAddress;
 
 #[cfg(feature = "test-mock")]
 #[allow(clippy::too_many_arguments)]

@@ -1,9 +1,8 @@
 //! Postal Address Search Component
 
-use super::server_fn::{list_postal_addresses, load_postal_address};
-use crate::AppError;
 use app_core::{CrTopic, PostalAddress};
 use app_utils::{
+    error::AppError,
     components::{
         banner::AcknowledgmentAndNavigateBanner,
         set_id_in_query_input_dropdown::{
@@ -13,6 +12,7 @@ use app_utils::{
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::AddressParams,
+    server_fn::postal_address::{list_postal_addresses, load_postal_address}
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;

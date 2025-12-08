@@ -1,13 +1,17 @@
 //! Implementation of sport preview for the generic sport plugin
 
+use std::time::Duration;
+
 use super::GenericSportPlugin;
 use app_core::SportConfig;
 use app_utils::{
+    global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::{SportConfigParams, SportParams},
 };
 use leptos::prelude::*;
 use leptos_router::hooks::use_query;
+use reactive_stores::Store;
 use shared::SportConfigWebUi;
 
 impl SportConfigWebUi for GenericSportPlugin {
@@ -103,13 +107,35 @@ pub fn GenericSportConfigForm() -> impl IntoView {
         ..
     } = use_query_navigation();
 
-    let is_new = move || path.read().ends_with("/new_pa") || path.read().is_empty();
+    let is_new = move || path.read().ends_with("/new_sc") || path.read().is_empty();
     let sport_query = use_query::<SportParams>();
-    let id = Signal::derive(move || {
+    let sport_config_query = use_query::<SportConfigParams>();
+    let sport_config_id = Signal::derive(move || {
         if is_new() {
             None
         } else {
-            sport_query.get().map(|ap| ap.sport_id).unwrap_or(None)
+            sport_config_query
+                .get()
+                .map(|sc| sc.sport_config_id)
+                .unwrap_or(None)
         }
     });
+
+    let state = expect_context::<Store<GlobalState>>();
+    let return_after_sport_config_edit = state.return_after_sport_config_edit();
+    let cancel_target =
+        move || format!("{}{}", return_after_sport_config_edit.get(), query_string.get());
+    
+    // --- Signals for form fields ---
+    let set_name = RwSignal::new(0_u16);
+    let set_sets_to_win = RwSignal::new(None::<u16>);
+    let set_score_to_win = RwSignal::new(None::<u16>);
+    let set_win_by_margin = RwSignal::new(None::<u16>);
+    let set_hard_cap = RwSignal::new(None::<u16>);
+    let set_victory_points_win = RwSignal::new(0.0_f32);
+    let set_victory_points_draw = RwSignal::new(0.0_f32);
+    let set_expected_match_duration_minutes = RwSignal::new(Duration::from_secs(0));
+    let set_version = RwSignal::new(0);
+
+    // --- Server Resources ---
 }

@@ -1,11 +1,9 @@
 // web app ui
 
-mod error;
 pub mod postal_addresses;
 pub mod sport_config;
 
 use app_utils::global_state::GlobalState;
-use error::*;
 use generic_sport_plugin::GenericSportPlugin;
 use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;

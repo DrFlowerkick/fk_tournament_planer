@@ -1,11 +1,8 @@
 //! Sport Configuration Search Component
 
-use crate::{
-    AppError,
-    sport_config::server_fn::{list_sport_configs, load_sport_config},
-};
 use app_core::{CrTopic, SportConfig};
 use app_utils::{
+    error::AppError,
     components::{
         banner::AcknowledgmentAndNavigateBanner,
         set_id_in_query_input_dropdown::{
@@ -15,6 +12,7 @@ use app_utils::{
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::{SportConfigParams, SportParams},
+    server_fn::sport_config::{list_sport_configs, load_sport_config},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;

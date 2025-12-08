@@ -1,4 +1,7 @@
-//! Server functions for sport configuration.
+//! Sport Config Server Functions Module
+
+#[cfg(feature = "test-mock")]
+pub mod test_support;
 
 use crate::error::{AppError, AppResult};
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
@@ -95,7 +98,7 @@ pub async fn save_sport_config(
 }
 
 #[cfg(feature = "test-mock")]
-pub use super::server_fn_test_support::SaveSportConfig;
+pub use test_support::SaveSportConfig;
 
 #[cfg(feature = "test-mock")]
 pub async fn save_sport_config(

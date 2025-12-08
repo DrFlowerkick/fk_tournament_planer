@@ -6,7 +6,7 @@ license = "MIT"
 
 [features]
 default = []
-test-mock = []
+test-mock = ["app_utils/test-mock"]
 hydrate = [
     "app_utils/hydrate",
     "leptos/hydrate",
@@ -39,13 +39,12 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 
 [dependencies]
 app_core = { path = "../app_core" }
-cfg-if.workspace = true
+app_utils = { path = "../app_utils" }
 cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket" }
 cr_single_instance = { path = "../cr_single_instance" }
 db_postgres = { path = "../db_postgres", optional = true }
 generic_sport_plugin = { path = "../generic_sport_plugin" }
 gloo-timers.workspace = true
-http.workspace = true
 isocountry.workspace = true
 leptos.workspace = true
 leptos-axum-socket.workspace = true
@@ -53,11 +52,6 @@ leptos_axum = { workspace = true, optional = true }
 leptos_meta.workspace = true
 leptos_router.workspace = true
 reactive_stores.workspace = true
-serde.workspace = true
 shared = { path = "../shared" }
 sport_plugin_manager = { path = "../sport_plugin_manager" }
-thiserror.workspace = true
-tracing.workspace = true
 uuid.workspace = true
-serde_json.workspace = true
-app_utils = { path = "../app_utils" }

@@ -1,13 +1,13 @@
 //! Postal Address Edit Module
 
-use super::server_fn::{SavePostalAddress, load_postal_address};
-use crate::AppError;
 use app_core::{PaValidationField, PostalAddress};
 use app_utils::{
     components::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
+    error::AppError,
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::AddressParams,
+    server_fn::postal_address::{SavePostalAddress, load_postal_address},
 };
 use isocountry::CountryCode;
 use leptos::prelude::*;

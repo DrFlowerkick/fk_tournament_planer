@@ -1,5 +1,5 @@
-use super::server_fn::save_postal_address_inner;
-use crate::AppError;
+use super::save_postal_address_inner;
+use crate::error::AppError;
 use app_core::PostalAddress;
 use leptos::server_fn::{Protocol, ServerFn, client::Client, server::Server};
 use serde::{Deserialize, Serialize};

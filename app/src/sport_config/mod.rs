@@ -3,10 +3,6 @@
 mod edit;
 mod search;
 mod select_sport;
-pub mod server_fn;
-
-#[cfg(feature = "test-mock")]
-pub mod server_fn_test_support;
 
 use app_utils::params::SportParams;
 pub use edit::SportConfigForm;
