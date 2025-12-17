@@ -1,5 +1,5 @@
 use anyhow::Result;
-use app_core::{ClientRegistryPort, CrMsg, CrTopic};
+use app_core::{ClientRegistryPort, CrMsg, CrResult, CrTopic};
 use cr_single_instance::{CrNoticeStream, CrSingleInstance};
 use futures_util::{StreamExt, future::join_all};
 use std::{
@@ -94,7 +94,7 @@ pub async fn publish_address_updated(
     reg: &dyn ClientRegistryPort,
     id: Uuid,
     version: u32,
-) -> anyhow::Result<()> {
+) -> CrResult<()> {
     let topic = CrTopic::Address(id);
     let notice = build_address_updated(id, version);
     reg.publish(topic, notice).await
@@ -105,7 +105,7 @@ pub async fn subscribe_with_timeout(
     reg: Arc<CrSingleInstance>,
     topic: CrTopic,
     deadline: Duration,
-) -> anyhow::Result<CrNoticeStream> {
+) -> CrResult<CrNoticeStream> {
     timeout(deadline, reg.subscribe(topic))
         .await
         .map_err(|_| anyhow::anyhow!("subscribe() timed out after {deadline:?}"))?

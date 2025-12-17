@@ -1,6 +1,7 @@
 // contains core functionality
 
 mod entrant;
+mod errors;
 mod group;
 mod match_;
 mod ports;
@@ -15,6 +16,7 @@ mod tournament;
 pub mod utils;
 
 pub use entrant::*;
+pub use errors::*;
 pub use group::*;
 pub use match_::*;
 pub use ports::*;

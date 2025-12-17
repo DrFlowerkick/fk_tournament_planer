@@ -20,13 +20,12 @@ async fn test_config_search_renders() {
     let ts = init_test_state();
 
     // Seed a config
-    let config = GenericSportConfig::default();
-    let config = SportConfig {
-        sport_id: ts.generic_sport_id,
-        name: "Test Config 1".to_string(),
-        config: serde_json::to_value(&config).unwrap(),
-        ..Default::default()
-    };
+    let generic_config = GenericSportConfig::default();
+    let mut config = SportConfig::default();
+    config
+        .set_name("Test Config 1")
+        .set_sport_id(ts.generic_sport_id)
+        .set_config(serde_json::to_value(&generic_config).unwrap());
     let id = ts.db.seed_sport_config(config.clone());
 
     // 1. Set URL with sport_id

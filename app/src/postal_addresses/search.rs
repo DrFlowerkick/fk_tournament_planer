@@ -2,17 +2,17 @@
 
 use app_core::{CrTopic, PostalAddress};
 use app_utils::{
-    error::AppError,
     components::{
         banner::AcknowledgmentAndNavigateBanner,
         set_id_in_query_input_dropdown::{
             SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
         },
     },
+    error::AppError,
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::AddressParams,
-    server_fn::postal_address::{list_postal_addresses, load_postal_address}
+    server_fn::postal_address::{list_postal_addresses, load_postal_address},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
@@ -85,14 +85,14 @@ pub fn SearchPostalAddress() -> impl IntoView {
                     address_id: Some(id),
                 }) => match load_postal_address(id).await {
                     Ok(Some(pa)) => Ok(pa),
-                    Ok(None) => Err(AppError::Generic("Postal Address ID not found".to_string())),
+                    Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
                     Err(e) => Err(e),
                 },
                 Ok(AddressParams { address_id: None }) => {
                     // no address id: no loading delay
                     Ok(Default::default())
                 }
-                Err(e) => Err(AppError::Generic(e.to_string())),
+                Err(e) => Err(AppError::Other(e.to_string())),
             }
         },
     );

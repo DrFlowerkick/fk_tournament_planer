@@ -22,3 +22,4 @@ axum = { workspace = true, optional = true }
 axum-macros = { workspace = true, optional = true }
 leptos.workspace = true
 leptos-axum-socket = { workspace = true, optional = true }
+serde_json.workspace = true

@@ -6,22 +6,39 @@
 
 use crate::{
     EntrantGroupScore, Match, SportConfig,
-    utils::id_version::{IdVersion, VersionId},
+    utils::{
+        id_version::{IdVersion, VersionId},
+        validation::ValidationErrors,
+    },
 };
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{any::Any, sync::Arc, time::Duration};
 use thiserror::Error;
 use uuid::Uuid;
 
 /// Errors that can occur during sport-specific operations.
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error, Serialize, Deserialize)]
 pub enum SportError {
     #[error("Invalid score format: {0}")]
     InvalidScore(String),
-    #[error("Configuration is missing or invalid: {0}")]
-    InvalidConfig(String),
-    #[error("An unexpected error occurred: {0}")]
-    Other(#[from] anyhow::Error),
+    #[error("Unknown Sport ID: {0}")]
+    UnknownSportId(Uuid),
+    #[error("Invalid Sport ID: {0}, expected sport ID: {1}")]
+    InvalidSportId(Uuid, Uuid),
+    #[error("Invalid Json configuration: {0}")]
+    InvalidJsonConfig(String),
+    #[error("Configuration is invalid: {0}")]
+    InvalidConfig(#[from] ValidationErrors),
+    #[error("internal error: {0}")]
+    Other(String),
+}
+
+impl From<anyhow::Error> for SportError {
+    fn from(err: anyhow::Error) -> Self {
+        tracing::error!("Database Error converted to string: {:?}", err);
+        Self::Other(err.to_string())
+    }
 }
 
 pub type SportResult<T> = Result<T, SportError>;
@@ -42,7 +59,11 @@ pub trait SportPort: VersionId + Send + Sync + Any {
     fn get_default_config(&self) -> Value;
 
     /// Validates the sport-specific part of a SportConfig.
-    fn validate_config_values(&self, config: &SportConfig) -> SportResult<()>;
+    fn validate_config_values(
+        &self,
+        config: &SportConfig,
+        validation_errors: ValidationErrors,
+    ) -> SportResult<()>;
 
     /// Estimates the maximum duration of a single match based on the sport-specific configuration.
     fn estimate_match_duration(&self, config: &SportConfig) -> SportResult<Duration>;

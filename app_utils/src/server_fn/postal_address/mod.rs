@@ -187,8 +187,7 @@ pub async fn save_postal_address_inner(
         .set_postal_code(postal_code)
         .set_locality(locality)
         .set_region(region.unwrap_or_default())
-        .set_country(country)
-        .validate()?;
+        .set_country(country);
 
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {

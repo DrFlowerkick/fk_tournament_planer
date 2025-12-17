@@ -1,8 +1,9 @@
 // database port
 
-use crate::{PostalAddress, SportConfig, utils::validation::ValidationErrors};
+use crate::{PostalAddress, SportConfig};
 use async_trait::async_trait;
-use std::{any::Any, fmt::Display};
+use serde::{Deserialize, Serialize};
+use std::any::Any;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -37,7 +38,7 @@ pub trait DbpSportConfig: Send + Sync {
     ) -> DbResult<Vec<SportConfig>>;
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Clone, Error, Serialize, Deserialize)]
 pub enum DbError {
     /// row id is nil
     #[error("id of row is nil")]
@@ -50,10 +51,6 @@ pub enum DbError {
     /// row version is out of range
     #[error("version of row is out of range of u32")]
     RowVersionOutOfRange,
-
-    /// validation error
-    #[error("validation error: {0}")]
-    ValidationErrors(String),
 
     /// Update could ot find matching id + version
     #[error("optimistic lock conflict")]
@@ -75,19 +72,19 @@ pub enum DbError {
     #[error("check violation{0:?}")]
     CheckViolation(Option<String>),
 
-    // transient DB problems (retry may work)
+    /// transient DB problems (retry may work)
     #[error("serialization failure")]
     SerializationFailure,
 
-    // connection, pool, or other DB errors
-    #[error(transparent)]
-    Other(#[from] anyhow::Error),
+    /// connection, pool, or other DB errors
+    #[error("internal error: {0}")]
+    Other(String),
 }
 
-// since ValidationErrors requires generic parameter F, we have to convert ValidationErrors to string
-impl<F: Display> From<ValidationErrors<F>> for DbError {
-    fn from(e: ValidationErrors<F>) -> Self {
-        DbError::ValidationErrors(e.to_string())
+impl From<anyhow::Error> for DbError {
+    fn from(err: anyhow::Error) -> Self {
+        tracing::error!("Database Error converted to string: {:?}", err);
+        Self::Other(err.to_string())
     }
 }
 

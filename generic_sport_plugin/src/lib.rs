@@ -11,12 +11,11 @@ use app_core::{
     utils::{
         id_version::{IdVersion, VersionId},
         namespace::project_namespace,
+        validation::ValidationErrors,
     },
 };
 use config::GenericSportConfig;
 use uuid::Uuid;
-
-// ToDo: leptos component to configure generic sport config
 
 /// A generic implementation of the `SportPort`, which may be used,
 /// if a specific sport plugin is not available.
@@ -28,7 +27,7 @@ use uuid::Uuid;
 /// ```
 /// use generic_sport_plugin::GenericSportPlugin;
 /// use app_core::{SportPort, SportConfig, Match};
-/// use app_core::utils::id_version::{IdVersion, VersionId};
+/// use app_core::utils::{id_version::{IdVersion, VersionId}, validation::ValidationErrors};
 /// use serde_json::json;
 /// use uuid::Uuid;
 ///
@@ -44,15 +43,11 @@ use uuid::Uuid;
 ///     "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
 /// });
 ///
-/// let config = SportConfig {
-///     id_version: IdVersion::new(Uuid::new_v4(), 1),
-///     sport_id,
-///     name: "Soccer".to_string(),
-///     config: config_json,
-/// };
+/// let mut config = SportConfig::new(IdVersion::new(Uuid::new_v4(), 0));
+/// config.set_name("Soccer").set_sport_id(sport_id).set_config(config_json.clone());
 ///
 /// // Validate configuration
-/// assert!(plugin.validate_config_values(&config).is_ok());
+/// assert!(plugin.validate_config_values(&config, ValidationErrors::new()).is_ok());
 ///
 /// // Validate a valid score (2:1)
 /// let match_score = Match::new_played(
@@ -77,14 +72,16 @@ impl GenericSportPlugin {
         let sport_name = "generic_sport";
         Uuid::new_v5(&project_namespace(), sport_name.as_bytes())
     }
-    fn validate_config(&self, config: &SportConfig) -> SportResult<GenericSportConfig> {
-        if config.sport_id != self.id() {
-            return Err(SportError::InvalidConfig(
-                "SportConfig sport_id does not match GenericSportPlugin id".to_string(),
-            ));
+    fn validate_config(
+        &self,
+        config: &SportConfig,
+        errs: ValidationErrors,
+    ) -> SportResult<GenericSportConfig> {
+        if config.get_sport_id() != self.id() {
+            return Err(SportError::InvalidSportId(config.get_sport_id(), self.id()));
         }
-        let generic_config = GenericSportConfig::parse_config(config)?;
-        generic_config.validate()?;
+        let generic_config = GenericSportConfig::parse_config(config.get_config().clone())?;
+        generic_config.validate(errs)?;
         Ok(generic_config)
     }
     fn validate_final_score_internal(
@@ -159,13 +156,17 @@ mod tests {
             "score_free_ticket": 1,
             "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
         });
-        let sport_config = SportConfig {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
-            sport_id: plugin.id(),
-            name: "Soccer".to_string(),
-            config,
-        };
-        assert!(plugin.validate_config(&sport_config).is_ok());
+        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let mut sport_config = SportConfig::new(id_version);
+        sport_config
+            .set_sport_id(plugin.id())
+            .set_name("Soccer")
+            .set_config(config);
+        assert!(
+            plugin
+                .validate_config(&sport_config, ValidationErrors::new())
+                .is_ok()
+        );
     }
 
     #[test]
@@ -181,13 +182,17 @@ mod tests {
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });
-        let sport_config = SportConfig {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
-            sport_id: plugin.id(),
-            name: "Volleyball".to_string(),
-            config,
-        };
-        assert!(plugin.validate_config(&sport_config).is_ok());
+        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let mut sport_config = SportConfig::new(id_version);
+        sport_config
+            .set_sport_id(plugin.id())
+            .set_name("Volleyball")
+            .set_config(config);
+        assert!(
+            plugin
+                .validate_config(&sport_config, ValidationErrors::new())
+                .is_ok()
+        );
     }
 
     #[test]
@@ -203,12 +208,12 @@ mod tests {
             "score_free_ticket": 1,
             "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
         });
-        let sport_config = SportConfig {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
-            sport_id: plugin.id(),
-            name: "Soccer".to_string(),
-            config,
-        };
+        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let mut sport_config = SportConfig::new(id_version);
+        sport_config
+            .set_sport_id(plugin.id())
+            .set_name("Soccer")
+            .set_config(config);
 
         let match_score = Match::new_played(
             Uuid::new_v4(),
@@ -252,12 +257,12 @@ mod tests {
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });
-        let sport_config = SportConfig {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
-            sport_id: plugin.id(),
-            name: "Volleyball".to_string(),
-            config,
-        };
+        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let mut sport_config = SportConfig::new(id_version);
+        sport_config
+            .set_sport_id(plugin.id())
+            .set_name("Volleyball")
+            .set_config(config);
 
         // Valid score 3:0
         let match_score = Match::new_played(

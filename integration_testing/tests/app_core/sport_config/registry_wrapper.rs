@@ -1,4 +1,4 @@
-use app_core::{CrMsg, DbError};
+use app_core::{CoreError, CrError, CrMsg, DbError};
 use uuid::Uuid;
 
 use integration_testing::port_fakes::*;
@@ -9,7 +9,7 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
     let (mut core, _db_fake, cr_fake) = make_core_sport_config_state_with_fakes();
 
     // Arrange: new config in state
-    *core.get_mut() = make_sport_config("Config A", Uuid::new_v4());
+    *core.get_mut() = make_sport_config("Config A", &core);
 
     // Act: persist (DB succeeds) → should publish once
     let saved = core
@@ -23,18 +23,15 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
 
     match &notices[0] {
         CrMsg::SportConfigUpdated { id, version } => {
-            let persisted_id = saved
-                .id_version
-                .get_id()
-                .expect("id should exist after insert");
+            let persisted_id = saved.get_id().expect("id should exist after insert");
             assert_eq!(*id, persisted_id, "published id must match saved id");
             assert_eq!(
                 Some(*version),
-                saved.id_version.get_version(),
+                saved.get_version(),
                 "published version must match saved version"
             );
             assert_eq!(
-                saved.id_version.get_version(),
+                saved.get_version(),
                 Some(0),
                 "insert should start at version 0"
             );
@@ -52,7 +49,7 @@ async fn given_db_failure_when_save_then_no_publish_occurs() {
     db_fake.fail_save_sc_once();
 
     // Put something in state so that save attempts to persist
-    *core.get_mut() = make_sport_config("Config B", Uuid::new_v4());
+    *core.get_mut() = make_sport_config("Config B", &core);
 
     // Act
     let err = core
@@ -62,10 +59,9 @@ async fn given_db_failure_when_save_then_no_publish_occurs() {
 
     // Assert error variant/message
     match err {
-        DbError::Other(e) => assert!(
-            e.to_string().contains("injected save failure"),
-            "unexpected error: {e}"
-        ),
+        CoreError::Db(DbError::Other(e)) => {
+            assert!(e.contains("injected save failure"), "unexpected error: {e}")
+        }
         other => panic!("unexpected error variant: {other:?}"),
     }
 
@@ -84,7 +80,7 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
     let (mut core, _db_fake, cr_fake) = make_core_sport_config_state_with_fakes();
 
     // Arrange: insert a new config (DB should succeed), but inject publish failure
-    *core.get_mut() = make_sport_config("Config C", Uuid::new_v4());
+    *core.get_mut() = make_sport_config("Config C", &core);
     cr_fake.fail_publish_once();
 
     // Act: expect error (publish fails after DB has persisted)
@@ -95,9 +91,8 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
 
     // Assert error shape/message
     match err {
-        DbError::Other(e) => assert!(
-            e.to_string().to_lowercase().contains("publish")
-                || e.to_string().to_lowercase().contains("failure"),
+        CoreError::Cr(CrError::Other(e)) => assert!(
+            e.to_lowercase().contains("publish") || e.to_lowercase().contains("failure"),
             "unexpected error: {e}"
         ),
         other => panic!("unexpected error variant: {other:?}"),
@@ -106,11 +101,11 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
     // DB part already succeeded → core state should now have an Existing id & version 0
     let after = core.get().clone();
     assert!(
-        after.id_version.get_id().is_some(),
+        after.get_id().is_some(),
         "id should be set after DB success even if publish failed"
     );
     assert_eq!(
-        after.id_version.get_version(),
+        after.get_version(),
         Some(0),
         "insert should set version 0 before publish"
     );
@@ -126,18 +121,21 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
 async fn given_read_operations_when_invoked_then_never_publish_anything() {
     let (mut core, _db_fake, cr_fake) = make_core_sport_config_state_with_fakes();
 
-    let sport_id = Uuid::new_v4();
+    let sport_id = core.sport_plugins.list()[0]
+        .get_id_version()
+        .get_id()
+        .unwrap();
     // Seed two entries via normal saves (which *do* publish)...
-    *core.get_mut() = make_sport_config("Seed0", sport_id);
+    *core.get_mut() = make_sport_config("Seed0", &core);
     core.save().await.expect("seed 0");
-    *core.get_mut() = make_sport_config("Seed1", sport_id);
+    *core.get_mut() = make_sport_config("Seed1", &core);
     core.save().await.expect("seed 1");
 
     // ...then clear the registry to focus purely on read calls.
     cr_fake.clear();
 
     // Act: load (existing id) and list
-    let any_id = core.get().id_version.get_id().unwrap_or_else(Uuid::new_v4);
+    let any_id = core.get().get_id().unwrap_or_else(Uuid::new_v4);
     let _ = core.load(any_id).await.expect("load ok");
     let _ = core
         .list_sport_configs(sport_id, None, Some(10))
@@ -157,21 +155,18 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
     let (mut core, _db_fake, cr_fake) = make_core_sport_config_state_with_fakes();
 
     // First insert
-    *core.get_mut() = make_sport_config("Delta", Uuid::new_v4());
+    *core.get_mut() = make_sport_config("Delta", &core);
     let first = core.save().await.expect("first save").clone();
-    let id = first
-        .id_version
-        .get_id()
-        .expect("id assigned on first save");
-    assert_eq!(first.id_version.get_version(), Some(0));
+    let id = first.get_id().expect("id assigned on first save");
+    assert_eq!(first.get_version(), Some(0));
 
     // Update same config (simulate a small change)
-    core.get_mut().name = "Delta Renamed".to_string();
+    core.get_mut().set_name("Delta Renamed");
 
     let second = core.save().await.expect("second save (update)");
-    assert_eq!(second.id_version.get_id().unwrap(), id);
+    assert_eq!(second.get_id().unwrap(), id);
     assert!(
-        second.id_version.get_version() > first.id_version.get_version(),
+        second.get_version() > first.get_version(),
         "update should bump version (monotonic)"
     );
 
@@ -183,7 +178,7 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
     match notices.last().unwrap() {
         CrMsg::SportConfigUpdated { id: nid, version } => {
             assert_eq!(*nid, id);
-            assert_eq!(Some(*version), second.id_version.get_version());
+            assert_eq!(Some(*version), second.get_version());
         }
         other => panic!("unexpected notice variant: {:?}", other),
     }

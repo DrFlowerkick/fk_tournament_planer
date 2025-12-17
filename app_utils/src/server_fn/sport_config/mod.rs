@@ -2,11 +2,12 @@
 
 #[cfg(feature = "test-mock")]
 pub mod test_support;
-
-use crate::error::{AppError, AppResult};
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-use app_core::CoreState;
-use app_core::{SportConfig, utils::id_version::IdVersion};
+use crate::error::AppError;
+use crate::error::AppResult;
+use app_core::SportConfig;
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
+use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
 use serde_json::Value;
 #[cfg(not(feature = "test-mock"))]
@@ -135,23 +136,21 @@ pub async fn save_sport_config_inner(
             return Err(AppError::NilIdUpdate);
         }
         let id_version = IdVersion::new(id, version);
-        mut_sc_core.id_version = id_version;
+        mut_sc_core.set_id_version(id_version);
         info!("saving_update");
     } else {
         info!("saving_create");
     }
 
     // set sport config data from Form inputs
-    mut_sc_core.name = name;
-    mut_sc_core.sport_id = sport_id;
-    mut_sc_core.config = config;
-    // validate before save
-    core.validate()?;
+    mut_sc_core.set_name(name);
+    mut_sc_core.set_sport_id(sport_id);
+    mut_sc_core.set_config(config);
 
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {
         Ok(saved) => {
-            info!(saved_id = %saved.id_version.get_id().unwrap(), "save_ok");
+            info!(saved_id = %saved.get_id().unwrap(), "save_ok");
             Ok(saved.clone())
         }
         Err(e) => {

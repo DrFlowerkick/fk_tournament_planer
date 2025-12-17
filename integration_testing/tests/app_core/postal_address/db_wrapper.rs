@@ -1,4 +1,4 @@
-use app_core::DbError;
+use app_core::{CoreError, DbError};
 use uuid::Uuid;
 
 use integration_testing::port_fakes::*;
@@ -66,7 +66,7 @@ async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchang
 
     // Assert propagated and state unchanged
     match err {
-        DbError::Other(e) => assert!(e.to_string().contains("injected get failure")),
+        CoreError::Db(DbError::Other(e)) => assert!(e.contains("injected get failure")),
         other => panic!("unexpected error variant: {other:?}"),
     }
     assert_eq!(
@@ -103,6 +103,15 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
 async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchanged() {
     let (mut core, db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
+    // Arrange a new address in state
+    core.get_mut()
+        .set_name("Gamma")
+        .set_street("Street 3")
+        .set_postal_code("10117")
+        .set_locality("Berlin")
+        .set_region("BE")
+        .set_country("DE");
+
     // Seed state
     let before = core.get().clone();
 
@@ -113,7 +122,7 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 
     // Assert propagated and state unchanged
     match err {
-        DbError::Other(e) => assert!(e.to_string().contains("injected save failure")),
+        CoreError::Db(DbError::Other(e)) => assert!(e.contains("injected save failure")),
         other => panic!("unexpected error variant: {other:?}"),
     }
     assert_eq!(
@@ -158,7 +167,7 @@ async fn given_only_limit_when_list_addresses_then_limit_is_respected() {
 
     for i in 0..5 {
         let nm = format!("Name{i}");
-        *core.get_mut() = make_addr(&nm, "S", "P", "C", "", "DE");
+        *core.get_mut() = make_addr(&nm, "S", "66666", "C", "", "DE");
         core.save().await.expect("seed save");
     }
 
@@ -181,7 +190,7 @@ async fn given_db_fake_failure_when_list_addresses_then_error_propagates() {
 
     // Assert propagated and state unchanged
     match err {
-        DbError::Other(e) => assert!(e.to_string().contains("injected list failure")),
+        CoreError::Db(DbError::Other(e)) => assert!(e.contains("injected list failure")),
         other => panic!("unexpected error variant: {other:?}"),
     }
 }

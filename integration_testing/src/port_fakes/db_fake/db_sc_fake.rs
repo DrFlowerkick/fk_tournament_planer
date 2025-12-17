@@ -11,7 +11,7 @@ impl DbpSportConfig for FakeDatabasePort {
         let mut guard = self.fail_next_get_sc.lock().unwrap();
         if *guard {
             *guard = false;
-            return Err(DbError::Other(anyhow::anyhow!("injected get failure")));
+            return Err(DbError::Other("injected get failure".into()));
         }
         Ok(self.sport_configs.lock().unwrap().get(&id).cloned())
     }
@@ -20,23 +20,23 @@ impl DbpSportConfig for FakeDatabasePort {
         let mut guard = self.fail_next_save_sc.lock().unwrap();
         if *guard {
             *guard = false;
-            return Err(DbError::Other(anyhow::anyhow!("injected save failure")));
+            return Err(DbError::Other("injected save failure".into()));
         }
 
         let mut guard = self.sport_configs.lock().unwrap();
         let mut new = config.clone();
-        if let Some(id) = config.id_version.get_id() {
+        if let Some(id) = config.get_id() {
             if let Some(existing) = guard.get(&id) {
-                let version = existing.id_version.get_version().unwrap() + 1;
-                new.id_version = IdVersion::new(id, version);
+                let version = existing.get_version().unwrap() + 1;
+                new.set_id_version(IdVersion::new(id, version));
             } else {
-                new.id_version = IdVersion::new(id, 0);
+                new.set_id_version(IdVersion::new(id, 0));
             }
         } else {
-            new.id_version = IdVersion::new(Uuid::new_v4(), 0);
+            new.set_id_version(IdVersion::new(Uuid::new_v4(), 0));
         }
 
-        guard.insert(new.id_version.get_id().unwrap(), new.clone());
+        guard.insert(new.get_id().unwrap(), new.clone());
         Ok(new)
     }
 
@@ -49,7 +49,7 @@ impl DbpSportConfig for FakeDatabasePort {
         let mut guard = self.fail_next_list_sc.lock().unwrap();
         if *guard {
             *guard = false;
-            return Err(DbError::Other(anyhow::anyhow!("injected list failure")));
+            return Err(DbError::Other("injected list failure".into()));
         }
 
         let filter = name_filter.map(|s| s.to_lowercase());
@@ -58,10 +58,10 @@ impl DbpSportConfig for FakeDatabasePort {
             .lock()
             .unwrap()
             .values()
-            .filter(|sc| sc.sport_id == sport_id)
+            .filter(|sc| sc.get_sport_id() == sport_id)
             .filter(|sc| {
                 if let Some(ref f) = filter {
-                    sc.name.to_lowercase().contains(f)
+                    sc.get_name().to_lowercase().contains(f)
                 } else {
                     true
                 }
@@ -69,8 +69,8 @@ impl DbpSportConfig for FakeDatabasePort {
             .cloned()
             .collect();
 
-        rows.sort_by(|a, b| match a.name.cmp(&b.name) {
-            std::cmp::Ordering::Equal => a.id_version.get_id().cmp(&b.id_version.get_id()),
+        rows.sort_by(|a, b| match a.get_name().cmp(&b.get_name()) {
+            std::cmp::Ordering::Equal => a.get_id().cmp(&b.get_id()),
             cmp => cmp,
         });
 

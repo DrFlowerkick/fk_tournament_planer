@@ -119,7 +119,9 @@ async fn test_search_postal_address() {
         .map(|c| c.name())
         .unwrap_or(&ts.country);
     assert!(preview_country.contains(expected_country_name));
-    let preview_id = get_element_by_test_id("preview-address-id").text_content().unwrap();
+    let preview_id = get_element_by_test_id("preview-address-id")
+        .text_content()
+        .unwrap();
     assert!(preview_id.contains(&id.to_string()));
     let preview_version = get_element_by_test_id("preview-address-version")
         .text_content()

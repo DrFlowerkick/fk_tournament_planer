@@ -46,12 +46,12 @@ impl TryFrom<DbSportConfig> for SportConfig {
         if r.version > u32::MAX as i64 {
             return Err(DbError::RowVersionOutOfRange);
         }
-        Ok(SportConfig {
-            id_version: IdVersion::new(r.id, r.version as u32),
-            sport_id: r.sport_id,
-            name: r.name,
-            config: r.config,
-        })
+        let id_version = IdVersion::new(r.id, r.version as u32);
+        let mut sc = SportConfig::new(id_version);
+        sc.set_sport_id(r.sport_id)
+            .set_name(r.name)
+            .set_config(r.config.clone());
+        Ok(sc)
     }
 }
 
@@ -68,9 +68,9 @@ pub struct WriteDbSportConfig<'a> {
 impl<'a> From<&'a SportConfig> for WriteDbSportConfig<'a> {
     fn from(sc: &'a SportConfig) -> Self {
         WriteDbSportConfig {
-            sport_id: sc.sport_id,
-            name: &sc.name,
-            config: &sc.config,
+            sport_id: sc.get_sport_id(),
+            name: sc.get_name(),
+            config: sc.get_config(),
         }
     }
 }
@@ -106,16 +106,16 @@ impl DbpSportConfig for PgDb {
         name = "db.sc.save",
         skip(self, sport_config),
         fields(
-            id = ?sport_config.id_version.get_id(),
-            version = sport_config.id_version.get_version(),
-            is_new = sport_config.id_version.get_id().is_none()
+            id = ?sport_config.get_id(),
+            version = sport_config.get_version(),
+            is_new = sport_config.get_id().is_none()
         )
     )]
     async fn save_sport_config(&self, sport_config: &SportConfig) -> DbResult<SportConfig> {
         let mut conn = self.new_connection().await?;
         let w = WriteDbSportConfig::from(sport_config);
 
-        if let IdVersion::Existing(inner) = sport_config.id_version {
+        if let IdVersion::Existing(inner) = sport_config.get_id_version() {
             // UPDATE with optimistic locking
             let res = diesel::update(
                 sport_configs.filter(

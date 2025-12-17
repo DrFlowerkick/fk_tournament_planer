@@ -11,7 +11,7 @@ impl DbpPostalAddress for FakeDatabasePort {
         let mut guard = self.fail_next_get_pa.lock().unwrap();
         if *guard {
             *guard = false;
-            return Err(DbError::Other(anyhow::anyhow!("injected get failure")));
+            return Err(DbError::Other("injected get failure".into()));
         }
         Ok(self.postal_addresses.lock().unwrap().get(&id).cloned())
     }
@@ -20,7 +20,7 @@ impl DbpPostalAddress for FakeDatabasePort {
         let mut guard = self.fail_next_save_pa.lock().unwrap();
         if *guard {
             *guard = false;
-            return Err(DbError::Other(anyhow::anyhow!("injected save failure")));
+            return Err(DbError::Other("injected save failure".into()));
         }
 
         let mut guard = self.postal_addresses.lock().unwrap();
@@ -50,7 +50,7 @@ impl DbpPostalAddress for FakeDatabasePort {
         let mut guard = self.fail_next_list_pa.lock().unwrap();
         if *guard {
             *guard = false;
-            return Err(DbError::Other(anyhow::anyhow!("injected list failure")));
+            return Err(DbError::Other("injected list failure".into()));
         }
 
         let filter = name_filter.map(|s| s.to_lowercase());

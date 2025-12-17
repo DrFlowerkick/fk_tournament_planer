@@ -1,4 +1,4 @@
-use app_core::{CrMsg, DbError};
+use app_core::{CoreError, CrError, CrMsg, DbError};
 use uuid::Uuid;
 
 use integration_testing::port_fakes::*;
@@ -60,10 +60,9 @@ async fn given_db_failure_when_save_then_no_publish_occurs() {
 
     // Assert error variant/message like in your DB tests
     match err {
-        DbError::Other(e) => assert!(
-            e.to_string().contains("injected save failure"),
-            "unexpected error: {e}"
-        ),
+        CoreError::Db(DbError::Other(e)) => {
+            assert!(e.contains("injected save failure"), "unexpected error: {e}")
+        }
         other => panic!("unexpected error variant: {other:?}"),
     }
 
@@ -93,9 +92,8 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
 
     // Assert error shape/message (aligned with your style)
     match err {
-        DbError::Other(e) => assert!(
-            e.to_string().to_lowercase().contains("publish")
-                || e.to_string().to_lowercase().contains("failure"),
+        CoreError::Cr(CrError::Other(e)) => assert!(
+            e.to_lowercase().contains("publish") || e.to_lowercase().contains("failure"),
             "unexpected error: {e}"
         ),
         other => panic!("unexpected error variant: {other:?}"),

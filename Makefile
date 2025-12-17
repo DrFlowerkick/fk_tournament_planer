@@ -99,6 +99,10 @@ test:
 	cargo nextest run --workspace --features "ssr"
 	cargo test --doc --workspace
 
+.PHONY: test-doc
+test-doc:
+	cargo test --doc --workspace
+
 .PHONY: test-release
 test-release:
 	cargo nextest run --workspace --release --features "ssr"

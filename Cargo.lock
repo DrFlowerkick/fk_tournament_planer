@@ -91,6 +91,7 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "reactive_stores",
+ "serde_json",
  "shared",
  "sport_plugin_manager",
  "uuid",
@@ -107,6 +108,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.17",
+ "tracing",
  "uuid",
 ]
 
@@ -2922,6 +2924,7 @@ dependencies = [
  "axum-macros",
  "leptos",
  "leptos-axum-socket",
+ "serde_json",
 ]
 
 [[package]]

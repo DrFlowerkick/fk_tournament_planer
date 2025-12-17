@@ -1,4 +1,4 @@
-use app_core::DbError;
+use app_core::{CoreError, DbError};
 use uuid::Uuid;
 
 use integration_testing::port_fakes::*;
@@ -9,14 +9,13 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
     // Seed via DB fake:
-    let sc = make_sport_config("Config A", Uuid::new_v4());
+    let sc = make_sport_config("Config A", &core);
 
     *core.get_mut() = sc.clone();
     let id = core
         .save()
         .await
         .expect("initial save should succeed")
-        .id_version
         .get_id()
         .unwrap();
 
@@ -26,13 +25,9 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
 
     // Assert state was replaced by the record from DB (version set to 0 by fake)
     let got = core.get().clone();
-    assert_eq!(got.id_version.get_id(), Some(id));
-    assert_eq!(got.name, "Config A");
-    assert_eq!(
-        got.id_version.get_version(),
-        Some(0),
-        "initial insert sets version 0"
-    );
+    assert_eq!(got.get_id(), Some(id));
+    assert_eq!(got.get_name(), "Config A");
+    assert_eq!(got.get_version(), Some(0), "initial insert sets version 0");
 }
 
 /// 2) load(): not found → None, state unchanged
@@ -41,7 +36,7 @@ async fn given_missing_id_when_load_then_none_and_state_unchanged() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
     // Prepare a known state
-    let known = make_sport_config("Config A", Uuid::new_v4());
+    let known = make_sport_config("Config A", &core);
     *core.get_mut() = known.clone();
 
     // Act
@@ -49,7 +44,7 @@ async fn given_missing_id_when_load_then_none_and_state_unchanged() {
     assert!(res.is_none());
 
     // Assert unchanged
-    assert_eq!(core.get().name, known.name);
+    assert_eq!(core.get().get_name(), known.get_name());
 }
 
 /// 3) load(): DB error propagates, state unchanged
@@ -71,12 +66,12 @@ async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchang
 
     // Assert propagated and state unchanged
     match err {
-        DbError::Other(e) => assert!(e.to_string().contains("injected get failure")),
+        CoreError::Db(DbError::Other(e)) => assert!(e.contains("injected get failure")),
         other => panic!("unexpected error variant: {other:?}"),
     }
     assert_eq!(
-        core.get().name,
-        before.name,
+        core.get().get_name(),
+        before.get_name(),
         "state must remain unchanged on DB error"
     );
 }
@@ -86,22 +81,35 @@ async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchang
 async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_returned() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
-    // Arrange a new config in state
-    core.get_mut().name = "Config B".to_string();
-    core.get_mut().sport_id = Uuid::new_v4();
+    let sport_id = core.sport_plugins.list()[0]
+        .get_id_version()
+        .get_id()
+        .unwrap();
 
+    // Arrange a new config in state
+    core.get_mut().set_name("Config B");
+    core.get_mut().set_sport_id(sport_id);
     // Act
     let saved = core.save().await.expect("save ok").clone();
 
     // Assert: DB assigned version 0 on insert; core.get() equals returned ref
-    assert_eq!(saved.id_version.get_version(), Some(0));
-    assert_eq!(core.get().name, saved.name);
+    assert_eq!(saved.get_version(), Some(0));
+    assert_eq!(core.get().get_name(), saved.get_name());
 }
 
 /// 5) save(): DB error propagates, state unchanged
 #[tokio::test]
 async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchanged() {
     let (mut core, db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
+
+    let sport_id = core.sport_plugins.list()[0]
+        .get_id_version()
+        .get_id()
+        .unwrap();
+
+    // Arrange a new config in state
+    core.get_mut().set_name("Config B");
+    core.get_mut().set_sport_id(sport_id);
 
     // Seed state
     let before = core.get().clone();
@@ -113,12 +121,12 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 
     // Assert propagated and state unchanged
     match err {
-        DbError::Other(e) => assert!(e.to_string().contains("injected save failure")),
+        CoreError::Db(DbError::Other(e)) => assert!(e.contains("injected save failure")),
         other => panic!("unexpected error variant: {other:?}"),
     }
     assert_eq!(
-        core.get().name,
-        before.name,
+        core.get().get_name(),
+        before.get_name(),
         "state must remain unchanged on DB error"
     );
 }
@@ -128,10 +136,13 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 async fn given_filter_and_limit_when_list_sport_configs_then_db_fake_results_are_forwarded() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
-    let sport_id = Uuid::new_v4();
+    let sport_id = core.sport_plugins.list()[0]
+        .get_id_version()
+        .get_id()
+        .unwrap();
     // Seed via saves:
     for nm in ["Max Config", "Mara Config", "Zoe Config"] {
-        *core.get_mut() = make_sport_config(nm, sport_id);
+        *core.get_mut() = make_sport_config(nm, &core);
         core.save().await.expect("seed save");
     }
 
@@ -143,7 +154,7 @@ async fn given_filter_and_limit_when_list_sport_configs_then_db_fake_results_are
 
     // Assert: exactly 2 with names containing "ma" (case-insensitive)
     assert_eq!(got.len(), 2);
-    let names: Vec<_> = got.iter().map(|x| x.name.as_str()).collect();
+    let names: Vec<_> = got.iter().map(|x| x.get_name()).collect();
     assert!(names.contains(&"Mara Config"));
     assert!(names.contains(&"Max Config"));
 }
@@ -152,11 +163,14 @@ async fn given_filter_and_limit_when_list_sport_configs_then_db_fake_results_are
 #[tokio::test]
 async fn given_only_limit_when_list_sport_configs_then_limit_is_respected() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
+    let sport_id = core.sport_plugins.list()[0]
+        .get_id_version()
+        .get_id()
+        .unwrap();
 
-    let sport_id = Uuid::new_v4();
     for i in 0..5 {
         let nm = format!("Name{i}");
-        *core.get_mut() = make_sport_config(&nm, sport_id);
+        *core.get_mut() = make_sport_config(&nm, &core);
         core.save().await.expect("seed save");
     }
 
@@ -181,7 +195,7 @@ async fn given_db_fake_failure_when_list_sport_configs_then_error_propagates() {
 
     // Assert propagated and state unchanged
     match err {
-        DbError::Other(e) => assert!(e.to_string().contains("injected list failure")),
+        CoreError::Db(DbError::Other(e)) => assert!(e.contains("injected list failure")),
         other => panic!("unexpected error variant: {other:?}"),
     }
 }

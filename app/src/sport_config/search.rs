@@ -2,13 +2,13 @@
 
 use app_core::{CrTopic, SportConfig};
 use app_utils::{
-    error::AppError,
     components::{
         banner::AcknowledgmentAndNavigateBanner,
         set_id_in_query_input_dropdown::{
             SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
         },
     },
+    error::AppError,
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::{SportConfigParams, SportParams},
@@ -91,7 +91,7 @@ pub fn SearchSportConfig() -> impl IntoView {
                     sport_config_id: Some(id),
                 }) => match load_sport_config(id).await {
                     Ok(Some(sc)) => Ok(sc),
-                    Ok(None) => Err(AppError::Generic("Sport Config ID not found".to_string())),
+                    Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
                     Err(e) => Err(e),
                 },
                 Ok(SportConfigParams {
@@ -100,7 +100,7 @@ pub fn SearchSportConfig() -> impl IntoView {
                     // no sport config id: no loading delay
                     Ok(Default::default())
                 }
-                Err(e) => Err(AppError::Generic(e.to_string())),
+                Err(e) => Err(AppError::Other(e.to_string())),
             }
         },
     );
@@ -159,7 +159,7 @@ pub fn SearchSportConfig() -> impl IntoView {
             if let Some(sp) = sport_plugin() {
                 sp.render_dropdown(&c)
             } else {
-                view! { <span class="font-medium">{c.name.clone()}</span> }.into_any()
+                view! { <span class="font-medium">{c.get_name()}</span> }.into_any()
             }
         },
     };
@@ -203,13 +203,11 @@ pub fn SearchSportConfig() -> impl IntoView {
                                                         .into_any()
                                                 }
                                                 Ok(sport_config) => {
-                                                    name.set(sport_config.name.clone());
-                                                    set_id.set(sport_config.id_version.get_id());
+                                                    name.set(sport_config.get_name().to_string());
+                                                    set_id.set(sport_config.get_id());
                                                     set_version
-                                                        .set(
-                                                            sport_config.id_version.get_version().unwrap_or_default(),
-                                                        );
-                                                    if let Some(id) = sport_config.id_version.get_id() {
+                                                        .set(sport_config.get_version().unwrap_or_default());
+                                                    if let Some(id) = sport_config.get_id() {
                                                         let new_topic = CrTopic::SportConfig(id);
                                                         set_topic.set(Some(new_topic));
                                                     }
@@ -219,7 +217,7 @@ pub fn SearchSportConfig() -> impl IntoView {
                                     }} <SetIdInQueryInputDropdown props=props />
                                     {move || {
                                         if let Some(Ok(sport_config)) = sport_config_res.get() {
-                                            if sport_config.id_version.get_id().is_some() {
+                                            if sport_config.get_id().is_some() {
                                                 sp.render_preview(&sport_config)
                                             } else {
                                                 view! {

@@ -1,12 +1,11 @@
 // app error
 
+use app_core::CoreError;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use server_fn::codec::JsonEncoding;
-use std::fmt::Display;
 use thiserror::Error;
-
-use app_core::{DbError, SportError, utils::validation::ValidationErrors};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Error)]
 pub enum AppError {
@@ -18,21 +17,17 @@ pub enum AppError {
     #[error(transparent)]
     ServerFn(#[from] ServerFnErrorErr),
 
-    /// validation error
-    #[error("validation error: {0}")]
-    ValidationErrors(String),
+    /// resource not found
+    #[error("resource not found: {0} ({1})")]
+    ResourceNotFound(String, Uuid),
 
-    /// Your own DB/domain errors (serialized as string over the wire)
-    #[error("database error: {0}")]
-    Db(String),
+    /// core error
+    #[error("core error: {0}")]
+    Core(#[from] CoreError),
 
-    /// sport error
-    #[error("sport error: {0}")]
-    Sport(String),
-
-    /// generic error
-    #[error("generic error: {0}")]
-    Generic(String),
+    /// connection, pool, or other DB errors
+    #[error("internal error: {0}")]
+    Other(String),
 }
 
 // Let Leptos server functions know how to encode this error type
@@ -42,27 +37,6 @@ impl FromServerFnError for AppError {
     fn from_server_fn_error(value: ServerFnErrorErr) -> Self {
         // thanks to #[from], this is just:
         value.into()
-    }
-}
-
-// since anyhow does not support serde, we have to convert DbError to string
-impl From<DbError> for AppError {
-    fn from(e: DbError) -> Self {
-        AppError::Db(e.to_string())
-    }
-}
-
-// since SportError does not support serde, we have to convert SportError to string
-impl From<SportError> for AppError {
-    fn from(e: SportError) -> Self {
-        AppError::Sport(e.to_string())
-    }
-}
-
-// since ValidationErrors does not support serde, we have to convert ValidationErrors to string
-impl<F: Display> From<ValidationErrors<F>> for AppError {
-    fn from(e: ValidationErrors<F>) -> Self {
-        AppError::ValidationErrors(e.to_string())
     }
 }
 

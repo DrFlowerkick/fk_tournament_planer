@@ -1,5 +1,9 @@
-use app_core::{SportConfig, SportError, SportResult};
+use app_core::{
+    SportError, SportResult,
+    utils::validation::{FieldError, ValidationErrors, ValidationResult},
+};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::time::Duration;
 
 /// Configuration for the Generic Sport Plugin
@@ -68,64 +72,109 @@ impl Default for GenericSportConfig {
 }
 
 impl GenericSportConfig {
-    pub fn parse_config(config: &SportConfig) -> SportResult<Self> {
-        serde_json::from_value(config.config.clone()).map_err(|e| {
-            SportError::InvalidConfig(format!("Failed to parse GenericSportConfig: {}", e))
-        })
+    pub fn parse_config(config: Value) -> SportResult<Self> {
+        match serde_json::from_value(config) {
+            Ok(sc) => Ok(sc),
+            Err(e) => Err(SportError::InvalidJsonConfig(format!(
+                "Failed to parse GenericSportConfig: {}",
+                e
+            ))),
+        }
     }
-    pub fn validate(&self) -> SportResult<()> {
+    pub fn validate(&self, mut errs: ValidationErrors) -> ValidationResult<()> {
         // Basic validation logic
         if self.sets_to_win == 0 {
-            return Err(SportError::InvalidConfig(
-                "sets_to_win must be at least 1".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("sets_to_win")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("sets_to_win must be at least 1")
+                    .build(),
+            );
         }
         if self.sets_to_win > 1 && self.score_to_win.is_none() {
-            return Err(SportError::InvalidConfig(
-                "score_to_win must be set if sets_to_win > 1".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("score_to_win")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("score_to_win must be set if sets_to_win > 1")
+                    .build(),
+            );
         }
         if self.win_by_margin.is_some() && self.score_to_win.is_none() {
-            return Err(SportError::InvalidConfig(
-                "win_by_margin cannot be set if score_to_win is None".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("win_by_margin")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("win_by_margin cannot be set if score_to_win is None")
+                    .build(),
+            );
         }
         if self.hard_cap.is_some() && self.score_to_win.is_none() {
-            return Err(SportError::InvalidConfig(
-                "hard_cap cannot be set if score_to_win is None".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("hard_cap")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("hard_cap cannot be set if score_to_win is None")
+                    .build(),
+            );
         }
         if self.win_by_margin.is_some() && self.hard_cap.is_none() {
-            return Err(SportError::InvalidConfig(
-                "hard_cap must be set if win_by_margin is set".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("hard_cap")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("hard_cap must be set if win_by_margin is set")
+                    .build(),
+            );
         }
         if self.hard_cap.is_some() && self.win_by_margin.is_none() {
-            return Err(SportError::InvalidConfig(
-                "win_by_margin must be set if hard_cap is set".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("win_by_margin")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("win_by_margin must be set if hard_cap is set")
+                    .build(),
+            );
         }
         if self.victory_points_win < 0.0 {
-            return Err(SportError::InvalidConfig(
-                "victory_points_win cannot be negative".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("victory_points_win")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("victory_points_win cannot be negative")
+                    .build(),
+            );
         }
         if self.victory_points_draw < 0.0 {
-            return Err(SportError::InvalidConfig(
-                "victory_points_draw cannot be negative".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("victory_points_draw")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("victory_points_draw cannot be negative")
+                    .build(),
+            );
         }
         if self.victory_points_win < self.victory_points_draw {
-            return Err(SportError::InvalidConfig(
-                "victory_points_win must be greater than or equal to victory_points_draw"
-                    .to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("victory_points_win")
+                    .add_user_defined_code("invalid_value")
+                    .add_message(
+                        "victory_points_win must be greater than or equal to victory_points_draw",
+                    )
+                    .build(),
+            );
         }
         if self.expected_match_duration_minutes.as_secs() == 0 {
-            return Err(SportError::InvalidConfig(
-                "expected_match_duration_minutes must be greater than 0".to_string(),
-            ));
+            errs.add(
+                FieldError::builder()
+                    .set_field("expected_match_duration_minutes")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("expected_match_duration_minutes must be greater than 0")
+                    .build(),
+            );
         }
-        Ok(())
+        if errs.is_empty() { Ok(()) } else { Err(errs) }
     }
 }

@@ -1,7 +1,10 @@
 //! Implementation of SportPort for Generic Sport Plugin
 
 use super::{GenericSportPlugin, config::GenericSportConfig};
-use app_core::{EntrantGroupScore, Match, SportConfig, SportError, SportPort, SportResult};
+use app_core::{
+    EntrantGroupScore, Match, SportConfig, SportError, SportPort, SportResult,
+    utils::validation::ValidationErrors,
+};
 use serde_json::Value;
 use std::time::Duration;
 use uuid::Uuid;
@@ -14,11 +17,15 @@ impl SportPort for GenericSportPlugin {
         serde_json::to_value(GenericSportConfig::default()).unwrap()
     }
     fn estimate_match_duration(&self, config: &SportConfig) -> SportResult<Duration> {
-        let generic_config = self.validate_config(config)?;
+        let generic_config = self.validate_config(config, ValidationErrors::new())?;
         Ok(generic_config.expected_match_duration_minutes)
     }
-    fn validate_config_values(&self, config: &SportConfig) -> SportResult<()> {
-        self.validate_config(config)?;
+    fn validate_config_values(
+        &self,
+        config: &SportConfig,
+        errs: ValidationErrors,
+    ) -> SportResult<()> {
+        self.validate_config(config, errs)?;
         Ok(())
     }
 
@@ -37,7 +44,7 @@ impl SportPort for GenericSportPlugin {
                 "Both sides of the match must have concrete entrant IDs".to_string(),
             ));
         }
-        let generic_config = self.validate_config(config)?;
+        let generic_config = self.validate_config(config, ValidationErrors::new())?;
         self.validate_final_score_internal(&generic_config, score)?;
         Ok(())
     }
@@ -50,7 +57,7 @@ impl SportPort for GenericSportPlugin {
         entrant_id: Uuid,
         all_matches: &[Match],
     ) -> SportResult<EntrantGroupScore> {
-        let generic_config = self.validate_config(config)?;
+        let generic_config = self.validate_config(config, ValidationErrors::new())?;
         let mut group_score = EntrantGroupScore::new(entrant_id, group_id);
         for m in all_matches.iter().filter(|m| {
             if let Some((id_a, id_b)) = m.get_entrants() {

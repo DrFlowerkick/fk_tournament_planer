@@ -22,7 +22,7 @@ test.describe("Error loading non-existing postal address ID", () => {
     // Assert that the error message is displayed
     await expect(BA.acknowledgmentNavigate.root).toBeVisible();
     await expect(BA.acknowledgmentNavigate.root).toContainText(
-      "Postal Address ID not found"
+      "resource not found: Postal Address"
     );
     await expect(BA.acknowledgmentNavigate.btnAction).toBeVisible();
     await expect(BA.acknowledgmentNavigate.btnNavigate).toBeVisible();
