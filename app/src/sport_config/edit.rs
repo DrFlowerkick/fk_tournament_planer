@@ -8,7 +8,10 @@ use app_utils::{
     },
     error::AppError,
     global_state::{GlobalState, GlobalStateStoreFields},
-    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    hooks::{
+        is_field_valid::is_field_valid,
+        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    },
     params::{SportConfigParams, SportParams},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
 };
@@ -385,13 +388,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
     let validation_result = move || current_config().validate();
     let is_valid_config = move || validation_result().is_ok() && is_valid_json.get();
 
-    // --- Simplified Validation Closures ---
-    let is_field_valid = move |field: &str| match validation_result() {
-        Ok(_) => true,
-        Err(err) => err.errors.iter().all(|e| e.get_field() != field),
-    };
-
-    let is_valid_name = Signal::derive(move || is_field_valid("name"));
+    let is_valid_name = Signal::derive(move || is_field_valid(validation_result).run("name"));
 
     let props = RenderCfgProps {
         config: set_sport_config,
@@ -432,7 +429,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Name"
                 name="name"
                 value=set_name
-                is_valid=is_valid_name
+                error_message=is_valid_name
                 is_loading=is_loading
                 is_new=is_new
                 on_blur=move || set_name.set(current_config().get_name().to_string())

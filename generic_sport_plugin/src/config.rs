@@ -150,21 +150,21 @@ impl GenericSportConfig {
                     .build(),
             );
         }
-        if self.victory_points_win < 0.0 {
+        if self.victory_points_win <= 0.0 {
             errs.add(
                 FieldError::builder()
                     .set_field("victory_points_win")
                     .add_user_defined_code("invalid_value")
-                    .add_message("victory_points_win cannot be negative")
+                    .add_message("victory_points_win must be greater than 0")
                     .build(),
             );
         }
-        if self.victory_points_draw < 0.0 {
+        if self.victory_points_draw <= 0.0 {
             errs.add(
                 FieldError::builder()
                     .set_field("victory_points_draw")
                     .add_user_defined_code("invalid_value")
-                    .add_message("victory_points_draw cannot be negative")
+                    .add_message("victory_points_draw must be greater than 0")
                     .build(),
             );
         }

@@ -10,7 +10,7 @@ pub fn ValidatedTextInput(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<String>,
-    #[prop(into)] is_valid: Signal<bool>,
+    #[prop(into)] error_message: Signal<Option<String>>,
     // Context signals to handle placeholder logic internally
     #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
@@ -28,11 +28,11 @@ pub fn ValidatedTextInput(
             <input
                 type="text"
                 class="input input-bordered w-full"
-                class:input-error=move || !is_valid.get()
+                class:input-error=move || error_message.get().is_some()
                 name=name.clone()
                 // Auto-generate test-id
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || (!is_valid.get()).to_string()
+                aria-invalid=move || error_message.get().is_some().to_string()
                 prop:value=value
                 placeholder=move || {
                     if is_loading.get() {
@@ -50,6 +50,17 @@ pub fn ValidatedTextInput(
                     }
                 }
             />
+            {move || {
+                error_message
+                    .get()
+                    .map(|msg| {
+                        view! {
+                            <label class="label">
+                                <span class="label-text-alt text-error">{msg}</span>
+                            </label>
+                        }
+                    })
+            }}
         </div>
     }
 }
@@ -113,7 +124,7 @@ pub fn ValidatedSelect(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<String>,
-    #[prop(into)] is_valid: Signal<bool>,
+    #[prop(into)] error_message: Signal<Option<String>>,
     /// List of (value, label) tuples for the options
     #[prop(into)]
     options: Vec<(String, String)>,
@@ -132,11 +143,11 @@ pub fn ValidatedSelect(
             </label>
             <select
                 class="select select-bordered w-full"
-                class:select-error=move || !is_valid.get()
+                class:select-error=move || error_message.get().is_some()
                 name=name.clone()
                 // Auto-generate test-id
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || (!is_valid.get()).to_string()
+                aria-invalid=move || error_message.get().is_some().to_string()
                 on:change=move |ev| value.set(event_target_value(&ev))
                 prop:value=value
             >
@@ -154,6 +165,17 @@ pub fn ValidatedSelect(
                     })
                     .collect_view()}
             </select>
+            {move || {
+                error_message
+                    .get()
+                    .map(|msg| {
+                        view! {
+                            <label class="label">
+                                <span class="label-text-alt text-error">{msg}</span>
+                            </label>
+                        }
+                    })
+            }}
         </div>
     }
 }
@@ -163,7 +185,7 @@ pub fn ValidatedNumberInput<T>(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<T>,
-    #[prop(into)] is_valid: Signal<bool>,
+    #[prop(into)] error_message: Signal<Option<String>>,
     #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String, // "1" for int, "0.1" for float
@@ -195,10 +217,10 @@ where
                 step=step_val
                 min=min
                 class="input input-bordered w-full"
-                class:input-error=move || !is_valid.get()
+                class:input-error=move || error_message.get().is_some()
                 name=name.clone()
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || (!is_valid.get()).to_string()
+                aria-invalid=move || error_message.get().is_some().to_string()
                 // We bind the value via prop:value which expects a string/number
                 prop:value=move || value.get().to_string()
                 placeholder=move || {
@@ -222,6 +244,17 @@ where
                     }
                 }
             />
+            {move || {
+                error_message
+                    .get()
+                    .map(|msg| {
+                        view! {
+                            <label class="label">
+                                <span class="label-text-alt text-error">{msg}</span>
+                            </label>
+                        }
+                    })
+            }}
         </div>
     }
 }
@@ -231,7 +264,7 @@ pub fn ValidatedOptionNumberInput<T>(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<Option<T>>,
-    #[prop(into)] is_valid: Signal<bool>,
+    #[prop(into)] error_message: Signal<Option<String>>,
     #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String,
@@ -263,10 +296,10 @@ where
                 step=step_val
                 min=min
                 class="input input-bordered w-full"
-                class:input-error=move || !is_valid.get()
+                class:input-error=move || error_message.get().is_some()
                 name=name.clone()
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || (!is_valid.get()).to_string()
+                aria-invalid=move || error_message.get().is_some().to_string()
                 prop:value=move || {
                     match value.get() {
                         Some(v) => v.to_string(),
@@ -296,16 +329,27 @@ where
                     }
                 }
             />
+            {move || {
+                error_message
+                    .get()
+                    .map(|msg| {
+                        view! {
+                            <label class="label">
+                                <span class="label-text-alt text-error">{msg}</span>
+                            </label>
+                        }
+                    })
+            }}
         </div>
     }
 }
 
 #[component]
-pub fn ValidatedDurationInput(
+pub fn ValidatedDurationMinutesInput(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<Duration>,
-    #[prop(into)] is_valid: Signal<bool>,
+    #[prop(into)] error_message: Signal<Option<String>>,
     #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     // Optional normalization callback
@@ -323,10 +367,10 @@ pub fn ValidatedDurationInput(
                 min="0"
                 step="1"
                 class="input input-bordered w-full"
-                class:input-error=move || !is_valid.get()
+                class:input-error=move || error_message.get().is_some()
                 name=name.clone()
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || (!is_valid.get()).to_string()
+                aria-invalid=move || error_message.get().is_some().to_string()
                 // Convert Duration to Minutes for display
                 prop:value=move || (value.get().as_secs() / 60).to_string()
                 placeholder=move || {
@@ -350,6 +394,17 @@ pub fn ValidatedDurationInput(
                     }
                 }
             />
+            {move || {
+                error_message
+                    .get()
+                    .map(|msg| {
+                        view! {
+                            <label class="label">
+                                <span class="label-text-alt text-error">{msg}</span>
+                            </label>
+                        }
+                    })
+            }}
         </div>
     }
 }

@@ -8,7 +8,10 @@ use app_utils::{
     },
     error::AppError,
     global_state::{GlobalState, GlobalStateStoreFields},
-    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    hooks::{
+        is_field_valid::is_field_valid,
+        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    },
     params::AddressParams,
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
 };
@@ -374,17 +377,13 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
     let validation_result = move || current_address().validate();
     let is_valid_addr = move || validation_result().is_ok();
 
-    // --- Simplified Validation Closures ---
-    let is_field_valid = move |field: &str| match validation_result() {
-        Ok(_) => true,
-        Err(err) => err.errors.iter().all(|e| e.get_field() != field),
-    };
-
-    let is_valid_name = Signal::derive(move || is_field_valid("Name"));
-    let is_valid_street = Signal::derive(move || is_field_valid("Street"));
-    let is_valid_postal_code = Signal::derive(move || is_field_valid("PostalCode"));
-    let is_valid_locality = Signal::derive(move || is_field_valid("Locality"));
-    let is_valid_country = Signal::derive(move || is_field_valid("Country"));
+    let is_valid_name = Signal::derive(move || is_field_valid(validation_result).run("Name"));
+    let is_valid_street = Signal::derive(move || is_field_valid(validation_result).run("Street"));
+    let is_valid_postal_code =
+        Signal::derive(move || is_field_valid(validation_result).run("PostalCode"));
+    let is_valid_locality =
+        Signal::derive(move || is_field_valid(validation_result).run("Locality"));
+    let is_valid_country = Signal::derive(move || is_field_valid(validation_result).run("Country"));
     let countries = get_sorted_countries();
 
     view! {
@@ -407,7 +406,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Name"
                 name="name"
                 value=set_name
-                is_valid=is_valid_name
+                error_message=is_valid_name
                 is_loading=is_loading
                 is_new=is_new
                 on_blur=move || set_name.set(current_address().get_name().to_string())
@@ -416,7 +415,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Street & number"
                 name="street"
                 value=set_street
-                is_valid=is_valid_street
+                error_message=is_valid_street
                 is_loading=is_loading
                 is_new=is_new
                 on_blur=move || set_street.set(current_address().get_street().to_string())
@@ -426,7 +425,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     label="Postal code"
                     name="postal_code"
                     value=set_postal_code
-                    is_valid=is_valid_postal_code
+                    error_message=is_valid_postal_code
                     is_loading=is_loading
                     is_new=is_new
                     on_blur=move || {
@@ -437,7 +436,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     label="City"
                     name="locality"
                     value=set_locality
-                    is_valid=is_valid_locality
+                    error_message=is_valid_locality
                     is_loading=is_loading
                     is_new=is_new
                     on_blur=move || set_locality.set(current_address().get_locality().to_string())
@@ -458,7 +457,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Country"
                 name="country"
                 value=set_country
-                is_valid=is_valid_country
+                error_message=is_valid_country
                 options=countries
             />
             <div class="card-actions justify-end mt-4">

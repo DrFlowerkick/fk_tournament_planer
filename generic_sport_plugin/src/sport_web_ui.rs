@@ -4,8 +4,11 @@ use crate::config::GenericSportConfig;
 
 use super::GenericSportPlugin;
 use app_core::{SportConfig, utils::validation::ValidationErrors};
-use app_utils::components::inputs::{
-    ValidatedDurationInput, ValidatedNumberInput, ValidatedOptionNumberInput,
+use app_utils::{
+    components::inputs::{
+        ValidatedDurationMinutesInput, ValidatedNumberInput, ValidatedOptionNumberInput,
+    },
+    hooks::is_field_valid::is_field_valid,
 };
 use leptos::prelude::*;
 use shared::{RenderCfgProps, SportConfigWebUi};
@@ -114,23 +117,21 @@ impl SportConfigWebUi for GenericSportPlugin {
             is_valid_json.set(validation_result().is_ok());
         });
 
-        // --- Simplified Validation Closures ---
-        let is_field_valid = move |field: &str| match validation_result() {
-            Ok(_) => true,
-            Err(err) => err.errors.iter().all(|e| e.get_field() != field),
-        };
-
-        let is_valid_sets_to_win = Signal::derive(move || is_field_valid("sets_to_win"));
-        let is_valid_score_to_win = Signal::derive(move || is_field_valid("score_to_win"));
-        let is_valid_win_by_margin = Signal::derive(move || is_field_valid("win_by_margin"));
-        let is_valid_hard_cap = Signal::derive(move || is_field_valid("hard_cap"));
+        let is_valid_sets_to_win =
+            Signal::derive(move || is_field_valid(validation_result).run("sets_to_win"));
+        let is_valid_score_to_win =
+            Signal::derive(move || is_field_valid(validation_result).run("score_to_win"));
+        let is_valid_win_by_margin =
+            Signal::derive(move || is_field_valid(validation_result).run("win_by_margin"));
+        let is_valid_hard_cap =
+            Signal::derive(move || is_field_valid(validation_result).run("hard_cap"));
         let is_valid_victory_points_win =
-            Signal::derive(move || is_field_valid("victory_points_win"));
+            Signal::derive(move || is_field_valid(validation_result).run("victory_points_win"));
         let is_valid_victory_points_draw =
-            Signal::derive(move || is_field_valid("victory_points_draw"));
-        let is_valid_expected_match_duration_minutes =
-            Signal::derive(move || is_field_valid("expected_match_duration_minutes"));
-
+            Signal::derive(move || is_field_valid(validation_result).run("victory_points_draw"));
+        let is_valid_expected_match_duration_minutes = Signal::derive(move || {
+            is_field_valid(validation_result).run("expected_match_duration_minutes")
+        });
         // --- Signals for form fields ---
         let set_sets_to_win = RwSignal::new(0_u16);
         let set_score_to_win = RwSignal::new(None::<u16>);
@@ -159,7 +160,7 @@ impl SportConfigWebUi for GenericSportPlugin {
                     label="Sets to Win"
                     name="sets_to_win"
                     value=set_sets_to_win
-                    is_valid=is_valid_sets_to_win
+                    error_message=is_valid_sets_to_win
                     is_loading=is_loading
                     is_new=is_new
                     min="1"
@@ -169,93 +170,97 @@ impl SportConfigWebUi for GenericSportPlugin {
                         config.set(serde_json::to_value(cfg).ok());
                     }
                 />
-                <ValidatedOptionNumberInput<
-                u16,
-            >
-                    label="Score to Win a Set"
-                    name="score_to_win"
-                    value=set_score_to_win
-                    is_valid=is_valid_score_to_win
-                    is_loading=is_loading
-                    is_new=is_new
-                    min="1"
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.score_to_win = set_score_to_win.get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
-                />
-                <ValidatedOptionNumberInput<
-                u16,
-            >
-                    label="Win by Margin"
-                    name="win_by_margin"
-                    value=set_win_by_margin
-                    is_valid=is_valid_win_by_margin
-                    is_loading=is_loading
-                    is_new=is_new
-                    min="1"
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.win_by_margin = set_win_by_margin.get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
-                />
-                <ValidatedOptionNumberInput<
-                u16,
-            >
-                    label="Hard Cap"
-                    name="hard_cap"
-                    value=set_hard_cap
-                    is_valid=is_valid_hard_cap
-                    is_loading=is_loading
-                    is_new=is_new
-                    min="1"
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.hard_cap = set_hard_cap.get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
-                />
-                <ValidatedNumberInput<
-                f32,
-            >
-                    label="Victory Points for Win"
-                    name="victory_points_win"
-                    value=set_victory_points_win
-                    is_valid=is_valid_victory_points_win
-                    is_loading=is_loading
-                    is_new=is_new
-                    min="0"
-                    step="0.1"
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.victory_points_win = set_victory_points_win.get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
-                />
-                <ValidatedNumberInput<
-                f32,
-            >
-                    label="Victory Points for Draw"
-                    name="victory_points_draw"
-                    value=set_victory_points_draw
-                    is_valid=is_valid_victory_points_draw
-                    is_loading=is_loading
-                    is_new=is_new
-                    min="0"
-                    step="0.1"
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.victory_points_draw = set_victory_points_draw.get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
-                />
-                <ValidatedDurationInput
-                    label="Expected Match Duration (minutes)"
+                <div class="grid grid-cols-3 gap-4">
+                    <ValidatedOptionNumberInput<
+                    u16,
+                >
+                        label="Score to Win a Set"
+                        name="score_to_win"
+                        value=set_score_to_win
+                        error_message=is_valid_score_to_win
+                        is_loading=is_loading
+                        is_new=is_new
+                        min="1"
+                        on_blur=move || {
+                            let mut cfg = current_configuration();
+                            cfg.score_to_win = set_score_to_win.get();
+                            config.set(serde_json::to_value(cfg).ok());
+                        }
+                    />
+                    <ValidatedOptionNumberInput<
+                    u16,
+                >
+                        label="Win by Margin"
+                        name="win_by_margin"
+                        value=set_win_by_margin
+                        error_message=is_valid_win_by_margin
+                        is_loading=is_loading
+                        is_new=is_new
+                        min="1"
+                        on_blur=move || {
+                            let mut cfg = current_configuration();
+                            cfg.win_by_margin = set_win_by_margin.get();
+                            config.set(serde_json::to_value(cfg).ok());
+                        }
+                    />
+                    <ValidatedOptionNumberInput<
+                    u16,
+                >
+                        label="Hard Cap"
+                        name="hard_cap"
+                        value=set_hard_cap
+                        error_message=is_valid_hard_cap
+                        is_loading=is_loading
+                        is_new=is_new
+                        min="1"
+                        on_blur=move || {
+                            let mut cfg = current_configuration();
+                            cfg.hard_cap = set_hard_cap.get();
+                            config.set(serde_json::to_value(cfg).ok());
+                        }
+                    />
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <ValidatedNumberInput<
+                    f32,
+                >
+                        label="Victory Points for Win"
+                        name="victory_points_win"
+                        value=set_victory_points_win
+                        error_message=is_valid_victory_points_win
+                        is_loading=is_loading
+                        is_new=is_new
+                        min="0"
+                        step="0.1"
+                        on_blur=move || {
+                            let mut cfg = current_configuration();
+                            cfg.victory_points_win = set_victory_points_win.get();
+                            config.set(serde_json::to_value(cfg).ok());
+                        }
+                    />
+                    <ValidatedNumberInput<
+                    f32,
+                >
+                        label="Victory Points for Draw"
+                        name="victory_points_draw"
+                        value=set_victory_points_draw
+                        error_message=is_valid_victory_points_draw
+                        is_loading=is_loading
+                        is_new=is_new
+                        min="0"
+                        step="0.1"
+                        on_blur=move || {
+                            let mut cfg = current_configuration();
+                            cfg.victory_points_draw = set_victory_points_draw.get();
+                            config.set(serde_json::to_value(cfg).ok());
+                        }
+                    />
+                </div>
+                <ValidatedDurationMinutesInput
+                    label="Expected Match Duration"
                     name="expected_match_duration_minutes"
                     value=set_expected_match_duration_minutes
-                    is_valid=is_valid_expected_match_duration_minutes
+                    error_message=is_valid_expected_match_duration_minutes
                     is_loading=is_loading
                     is_new=is_new
                     on_blur=move || {
