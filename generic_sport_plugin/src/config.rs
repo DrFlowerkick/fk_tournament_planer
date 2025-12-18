@@ -137,6 +137,19 @@ impl GenericSportConfig {
                     .build(),
             );
         }
+        if let Some(hc) = self.hard_cap
+            && let Some(m) = self.win_by_margin
+            && let Some(sw) = self.score_to_win
+            && sw + m > hc
+        {
+            errs.add(
+                FieldError::builder()
+                    .set_field("hard_cap")
+                    .add_user_defined_code("invalid_value")
+                    .add_message("hard_cap must be greater than score_to_win + win_by_margin")
+                    .build(),
+            );
+        }
         if self.victory_points_win < 0.0 {
             errs.add(
                 FieldError::builder()
@@ -155,14 +168,12 @@ impl GenericSportConfig {
                     .build(),
             );
         }
-        if self.victory_points_win < self.victory_points_draw {
+        if self.victory_points_win <= self.victory_points_draw {
             errs.add(
                 FieldError::builder()
-                    .set_field("victory_points_win")
+                    .set_field("victory_points_draw")
                     .add_user_defined_code("invalid_value")
-                    .add_message(
-                        "victory_points_win must be greater than or equal to victory_points_draw",
-                    )
+                    .add_message("victory_points_draw must be less than victory_points_win")
                     .build(),
             );
         }

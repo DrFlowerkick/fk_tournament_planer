@@ -25,6 +25,10 @@ pub enum AppError {
     #[error("core error: {0}")]
     Core(#[from] CoreError),
 
+    /// serde error
+    #[error("serialization/deserialization error: {0}")]
+    Serde(String),
+
     /// connection, pool, or other DB errors
     #[error("internal error: {0}")]
     Other(String),
@@ -37,6 +41,13 @@ impl FromServerFnError for AppError {
     fn from_server_fn_error(value: ServerFnErrorErr) -> Self {
         // thanks to #[from], this is just:
         value.into()
+    }
+}
+
+// serde_json::Error does not implement clone
+impl From<serde_json::Error> for AppError {
+    fn from(err: serde_json::Error) -> Self {
+        AppError::Serde(err.to_string())
     }
 }
 

@@ -309,7 +309,10 @@ pub fn SportConfigForm() -> impl IntoView {
                                                                 version: set_version.get(),
                                                                 sport_id: sport_id.get().unwrap_or(Uuid::nil()),
                                                                 name: set_name.get(),
-                                                                config: set_sport_config.get().unwrap_or_default(),
+                                                                config: set_sport_config
+                                                                    .get()
+                                                                    .unwrap_or_default()
+                                                                    .to_string(),
                                                                 intent,
                                                             };
                                                             save_sport_config.dispatch(data);
@@ -418,6 +421,12 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 name="sport_id"
                 data-testid="hidden-sport-id"
                 prop:value=move || sport_id.get().unwrap_or_default().to_string()
+            />
+            <input
+                type="hidden"
+                name="config"
+                data-testid="hidden-sport-config"
+                prop:value=move || set_sport_config.get().unwrap_or_default().to_string()
             />
             <ValidatedTextInput
                 label="Name"

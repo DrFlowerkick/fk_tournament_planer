@@ -147,10 +147,7 @@ pub fn ValidatedSelect(
                     .into_iter()
                     .map(|(val, text)| {
                         view! {
-                            <option
-                                value=val.clone()
-                                selected=move || value.get() == val
-                            >
+                            <option value=val.clone() selected=move || value.get() == val>
                                 {text}
                             </option>
                         }
@@ -215,7 +212,6 @@ where
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
-                    // Try to parse. If successful, update signal.
                     if let Ok(val) = val_str.parse::<T>() {
                         value.set(val);
                     }
@@ -344,7 +340,6 @@ pub fn ValidatedDurationInput(
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
-                    // Parse minutes and convert to Duration
                     if let Ok(minutes) = val_str.parse::<u64>() {
                         value.set(Duration::from_secs(minutes * 60));
                     }

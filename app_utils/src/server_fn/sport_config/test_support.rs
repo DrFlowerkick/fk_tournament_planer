@@ -3,7 +3,6 @@ use crate::error::AppError;
 use app_core::SportConfig;
 use leptos::server_fn::{Protocol, ServerFn, client::Client, server::Server};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use uuid::Uuid;
 
 #[derive(Clone, Debug)]
@@ -42,7 +41,7 @@ pub struct SaveSportConfig {
     pub version: u32,
     pub sport_id: Uuid,
     pub name: String,
-    pub config: Value,
+    pub config: String,
     pub intent: Option<String>,
 }
 

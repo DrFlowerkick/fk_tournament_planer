@@ -9,7 +9,6 @@ use app_core::SportConfig;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
-use serde_json::Value;
 #[cfg(not(feature = "test-mock"))]
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
@@ -91,7 +90,7 @@ pub async fn save_sport_config(
     version: u32,
     sport_id: Uuid,
     name: String,
-    config: Value,
+    config: String,
     // which submit button was clicked: "update" | "create"
     intent: Option<String>,
 ) -> AppResult<SportConfig> {
@@ -107,7 +106,7 @@ pub async fn save_sport_config(
     version: u32,
     sport_id: Uuid,
     name: String,
-    config: Value,
+    config: String,
     intent: Option<String>,
 ) -> AppResult<SportConfig> {
     save_sport_config_inner(id, version, sport_id, name, config, intent).await
@@ -120,7 +119,7 @@ pub async fn save_sport_config_inner(
     version: u32,
     sport_id: Uuid,
     name: String,
-    config: Value,
+    config: String,
     intent: Option<String>,
 ) -> AppResult<SportConfig> {
     let mut core = expect_context::<CoreState>().as_sport_config_state();
@@ -145,7 +144,7 @@ pub async fn save_sport_config_inner(
     // set sport config data from Form inputs
     mut_sc_core.set_name(name);
     mut_sc_core.set_sport_id(sport_id);
-    mut_sc_core.set_config(config);
+    mut_sc_core.set_config(serde_json::from_str(&config)?);
 
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {
