@@ -35,7 +35,6 @@ impl DbpSportConfig for FakeDatabasePort {
         } else {
             new.set_id_version(IdVersion::new(Uuid::new_v4(), 0));
         }
-
         guard.insert(new.get_id().unwrap(), new.clone());
         Ok(new)
     }

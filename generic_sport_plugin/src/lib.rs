@@ -178,7 +178,7 @@ mod tests {
             "win_by_margin": 2,
             "hard_cap": 30,
             "victory_points_win": 1.0,
-            "victory_points_draw": 0.0,
+            "victory_points_draw": 0.5,
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });
@@ -253,7 +253,7 @@ mod tests {
             "win_by_margin": 2,
             "hard_cap": 30,
             "victory_points_win": 1.0,
-            "victory_points_draw": 0.0,
+            "victory_points_draw": 0.5,
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });

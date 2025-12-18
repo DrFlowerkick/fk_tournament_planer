@@ -1,10 +1,9 @@
-use crate::common::{get_element_by_test_id, init_test_state, set_url};
+use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
 use app::{provide_global_state, sport_config::SelectSportPlugin};
 use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,
     prelude::*,
-    tachys::dom::body,
     wasm_bindgen::JsCast,
     web_sys::{Event, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
@@ -15,13 +14,16 @@ use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn test_plugin_selection_renders() {
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
+
     let ts = init_test_state();
 
     // Set initial URL
     set_url("/sport");
 
     let core = ts.core.clone();
-    let _mount_guard = mount_to(body(), move || {
+    let _mount_guard = mount_to(get_test_root(), move || {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();

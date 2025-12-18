@@ -100,6 +100,12 @@ impl SportConfigWebUi for GenericSportPlugin {
             is_loading,
         } = props;
 
+        // --- initialize json config, if is_new ---
+        if is_new.get() {
+            let default = GenericSportConfig::default();
+            config.set(serde_json::to_value(default).ok());
+        }
+
         // --- extract current configuration ---
         let current_configuration = move || {
             if let Some(json_cfg) = config.get()

@@ -1,14 +1,11 @@
-use crate::common::{get_element_by_test_id, init_test_state, set_url};
+use crate::common::{
+    get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value,
+    set_select_value, set_url,
+};
 use app::{postal_addresses::PostalAddressForm, provide_global_state};
 use app_core::DbpPostalAddress;
 use gloo_timers::future::sleep;
-use leptos::{
-    mount::mount_to,
-    prelude::*,
-    tachys::dom::body,
-    wasm_bindgen::JsCast,
-    web_sys::{Event, HtmlInputElement, HtmlSelectElement},
-};
+use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
 use leptos_axum_socket::provide_socket_context;
 use leptos_router::components::Router;
 use std::time::Duration;
@@ -16,13 +13,16 @@ use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn test_new_postal_address() {
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
+
     let ts = init_test_state();
 
     // 1. Set initial URL for creating a new address
     set_url("/postal-address/new_pa");
 
     let core = ts.core.clone();
-    let _mount_guard = mount_to(body(), move || {
+    let _mount_guard = mount_to(get_test_root(), move || {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();
@@ -36,47 +36,12 @@ async fn test_new_postal_address() {
     sleep(Duration::from_millis(10)).await;
 
     // create a new address by filling the form
-    let name_input = get_element_by_test_id("input-name")
-        .dyn_into::<HtmlInputElement>()
-        .unwrap();
-    name_input.set_value("New Name");
-    let event = Event::new("input").unwrap();
-    name_input.dispatch_event(&event).unwrap();
-
-    let street_input = get_element_by_test_id("input-street")
-        .dyn_into::<HtmlInputElement>()
-        .unwrap();
-    street_input.set_value(&ts.street);
-    let event = Event::new("input").unwrap();
-    street_input.dispatch_event(&event).unwrap();
-
-    let postal_input = get_element_by_test_id("input-postal_code")
-        .dyn_into::<HtmlInputElement>()
-        .unwrap();
-    postal_input.set_value(&ts.postal);
-    let event = Event::new("input").unwrap();
-    postal_input.dispatch_event(&event).unwrap();
-
-    let city_input = get_element_by_test_id("input-locality")
-        .dyn_into::<HtmlInputElement>()
-        .unwrap();
-    city_input.set_value(&ts.city);
-    let event = Event::new("input").unwrap();
-    city_input.dispatch_event(&event).unwrap();
-
-    let region_input = get_element_by_test_id("input-region")
-        .dyn_into::<HtmlInputElement>()
-        .unwrap();
-    region_input.set_value(&ts.region);
-    let event = Event::new("input").unwrap();
-    region_input.dispatch_event(&event).unwrap();
-
-    let country_select = get_element_by_test_id("input-country")
-        .dyn_into::<HtmlSelectElement>()
-        .unwrap();
-    country_select.set_value(&ts.country);
-    let event = Event::new("change").unwrap();
-    country_select.dispatch_event(&event).unwrap();
+    set_input_value("input-name", "New Name");
+    set_input_value("input-street", &ts.street);
+    set_input_value("input-postal_code", &ts.postal);
+    set_input_value("input-locality", &ts.city);
+    set_input_value("input-region", &ts.region);
+    set_select_value("input-country", &ts.country);
 
     sleep(Duration::from_millis(10)).await;
     let save_button = get_element_by_test_id("btn-save");
@@ -95,6 +60,9 @@ async fn test_new_postal_address() {
 
 #[wasm_bindgen_test]
 async fn test_edit_postal_address() {
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
+
     let ts = init_test_state();
 
     // 1. Set initial URL for creating a new address
@@ -105,7 +73,7 @@ async fn test_edit_postal_address() {
     ));
 
     let core = ts.core.clone();
-    let _mount_guard = mount_to(body(), move || {
+    let _mount_guard = mount_to(get_test_root(), move || {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();
@@ -115,8 +83,6 @@ async fn test_edit_postal_address() {
             </Router>
         }
     });
-
-    sleep(Duration::from_millis(10)).await;
 
     // The component should react to the URL change.
     // A small delay helps ensure all reactive updates are processed.
@@ -129,12 +95,7 @@ async fn test_edit_postal_address() {
     assert_eq!(name_input.value(), format!("{}1", ts.name_base));
 
     // modify some data and save
-    let street_input = get_element_by_test_id("input-street")
-        .dyn_into::<HtmlInputElement>()
-        .unwrap();
-    street_input.set_value("456 Another St");
-    let event = Event::new("input").unwrap();
-    street_input.dispatch_event(&event).unwrap();
+    set_input_value("input-street", "456 Another St");
 
     sleep(Duration::from_millis(10)).await;
     let save_button = get_element_by_test_id("btn-save");
@@ -151,12 +112,7 @@ async fn test_edit_postal_address() {
     assert_eq!(updated_address.get_version().unwrap(), 1);
 
     // now save existing address as new
-    let name_input = get_element_by_test_id("input-name")
-        .dyn_into::<HtmlInputElement>()
-        .unwrap();
-    name_input.set_value("Cloned Address");
-    let event = Event::new("input").unwrap();
-    name_input.dispatch_event(&event).unwrap();
+    set_input_value("input-name", "Cloned Address");
 
     sleep(Duration::from_millis(10)).await;
 

@@ -1,4 +1,4 @@
-use crate::common::get_element_by_test_id;
+use crate::common::{get_element_by_test_id, get_test_root, lock_test};
 use app_core::utils::id_version::{IdVersion, VersionId};
 use app_utils::components::set_id_in_query_input_dropdown::{
     SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
@@ -7,7 +7,6 @@ use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,
     prelude::*,
-    tachys::dom::body,
     wasm_bindgen::JsCast,
     web_sys::{Event, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
@@ -99,6 +98,9 @@ fn WasmTestWrapper(items: Vec<TestItem>) -> impl IntoView {
 
 #[wasm_bindgen_test]
 async fn test_set_id_in_query_input_dropdown() {
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
+
     let items: Vec<TestItem> = vec![
         TestItem {
             id_version: IdVersion::new(Uuid::new_v4(), 1),
@@ -114,7 +116,7 @@ async fn test_set_id_in_query_input_dropdown() {
         },
     ];
 
-    let _mount_guard = mount_to(body(), {
+    let _mount_guard = mount_to(get_test_root(), {
         let items = items.clone();
         move || {
             view! {

@@ -1,11 +1,10 @@
-use crate::common::{get_element_by_test_id, init_test_state, set_url};
+use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
 use app::{postal_addresses::SearchPostalAddress, provide_global_state};
 use gloo_timers::future::sleep;
 use isocountry::CountryCode;
 use leptos::{
     mount::mount_to,
     prelude::*,
-    tachys::dom::body,
     wasm_bindgen::JsCast,
     web_sys::{Event, HtmlAnchorElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
@@ -16,13 +15,16 @@ use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn test_search_postal_address() {
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
+
     let ts = init_test_state();
 
     // 1. Set initial URL for searching addresses
     set_url("/postal-address");
 
     let core = ts.core.clone();
-    let _mount_guard = mount_to(body(), move || {
+    let _mount_guard = mount_to(get_test_root(), move || {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();

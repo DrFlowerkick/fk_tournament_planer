@@ -1,12 +1,9 @@
-use crate::common::{get_element_by_test_id, init_test_state, set_url};
+use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
 use app::{provide_global_state, sport_config::SearchSportConfig};
-use app_core::SportConfig;
-use generic_sport_plugin::config::GenericSportConfig;
 use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,
     prelude::*,
-    tachys::dom::body,
     wasm_bindgen::JsCast,
     web_sys::{Event, HtmlAnchorElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
@@ -17,22 +14,16 @@ use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn test_config_search_renders() {
-    let ts = init_test_state();
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
 
-    // Seed a config
-    let generic_config = GenericSportConfig::default();
-    let mut config = SportConfig::default();
-    config
-        .set_name("Test Config 1")
-        .set_sport_id(ts.generic_sport_id)
-        .set_config(serde_json::to_value(&generic_config).unwrap());
-    let id = ts.db.seed_sport_config(config.clone());
+    let ts = init_test_state();
 
     // 1. Set URL with sport_id
     set_url(&format!("/sport?sport_id={}", ts.generic_sport_id));
 
     let core = ts.core.clone();
-    let _mount_guard = mount_to(body(), move || {
+    let _mount_guard = mount_to(get_test_root(), move || {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();
@@ -90,7 +81,7 @@ async fn test_config_search_renders() {
         .last()
         .unwrap()
         .to_string();
-    assert_eq!(url_id, id.to_string());
+    assert_eq!(url_id, ts.generic_sport_config_id.to_string());
     assert_eq!(input_elem.value(), "Test Config 1");
 
     // check preview
@@ -108,7 +99,7 @@ async fn test_config_search_renders() {
     println!("Edit-Button href: {}", href);
     assert!(href.ends_with(&format!(
         "edit_sc?sport_id={}&sport_config_id={}",
-        ts.generic_sport_id, id
+        ts.generic_sport_id, ts.generic_sport_config_id
     )));
 
     let new_button = get_element_by_test_id("btn-new-sport-config")
@@ -117,7 +108,7 @@ async fn test_config_search_renders() {
     let href = new_button.href();
     assert!(href.ends_with(&format!(
         "new_sc?sport_id={}&sport_config_id={}",
-        ts.generic_sport_id, id
+        ts.generic_sport_id, ts.generic_sport_config_id
     )));
     assert_eq!(new_button.text_content().unwrap(), "New");
 }
