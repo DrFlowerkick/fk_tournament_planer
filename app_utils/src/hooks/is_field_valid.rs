@@ -12,6 +12,10 @@ pub fn is_field_valid<T: Send + Sync + 'static>(
             .errors
             .iter()
             .find(|e| e.get_field() == field)
-            .map(|e| e.get_message().to_string()),
+            .map(|e| if e.get_message().is_empty() {
+                e.to_string()
+            } else {
+                e.get_message().to_string()
+            }),
     })
 }

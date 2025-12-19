@@ -50,8 +50,7 @@ leptos = { version = "0.8.12" }
 #leptos-axum-socket = "0.4.1"
 #leptos-axum-socket = { path = "../leptos-axum-socket" }
 leptos-axum-socket = { git = "https://github.com/DrFlowerkick/leptos-axum-socket", branch = "refactor_context" }
-#leptos-use = "0.16.3"
-leptos-use = { git = "https://github.com/DrFlowerkick/leptos-use/", branch = "main" }
+leptos-use = "0.17.0"
 leptos_axum = { version = "0.8.6" }
 leptos_meta = { version = "0.8.5" }
 leptos_router = { version = "0.8.9" }
