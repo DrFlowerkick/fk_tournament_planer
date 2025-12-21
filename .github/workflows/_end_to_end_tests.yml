@@ -74,20 +74,20 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Add wasm target
-        run: rustup target add wasm32-unknown-unknown
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-leptos
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
           key: e2e-release-ssr_wasm
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-leptos
 
       - name: Install Node.js
         uses: actions/setup-node@v4
