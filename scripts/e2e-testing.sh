@@ -11,7 +11,7 @@ set -e
 ENGINE=${CONTAINER_ENGINE:-docker}
 ENVIRONMENT=${LEPTOS_ENV:-DEV}
 TEST_DIR="$(pwd)"
-IMAGE="mcr.microsoft.com/playwright:v1.44.1-jammy"
+IMAGE="mcr.microsoft.com/playwright:v1.57.0-jammy"
 
 echo "Detected LEPTOS_ENV=$ENVIRONMENT"
 
@@ -19,10 +19,11 @@ if [[ "$ENVIRONMENT" == "DEV" ]]; then
   echo "🔧 Running Playwright E2E tests via Docker (local DEV mode)..."
   $ENGINE run --rm -it \
     --network=host \
+    --ipc=host \
     -v "$TEST_DIR":/app \
     -w /app \
     "$IMAGE" \
-    bash -c "npx playwright test ${TEST_FILTER:-}"
+    bash -c "npx playwright test --reporter=html ${TEST_FILTER:-}"
 elif [[ "$ENVIRONMENT" == "PROD" ]]; then
   echo "⚙️  Running Playwright E2E tests directly (CI mode)..."
   npx playwright test --reporter=html || exit 1
