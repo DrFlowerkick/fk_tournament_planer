@@ -8,14 +8,12 @@ pub fn is_field_valid<T: Send + Sync + 'static>(
 ) -> Callback<&'static str, Option<String>> {
     Callback::new(move |field: &str| match validation_result() {
         Ok(_) => None,
-        Err(err) => err
-            .errors
-            .iter()
-            .find(|e| e.get_field() == field)
-            .map(|e| if e.get_message().is_empty() {
+        Err(err) => err.errors.iter().find(|e| e.get_field() == field).map(|e| {
+            if e.get_message().is_empty() {
                 e.to_string()
             } else {
                 e.get_message().to_string()
-            }),
+            }
+        }),
     })
 }
