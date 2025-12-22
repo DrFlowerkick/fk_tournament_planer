@@ -1,7 +1,7 @@
 // implementation of trait ClientRegistryPort
 
-use anyhow::{Result, anyhow};
-use app_core::{ClientRegistryPort, CrMsg, CrTopic};
+use anyhow::anyhow;
+use app_core::{ClientRegistryPort, CrMsg, CrResult, CrTopic};
 use async_trait::async_trait;
 use dashmap::DashMap;
 use futures_core::Stream;
@@ -108,9 +108,9 @@ impl CrSingleInstance {
     }
     /// Subscribe to a topic; dropping the returned stream ends the subscription (RAII).
     #[instrument(name = "cr.subscribe", skip(self), fields(topic = %topic))]
-    pub async fn subscribe(&self, topic: CrTopic) -> Result<CrNoticeStream> {
+    pub async fn subscribe(&self, topic: CrTopic) -> CrResult<CrNoticeStream> {
         if topic.id().is_nil() {
-            return Err(anyhow!("nil uuid"));
+            Err(anyhow!("nil uuid"))?;
         }
         let tx = self.ensure_bus(&topic);
         let rx = tx.subscribe();
@@ -144,7 +144,7 @@ impl CrSingleInstance {
 #[async_trait]
 impl ClientRegistryPort for CrSingleInstance {
     #[instrument(name = "cr.publish", skip(self, msg))]
-    async fn publish(&self, topic: CrTopic, msg: CrMsg) -> Result<()> {
+    async fn publish(&self, topic: CrTopic, msg: CrMsg) -> CrResult<()> {
         if let Some(tx) = self.get_bus(&topic) {
             let listeners = tx.receiver_count();
             let sent = tx.send(msg).is_ok();

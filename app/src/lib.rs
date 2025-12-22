@@ -1,13 +1,10 @@
 // web app ui
 
-pub mod components;
-mod error;
-pub mod global_state;
-pub mod hooks;
 pub mod postal_addresses;
+pub mod sport_config;
 
-use error::*;
-use global_state::GlobalState;
+use app_utils::global_state::GlobalState;
+use generic_sport_plugin::GenericSportPlugin;
 use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
@@ -18,6 +15,17 @@ use leptos_router::{
 };
 use postal_addresses::*;
 use reactive_stores::Store;
+use sport_config::*;
+use std::sync::Arc;
+
+pub fn provide_global_state() {
+    let mut global_state = GlobalState::new();
+    global_state
+        .sport_plugin_manager
+        .register(Arc::new(GenericSportPlugin::new()))
+        .unwrap();
+    provide_context(Store::new(global_state));
+}
 
 pub fn shell(options: LeptosOptions) -> impl IntoView {
     view! {
@@ -44,7 +52,7 @@ pub fn App() -> impl IntoView {
     // Provides the WebSocket socket context for client registry communication
     provide_socket_context();
     // provide global state context
-    provide_context(Store::new(GlobalState::default()));
+    provide_global_state();
 
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
@@ -59,13 +67,16 @@ pub fn App() -> impl IntoView {
                 <header class="navbar bg-base-200">
                     <div class="flex-1">
                         <a href="/" class="btn btn-ghost normal-case text-xl">
-                            "Turnierplaner"
+                            "Tournament Planner"
                         </a>
                     </div>
                     <div class="flex-none">
                         <ul class="menu menu-horizontal px-1">
                             <li>
-                                <A href="/postal-address">"Postadressen"</A>
+                                <A href="/postal-address">"Postal Addresses"</A>
+                            </li>
+                            <li>
+                                <A href="/sport">"Sports"</A>
                             </li>
                         </ul>
                     </div>
@@ -83,6 +94,16 @@ pub fn App() -> impl IntoView {
                             />
                             <Route path=path!("new_pa") view=PostalAddressForm />
                             <Route path=path!("edit_pa") view=PostalAddressForm />
+                        </ParentRoute>
+                        <ParentRoute path=path!("/sport") view=SportConfigPage>
+                            <Route
+                                path=path!("")
+                                view={
+                                    view! {}
+                                }
+                            />
+                            <Route path=path!("new_sc") view=SportConfigForm />
+                            <Route path=path!("edit_sc") view=SportConfigForm />
                         </ParentRoute>
                     </Routes>
                 </main>

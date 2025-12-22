@@ -4,9 +4,9 @@ set -e
 # This script runs Playwright E2E tests in a Docker container or directly based on the LEPTOS_ENV environment variable.
 # usage of TEST_FILTER: pass a filter to run specific tests, e.g.
 # running a single test file with:
-#   TEST_FILTER="tests/setup-id-input.spec.ts" cargo leptos end-to-end
+#   TEST_FILTER="tests/setup-id-input.spec.ts" make e2e
 # running a specific test name with grep:
-#   TEST_FILTER='-g "Valid input"' cargo leptos end-to-end
+#   TEST_FILTER='-g "Valid input"' make e2e
 
 ENGINE=${CONTAINER_ENGINE:-docker}
 ENVIRONMENT=${LEPTOS_ENV:-DEV}
@@ -19,13 +19,14 @@ if [[ "$ENVIRONMENT" == "DEV" ]]; then
   echo "🔧 Running Playwright E2E tests via Docker (local DEV mode)..."
   $ENGINE run --rm -it \
     --network=host \
+    --ipc=host \
     -v "$TEST_DIR":/app \
     -w /app \
     "$IMAGE" \
     bash -c "npx playwright test ${TEST_FILTER:-}"
 elif [[ "$ENVIRONMENT" == "PROD" ]]; then
   echo "⚙️  Running Playwright E2E tests directly (CI mode)..."
-  npx playwright test --reporter=html || exit 1
+  npx playwright test || exit 1
   echo "✅ Playwright tests finished (CI)"
 else
   echo "❗️Unknown LEPTOS_ENV value: $ENVIRONMENT"

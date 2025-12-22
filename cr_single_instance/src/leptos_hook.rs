@@ -52,6 +52,15 @@ pub fn use_client_registry_sse(
                         refetch();
                     }
                 }
+                CrMsg::SportConfigUpdated {
+                    version: meta_version,
+                    ..
+                } => {
+                    log!("ClientRegistry SSE Event version: {}", meta_version);
+                    if meta_version > version.get_untracked() {
+                        refetch();
+                    }
+                }
             }
         }
     });

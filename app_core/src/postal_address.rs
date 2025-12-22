@@ -1,26 +1,15 @@
 // data types for postal addresses
 
 use crate::{
-    Core, CrMsg, CrTopic, DbResult,
-    utils::{id_version::IdVersion, normalize::*, validation::*},
+    Core, CoreResult, CrMsg, CrTopic,
+    utils::{
+        id_version::{IdVersion, VersionId},
+        normalize::*,
+        validation::*,
+    },
 };
-use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Display)]
-pub enum PaValidationField {
-    /// name
-    Name,
-    /// street
-    Street,
-    /// postal code
-    PostalCode,
-    /// locality
-    Locality,
-    /// country
-    Country,
-}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PostalAddress {
@@ -51,6 +40,12 @@ impl Default for PostalAddress {
             region: None,
             country: "".into(),
         }
+    }
+}
+
+impl VersionId for PostalAddress {
+    fn get_id_version(&self) -> IdVersion {
+        self.id_version
     }
 }
 
@@ -94,10 +89,9 @@ impl PostalAddress {
         self
     }
 
-    /// Sets the optional display name with normalization:
+    /// Sets the display name with normalization:
     /// - trims leading/trailing whitespace
     /// - collapses internal runs of whitespace to a single space
-    /// - converts empty/whitespace-only input to `None`
     ///
     /// # Examples
     ///
@@ -227,14 +221,14 @@ impl PostalAddress {
         self
     }
 
-    pub fn validate(&self) -> Result<(), ValidationErrors<PaValidationField>> {
+    pub fn validate(&self) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
 
         // Required fields (syntax-level)
         if self.name.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field(PaValidationField::Name)
+                    .set_field("Name")
                     .add_required()
                     .build(),
             );
@@ -242,7 +236,7 @@ impl PostalAddress {
         if self.street.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field(PaValidationField::Street)
+                    .set_field("Street")
                     .add_required()
                     .build(),
             );
@@ -250,7 +244,7 @@ impl PostalAddress {
         if self.postal_code.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field(PaValidationField::PostalCode)
+                    .set_field("PostalCode")
                     .add_required()
                     .build(),
             );
@@ -258,7 +252,7 @@ impl PostalAddress {
         if self.locality.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field(PaValidationField::Locality)
+                    .set_field("Locality")
                     .add_required()
                     .build(),
             );
@@ -266,7 +260,7 @@ impl PostalAddress {
         if self.country.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field(PaValidationField::Country)
+                    .set_field("Country")
                     .add_required()
                     .build(),
             );
@@ -279,7 +273,7 @@ impl PostalAddress {
         {
             errs.add(
                 FieldError::builder()
-                    .set_field(PaValidationField::PostalCode)
+                    .set_field("PostalCode")
                     .add_invalid_format()
                     .add_message("DE postal code must have 5 digits")
                     .build(),
@@ -312,15 +306,19 @@ impl Core<PostalAddressState> {
     pub fn get_mut(&mut self) -> &mut PostalAddress {
         &mut self.state.address
     }
-    pub async fn load(&mut self, id: Uuid) -> DbResult<Option<&PostalAddress>> {
+    pub async fn load(&mut self, id: Uuid) -> CoreResult<Option<&PostalAddress>> {
         if let Some(address) = self.database.get_postal_address(id).await? {
             self.state.address = address;
+            self.state.address.validate()?;
             Ok(Some(self.get()))
         } else {
             Ok(None)
         }
     }
-    pub async fn save(&mut self) -> DbResult<&PostalAddress> {
+    pub async fn save(&mut self) -> CoreResult<&PostalAddress> {
+        // validate before save
+        self.state.address.validate()?;
+        // persist address
         self.state.address = self
             .database
             .save_postal_address(&self.state.address)
@@ -343,10 +341,15 @@ impl Core<PostalAddressState> {
         &self,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<PostalAddress>> {
-        self.database
+    ) -> CoreResult<Vec<PostalAddress>> {
+        let list = self
+            .database
             .list_postal_addresses(name_filter, limit)
-            .await
+            .await?;
+        for addr in &list {
+            addr.validate()?;
+        }
+        Ok(list)
     }
 }
 
@@ -386,11 +389,7 @@ mod test_validate {
 
         let errs = res.unwrap_err();
         let err = errs.errors.first().unwrap();
-        assert_eq!(
-            err.get_field(),
-            &PaValidationField::Name,
-            "should report the name field"
-        );
+        assert_eq!(err.get_field(), "Name", "should report the name field");
         assert_eq!(
             err.get_code(),
             "required",
@@ -408,11 +407,7 @@ mod test_validate {
 
         let errs = res.unwrap_err();
         let err = errs.errors.first().unwrap();
-        assert_eq!(
-            err.get_field(),
-            &PaValidationField::Street,
-            "should report the street field"
-        );
+        assert_eq!(err.get_field(), "Street", "should report the street field");
         assert_eq!(
             err.get_code(),
             "required",
@@ -432,7 +427,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            &PaValidationField::PostalCode,
+            "PostalCode",
             "should report the postal code field"
         );
         assert_eq!(
@@ -454,7 +449,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            &PaValidationField::Locality,
+            "Locality",
             "should report the locality field"
         );
         assert_eq!(
@@ -476,7 +471,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            &PaValidationField::Country,
+            "Country",
             "should report the country field"
         );
         assert_eq!(
@@ -506,22 +501,22 @@ mod test_validate {
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), PaValidationField::Street))
+                .any(|e| matches!(e.get_field(), "Street"))
         );
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), PaValidationField::PostalCode))
+                .any(|e| matches!(e.get_field(), "PostalCode"))
         );
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), PaValidationField::Locality))
+                .any(|e| matches!(e.get_field(), "Locality"))
         );
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), PaValidationField::Country))
+                .any(|e| matches!(e.get_field(), "Country"))
         );
     }
 
@@ -550,7 +545,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            &PaValidationField::PostalCode,
+            "PostalCode",
             "should report the postal code field"
         );
         assert_eq!(
@@ -572,7 +567,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            &PaValidationField::PostalCode,
+            "PostalCode",
             "should report the postal code field"
         );
         assert_eq!(

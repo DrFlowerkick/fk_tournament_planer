@@ -1,7 +1,7 @@
-use crate::common::get_element_by_test_id;
-use app::components::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner};
+use crate::common::{get_element_by_test_id, get_test_root, lock_test};
+use app_utils::components::banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner};
 use gloo_timers::future::sleep;
-use leptos::{mount::mount_to, prelude::*, tachys::dom::body};
+use leptos::{mount::mount_to, prelude::*};
 use leptos_router::components::Router;
 use std::{
     sync::{Arc, RwLock},
@@ -11,6 +11,9 @@ use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 async fn test_acknowledgment_banner_display_and_acknowledge() {
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
+
     let ack_called = Arc::new(RwLock::new(false));
     let ack_called_clone = ack_called.clone();
     let ack_action = move || {
@@ -18,7 +21,7 @@ async fn test_acknowledgment_banner_display_and_acknowledge() {
         *ack_called = true;
     };
 
-    let _mount_guard = mount_to(body(), move || {
+    let _mount_guard = mount_to(get_test_root(), move || {
         view! {
             <AcknowledgmentBanner
                 msg="Test Message"
@@ -40,6 +43,9 @@ async fn test_acknowledgment_banner_display_and_acknowledge() {
 
 #[wasm_bindgen_test]
 async fn test_acknowledgment_and_navigate_banner_display_and_acknowledge() {
+    // Acquire lock and clean DOM.
+    let _guard = lock_test().await;
+
     let ack_called = Arc::new(RwLock::new(false));
     let ack_called_clone = ack_called.clone();
     let ack_action = move || {
@@ -47,7 +53,7 @@ async fn test_acknowledgment_and_navigate_banner_display_and_acknowledge() {
         *ack_called = true;
     };
 
-    let _mount_guard = mount_to(body(), move || {
+    let _mount_guard = mount_to(get_test_root(), move || {
         view! {
             <Router>
                 <AcknowledgmentAndNavigateBanner

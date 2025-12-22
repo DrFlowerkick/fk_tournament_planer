@@ -28,11 +28,20 @@
     "frontend": {
       "component": "frontend"
     },
+    "generic_sport_plugin": {
+      "component": "generic_sport_plugin"
+    },
+    "integration_testing": {
+      "component": "integration_testing"
+    },
     "server": {
       "component": "server"
     },
     "shared": {
       "component": "shared"
+    },
+    "sport_plugin_manager": {
+      "component": "sport_plugin_manager"
     }
   },
   "plugins": [

@@ -84,6 +84,7 @@
     "prefersdark",
     "psql",
     "rlib",
+    "rsplit",
     "rustc",
     "sccache",
     "scopers",

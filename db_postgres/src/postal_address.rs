@@ -56,7 +56,6 @@ impl TryFrom<DbPostalAddress> for PostalAddress {
             .set_locality(r.locality)
             .set_region(r.region.unwrap_or_default())
             .set_country(r.country);
-        pa.validate()?;
         Ok(pa)
     }
 }

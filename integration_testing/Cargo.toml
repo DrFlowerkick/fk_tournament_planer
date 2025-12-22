@@ -13,31 +13,39 @@ test-mock = [
     "leptos/csr",
     "dep:wasm-bindgen-test",
     "leptos-axum-socket/hydrate",
+    "generic_sport_plugin/test-mock",
+    "dep:futures-util",
+]
+hydrate = [
+    "app/hydrate",
+    "app_utils/hydrate",
+    "leptos/hydrate",
+    "dep:wasm-bindgen-test",
+    "leptos-axum-socket/hydrate",
+    "shared/hydrate",
+    "sport_plugin_manager/hydrate",
 ]
 ssr = [
     "app/ssr",
+    "app_utils/ssr",
     "leptos/ssr",
     "leptos_router/ssr",
     "leptos-axum-socket/ssr",
+    "shared/ssr",
+    "sport_plugin_manager/ssr",
     "dep:tokio",
     "dep:cr_single_instance",
     "dep:db_postgres",
     "dep:diesel",
     "dep:diesel-async",
     "dep:futures-util",
-    "dep:shared",
-]
-hydrate = [
-    "app/hydrate",
-    "leptos/hydrate",
-    "dep:wasm-bindgen-test",
-    "leptos-axum-socket/hydrate",
 ]
 
 [dependencies]
 anyhow.workspace = true
 app = { path = "../app", default-features = false }
 app_core = { path = "../app_core" }
+app_utils = { path = "../app_utils" }
 async-trait.workspace = true
 chrono.workspace = true
 cr_single_instance = { path = "../cr_single_instance", optional = true }
@@ -47,6 +55,7 @@ diesel-async = { workspace = true, optional = true }
 displaydoc.workspace = true
 dotenvy.workspace = true
 futures-util = { workspace = true, optional = true }
+generic_sport_plugin = { path = "../generic_sport_plugin" }
 gloo-timers.workspace = true
 isocountry.workspace = true
 leptos.workspace = true
@@ -54,7 +63,8 @@ leptos-axum-socket.workspace = true
 leptos_router.workspace = true
 reactive_stores.workspace = true
 serde.workspace = true
-shared = { path = "../shared", optional = true }
+serde_json.workspace = true
+shared = { path = "../shared" }
 sport_plugin_manager = { path = "../sport_plugin_manager" }
 thiserror.workspace = true
 tokio = { workspace = true, optional = true }

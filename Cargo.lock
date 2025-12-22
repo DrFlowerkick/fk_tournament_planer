@@ -77,13 +77,13 @@ name = "app"
 version = "0.4.0"
 dependencies = [
  "app_core",
- "cfg-if",
+ "app_utils",
  "cr_leptos_axum_socket",
  "cr_single_instance",
  "db_postgres",
+ "generic_sport_plugin",
  "getrandom",
  "gloo-timers",
- "http",
  "isocountry",
  "leptos",
  "leptos-axum-socket",
@@ -91,9 +91,9 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "reactive_stores",
- "serde",
- "thiserror 2.0.17",
- "tracing",
+ "serde_json",
+ "shared",
+ "sport_plugin_manager",
  "uuid",
 ]
 
@@ -108,6 +108,25 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.17",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "app_utils"
+version = "0.1.0"
+dependencies = [
+ "app_core",
+ "gloo-timers",
+ "http",
+ "leptos",
+ "leptos_router",
+ "reactive_stores",
+ "serde",
+ "serde_json",
+ "sport_plugin_manager",
+ "thiserror 2.0.17",
+ "tracing",
  "uuid",
 ]
 
@@ -418,9 +437,9 @@ dependencies = [
 
 [[package]]
 name = "codee"
-version = "0.3.3"
+version = "0.3.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "774365d8238a8dbd57c3047f865187fe6417e765d9955ba8e99e794678a41a0e"
+checksum = "a9dbbdc4b4d349732bc6690de10a9de952bd39ba6a065c586e26600b6b0b91f5"
 dependencies = [
  "serde",
  "serde_json",
@@ -1121,12 +1140,17 @@ dependencies = [
 
 [[package]]
 name = "generic_sport_plugin"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "app_core",
+ "app_utils",
+ "leptos",
+ "leptos_router",
+ "reactive_stores",
  "serde",
  "serde_json",
+ "shared",
  "uuid",
 ]
 
@@ -1507,11 +1531,12 @@ dependencies = [
 
 [[package]]
 name = "integration_testing"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "app",
  "app_core",
+ "app_utils",
  "async-trait",
  "chrono",
  "cr_single_instance",
@@ -1521,6 +1546,7 @@ dependencies = [
  "displaydoc",
  "dotenvy",
  "futures-util",
+ "generic_sport_plugin",
  "gloo-timers",
  "isocountry",
  "leptos",
@@ -1528,6 +1554,7 @@ dependencies = [
  "leptos_router",
  "reactive_stores",
  "serde",
+ "serde_json",
  "shared",
  "sport_plugin_manager",
  "thiserror 2.0.17",
@@ -1666,8 +1693,9 @@ dependencies = [
 
 [[package]]
 name = "leptos-axum-socket"
-version = "0.4.1"
-source = "git+https://github.com/DrFlowerkick/leptos-axum-socket?branch=refactor_context#c75e5e30264b9df6b55ad1f8d18e9dc5a558d3e3"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c383ed9ffc62bb1eae14573dca747906b7f0066cd2742fc164e5e6b469f0f163"
 dependencies = [
  "anyhow",
  "axum",
@@ -1687,8 +1715,9 @@ dependencies = [
 
 [[package]]
 name = "leptos-use"
-version = "0.16.3"
-source = "git+https://github.com/DrFlowerkick/leptos-use/?branch=main#95efee495326209760f0bed7cef1a82913eea59b"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a59caa13dbc0f4d71bf3d610884953273c52a0bbe995b35d36cdb1c8f91142f"
 dependencies = [
  "cfg-if",
  "chrono",
@@ -2897,6 +2926,7 @@ dependencies = [
  "axum-macros",
  "leptos",
  "leptos-axum-socket",
+ "serde_json",
 ]
 
 [[package]]
@@ -2965,12 +2995,14 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sport_plugin_manager"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "app_core",
+ "leptos",
  "serde",
  "serde_json",
+ "shared",
  "uuid",
 ]
 

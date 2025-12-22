@@ -1,9 +1,7 @@
 // client registry based upon leptos-axum-socket
 
 #[cfg(feature = "ssr")]
-use anyhow::Result as AnyResult;
-#[cfg(feature = "ssr")]
-use app_core::ClientRegistryPort;
+use app_core::{ClientRegistryPort, CrResult};
 use app_core::{CrMsg, CrTopic};
 #[cfg(feature = "ssr")]
 use async_trait::async_trait;
@@ -42,7 +40,7 @@ pub struct ClientRegistrySocket {}
 #[async_trait]
 impl ClientRegistryPort for ClientRegistrySocket {
     #[instrument(name = "cr.publish", skip(self, msg))]
-    async fn publish(&self, topic: CrTopic, msg: CrMsg) -> AnyResult<()> {
+    async fn publish(&self, topic: CrTopic, msg: CrMsg) -> CrResult<()> {
         let msg = CrSocketMsg { msg };
         leptos_axum_socket::send(&topic, &msg).await;
         Ok(())
@@ -85,6 +83,18 @@ pub fn use_client_registry_socket(
                     if meta_version > version {
                         log!(
                             "AddressUpdated received: refetching address expecting version: {}",
+                            meta_version
+                        );
+                        refetch();
+                    }
+                }
+                CrMsg::SportConfigUpdated {
+                    version: meta_version,
+                    ..
+                } => {
+                    if meta_version > version {
+                        log!(
+                            "SportConfigUpdated received: refetching config expecting version: {}",
                             meta_version
                         );
                         refetch();

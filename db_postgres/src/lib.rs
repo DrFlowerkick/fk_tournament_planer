@@ -7,7 +7,7 @@ pub mod sport_config;
 
 pub use helpers::*;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Error, Result, anyhow};
 use app_core::{DatabasePort, DbError, DbResult};
 use async_trait::async_trait;
 use diesel::{dsl::sql, select, sql_types::Bool};
@@ -42,7 +42,7 @@ impl PgDb {
             .pool
             .get_owned()
             .await
-            .map_err(|e| DbError::Other(e.into()))?;
+            .map_err(|e| DbError::from(Error::from(e)))?;
         tokio::task::spawn_blocking(move || -> Result<()> {
             let mut harness = AsyncMigrationHarness::new(conn);
             harness
@@ -63,7 +63,7 @@ impl PgDb {
             Err(e) => {
                 // Pool exhausted or database unavailable
                 warn!(error = %e, "pool_get_failed");
-                Err(DbError::Other(e.into()))
+                Err(DbError::from(Error::from(e)))
             }
         }
     }
@@ -77,7 +77,7 @@ impl DatabasePort for PgDb {
         select(sql::<Bool>("1=1"))
             .execute(&mut conn)
             .await
-            .map_err(|e| DbError::Other(e.into()))?;
+            .map_err(|e| DbError::from(Error::from(e)))?;
         Ok(())
     }
 }
@@ -94,9 +94,9 @@ fn map_db_err(e: DE) -> DbError {
                 K::ForeignKeyViolation => DbError::ForeignKeyViolation(c),
                 K::CheckViolation => DbError::CheckViolation(c),
                 K::SerializationFailure => DbError::SerializationFailure,
-                _ => DbError::Other(anyhow::anyhow!(e)),
+                _ => DbError::from(anyhow::anyhow!(e)),
             }
         }
-        _ => DbError::Other(anyhow::anyhow!(e)),
+        _ => DbError::from(anyhow::anyhow!(e)),
     }
 }

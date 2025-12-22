@@ -28,6 +28,7 @@ impl From<CrTopicPath> for CrTopic {
     fn from(value: CrTopicPath) -> Self {
         match value.kind {
             CrKind::Address => CrTopic::Address(value.id),
+            CrKind::SportConfig => CrTopic::SportConfig(value.id),
         }
     }
 }
@@ -54,7 +55,10 @@ pub async fn api_sse_subscribe(
     let out = match cr_single_instance.subscribe(topic).await {
         Ok(st) => st
             .map(|changed| {
-                let CrMsg::AddressUpdated { id, .. } = &changed;
+                let id = match &changed {
+                    CrMsg::AddressUpdated { id, .. } => id,
+                    CrMsg::SportConfigUpdated { id, .. } => id,
+                };
                 match serde_json::to_string(&changed) {
                     Ok(s) => Ok(Event::default().event("changed").data(s).id(id.to_string())),
                     Err(e) => {

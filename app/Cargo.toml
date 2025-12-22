@@ -6,15 +6,20 @@ license = "MIT"
 
 [features]
 default = []
-test-mock = []
+test-mock = ["app_utils/test-mock"]
 hydrate = [
+    "app_utils/hydrate",
     "leptos/hydrate",
     "leptos-axum-socket/hydrate",
     "cr_leptos_axum_socket/hydrate",
     "cr_single_instance/hydrate",
+    "sport_plugin_manager/hydrate",
+    "generic_sport_plugin/hydrate",
+    "shared/hydrate",
     "uuid/js",
 ]
 ssr = [
+    "app_utils/ssr",
     "leptos/ssr",
     "leptos_meta/ssr",
     "leptos_router/ssr",
@@ -22,6 +27,9 @@ ssr = [
     "dep:leptos_axum",
     "cr_single_instance/ssr",
     "cr_leptos_axum_socket/ssr",
+    "sport_plugin_manager/ssr",
+    "generic_sport_plugin/ssr",
+    "shared/ssr",
 ]
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -31,12 +39,12 @@ getrandom = { workspace = true, features = ["wasm_js"] }
 
 [dependencies]
 app_core = { path = "../app_core" }
-cfg-if.workspace = true
+app_utils = { path = "../app_utils" }
 cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket" }
 cr_single_instance = { path = "../cr_single_instance" }
 db_postgres = { path = "../db_postgres", optional = true }
+generic_sport_plugin = { path = "../generic_sport_plugin" }
 gloo-timers.workspace = true
-http.workspace = true
 isocountry.workspace = true
 leptos.workspace = true
 leptos-axum-socket.workspace = true
@@ -44,7 +52,7 @@ leptos_axum = { workspace = true, optional = true }
 leptos_meta.workspace = true
 leptos_router.workspace = true
 reactive_stores.workspace = true
-serde.workspace = true
-thiserror.workspace = true
-tracing.workspace = true
+serde_json.workspace = true
+shared = { path = "../shared" }
+sport_plugin_manager = { path = "../sport_plugin_manager" }
 uuid.workspace = true

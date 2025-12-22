@@ -1,6 +1,7 @@
 // contains core functionality
 
 mod entrant;
+mod errors;
 mod group;
 mod match_;
 mod ports;
@@ -8,12 +9,14 @@ mod postal_address;
 mod round;
 mod scoring;
 mod sport_config;
+mod sport_plugin;
 mod stage;
 mod timing;
 mod tournament;
 pub mod utils;
 
 pub use entrant::*;
+pub use errors::*;
 pub use group::*;
 pub use match_::*;
 pub use ports::*;
@@ -21,6 +24,7 @@ pub use postal_address::*;
 pub use round::*;
 pub use scoring::*;
 pub use sport_config::*;
+pub use sport_plugin::*;
 pub use stage::*;
 pub use timing::*;
 pub use tournament::*;

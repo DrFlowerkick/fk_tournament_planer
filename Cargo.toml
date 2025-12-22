@@ -10,6 +10,7 @@ resolver = "2"
 members = [
     "app",
     "app_core",
+    "app_utils",
     "cr_leptos_axum_socket",
     "cr_single_instance",
     "db_postgres",
@@ -46,11 +47,8 @@ gloo-timers = { version = "0.3.0", features = ["futures"] }
 http = "1.3.1"
 isocountry = "0.3.2"
 leptos = { version = "0.8.12" }
-#leptos-axum-socket = "0.4.1"
-#leptos-axum-socket = { path = "../leptos-axum-socket" }
-leptos-axum-socket = { git = "https://github.com/DrFlowerkick/leptos-axum-socket", branch = "refactor_context" }
-#leptos-use = "0.16.3"
-leptos-use = { git = "https://github.com/DrFlowerkick/leptos-use/", branch = "main" }
+leptos-axum-socket = "0.5.0"
+leptos-use = "0.17.0"
 leptos_axum = { version = "0.8.6" }
 leptos_meta = { version = "0.8.5" }
 leptos_router = { version = "0.8.9" }
@@ -72,7 +70,7 @@ url = "2.5"
 uuid = { version = "1.18.1", features = ["serde", "v4", "v5", "rng-getrandom"] }
 wasm-bindgen = "=0.2.105"
 wasm-bindgen-test = "0.3"
-web-sys = "0.3"
+web-sys = { version = "0.3", features = ["HtmlOptionsCollection"] }
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 
