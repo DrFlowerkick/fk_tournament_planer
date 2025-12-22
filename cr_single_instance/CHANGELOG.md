@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_single_instance-v0.4.0...cr_single_instance-v0.5.0) (2025-12-22)
+
+
+### Features
+
+* Generic Sport WebUI ([#20](https://github.com/DrFlowerkick/fk_tournament_planer/issues/20)) ([b659c87](https://github.com/DrFlowerkick/fk_tournament_planer/commit/b659c8756cf92cbfd193fbae88bdda4eebee6d41))
+
 ## [0.4.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_single_instance-v0.3.0...cr_single_instance-v0.4.0) (2025-12-01)
 
 
