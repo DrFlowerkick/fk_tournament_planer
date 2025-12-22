@@ -23,10 +23,10 @@ if [[ "$ENVIRONMENT" == "DEV" ]]; then
     -v "$TEST_DIR":/app \
     -w /app \
     "$IMAGE" \
-    bash -c "npx playwright test --reporter=html ${TEST_FILTER:-}"
+    bash -c "npx playwright test ${TEST_FILTER:-}"
 elif [[ "$ENVIRONMENT" == "PROD" ]]; then
   echo "⚙️  Running Playwright E2E tests directly (CI mode)..."
-  npx playwright test --reporter=html || exit 1
+  npx playwright test || exit 1
   echo "✅ Playwright tests finished (CI)"
 else
   echo "❗️Unknown LEPTOS_ENV value: $ENVIRONMENT"
