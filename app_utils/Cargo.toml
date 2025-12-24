@@ -14,6 +14,7 @@ ssr = ["leptos/ssr", "leptos_router/ssr", "sport_plugin_manager/ssr"]
 
 [dependencies]
 app_core = { path = "../app_core" }
+displaydoc.workspace = true
 gloo-timers.workspace = true
 http.workspace = true
 leptos.workspace = true

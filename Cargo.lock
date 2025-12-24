@@ -81,6 +81,7 @@ dependencies = [
  "cr_leptos_axum_socket",
  "cr_single_instance",
  "db_postgres",
+ "ddc_plugin",
  "generic_sport_plugin",
  "getrandom",
  "gloo-timers",
@@ -114,9 +115,10 @@ dependencies = [
 
 [[package]]
 name = "app_utils"
-version = "0.1.1"
+version = "0.5.0"
 dependencies = [
  "app_core",
+ "displaydoc",
  "gloo-timers",
  "http",
  "leptos",
@@ -768,6 +770,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ddc_plugin"
+version = "0.5.0"
+dependencies = [
+ "anyhow",
+ "app_core",
+ "app_utils",
+ "leptos",
+ "leptos_router",
+ "reactive_stores",
+ "serde",
+ "serde_json",
+ "shared",
+ "uuid",
+]
+
+[[package]]
 name = "default-struct-builder"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1140,7 +1158,7 @@ dependencies = [
 
 [[package]]
 name = "generic_sport_plugin"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "app_core",
@@ -1531,7 +1549,7 @@ dependencies = [
 
 [[package]]
 name = "integration_testing"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "app",
@@ -2792,6 +2810,7 @@ dependencies = [
  "cr_leptos_axum_socket",
  "cr_single_instance",
  "db_postgres",
+ "ddc_plugin",
  "dotenvy",
  "futures-core",
  "futures-util",
@@ -2995,7 +3014,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sport_plugin_manager"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "app_core",

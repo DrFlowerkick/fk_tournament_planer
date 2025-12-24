@@ -4,6 +4,7 @@ pub mod postal_addresses;
 pub mod sport_config;
 
 use app_utils::global_state::GlobalState;
+use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
 use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;
@@ -23,6 +24,10 @@ pub fn provide_global_state() {
     global_state
         .sport_plugin_manager
         .register(Arc::new(GenericSportPlugin::new()))
+        .unwrap();
+    global_state
+        .sport_plugin_manager
+        .register(Arc::new(DdcSportPlugin::new()))
         .unwrap();
     provide_context(Store::new(global_state));
 }

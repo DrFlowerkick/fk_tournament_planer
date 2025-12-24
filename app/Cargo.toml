@@ -13,6 +13,7 @@ hydrate = [
     "leptos-axum-socket/hydrate",
     "cr_leptos_axum_socket/hydrate",
     "cr_single_instance/hydrate",
+    "ddc_plugin/hydrate",
     "sport_plugin_manager/hydrate",
     "generic_sport_plugin/hydrate",
     "shared/hydrate",
@@ -27,6 +28,7 @@ ssr = [
     "dep:leptos_axum",
     "cr_single_instance/ssr",
     "cr_leptos_axum_socket/ssr",
+    "ddc_plugin/ssr",
     "sport_plugin_manager/ssr",
     "generic_sport_plugin/ssr",
     "shared/ssr",
@@ -43,6 +45,7 @@ app_utils = { path = "../app_utils" }
 cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket" }
 cr_single_instance = { path = "../cr_single_instance" }
 db_postgres = { path = "../db_postgres", optional = true }
+ddc_plugin = { path = "../ddc_plugin" }
 generic_sport_plugin = { path = "../generic_sport_plugin" }
 gloo-timers.workspace = true
 isocountry.workspace = true

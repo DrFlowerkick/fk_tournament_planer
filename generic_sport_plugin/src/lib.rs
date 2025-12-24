@@ -90,9 +90,13 @@ impl GenericSportPlugin {
         score: &Match,
     ) -> SportResult<()> {
         let (score_a, score_b) = score.get_scores();
-        if score_a.len() != config.sets_to_win as usize
-            || score_b.len() != config.sets_to_win as usize
-        {
+        if score_a.len() != score_b.len() {
+            return Err(SportError::InvalidScore(
+                "Score vectors for both entrants must have the same length".to_string(),
+            ));
+        }
+        let max_sets = (config.sets_to_win * 2 - 1) as usize;
+        if !(config.sets_to_win as usize..=max_sets).contains(&score_a.len()) {
             return Err(SportError::InvalidScore(
                 "Score does not have the correct number of sets".to_string(),
             ));
