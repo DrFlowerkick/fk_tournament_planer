@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/integration_testing-v0.6.0...integration_testing-v0.7.0) (2025-12-24)
+
+
+### Miscellaneous Chores
+
+* **integration_testing:** Synchronize fk_tournament versions
+
 ## [0.6.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/integration_testing-v0.5.0...integration_testing-v0.6.0) (2025-12-24)
 
 
