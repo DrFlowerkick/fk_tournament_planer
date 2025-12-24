@@ -2,7 +2,7 @@
   ".": "0.6.0",
   "app": "0.6.0",
   "app_core": "0.6.0",
-  "app_utils": "0.5.1",
+  "app_utils": "0.6.0",
   "cr_leptos_axum_socket": "0.6.0",
   "cr_single_instance": "0.6.0",
   "db_postgres": "0.6.0",

@@ -16,6 +16,9 @@
     "app_core": {
       "component": "app_core"
     },
+    "app_utils": {
+      "component": "app_utils"
+    },
     "cr_leptos_axum_socket": {
       "component": "cr_leptos_axum_socket"
     },
