@@ -50,6 +50,15 @@ pub fn SearchSportConfig() -> impl IntoView {
             None
         }
     };
+
+    let sport_name = move || {
+        if let Some(plugin) = sport_plugin() {
+            plugin.name()
+        } else {
+            "Unknown Sport"
+        }
+    };
+
     Effect::watch(
         move || path.get(),
         move |path, prev_path, _| {
@@ -175,7 +184,9 @@ pub fn SearchSportConfig() -> impl IntoView {
                             data-testid="search-sport-config"
                         >
                             <div class="card-body">
-                                <h2 class="card-title">"Search Sport Configuration"</h2>
+                                <h2 class="card-title">
+                                    {format!("Search {} Configuration", sport_name())}
+                                </h2>
                                 <Transition fallback=move || {
                                     view! {
                                         <div class="flex justify-center items-center p-4">

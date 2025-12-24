@@ -25,6 +25,9 @@
     "db_postgres": {
       "component": "db_postgres"
     },
+    "ddc_plugin": {
+      "component": "ddc_plugin"
+    },
     "frontend": {
       "component": "frontend"
     },
@@ -56,12 +59,17 @@
         "fk_tournament_planer",
         "app",
         "app_core",
+        "app_utils",
         "cr_leptos_axum_socket",
         "cr_single_instance",
         "db_postgres",
+        "ddc_plugin",
         "frontend",
+        "generic_sport_plugin",
+        "integration_testing",
         "server",
-        "shared"
+        "shared",
+        "sport_plugin_manager"
       ]
     }
   ],

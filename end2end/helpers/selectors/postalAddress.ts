@@ -30,7 +30,7 @@ export const POSTAL_IDS = {
     inputPostalCode: "input-postal_code",
     inputLocality: "input-locality",
     inputRegion: "input-region",
-    inputCountry: "input-country",
+    inputCountry: "select-country",
     btnSave: "btn-save",
     btnSaveAsNew: "btn-save-as-new",
     btnCancel: "btn-cancel",

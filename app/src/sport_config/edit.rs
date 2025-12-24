@@ -201,7 +201,13 @@ pub fn SportConfigForm() -> impl IntoView {
         <div class="card w-full bg-base-100 shadow-xl">
             <div class="card-body">
                 <h2 class="card-title">
-                    {move || { if is_new() { "New Sport Config" } else { "Edit Sport Config" } }}
+                    {move || {
+                        format!(
+                            "{} {} Configuration",
+                            if is_new() { "New" } else { "Edit" },
+                            sport_name(),
+                        )
+                    }}
                 </h2>
                 <Transition fallback=move || {
                     view! {

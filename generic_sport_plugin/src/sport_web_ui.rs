@@ -6,7 +6,7 @@ use super::GenericSportPlugin;
 use app_core::{SportConfig, utils::validation::ValidationErrors};
 use app_utils::{
     components::inputs::{
-        ValidatedDurationMinutesInput, ValidatedNumberInput, ValidatedOptionNumberInput,
+        DurationInputUnit, ValidatedDurationInput, ValidatedNumberInput, ValidatedOptionNumberInput,
     },
     hooks::is_field_valid::is_field_valid,
 };
@@ -262,10 +262,11 @@ impl SportConfigWebUi for GenericSportPlugin {
                         }
                     />
                 </div>
-                <ValidatedDurationMinutesInput
+                <ValidatedDurationInput
                     label="Expected Match Duration"
                     name="expected_match_duration_minutes"
                     value=set_expected_match_duration_minutes
+                    unit=DurationInputUnit::Minutes
                     error_message=is_valid_expected_match_duration_minutes
                     is_loading=is_loading
                     is_new=is_new

@@ -1,0 +1,25 @@
+[package]
+name = "ddc_plugin"
+version = "0.5.0"
+edition = "2024"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+default = []
+test-mock = ["app_utils/test-mock"]
+hydrate = ["shared/hydrate", "leptos/hydrate", "app_utils/hydrate"]
+ssr = ["shared/ssr", "leptos/ssr", "app_utils/ssr", "leptos_router/ssr"]
+
+[dependencies]
+anyhow.workspace = true
+app_core = { path = "../app_core" }
+app_utils = { path = "../app_utils" }
+leptos.workspace = true
+leptos_router.workspace = true
+reactive_stores.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shared = { path = "../shared" }
+uuid.workspace = true

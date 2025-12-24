@@ -1,5 +1,6 @@
 //! Input components for the app
 
+use displaydoc::Display;
 use leptos::prelude::*;
 use std::fmt::Display;
 use std::str::FromStr;
@@ -14,7 +15,7 @@ pub fn ValidatedTextInput(
     // Context signals to handle placeholder logic internally
     #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
-    // Optional normalization callback
+    // Optional on blur callback, e.g. for normalization
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView {
     // Auto-generate placeholder text based on label
@@ -74,7 +75,7 @@ pub fn TextInput(
     // Context signals to handle placeholder logic internally
     #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
-    // Optional normalization callback
+    // Optional on blur callback, e.g. for normalization
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView {
     // Auto-generate placeholder text based on label
@@ -131,6 +132,8 @@ pub fn ValidatedSelect(
     /// Optional custom placeholder text (default: "Select [label]...")
     #[prop(into, optional)]
     placeholder: Option<String>,
+    // Optional callback
+    #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView {
     // Generate default placeholder if none provided
     let placeholder_text =
@@ -146,9 +149,14 @@ pub fn ValidatedSelect(
                 class:select-error=move || error_message.get().is_some()
                 name=name.clone()
                 // Auto-generate test-id
-                data-testid=format!("input-{}", name)
+                data-testid=format!("select-{}", name)
                 aria-invalid=move || error_message.get().is_some().to_string()
                 on:change=move |ev| value.set(event_target_value(&ev))
+                on:blur=move |_| {
+                    if let Some(cb) = on_blur {
+                        cb.run(());
+                    }
+                }
                 prop:value=value
             >
                 <option disabled selected value="">
@@ -180,6 +188,70 @@ pub fn ValidatedSelect(
     }
 }
 
+pub trait SelectableOption: Sized + Clone + PartialEq + Send + Sync + 'static {
+    /// Returns the unique string representation for the <option value="...">
+    fn value(&self) -> String;
+
+    /// Returns the display text for the UI
+    fn label(&self) -> String;
+
+    /// Returns all available options for the dropdown.
+    /// For variants with data fields, return a default instance.
+    fn options() -> Vec<Self>;
+}
+
+#[component]
+pub fn EnumSelect<E: SelectableOption>(
+    #[prop(into)] label: String,
+    #[prop(into)] name: String,
+    value: RwSignal<E>,
+    // Optional on change callback, e.g. for update of json config
+    #[prop(into, optional)] on_change: Option<Callback<()>>,
+) -> impl IntoView {
+    view! {
+        <div class="form-control w-full">
+            <label class="label">
+                <span class="label-text">{label.clone()}</span>
+            </label>
+            <select
+                class="select select-bordered w-full"
+                name=name.clone()
+                // Auto-generate test-id
+                data-testid=format!("select-{}", name)
+                on:change=move |ev| {
+                    let val_str = event_target_value(&ev);
+                    if let Some(selected_variant) = E::options()
+                        .into_iter()
+                        .find(|o| o.value() == val_str)
+                    {
+                        value.set(selected_variant);
+                        if let Some(cb) = on_change {
+                            cb.run(());
+                        }
+                    }
+                }
+                prop:value=value.get().value()
+            >
+                {E::options()
+                    .into_iter()
+                    .map(|opt| {
+                        let val = opt.value();
+                        let text = opt.label();
+                        // We need to check equality for the "selected" attribute.
+                        // Since E implements PartialEq, we can compare the variant structure directly
+                        // OR compare the value strings if variants with different data are considered "same selection"
+                        view! {
+                            <option value=val.clone() selected=move || value.get().value() == val>
+                                {text}
+                            </option>
+                        }
+                    })
+                    .collect_view()}
+            </select>
+        </div>
+    }
+}
+
 #[component]
 pub fn ValidatedNumberInput<T>(
     #[prop(into)] label: String,
@@ -190,7 +262,7 @@ pub fn ValidatedNumberInput<T>(
     #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String, // "1" for int, "0.1" for float
     #[prop(into, optional)] min: String,
-    // Optional normalization callback
+    // Optional on blur callback, e.g. for update of json config
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView
 where
@@ -269,7 +341,7 @@ pub fn ValidatedOptionNumberInput<T>(
     #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String,
     #[prop(into, optional)] min: String,
-    // Optional normalization callback
+    // Optional on blur callback, e.g. for update of json config
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView
 where
@@ -344,23 +416,34 @@ where
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
+pub enum DurationInputUnit {
+    /// seconds
+    Seconds,
+    /// minutes
+    Minutes,
+    /// hours
+    Hours,
+}
+
 #[component]
-pub fn ValidatedDurationMinutesInput(
+pub fn ValidatedDurationInput(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<Duration>,
+    #[prop(into)] unit: DurationInputUnit,
     #[prop(into)] error_message: Signal<Option<String>>,
     #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
-    // Optional normalization callback
+    // Optional on blur callback, e.g. for update of json config
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView {
-    let placeholder_text = format!("Enter {} (minutes)...", label.to_lowercase());
+    let placeholder_text = format!("Enter {} ({})...", label.to_lowercase(), unit);
 
     view! {
         <div class="form-control w-full">
             <label class="label">
-                <span class="label-text">{format!("{} (minutes)", label)}</span>
+                <span class="label-text">{format!("{} ({})", label, unit)}</span>
             </label>
             <input
                 type="number"
@@ -371,8 +454,14 @@ pub fn ValidatedDurationMinutesInput(
                 name=name.clone()
                 data-testid=format!("input-{}", name)
                 aria-invalid=move || error_message.get().is_some().to_string()
-                // Convert Duration to Minutes for display
-                prop:value=move || (value.get().as_secs() / 60).to_string()
+                // Convert Duration to unit for display
+                prop:value=move || {
+                    match unit {
+                        DurationInputUnit::Seconds => value.get().as_secs().to_string(),
+                        DurationInputUnit::Minutes => (value.get().as_secs() / 60).to_string(),
+                        DurationInputUnit::Hours => (value.get().as_secs() / 3600).to_string(),
+                    }
+                }
                 placeholder=move || {
                     if is_loading.get() {
                         "Loading...".to_string()
@@ -384,8 +473,12 @@ pub fn ValidatedDurationMinutesInput(
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
-                    if let Ok(minutes) = val_str.parse::<u64>() {
-                        value.set(Duration::from_secs(minutes * 60));
+                    if let Ok(input) = val_str.parse::<u64>() {
+                        match unit {
+                            DurationInputUnit::Seconds => value.set(Duration::from_secs(input)),
+                            DurationInputUnit::Minutes => value.set(Duration::from_secs(input * 60)),
+                            DurationInputUnit::Hours => value.set(Duration::from_secs(input * 3600)),
+                        }
                     }
                 }
                 on:blur=move |_| {

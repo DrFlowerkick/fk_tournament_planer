@@ -13,6 +13,7 @@ use axum_extra::routing::RouterExt;
 use cr_leptos_axum_socket::{ClientRegistrySocket, connect_to_websocket};
 use cr_single_instance::*;
 use db_postgres::*;
+use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
@@ -107,6 +108,7 @@ async fn main() -> Result<()> {
     let mut spm = SportPluginManagerMap::new();
     // register sport plugins
     spm.register(Arc::new(GenericSportPlugin::new()))?;
+    spm.register(Arc::new(DdcSportPlugin::new()))?;
 
     let core = CoreBuilder::new()
         .set_db(Arc::new(db))
