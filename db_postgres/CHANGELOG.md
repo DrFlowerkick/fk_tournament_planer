@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.5.0...db_postgres-v0.6.0) (2025-12-24)
+
+
+### Miscellaneous Chores
+
+* **db_postgres:** Synchronize fk_tournament versions
+
 ## [0.5.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.4.0...db_postgres-v0.5.0) (2025-12-22)
 
 
