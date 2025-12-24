@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/app_core-v0.5.0...app_core-v0.6.0) (2025-12-24)
+
+
+### Miscellaneous Chores
+
+* **app_core:** Synchronize fk_tournament versions
+
 ## [0.5.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/app_core-v0.4.0...app_core-v0.5.0) (2025-12-22)
 
 
