@@ -11,6 +11,8 @@ pub enum CrKind {
     Address,
     /// sport-config
     SportConfig,
+    /// tournament-base
+    TournamentBase,
 }
 
 impl From<&CrTopic> for CrKind {
@@ -18,6 +20,7 @@ impl From<&CrTopic> for CrKind {
         match value {
             CrTopic::Address(_) => CrKind::Address,
             CrTopic::SportConfig(_) => CrKind::SportConfig,
+            CrTopic::TournamentBase(_) => CrKind::TournamentBase,
         }
     }
 }
@@ -34,6 +37,7 @@ impl SseUrl for CrTopic {
         let id = match self {
             CrTopic::Address(id) => *id,
             CrTopic::SportConfig(id) => *id,
+            CrTopic::TournamentBase(id) => *id,
         };
         CR_TOPIC_URL_TEMPLATE
             .replace("{kind}", CrKind::from(self).to_string().as_str())

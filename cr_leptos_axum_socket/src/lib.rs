@@ -100,6 +100,18 @@ pub fn use_client_registry_socket(
                         refetch();
                     }
                 }
+                CrMsg::TournamentBaseUpdated {
+                    version: meta_version,
+                    ..
+                } => {
+                    if meta_version > version {
+                        log!(
+                            "TournamentBaseUpdated received: refetching tournament expecting version: {}",
+                            meta_version
+                        );
+                        refetch();
+                    }
+                }
             };
             log!("Subscribing to topic: {:?}", topic);
             socket.subscribe(topic, socket_handler);
