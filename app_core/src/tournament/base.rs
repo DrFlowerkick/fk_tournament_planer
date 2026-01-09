@@ -148,7 +148,7 @@ impl TournamentBase {
     /// # Examples
     ///
     /// ```
-    /// use app_core::TournamentTournament;
+    /// use app_core::TournamentBase;
     ///
     /// // Start from default.
     /// let mut tournament = TournamentBase::default();
