@@ -13,6 +13,4 @@ pub struct Stage {
     tournament_id: Uuid,
     /// scheduled stage number
     number: usize,
-    /// groups of stage
-    groups: Vec<Uuid>,
 }

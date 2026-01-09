@@ -1,0 +1,321 @@
+//! Base parameters of a tournament
+
+use crate::{
+    Core, CoreError, CoreResult, SportError, CrTopic, CrMsg,
+    utils::{
+        id_version::{IdVersion, VersionId},
+        normalize::normalize_ws,
+        validation::{FieldError, ValidationErrors, ValidationResult},
+    },
+};
+use uuid::Uuid;
+
+/// mode of tournament
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TournamentType {
+    #[default]
+    Scheduled,
+    Adhoc,
+}
+
+/// mode of tournament
+/// If there are Mode specific configuration values, which cannot be placed
+/// in sub structures like Stage, Group, Match, etc., we may need to add them here.
+/// For now, Swiss system needs number of rounds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TournamentMode {
+    #[default]
+    SingleStage,
+    PoolAndFinalStage,
+    TwoPoolStagesAndFinalStage,
+    SwissSystem {
+        num_rounds: u32,
+    },
+}
+
+/// status of tournament
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TournamentState {
+    #[default]
+    Pending,
+    ActiveStage(u32),
+    Finished,
+}
+
+/// base parameters of a tournament
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TournamentBase {
+    /// Unique identifier for the tournament
+    id_version: IdVersion,
+    /// name of tournament
+    name: String,
+    /// id of sport
+    sport_id: Uuid,
+    /// number of entrants; represents size of tournament
+    num_entrants: u32,
+    /// type of tournament
+    t_type: TournamentType,
+    /// mode of tournament
+    mode: TournamentMode,
+    /// state of tournament
+    state: TournamentState,
+}
+
+impl Default for TournamentBase {
+    fn default() -> Self {
+        TournamentBase {
+            id_version: IdVersion::New,
+            name: "".into(),
+            sport_id: Uuid::nil(),
+            num_entrants: 0,
+            t_type: TournamentType::default(),
+            mode: TournamentMode::default(),
+            state: TournamentState::default(),
+        }
+    }
+}
+
+impl VersionId for TournamentBase {
+    fn get_id_version(&self) -> IdVersion {
+        self.id_version
+    }
+}
+
+impl TournamentBase {
+    /// Create a new `TournamentBase` with the given `IdVersion`.
+    pub fn new(id_version: IdVersion) -> Self {
+        TournamentBase {
+            id_version,
+            ..Default::default()
+        }
+    }
+
+    /// Get the unique identifier of the sport configuration.
+    pub fn get_id(&self) -> Option<Uuid> {
+        self.id_version.get_id()
+    }
+
+    /// Get the version number of the sport configuration.
+    pub fn get_version(&self) -> Option<u32> {
+        self.id_version.get_version()
+    }
+
+    pub fn get_id_version(&self) -> IdVersion {
+        self.id_version
+    }
+
+    /// Get the name of the sport configuration.
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    /// Get the sport ID associated with this configuration.
+    pub fn get_sport_id(&self) -> Uuid {
+        self.sport_id
+    }
+
+    /// Get the number of entrants in the tournament.
+    pub fn get_num_entrants(&self) -> u32 {
+        self.num_entrants
+    }
+
+    /// Get the type of the tournament.
+    pub fn get_tournament_type(&self) -> TournamentType {
+        self.t_type
+    }
+
+    /// Get the mode of the tournament.
+    pub fn get_tournament_mode(&self) -> TournamentMode {
+        self.mode
+    }
+
+    /// Get the current state of the tournament.
+    pub fn get_tournament_state(&self) -> TournamentState {
+        self.state
+    }
+
+    /// Set the `IdVersion` of the sport configuration.
+    pub fn set_id_version(&mut self, id_version: IdVersion) -> &mut Self {
+        self.id_version = id_version;
+        self
+    }
+
+    /// Set the name of the tournament with normalization
+    /// - trims leading/trailing whitespace
+    /// - collapses internal runs of whitespace to a single space
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use app_core::TournamentTournament;
+    ///
+    /// // Start from default.
+    /// let mut tournament = TournamentBase::default();
+    ///
+    /// // Regularize spacing (trim + collapse):
+    /// tournament.set_name("  Fun   Sport  Tournament  ".to_string());
+    /// assert_eq!(tournament.get_name(), "Fun Sport Tournament");
+    /// ```
+    pub fn set_name(&mut self, name: impl Into<String>) -> &mut Self {
+        self.name = normalize_ws(name.into());
+        self
+    }
+
+    /// Set the sport ID associated with this configuration.
+    pub fn set_sport_id(&mut self, sport_id: Uuid) -> &mut Self {
+        self.sport_id = sport_id;
+        self
+    }
+
+    /// Set the number of entrants in the tournament.
+    pub fn set_num_entrants(&mut self, num_entrants: u32) -> &mut Self {
+        self.num_entrants = num_entrants;
+        self
+    }
+
+    /// Set the type of the tournament.
+    pub fn set_tournament_type(&mut self, t_type: TournamentType) -> &mut Self {
+        self.t_type = t_type;
+        self
+    }
+
+    /// Set the mode of the tournament.
+    pub fn set_tournament_mode(&mut self, mode: TournamentMode) -> &mut Self {
+        self.mode = mode;
+        self
+    }
+
+    /// Set the current state of the tournament.
+    pub fn set_tournament_state(&mut self, state: TournamentState) -> &mut Self {
+        self.state = state;
+        self
+    }
+
+    /// Validate the tournament configuration.
+    pub fn validate(&self) -> ValidationResult<()> {
+        let mut errs = ValidationErrors::new();
+        if self.name.is_empty() {
+            errs.add(
+                FieldError::builder()
+                    .set_field(String::from("name"))
+                    .add_required()
+                    .build(),
+            );
+        }
+        if self.num_entrants < 2 {
+            errs.add(
+                FieldError::builder()
+                    .set_field(String::from("num_entrants"))
+                    .add_message("number of entrants must be at least 2")
+                    .build(),
+            );
+        }
+
+        let max_num_stages = match self.mode {
+            // in Swiss System, each round is a stage
+            TournamentMode::SwissSystem { num_rounds } => num_rounds,
+            TournamentMode::SingleStage => 1,
+            TournamentMode::PoolAndFinalStage => 2,
+            TournamentMode::TwoPoolStagesAndFinalStage => 3,
+        };
+
+        if let TournamentState::ActiveStage(active_stage) = self.state {
+            // index stages from 0
+            if active_stage >= max_num_stages {
+                errs.add(
+                    FieldError::builder()
+                        .set_field(String::from("state"))
+                        .add_message(
+                            "active stage exceeds maximum number of stages for the tournament mode",
+                        )
+                        .build(),
+                );
+            }
+        }
+
+        if !errs.is_empty() {
+            return Err(errs);
+        }
+        Ok(())
+    }
+}
+
+pub struct TournamentBaseState {
+    tournament: TournamentBase,
+}
+
+// switch state to sport config state
+impl<S> Core<S> {
+    pub fn as_tournament_base_state(&self) -> Core<TournamentBaseState> {
+        self.switch_state(TournamentBaseState {
+            tournament: TournamentBase::default(),
+        })
+    }
+}
+
+impl Core<TournamentBaseState> {
+    pub fn get(&self) -> &TournamentBase {
+        &self.state.tournament
+    }
+    pub fn get_mut(&mut self) -> &mut TournamentBase {
+        &mut self.state.tournament
+    }
+    fn validate(&self, tournament: &TournamentBase) -> CoreResult<()> {
+        if self.sport_plugins.get(&tournament.sport_id).is_none() {
+            return Err(CoreError::from(SportError::UnknownSportId(
+                tournament.sport_id,
+            )));
+        };
+        tournament.validate().map_err(CoreError::from)?;
+        Ok(())
+    }
+    pub async fn load(&mut self, id: Uuid) -> CoreResult<Option<&TournamentBase>> {
+        if let Some(tournament) = self.database.get_tournament_base(id).await? {
+            self.state.tournament = tournament;
+            self.validate(&self.state.tournament)?;
+
+            Ok(Some(self.get()))
+        } else {
+            Ok(None)
+        }
+    }
+    pub async fn save(&mut self) -> CoreResult<&TournamentBase> {
+        self.validate(&self.state.tournament)?;
+        self.state.tournament = self
+            .database
+            .save_tournament_base(&self.state.tournament)
+            .await?;
+        
+        // publish change of sport config to client registry
+        let id = self
+            .state
+            .tournament
+            .get_id()
+            .expect("expecting save_tournament_base to return always an existing id and version");
+        let version = self
+            .state
+            .tournament
+            .get_version()
+            .expect("expecting save_tournament_base to return always an existing id and version");
+        let notice = CrTopic::TournamentBase(id);
+        let msg = CrMsg::TournamentBaseUpdated { id, version };
+        self.client_registry.publish(notice, msg).await?;
+        Ok(self.get())
+    }
+    pub async fn list_sport_tournaments(
+        &self,
+        sport_id: Uuid,
+        name_filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> CoreResult<Vec<TournamentBase>> {
+        let tournaments = self
+            .database
+            .list_tournament_bases(sport_id, name_filter, limit)
+            .await?;
+
+        for tournament in &tournaments {
+            self.validate(tournament)?;
+        }
+        Ok(tournaments)
+    }
+}

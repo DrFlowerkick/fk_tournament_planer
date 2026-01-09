@@ -1,6 +1,6 @@
 // database port
 
-use crate::{PostalAddress, SportConfig};
+use crate::{PostalAddress, SportConfig, TournamentBase};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 /// database port trait
 #[async_trait]
-pub trait DatabasePort: DbpPostalAddress + DbpSportConfig + Any {
+pub trait DatabasePort: DbpPostalAddress + DbpSportConfig + DbpTournamentBase + Any {
     async fn ping_db(&self) -> DbResult<()>;
 }
 
@@ -36,6 +36,18 @@ pub trait DbpSportConfig: Send + Sync {
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<SportConfig>>;
+}
+/// database port trait for sport config
+#[async_trait]
+pub trait DbpTournamentBase: Send + Sync {
+    async fn get_tournament_base(&self, base_id: Uuid) -> DbResult<Option<TournamentBase>>;
+    async fn save_tournament_base(&self, tournament_base: &TournamentBase) -> DbResult<TournamentBase>;
+    async fn list_tournament_bases(
+        &self,
+        sport_id: Uuid,
+        name_filter: Option<&str>,
+        limit: Option<usize>,
+    ) -> DbResult<Vec<TournamentBase>>;
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]
