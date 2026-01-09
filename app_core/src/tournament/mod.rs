@@ -101,7 +101,6 @@
 /// 3. tournament schedule: dates and times of tournament days, stages, matches
 /// 4. tournament organization: name, location, stations, officials
 /// For a simple adhoc tournament only parts 1 and 2 are required.
-
 pub mod base;
 
 pub use base::*;

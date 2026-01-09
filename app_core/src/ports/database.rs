@@ -41,7 +41,10 @@ pub trait DbpSportConfig: Send + Sync {
 #[async_trait]
 pub trait DbpTournamentBase: Send + Sync {
     async fn get_tournament_base(&self, base_id: Uuid) -> DbResult<Option<TournamentBase>>;
-    async fn save_tournament_base(&self, tournament_base: &TournamentBase) -> DbResult<TournamentBase>;
+    async fn save_tournament_base(
+        &self,
+        tournament_base: &TournamentBase,
+    ) -> DbResult<TournamentBase>;
     async fn list_tournament_bases(
         &self,
         sport_id: Uuid,

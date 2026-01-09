@@ -26,9 +26,7 @@ impl SportConfigWebUi for DdcSportPlugin {
                     <h3 class="card-title" data-testid="preview-sport-name">
                         {config.get_name().to_string()}
                     </h3>
-                    <p data-testid="preview-set-config">
-                        {generic_config.sets_cfg.to_string()}
-                    </p>
+                    <p data-testid="preview-set-config">{generic_config.sets_cfg.to_string()}</p>
                     <p data-testid="preview-set-winning-config">
                         {generic_config.set_winning_cfg.to_string()}
                     </p>
@@ -42,7 +40,10 @@ impl SportConfigWebUi for DdcSportPlugin {
                     <p data-testid="preview-expected-duration">
                         {format!(
                             "Expected Match Duration: {} minutes",
-                            Self::new().estimate_match_duration(config).unwrap_or(Duration::from_secs(0)).as_secs() / 60,
+                            Self::new()
+                                .estimate_match_duration(config)
+                                .unwrap_or(Duration::from_secs(0))
+                                .as_secs() / 60,
                         )}
                     </p>
                 </div>
@@ -143,165 +144,177 @@ impl SportConfigWebUi for DdcSportPlugin {
                     value=set_sets_cfg
                     on_change=move || {
                         let mut cfg = current_configuration();
-                        set_sets_cfg.update(|v| match v {
-                            DdcSetCfg::CustomSetsToWin { sets_to_win } => {
-                                *sets_to_win = set_num_sets.get();
-                            },
-                            DdcSetCfg::CustomTotalSets { total_sets } => {
-                                *total_sets = set_num_sets.get();
-                            },
-                            _ => {
-                                set_num_sets.set(v.sets_to_play().0);
-                            }
-                        });
+                        set_sets_cfg
+                            .update(|v| match v {
+                                DdcSetCfg::CustomSetsToWin { sets_to_win } => {
+                                    *sets_to_win = set_num_sets.get();
+                                }
+                                DdcSetCfg::CustomTotalSets { total_sets } => {
+                                    *total_sets = set_num_sets.get();
+                                }
+                                _ => {
+                                    set_num_sets.set(v.sets_to_play().0);
+                                }
+                            });
                         cfg.sets_cfg = set_sets_cfg.get();
                         config.set(serde_json::to_value(cfg).ok());
                     }
                 />
-                {
-                    move || {
-                        match set_sets_cfg.get() {
-                            DdcSetCfg::CustomSetsToWin { .. } => {
-                                view! {
-                                    <ValidatedNumberInput<
-                                    u16,
-                                >
-                                        label="Sets to Win"
-                                        name="num_sets"
-                                        value=set_num_sets
-                                        error_message=is_valid_sets_cfg
-                                        is_loading=is_loading
-                                        is_new=is_new
-                                        min="1"
-                                        on_blur=move || {
-                                            let mut cfg = current_configuration();
-                                            if let DdcSetCfg::CustomSetsToWin { sets_to_win } = &mut cfg.sets_cfg {
-                                                *sets_to_win = set_num_sets.get();
-                                            }
-                                            config.set(serde_json::to_value(cfg).ok());
+                {move || {
+                    match set_sets_cfg.get() {
+                        DdcSetCfg::CustomSetsToWin { .. } => {
+                            view! {
+                                <ValidatedNumberInput<
+                                u16,
+                            >
+                                    label="Sets to Win"
+                                    name="num_sets"
+                                    value=set_num_sets
+                                    error_message=is_valid_sets_cfg
+                                    is_loading=is_loading
+                                    is_new=is_new
+                                    min="1"
+                                    on_blur=move || {
+                                        let mut cfg = current_configuration();
+                                        if let DdcSetCfg::CustomSetsToWin { sets_to_win } = &mut cfg
+                                            .sets_cfg
+                                        {
+                                            *sets_to_win = set_num_sets.get();
                                         }
-                                    />
-                                }
+                                        config.set(serde_json::to_value(cfg).ok());
+                                    }
+                                />
+                            }
                                 .into_any()
-                            },
-                            DdcSetCfg::CustomTotalSets { .. } => {
-                                view! {
-                                    <ValidatedNumberInput<
-                                    u16,
-                                >
-                                        label="Total Sets"
-                                        name="num_sets"
-                                        value=set_num_sets
-                                        error_message=is_valid_sets_cfg
-                                        is_loading=is_loading
-                                        is_new=is_new
-                                        min="1"
-                                        on_blur=move || {
-                                            let mut cfg = current_configuration();
-                                            if let DdcSetCfg::CustomTotalSets { total_sets } = &mut cfg.sets_cfg {
-                                                *total_sets = set_num_sets.get();
-                                            }
-                                            config.set(serde_json::to_value(cfg).ok());
-                                        }
-                                    />
-                                }
-                                .into_any()
-                            },
-                            _ => ().into_any(),
                         }
-                }
-            }
+                        DdcSetCfg::CustomTotalSets { .. } => {
+                            view! {
+                                <ValidatedNumberInput<
+                                u16,
+                            >
+                                    label="Total Sets"
+                                    name="num_sets"
+                                    value=set_num_sets
+                                    error_message=is_valid_sets_cfg
+                                    is_loading=is_loading
+                                    is_new=is_new
+                                    min="1"
+                                    on_blur=move || {
+                                        let mut cfg = current_configuration();
+                                        if let DdcSetCfg::CustomTotalSets { total_sets } = &mut cfg
+                                            .sets_cfg
+                                        {
+                                            *total_sets = set_num_sets.get();
+                                        }
+                                        config.set(serde_json::to_value(cfg).ok());
+                                    }
+                                />
+                            }
+                                .into_any()
+                        }
+                        _ => ().into_any(),
+                    }
+                }}
                 <EnumSelect
                     label="Set Winning Configuration"
                     name="set_winning_cfg"
                     value=set_winning_cfg
                     on_change=move || {
                         let mut cfg = current_configuration();
-                        set_winning_cfg.update(|v| match v {
-                            DdcSetWinningCfg::Custom { score_to_win, win_by_margin, hard_cap } => {
-                                *score_to_win = set_score_to_win.get();
-                                *win_by_margin = set_win_by_margin.get();
-                                *hard_cap = set_hard_cap.get();
-                            },
-                            _ => {
-                                let (score_to_win, win_by_margin, hard_cap) = v.get_win_cfg();
-                                set_score_to_win.set(score_to_win);
-                                set_win_by_margin.set(win_by_margin);
-                                set_hard_cap.set(hard_cap);
-                            }
-                        });
+                        set_winning_cfg
+                            .update(|v| match v {
+                                DdcSetWinningCfg::Custom {
+                                    score_to_win,
+                                    win_by_margin,
+                                    hard_cap,
+                                } => {
+                                    *score_to_win = set_score_to_win.get();
+                                    *win_by_margin = set_win_by_margin.get();
+                                    *hard_cap = set_hard_cap.get();
+                                }
+                                _ => {
+                                    let (score_to_win, win_by_margin, hard_cap) = v.get_win_cfg();
+                                    set_score_to_win.set(score_to_win);
+                                    set_win_by_margin.set(win_by_margin);
+                                    set_hard_cap.set(hard_cap);
+                                }
+                            });
                         cfg.set_winning_cfg = set_winning_cfg.get();
                         config.set(serde_json::to_value(cfg).ok());
                     }
                 />
-                {
-                    move || {
-                        match set_winning_cfg.get() {
-                            DdcSetWinningCfg::Custom { .. } => {
-                                view! {
-                                    <div class="grid grid-cols-3 gap-4">
-                                        <ValidatedNumberInput<
-                                        u16,
-                                    >
-                                            label="Score to Win a Set"
-                                            name="score_to_win"
-                                            value=set_score_to_win
-                                            error_message=is_valid_score_to_win
-                                            is_loading=is_loading
-                                            is_new=is_new
-                                            min="1"
-                                            on_blur=move || {
-                                                let mut cfg = current_configuration();
-                                                if let DdcSetWinningCfg::Custom { score_to_win, .. } = &mut cfg.set_winning_cfg {
-                                                    *score_to_win = set_score_to_win.get();
-                                                }
-                                                config.set(serde_json::to_value(cfg).ok());
+                {move || {
+                    match set_winning_cfg.get() {
+                        DdcSetWinningCfg::Custom { .. } => {
+                            view! {
+                                <div class="grid grid-cols-3 gap-4">
+                                    <ValidatedNumberInput<
+                                    u16,
+                                >
+                                        label="Score to Win a Set"
+                                        name="score_to_win"
+                                        value=set_score_to_win
+                                        error_message=is_valid_score_to_win
+                                        is_loading=is_loading
+                                        is_new=is_new
+                                        min="1"
+                                        on_blur=move || {
+                                            let mut cfg = current_configuration();
+                                            if let DdcSetWinningCfg::Custom { score_to_win, .. } = &mut cfg
+                                                .set_winning_cfg
+                                            {
+                                                *score_to_win = set_score_to_win.get();
                                             }
-                                        />
-                                        <ValidatedNumberInput<
-                                        u16,
-                                    >
-                                            label="Win by Margin"
-                                            name="win_by_margin"
-                                            value=set_win_by_margin
-                                            error_message=is_valid_win_by_margin
-                                            is_loading=is_loading
-                                            is_new=is_new
-                                            min="1"
-                                            on_blur=move || {
-                                                let mut cfg = current_configuration();
-                                                if let DdcSetWinningCfg::Custom { win_by_margin, .. } = &mut cfg.set_winning_cfg {
-                                                    *win_by_margin = set_win_by_margin.get();
-                                                }
-                                                config.set(serde_json::to_value(cfg).ok());
+                                            config.set(serde_json::to_value(cfg).ok());
+                                        }
+                                    />
+                                    <ValidatedNumberInput<
+                                    u16,
+                                >
+                                        label="Win by Margin"
+                                        name="win_by_margin"
+                                        value=set_win_by_margin
+                                        error_message=is_valid_win_by_margin
+                                        is_loading=is_loading
+                                        is_new=is_new
+                                        min="1"
+                                        on_blur=move || {
+                                            let mut cfg = current_configuration();
+                                            if let DdcSetWinningCfg::Custom { win_by_margin, .. } = &mut cfg
+                                                .set_winning_cfg
+                                            {
+                                                *win_by_margin = set_win_by_margin.get();
                                             }
-                                        />
-                                        <ValidatedNumberInput<
-                                        u16,
-                                    >
-                                            label="Hard Cap"
-                                            name="hard_cap"
-                                            value=set_hard_cap
-                                            error_message=is_valid_hard_cap
-                                            is_loading=is_loading
-                                            is_new=is_new
-                                            min="1"
-                                            on_blur=move || {
-                                                let mut cfg = current_configuration();
-                                                if let DdcSetWinningCfg::Custom { hard_cap, .. } = &mut cfg.set_winning_cfg {
-                                                    *hard_cap = set_hard_cap.get();
-                                                }
-                                                config.set(serde_json::to_value(cfg).ok());
+                                            config.set(serde_json::to_value(cfg).ok());
+                                        }
+                                    />
+                                    <ValidatedNumberInput<
+                                    u16,
+                                >
+                                        label="Hard Cap"
+                                        name="hard_cap"
+                                        value=set_hard_cap
+                                        error_message=is_valid_hard_cap
+                                        is_loading=is_loading
+                                        is_new=is_new
+                                        min="1"
+                                        on_blur=move || {
+                                            let mut cfg = current_configuration();
+                                            if let DdcSetWinningCfg::Custom { hard_cap, .. } = &mut cfg
+                                                .set_winning_cfg
+                                            {
+                                                *hard_cap = set_hard_cap.get();
                                             }
-                                        />
-                                    </div>
-                                }
+                                            config.set(serde_json::to_value(cfg).ok());
+                                        }
+                                    />
+                                </div>
+                            }
                                 .into_any()
-                            },
-                            _ => ().into_any(),
                         }
+                        _ => ().into_any(),
                     }
-                }
+                }}
                 <div class="grid grid-cols-2 gap-4">
                     <ValidatedNumberInput<
                     f32,

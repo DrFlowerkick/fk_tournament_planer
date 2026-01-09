@@ -65,7 +65,10 @@ async fn given_existing_v0_when_update_then_version_increments_to_1() -> Result<
     let fetched = db.get_tournament_base(v0_id).await?.expect("row present");
     assert_eq!(fetched.get_version(), Some(1));
     assert_eq!(fetched.get_name(), "Updated Tournament V2");
-    assert_eq!(fetched.get_tournament_state(), TournamentState::ActiveStage(0));
+    assert_eq!(
+        fetched.get_tournament_state(),
+        TournamentState::ActiveStage(0)
+    );
 
     Ok(())
 }
@@ -152,8 +155,6 @@ async fn given_name_filter_when_list_then_ordered_and_bounded() -> Result<()> {
     let listed = db
         .list_tournament_bases(sport_id, Some("a"), Some(2))
         .await?;
-
-
 
     // Expect at most 2 rows, and only from sport_id
     assert!(listed.len() <= 2, "must respect limit");
