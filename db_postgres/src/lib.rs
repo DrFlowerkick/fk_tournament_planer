@@ -4,6 +4,7 @@ pub mod helpers;
 pub mod postal_address;
 pub mod schema;
 pub mod sport_config;
+pub mod tournament_base;
 
 pub use helpers::*;
 

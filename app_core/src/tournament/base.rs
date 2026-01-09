@@ -1,17 +1,18 @@
 //! Base parameters of a tournament
 
 use crate::{
-    Core, CoreError, CoreResult, SportError, CrTopic, CrMsg,
+    Core, CoreError, CoreResult, CrMsg, CrTopic, SportError,
     utils::{
         id_version::{IdVersion, VersionId},
         normalize::normalize_ws,
         validation::{FieldError, ValidationErrors, ValidationResult},
     },
 };
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// mode of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TournamentType {
     #[default]
     Scheduled,
@@ -22,7 +23,7 @@ pub enum TournamentType {
 /// If there are Mode specific configuration values, which cannot be placed
 /// in sub structures like Stage, Group, Match, etc., we may need to add them here.
 /// For now, Swiss system needs number of rounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TournamentMode {
     #[default]
     SingleStage,
@@ -34,7 +35,7 @@ pub enum TournamentMode {
 }
 
 /// status of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TournamentState {
     #[default]
     Pending,
@@ -43,7 +44,7 @@ pub enum TournamentState {
 }
 
 /// base parameters of a tournament
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TournamentBase {
     /// Unique identifier for the tournament
     id_version: IdVersion,
@@ -285,18 +286,16 @@ impl Core<TournamentBaseState> {
             .database
             .save_tournament_base(&self.state.tournament)
             .await?;
-        
+
         // publish change of sport config to client registry
-        let id = self
-            .state
-            .tournament
-            .get_id()
-            .expect("expecting save_tournament_base to return always an existing id and version");
-        let version = self
-            .state
-            .tournament
-            .get_version()
-            .expect("expecting save_tournament_base to return always an existing id and version");
+        let id =
+            self.state.tournament.get_id().expect(
+                "expecting save_tournament_base to return always an existing id and version",
+            );
+        let version =
+            self.state.tournament.get_version().expect(
+                "expecting save_tournament_base to return always an existing id and version",
+            );
         let notice = CrTopic::TournamentBase(id);
         let msg = CrMsg::TournamentBaseUpdated { id, version };
         self.client_registry.publish(notice, msg).await?;
