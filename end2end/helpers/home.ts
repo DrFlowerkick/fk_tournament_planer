@@ -23,25 +23,6 @@ export async function openHomePage(page: Page) {
 }
 
 /**
- * Select a specific sport plugin by its ID.
- * Expects the grid to disappear and the URL to update.
- */
-export async function selectSportPlugin(page: Page, pluginId: string) {
-  const HOME = selectors(page).home;
-  const btn = HOME.sportSelection.pluginButton(pluginId);
-
-  await expect(btn).toBeVisible();
-  await btn.click();
-
-  // Wait for the query param to appear in URL
-  await page.waitForURL(new RegExp(`sport_id=${pluginId}`));
-
-  // According to requirements: selection grid should not be visible anymore
-  // replaced by the sport specific view
-  await expect(HOME.sportSelection.grid).not.toBeVisible();
-}
-
-/**
  * Select a specific sport plugin by its visible NAME.
  * Expects the grid to disappear and the URL to update.
  * Returns the detected sport_id from the URL.
@@ -59,7 +40,7 @@ export async function selectSportPluginByName(
   // Wait for ANY sport_id param to appear in URL
   await page.waitForURL(/sport_id=([0-9a-f-]{36})/);
 
-  // Extract and validte ID
+  // Extract and validate ID
   const sportId = extractQueryParamFromUrl(page.url(), "sport_id");
   expect(sportId).toMatch(/^[0-9a-f-]{36}$/); // Assert valid UUID format
 

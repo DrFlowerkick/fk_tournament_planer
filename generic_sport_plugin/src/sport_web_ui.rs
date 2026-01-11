@@ -11,10 +11,27 @@ use app_utils::{
     hooks::is_field_valid::is_field_valid,
 };
 use leptos::prelude::*;
-use shared::{RenderCfgProps, SportConfigWebUi};
+use shared::{RenderCfgProps, SportPortWebUi};
 use std::time::Duration;
 
-impl SportConfigWebUi for GenericSportPlugin {
+impl SportPortWebUi for GenericSportPlugin {
+    fn render_plugin_selection(&self) -> AnyView {
+        view! {
+            // We use 'w-full' to ensure that Flexbox is properly centered
+            // 'gap-4' provides spacing between the icon/emoji and the text
+            <div
+                class="flex flex-col items-center justify-center gap-4 w-full"
+                data-testid="generic-sport-plugin-selection"
+            >
+                // Placeholder icon/emoji
+                <div class="text-6xl">"🏆"</div>
+                <div class="font-bold text-xl uppercase tracking-wider text-center">
+                    "Generic Sport"
+                </div>
+            </div>
+        }
+        .into_any()
+    }
     fn render_preview(&self, config: &SportConfig) -> AnyView {
         let generic_config = match self.validate_config(config, ValidationErrors::new()) {
             Ok(cfg) => cfg,

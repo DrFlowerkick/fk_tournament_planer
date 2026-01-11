@@ -1,12 +1,13 @@
 // web app ui
 
+pub mod home;
 pub mod postal_addresses;
 pub mod sport_config;
-pub mod home;
 
 use app_utils::global_state::GlobalState;
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
+use home::*;
 use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
@@ -16,7 +17,6 @@ use leptos_router::{
     path,
 };
 use postal_addresses::*;
-use home::*;
 use reactive_stores::Store;
 use sport_config::*;
 use std::sync::Arc;

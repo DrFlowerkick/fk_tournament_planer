@@ -11,10 +11,27 @@ use app_utils::{
     hooks::is_field_valid::is_field_valid,
 };
 use leptos::prelude::*;
-use shared::{RenderCfgProps, SportConfigWebUi};
+use shared::{RenderCfgProps, SportPortWebUi};
 use std::time::Duration;
 
-impl SportConfigWebUi for DdcSportPlugin {
+impl SportPortWebUi for DdcSportPlugin {
+    fn render_plugin_selection(&self) -> AnyView {
+        view! {
+            <div
+                class="flex flex-col items-center justify-center gap-4 w-full"
+                data-testid="ddc-plugin-selection"
+            >
+                // DDC Icon / Emoji
+                // ToDo: Replace with proper icon later
+                <div class="text-6xl">"🥏"</div>
+                <div class="flex flex-col items-center">
+                    <h3 class="text-xl font-bold text-center">"Double Disc Court"</h3>
+                    <span class="text-xs uppercase tracking-widest opacity-70">"DDC"</span>
+                </div>
+            </div>
+        }
+        .into_any()
+    }
     fn render_preview(&self, config: &SportConfig) -> AnyView {
         let generic_config = match self.validate_config(config, ValidationErrors::new()) {
             Ok(cfg) => cfg,

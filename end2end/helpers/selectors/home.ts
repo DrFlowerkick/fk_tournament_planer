@@ -8,8 +8,9 @@ export const HOME_IDS = {
   },
   sportSelection: {
     grid: "sport-selection-grid",
-    // Helper function to generate ID based on plugin ID
-    btnSelectPlugin: (pluginId: string) => `btn-select-sport-${pluginId}`,
+    // Helper to generate ID based on Name (stripping whitespace)
+    btnSelectPluginByName: (name: string) =>
+      `btn-select-sport-${name.replace(/\s/g, "")}`,
   },
 } as const;
 
@@ -23,14 +24,10 @@ export function getHomeSelectors(page: Page) {
     },
     sportSelection: {
       grid: page.getByTestId(ids.sportSelection.grid),
-      // Select specific ID if known
-      pluginButton: (pluginId: string) =>
-        page.getByTestId(ids.sportSelection.btnSelectPlugin(pluginId)),
-      // Select by visible name (more robust for uncertain UUIDs)
+
+      // New selector method based on the clean name logic
       pluginButtonByName: (name: string) =>
-        page
-          .getByTestId(ids.sportSelection.grid)
-          .getByRole("button", { name: name }),
+        page.getByTestId(ids.sportSelection.btnSelectPluginByName(name)),
     },
   };
 }

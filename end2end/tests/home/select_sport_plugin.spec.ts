@@ -6,7 +6,7 @@ import {
 } from "../../helpers/home";
 import { selectors } from "../../helpers/selectors";
 
-// We use the visible names instead of hardcoded UUIDs
+// We use names instead of hardcoded UUIDs
 const PLUGINS = {
   GENERIC: "Generic Sport",
   DDC: "Double Disc Court (DDC)",
