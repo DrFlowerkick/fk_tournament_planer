@@ -63,3 +63,42 @@ export async function expectSportViewActive(page: Page, pluginId: string) {
   // The selection grid must be gone
   await expect(HOME.sportSelection.grid).toBeHidden();
 }
+
+/**
+ * Verifies that the Sport Dashboard is visible and contains expected links and titles.
+ */
+export async function expectSportDashboardContent(
+  page: Page,
+  sportName: string
+) {
+  const DASH = selectors(page).home.dashboard;
+
+  // 1. Container visible
+  await expect(DASH.root).toBeVisible();
+
+  // 2. Title contains Sport Name (case insensitive check usually safer, but requirement was specific)
+  // Expected: "<Sport Name> Tournament Planer"
+  await expect(DASH.title).toHaveText(`${sportName} Tournament Planer`, {
+    ignoreCase: true,
+  });
+
+  // 3. Description visible
+  await expect(DASH.description).not.toBeEmpty();
+
+  // 4. Check Navigation Links
+  await expect(DASH.nav.tournaments).toBeVisible();
+  await expect(DASH.nav.tournaments).toHaveText("Tournaments");
+
+  await expect(DASH.nav.planNew).toBeVisible();
+  await expect(DASH.nav.planNew).toHaveText("Plan New Tournament");
+
+  await expect(DASH.nav.adhoc).toBeVisible();
+  await expect(DASH.nav.adhoc).toHaveText("Start Adhoc Tournament");
+
+  await expect(DASH.nav.config).toBeVisible();
+  await expect(DASH.nav.config).toHaveText("Configurations");
+
+  // About Link should contain Sport Name
+  await expect(DASH.nav.about).toBeVisible();
+  await expect(DASH.nav.about).toHaveText(`About ${sportName}`);
+}

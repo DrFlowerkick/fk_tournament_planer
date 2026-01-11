@@ -3,6 +3,7 @@ import {
   openHomePage,
   selectSportPluginByName,
   expectSportViewActive,
+  expectSportDashboardContent,
 } from "../../helpers/home";
 import { selectors } from "../../helpers/selectors";
 
@@ -65,5 +66,18 @@ test.describe("Home Page - Sport Plugin Selection", () => {
     // Hero might still be there or not, depending on design decision,
     // but Grid specifically must be hidden as per requirements.
     await expect(HOME.sportSelection.grid).toBeHidden();
+  });
+
+  test("displays sport dashboard with title and navigation links after selection", async ({
+    page,
+  }) => {
+    await openHomePage(page);
+
+    // Select "Generic Sport"
+    const sportName = PLUGINS.GENERIC;
+    await selectSportPluginByName(page, sportName);
+
+    // Verify Dashboard presence and content
+    await expectSportDashboardContent(page, sportName);
   });
 });

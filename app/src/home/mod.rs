@@ -20,12 +20,12 @@ pub fn HomePage() -> impl IntoView {
 
     // get query params and helper functions
     let sport_id_query = use_query::<SportParams>();
-    let sport_id = move || {
+    let sport_plugin = move || {
         if let Ok(sport_params) = sport_id_query.get()
             && let Some(sport_id) = sport_params.sport_id
-            && sport_plugin_manager.get().get_web_ui(&sport_id).is_some()
+            && let Some(plugin) = sport_plugin_manager.get().get_web_ui(&sport_id)
         {
-            Some(sport_id)
+            Some(plugin)
         } else {
             None
         }
@@ -33,8 +33,8 @@ pub fn HomePage() -> impl IntoView {
 
     view! {
         {move || {
-            match sport_id() {
-                Some(_id) => {
+            match sport_plugin() {
+                Some(_plugin) => {
                     // ToDo: render sport plugin view
                     view! {
                         <div class="p-4">"Sport View Placeholder (TODO: Render Plugin View)"</div>
@@ -42,7 +42,7 @@ pub fn HomePage() -> impl IntoView {
                         .into_any()
                 }
                 None => {
-                    // No sport ID: show hero + grid selection
+                    // No sport plugin: show hero + grid selection
                     view! {
                         <div class="flex flex-col w-full min-h-screen bg-base-100">
                             // 1. hero / description area

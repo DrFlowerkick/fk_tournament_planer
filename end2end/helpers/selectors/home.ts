@@ -12,6 +12,19 @@ export const HOME_IDS = {
     btnSelectPluginByName: (name: string) =>
       `btn-select-sport-${name.replace(/\s/g, "")}`,
   },
+  // NEU: Dashboard Area
+  dashboard: {
+    root: "sport-dashboard",
+    title: "sport-dashboard-title",
+    description: "sport-dashboard-desc",
+    nav: {
+      tournaments: "link-nav-tournaments",
+      planNew: "link-nav-plan-new",
+      adhoc: "link-nav-adhoc",
+      config: "link-nav-config",
+      about: "link-nav-about",
+    },
+  },
 } as const;
 
 export function getHomeSelectors(page: Page) {
@@ -24,10 +37,20 @@ export function getHomeSelectors(page: Page) {
     },
     sportSelection: {
       grid: page.getByTestId(ids.sportSelection.grid),
-
-      // New selector method based on the clean name logic
       pluginButtonByName: (name: string) =>
         page.getByTestId(ids.sportSelection.btnSelectPluginByName(name)),
+    },
+    dashboard: {
+      root: page.getByTestId(ids.dashboard.root),
+      title: page.getByTestId(ids.dashboard.title),
+      description: page.getByTestId(ids.dashboard.description),
+      nav: {
+        tournaments: page.getByTestId(ids.dashboard.nav.tournaments),
+        planNew: page.getByTestId(ids.dashboard.nav.planNew),
+        adhoc: page.getByTestId(ids.dashboard.nav.adhoc),
+        config: page.getByTestId(ids.dashboard.nav.config),
+        about: page.getByTestId(ids.dashboard.nav.about),
+      },
     },
   };
 }
