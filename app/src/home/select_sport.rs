@@ -64,8 +64,6 @@ pub fn SelectSportPlugin() -> impl IntoView {
                         let web_ui_plugin = sport_plugin_manager.get().get_web_ui(&id);
                         let plugin_name = plugin.name();
                         let test_id_suffix = plugin_name.replace(" ", "");
-                        // We need to fetch the WebUI version of the plugin to render visual components
-
                         // Generate a stable test ID from the name (remove whitespace)
                         // e.g. "Double Disc Court (DDC)" -> "DoubleDiscCourt(DDC)"
 

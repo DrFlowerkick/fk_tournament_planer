@@ -12,7 +12,6 @@ use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
-    StaticSegment,
     components::{A, ParentRoute, Route, Router, Routes},
     path,
 };
@@ -91,7 +90,20 @@ pub fn App() -> impl IntoView {
 
                 <main class="flex-grow p-4">
                     <Routes fallback=|| "Page not found.".into_view()>
-                        <Route path=StaticSegment("/") view=HomePage />
+                        <ParentRoute path=path!("/") view=HomePage>
+                            <Route
+                                path=path!("")
+                                view={
+                                    view! {}
+                                }
+                            />
+                            <Route path=path!("tournaments") view=ListTournaments />
+                            <Route path=path!("new-tournament") view=NewTournament />
+                            <Route path=path!("adhoc-tournament") view=AdhocTournament />
+                            <Route path=path!("sport-configurations") view=SportConfigurations />
+                            <Route path=path!("about-sport") view=AboutSport />
+
+                        </ParentRoute>
                         <ParentRoute path=path!("/postal-address") view=SearchPostalAddress>
                             <Route
                                 path=path!("")
