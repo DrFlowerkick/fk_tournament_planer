@@ -24,7 +24,7 @@ use leptos_router::{
 };
 use reactive_stores::Store;
 use serde_json::Value;
-use shared::{RenderCfgProps, SportConfigWebUi};
+use shared::{RenderCfgProps, SportPortWebUi};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -349,7 +349,7 @@ pub fn SportConfigForm() -> impl IntoView {
 struct FormFieldsProperties {
     id: Signal<Option<Uuid>>,
     sport_id: Signal<Option<Uuid>>,
-    sport_plugin: Signal<Option<Arc<dyn SportConfigWebUi>>>,
+    sport_plugin: Signal<Option<Arc<dyn SportPortWebUi>>>,
     sc_res: Resource<Result<SportConfig, AppError>>,
     cancel_target: Callback<(), String>,
     is_disabled: Signal<bool>,

@@ -1,11 +1,12 @@
 mod db_pa_fake;
 mod db_sc_fake;
+mod db_tb_fake;
 
 use crate::port_fakes::MockSport;
 use app_core::{
     ClientRegistryPort, Core, CoreBuilder, CrError, CrMsg, CrResult, CrTopic, DatabasePort,
-    DbResult, InitState, PostalAddress, PostalAddressState, SportConfig,
-    utils::id_version::IdVersion,
+    DbResult, InitState, PostalAddress, PostalAddressState, SportConfig, SportConfigState,
+    TournamentBase, TournamentBaseState, utils::id_version::IdVersion,
 };
 use async_trait::async_trait;
 use sport_plugin_manager::SportPluginManagerMap;
@@ -28,6 +29,11 @@ pub struct FakeDatabasePort {
     fail_next_get_sc: Arc<Mutex<bool>>,
     fail_next_save_sc: Arc<Mutex<bool>>,
     fail_next_list_sc: Arc<Mutex<bool>>,
+    // for tournament bases
+    tournament_bases: Arc<Mutex<HashMap<Uuid, TournamentBase>>>,
+    fail_next_get_tb: Arc<Mutex<bool>>,
+    fail_next_save_tb: Arc<Mutex<bool>>,
+    fail_next_list_tb: Arc<Mutex<bool>>,
 }
 
 impl FakeDatabasePort {
@@ -78,6 +84,26 @@ impl FakeDatabasePort {
     }
     pub fn fail_list_sc_once(&self) {
         *self.fail_next_list_sc.lock().unwrap() = true;
+    }
+
+    // --- Tournament Base Helpers ---
+    pub fn seed_tournament_base(&self, mut tb: TournamentBase) -> Uuid {
+        assert!(tb.get_id().is_none());
+        let id = Uuid::new_v4();
+        let id_version = IdVersion::new(id, 0);
+        tb.set_id_version(id_version);
+        self.tournament_bases.lock().unwrap().insert(id, tb);
+        id
+    }
+
+    pub fn fail_get_tb_once(&self) {
+        *self.fail_next_get_tb.lock().unwrap() = true;
+    }
+    pub fn fail_save_tb_once(&self) {
+        *self.fail_next_save_tb.lock().unwrap() = true;
+    }
+    pub fn fail_list_tb_once(&self) {
+        *self.fail_next_list_tb.lock().unwrap() = true;
     }
 }
 
@@ -158,7 +184,7 @@ pub fn make_core_postal_address_state_with_fakes() -> (
 }
 
 pub fn make_core_sport_config_state_with_fakes() -> (
-    Core<app_core::SportConfigState>,
+    Core<SportConfigState>,
     Arc<FakeDatabasePort>,
     Arc<FakeClientRegistryPort>,
 ) {
@@ -166,7 +192,7 @@ pub fn make_core_sport_config_state_with_fakes() -> (
     (core.as_sport_config_state(), db, cr)
 }
 
-pub fn make_sport_config(name: &str, sport_core: &Core<app_core::SportConfigState>) -> SportConfig {
+pub fn make_sport_config(name: &str, sport_core: &Core<SportConfigState>) -> SportConfig {
     let mut sc = SportConfig::new(IdVersion::New);
     let sport_id = sport_core.sport_plugins.list()[0]
         .get_id_version()
@@ -174,6 +200,27 @@ pub fn make_sport_config(name: &str, sport_core: &Core<app_core::SportConfigStat
         .unwrap();
     sc.set_name(name).set_sport_id(sport_id);
     sc
+}
+
+pub fn make_core_tournament_base_state_with_fakes() -> (
+    Core<TournamentBaseState>,
+    Arc<FakeDatabasePort>,
+    Arc<FakeClientRegistryPort>,
+) {
+    let (core, db, cr, _spm) = make_core_with_fakes();
+    (core.as_tournament_base_state(), db, cr)
+}
+
+pub fn make_tournament_base(name: &str, sport_core: &Core<TournamentBaseState>) -> TournamentBase {
+    let mut tb = TournamentBase::new(IdVersion::New);
+    let sport_id = sport_core.sport_plugins.list()[0]
+        .get_id_version()
+        .get_id()
+        .unwrap();
+    tb.set_name(name)
+        .set_sport_id(sport_id)
+        .set_num_entrants(10);
+    tb
 }
 
 /// Convenience: construct a realistic PostalAddress for seeding.

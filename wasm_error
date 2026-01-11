@@ -1,26 +1,0 @@
-cargo test --package integration_testing --target wasm32-unknown-unknown --features "test-mock"
-no tests to run!
-                                                  Executing bindgen...                                                                                Running headless tests in Firefox on `http://127.0.0.1:33439/`
-Try find `webdriver.json` for configure browser's capabilities:
-Ok
-Starting new webdriver session...                 Visiting http://127.0.0.1:44475...                Loading page elements...                          Waiting for test to finish...                                                                       running 10 tests
-test set_id_in_query_input_dropdown::test_set_id_in_query_input_dropdown ... ok
-test sport_config::select_sport::test_plugin_selection_renders ... ok
-test postal_address::search::test_search_postal_address ... ok
-test sport_config::search::test_config_search_renders ... ok
-test postal_address::edit::test_new_postal_address ... ok
-test postal_address::edit::test_edit_postal_address ... ok
-test banner::test_acknowledgment_banner_display_and_acknowledge ... ok
-test banner::test_acknowledgment_and_navigate_banner_display_and_acknowledge ... ok
-test sport_config::edit::test_new_sport_config ... ok
-test sport_config::edit::test_edit_sport_config ... ok
-
-test result: ok. 10 passed; 0 failed; 0 ignored; 0 filtered out; finished in 1.24s
-                                                  no tests to run!
-                                                  no tests to run!
-                                                  no tests to run!
-                                                  
-running 0 tests
-
-test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
-

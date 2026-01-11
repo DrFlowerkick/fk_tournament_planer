@@ -4,8 +4,9 @@ use app_core::{SportConfig, SportPort};
 use leptos::prelude::*;
 use serde_json::Value;
 
-/// Trait for rendering sport configuration in web ui
-pub trait SportConfigWebUi: Send + Sync + SportPort {
+/// Trait for rendering sport port specifics in web ui, e.g., configuration forms and previews.
+pub trait SportPortWebUi: Send + Sync + SportPort {
+    fn render_plugin_selection(&self) -> AnyView;
     fn render_preview(&self, config: &SportConfig) -> AnyView;
     fn render_dropdown(&self, config: &SportConfig) -> AnyView;
     fn render_configuration(&self, props: RenderCfgProps) -> AnyView;

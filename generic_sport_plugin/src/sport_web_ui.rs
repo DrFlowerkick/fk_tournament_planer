@@ -11,10 +11,27 @@ use app_utils::{
     hooks::is_field_valid::is_field_valid,
 };
 use leptos::prelude::*;
-use shared::{RenderCfgProps, SportConfigWebUi};
+use shared::{RenderCfgProps, SportPortWebUi};
 use std::time::Duration;
 
-impl SportConfigWebUi for GenericSportPlugin {
+impl SportPortWebUi for GenericSportPlugin {
+    fn render_plugin_selection(&self) -> AnyView {
+        view! {
+            // We use 'w-full' to ensure that Flexbox is properly centered
+            // 'gap-4' provides spacing between the icon/emoji and the text
+            <div
+                class="flex flex-col items-center justify-center gap-4 w-full"
+                data-testid="generic-sport-plugin-selection"
+            >
+                // Placeholder icon/emoji
+                <div class="text-6xl">"🏆"</div>
+                <div class="font-bold text-xl uppercase tracking-wider text-center">
+                    "Generic Sport"
+                </div>
+            </div>
+        }
+        .into_any()
+    }
     fn render_preview(&self, config: &SportConfig) -> AnyView {
         let generic_config = match self.validate_config(config, ValidationErrors::new()) {
             Ok(cfg) => cfg,
@@ -158,6 +175,59 @@ impl SportConfigWebUi for GenericSportPlugin {
             set_expected_match_duration_minutes.set(cfg.expected_match_duration_minutes);
         });
 
+        // Synchronize changes from local signals back to the main config
+        // accessible via 'config'. Using tracking signals ensures updates happen
+        // regardless of focus/blur events (fixing Firefox spinner issue).
+        Effect::new(move || {
+            let sets = set_sets_to_win.get();
+            let score = set_score_to_win.get();
+            let margin = set_win_by_margin.get();
+            let cap = set_hard_cap.get();
+            let vp_win = set_victory_points_win.get();
+            let vp_draw = set_victory_points_draw.get();
+            let duration = set_expected_match_duration_minutes.get();
+
+            // Use untrack to prevent cyclic dependencies. We only want to push
+            // *up* to config when local signals change, not re-run when config changes.
+            untrack(move || {
+                let mut cfg = current_configuration();
+                let mut changed = false;
+
+                if cfg.sets_to_win != sets {
+                    cfg.sets_to_win = sets;
+                    changed = true;
+                }
+                if cfg.score_to_win != score {
+                    cfg.score_to_win = score;
+                    changed = true;
+                }
+                if cfg.win_by_margin != margin {
+                    cfg.win_by_margin = margin;
+                    changed = true;
+                }
+                if cfg.hard_cap != cap {
+                    cfg.hard_cap = cap;
+                    changed = true;
+                }
+                if (cfg.victory_points_win - vp_win).abs() > f32::EPSILON {
+                    cfg.victory_points_win = vp_win;
+                    changed = true;
+                }
+                if (cfg.victory_points_draw - vp_draw).abs() > f32::EPSILON {
+                    cfg.victory_points_draw = vp_draw;
+                    changed = true;
+                }
+                if cfg.expected_match_duration_minutes != duration {
+                    cfg.expected_match_duration_minutes = duration;
+                    changed = true;
+                }
+
+                if changed {
+                    config.set(serde_json::to_value(cfg).ok());
+                }
+            });
+        });
+
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">
                 <ValidatedNumberInput<
@@ -170,11 +240,6 @@ impl SportConfigWebUi for GenericSportPlugin {
                     is_loading=is_loading
                     is_new=is_new
                     min="1"
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.sets_to_win = set_sets_to_win.get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
                 />
                 <div class="grid grid-cols-3 gap-4">
                     <ValidatedOptionNumberInput<
@@ -187,11 +252,6 @@ impl SportConfigWebUi for GenericSportPlugin {
                         is_loading=is_loading
                         is_new=is_new
                         min="1"
-                        on_blur=move || {
-                            let mut cfg = current_configuration();
-                            cfg.score_to_win = set_score_to_win.get();
-                            config.set(serde_json::to_value(cfg).ok());
-                        }
                     />
                     <ValidatedOptionNumberInput<
                     u16,
@@ -203,11 +263,6 @@ impl SportConfigWebUi for GenericSportPlugin {
                         is_loading=is_loading
                         is_new=is_new
                         min="1"
-                        on_blur=move || {
-                            let mut cfg = current_configuration();
-                            cfg.win_by_margin = set_win_by_margin.get();
-                            config.set(serde_json::to_value(cfg).ok());
-                        }
                     />
                     <ValidatedOptionNumberInput<
                     u16,
@@ -219,11 +274,6 @@ impl SportConfigWebUi for GenericSportPlugin {
                         is_loading=is_loading
                         is_new=is_new
                         min="1"
-                        on_blur=move || {
-                            let mut cfg = current_configuration();
-                            cfg.hard_cap = set_hard_cap.get();
-                            config.set(serde_json::to_value(cfg).ok());
-                        }
                     />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
@@ -238,11 +288,6 @@ impl SportConfigWebUi for GenericSportPlugin {
                         is_new=is_new
                         min="0"
                         step="0.1"
-                        on_blur=move || {
-                            let mut cfg = current_configuration();
-                            cfg.victory_points_win = set_victory_points_win.get();
-                            config.set(serde_json::to_value(cfg).ok());
-                        }
                     />
                     <ValidatedNumberInput<
                     f32,
@@ -255,11 +300,6 @@ impl SportConfigWebUi for GenericSportPlugin {
                         is_new=is_new
                         min="0"
                         step="0.1"
-                        on_blur=move || {
-                            let mut cfg = current_configuration();
-                            cfg.victory_points_draw = set_victory_points_draw.get();
-                            config.set(serde_json::to_value(cfg).ok());
-                        }
                     />
                 </div>
                 <ValidatedDurationInput
@@ -270,12 +310,6 @@ impl SportConfigWebUi for GenericSportPlugin {
                     error_message=is_valid_expected_match_duration_minutes
                     is_loading=is_loading
                     is_new=is_new
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.expected_match_duration_minutes = set_expected_match_duration_minutes
-                            .get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
                 />
             </div>
         }

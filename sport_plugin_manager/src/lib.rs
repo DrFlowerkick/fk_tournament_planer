@@ -2,7 +2,7 @@
 
 use anyhow::{Context, Result, bail};
 use app_core::{SportPluginManagerPort, SportPort};
-use shared::SportConfigWebUi;
+use shared::SportPortWebUi;
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ use uuid::Uuid;
 /// to store and retrieve sport plugins.
 #[derive(Clone, Default)]
 pub struct SportPluginManagerMap {
-    plugins: HashMap<Uuid, Arc<dyn SportConfigWebUi>>,
+    plugins: HashMap<Uuid, Arc<dyn SportPortWebUi>>,
 }
 
 impl SportPluginManagerMap {
@@ -47,7 +47,7 @@ impl SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportConfigWebUi, RenderCfgProps};
+    /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl VersionId for MockSport {
@@ -65,7 +65,10 @@ impl SportPluginManagerMap {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
     /// #     }
     /// # }
-    /// # impl SportConfigWebUi for MockSport {
+    /// # impl SportPortWebUi for MockSport {
+    /// #     fn render_plugin_selection(&self) -> AnyView {
+    /// #         view! { <div>{ "Mock Plugin Selection" }</div> }.into_any()
+    /// #     }
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
@@ -85,7 +88,7 @@ impl SportPluginManagerMap {
     ///
     /// assert!(manager.get(&sport_id).is_some());
     /// ```
-    pub fn register(&mut self, plugin: Arc<dyn SportConfigWebUi>) -> Result<()> {
+    pub fn register(&mut self, plugin: Arc<dyn SportPortWebUi>) -> Result<()> {
         let plugin_id = plugin
             .get_id_version()
             .get_id()
@@ -120,7 +123,7 @@ impl SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportConfigWebUi, RenderCfgProps};
+    /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl VersionId for MockSport {
@@ -138,7 +141,10 @@ impl SportPluginManagerMap {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
     /// #     }
     /// # }
-    /// # impl SportConfigWebUi for MockSport {
+    /// # impl SportPortWebUi for MockSport {
+    /// #     fn render_plugin_selection(&self) -> AnyView {
+    /// #         view! { <div>{ "Mock Plugin Selection" }</div> }.into_any()
+    /// #     }
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
@@ -164,7 +170,7 @@ impl SportPluginManagerMap {
     /// let not_found_plugin = manager.get_web_ui(&Uuid::new_v4());
     /// assert!(not_found_plugin.is_none());
     /// ```
-    pub fn get_web_ui(&self, sport_id: &Uuid) -> Option<Arc<dyn SportConfigWebUi>> {
+    pub fn get_web_ui(&self, sport_id: &Uuid) -> Option<Arc<dyn SportPortWebUi>> {
         self.plugins.get(sport_id).cloned()
     }
 }
@@ -188,7 +194,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportConfigWebUi, RenderCfgProps};
+    /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl VersionId for MockSport {
@@ -206,7 +212,10 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
     /// #     }
     /// # }
-    /// # impl SportConfigWebUi for MockSport {
+    /// # impl SportPortWebUi for MockSport {
+    /// #     fn render_plugin_selection(&self) -> AnyView {
+    /// #         view! { <div>{ "Mock Plugin Selection" }</div> }.into_any()
+    /// #     }
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
@@ -256,7 +265,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportConfigWebUi, RenderCfgProps};
+    /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl VersionId for MockSport {
@@ -274,7 +283,10 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #         Ok(EntrantGroupScore { entrant_id, group_id, victory_points: 0.0, relative_score: 0, total_score: 0 })
     /// #     }
     /// # }
-    /// # impl SportConfigWebUi for MockSport {
+    /// # impl SportPortWebUi for MockSport {
+    /// #     fn render_plugin_selection(&self) -> AnyView {
+    /// #         view! { <div>{ "Mock Plugin Selection" }</div> }.into_any()
+    /// #     }
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }

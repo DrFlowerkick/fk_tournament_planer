@@ -27,4 +27,19 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(postal_addresses, sport_configs,);
+diesel::table! {
+    tournament_bases (id) {
+        id -> Uuid,
+        version -> Int8,
+        name -> Citext,
+        sport_id -> Uuid,
+        num_entrants -> Int4,
+        t_type -> Jsonb,
+        mode -> Jsonb,
+        state -> Jsonb,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::allow_tables_to_appear_in_same_query!(postal_addresses, sport_configs, tournament_bases,);

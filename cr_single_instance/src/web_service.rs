@@ -29,6 +29,7 @@ impl From<CrTopicPath> for CrTopic {
         match value.kind {
             CrKind::Address => CrTopic::Address(value.id),
             CrKind::SportConfig => CrTopic::SportConfig(value.id),
+            CrKind::TournamentBase => CrTopic::TournamentBase(value.id),
         }
     }
 }
@@ -58,6 +59,7 @@ pub async fn api_sse_subscribe(
                 let id = match &changed {
                     CrMsg::AddressUpdated { id, .. } => id,
                     CrMsg::SportConfigUpdated { id, .. } => id,
+                    CrMsg::TournamentBaseUpdated { id, .. } => id,
                 };
                 match serde_json::to_string(&changed) {
                     Ok(s) => Ok(Event::default().event("changed").data(s).id(id.to_string())),

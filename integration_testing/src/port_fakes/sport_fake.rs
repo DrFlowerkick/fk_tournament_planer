@@ -10,7 +10,7 @@ use app_core::{
 use leptos::prelude::*;
 use serde_json::Value;
 use shared::RenderCfgProps;
-use shared::SportConfigWebUi;
+use shared::SportPortWebUi;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -31,7 +31,10 @@ impl MockSport {
         self.id
     }
 }
-impl SportConfigWebUi for MockSport {
+impl SportPortWebUi for MockSport {
+    fn render_plugin_selection(&self) -> AnyView {
+        view! { <div>{format!("Select {}", self.name)}</div> }.into_any()
+    }
     fn render_preview(&self, _config: &SportConfig) -> AnyView {
         view! { <div>{"Mock Preview"}</div> }.into_any()
     }

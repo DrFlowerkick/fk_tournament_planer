@@ -1,16 +1,17 @@
 // web app ui
 
+pub mod home;
 pub mod postal_addresses;
 pub mod sport_config;
 
 use app_utils::global_state::GlobalState;
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
+use home::*;
 use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
 use leptos_router::{
-    StaticSegment,
     components::{A, ParentRoute, Route, Router, Routes},
     path,
 };
@@ -89,7 +90,20 @@ pub fn App() -> impl IntoView {
 
                 <main class="flex-grow p-4">
                     <Routes fallback=|| "Page not found.".into_view()>
-                        <Route path=StaticSegment("/") view=HomePage />
+                        <ParentRoute path=path!("/") view=HomePage>
+                            <Route
+                                path=path!("")
+                                view={
+                                    view! {}
+                                }
+                            />
+                            <Route path=path!("tournaments") view=ListTournaments />
+                            <Route path=path!("new-tournament") view=NewTournament />
+                            <Route path=path!("adhoc-tournament") view=AdhocTournament />
+                            <Route path=path!("sport-configurations") view=SportConfigurations />
+                            <Route path=path!("about-sport") view=AboutSport />
+
+                        </ParentRoute>
                         <ParentRoute path=path!("/postal-address") view=SearchPostalAddress>
                             <Route
                                 path=path!("")
@@ -120,30 +134,5 @@ pub fn App() -> impl IntoView {
                 </footer>
             </div>
         </Router>
-    }
-}
-
-/// Renders the home page of your application.
-#[component]
-fn HomePage() -> impl IntoView {
-    // Creates a reactive value to update the button
-    let count = RwSignal::new(0);
-    let on_click = move |_| *count.write() += 1;
-
-    view! {
-        <div class="hero min-h-fit bg-base-100">
-            <div class="hero-content text-center">
-                <div class="max-w-md">
-                    <h1 class="text-5xl font-bold">"Welcome!"</h1>
-                    <p class="py-6">
-                        "This is the development release of the FK Tournament Planner. The application is under active development."
-                    </p>
-                    <button class="btn btn-primary" on:click=on_click>
-                        "Click me: "
-                        {count}
-                    </button>
-                </div>
-            </div>
-        </div>
     }
 }

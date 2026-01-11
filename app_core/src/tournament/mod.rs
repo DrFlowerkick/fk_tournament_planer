@@ -95,110 +95,12 @@
 /// and more confusing with growing size of struct, I suggest separate structs for the
 /// components of the tournament, which data will be persisted via  database.
 ///
-use crate::{Core, PostalAddress};
-use anyhow::Result;
-use chrono::{DateTime, Local};
-use std::collections::HashSet;
-use uuid::Uuid;
+/// Tournament is structured into 4 main parts (which my change later):
+/// 1. tournament base: sporting type, mode, number of entrants, and status
+/// 2. tournament structure: stages, groups, matches
+/// 3. tournament schedule: dates and times of tournament days, stages, matches
+/// 4. tournament organization: name, location, stations, officials
+/// For a simple adhoc tournament only parts 1 and 2 are required.
+pub mod base;
 
-// ToDo: remove allow(dead_code) flag
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Tournament {
-    /// id of tournament
-    id: Uuid,
-    /// name of tournament
-    name: String,
-    /// location of tournament
-    location: Uuid,
-    /// date and timing of tournament days, referenced by id, sorted by day number
-    tournament_days: Vec<Uuid>,
-    /// number of stations
-    /// station represents all kinds of sport areas to carry out matches, e.g. courts, tables, fields
-    num_stations: u16,
-    /// tie breaker policy
-    tie_breaker_policy: Uuid,
-    /// entrants of tournament
-    entrants: HashSet<Uuid>,
-    /// stages of tournament, referenced by id, sorted by stage number
-    stages: Vec<Uuid>,
-    /// state of tournament
-    status: Status,
-}
-
-/// activity of orchestration
-#[derive(Debug, Clone)]
-pub enum Status {
-    Pending,
-    ActiveStage(Uuid),
-    Finished,
-}
-
-pub struct TournamentState {
-    tournament: Tournament,
-}
-
-impl Core<TournamentState> {
-    pub fn is_valid(&self) -> bool {
-        todo!()
-    }
-}
-
-impl Core<TournamentState> {
-    pub async fn tournament_action(
-        &mut self,
-        action: TournamentActions,
-    ) -> Result<TournamentViewModel> {
-        match action {
-            TournamentActions::ChangeName(name) => self.state.tournament.name = name,
-            TournamentActions::ChangeLocation(location) => {
-                self.state.tournament.location = location
-            }
-            TournamentActions::AddEntrant(entrant) => {
-                self.state.tournament.entrants.insert(entrant);
-            }
-            TournamentActions::RemoveEntrant(entrant) => {
-                self.state.tournament.entrants.remove(&entrant);
-            }
-        }
-        self.render_view_model().await
-    }
-    pub async fn render_view_model(&self) -> Result<TournamentViewModel> {
-        let location = self
-            .as_postal_address_state()
-            .load(self.state.tournament.location)
-            .await?
-            .cloned();
-        let start_at = if let Some(day_timing_id) = self.state.tournament.tournament_days.first()
-            && let Some(day_timing) = self.get_tournament_day_timing_state(*day_timing_id)?
-        {
-            Some(day_timing.get().date)
-        } else {
-            None
-        };
-        Ok(TournamentViewModel {
-            name: self.state.tournament.name.clone(),
-            location,
-            start_at,
-            num_entrants: self.state.tournament.entrants.len(),
-            valid_schedule: self.is_valid(),
-        })
-    }
-}
-
-pub enum TournamentActions {
-    ChangeName(String),
-    ChangeLocation(Uuid),
-    AddEntrant(Uuid),
-    RemoveEntrant(Uuid),
-}
-
-pub struct TournamentViewModel {
-    pub name: String,
-    pub location: Option<PostalAddress>,
-    pub start_at: Option<DateTime<Local>>,
-    pub num_entrants: usize,
-    pub valid_schedule: bool,
-}
-
-pub struct NewTournamentState {}
+pub use base::*;
