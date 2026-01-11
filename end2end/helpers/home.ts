@@ -102,3 +102,20 @@ export async function expectSportDashboardContent(
   await expect(DASH.nav.about).toBeVisible();
   await expect(DASH.nav.about).toHaveText(`About ${sportName}`);
 }
+
+/**
+ * Navigates to the "List Tournaments" page for a given sport ID.
+ */
+export async function goToListTournaments(page: Page, sportId: string) {
+  // Ensure we are in the correct context
+  await page.goto(`/?sport_id=${sportId}`);
+
+  const DASH = selectors(page).home.dashboard;
+
+  // Navigate via dashboard link
+  await expect(DASH.nav.tournaments).toBeVisible();
+  await DASH.nav.tournaments.click();
+
+  // Expect List Root to be visible
+  await expect(DASH.tournamentsList.root).toBeVisible();
+}

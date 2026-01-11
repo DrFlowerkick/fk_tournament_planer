@@ -12,7 +12,6 @@ export const HOME_IDS = {
     btnSelectPluginByName: (name: string) =>
       `btn-select-sport-${name.replace(/\s/g, "")}`,
   },
-  // NEU: Dashboard Area
   dashboard: {
     root: "sport-dashboard",
     title: "sport-dashboard-title",
@@ -23,6 +22,30 @@ export const HOME_IDS = {
       adhoc: "link-nav-adhoc",
       config: "link-nav-config",
       about: "link-nav-about",
+    },
+    tournamentsList: {
+      root: "tournaments-list-root",
+      filters: {
+        statusSelect: "filter-status-select",
+        includeAdhoc: "filter-include-adhoc-toggle",
+        nameSearch: "filter-name-search",
+        limitSelect: "filter-limit-select",
+      },
+      table: {
+        root: "tournaments-table",
+        header: "tournaments-table-header",
+        row: (id: string) => `tournaments-row-${id}`,
+        rowCellName: "cell-name",
+        rowCellStatus: "cell-status",
+        rowActions: "row-actions",
+        actions: {
+          edit: "action-btn-edit",
+          show: "action-btn-show",
+          register: "action-btn-register",
+          results: "action-btn-results",
+        },
+      },
+      emptyState: "tournaments-list-empty",
     },
   },
 } as const;
@@ -50,6 +73,50 @@ export function getHomeSelectors(page: Page) {
         adhoc: page.getByTestId(ids.dashboard.nav.adhoc),
         config: page.getByTestId(ids.dashboard.nav.config),
         about: page.getByTestId(ids.dashboard.nav.about),
+      },
+      tournamentsList: {
+        root: page.getByTestId(ids.dashboard.tournamentsList.root),
+        filters: {
+          status: page.getByTestId(
+            ids.dashboard.tournamentsList.filters.statusSelect
+          ),
+          adhocToggle: page.getByTestId(
+            ids.dashboard.tournamentsList.filters.includeAdhoc
+          ),
+          search: page.getByTestId(
+            ids.dashboard.tournamentsList.filters.nameSearch
+          ),
+          limit: page.getByTestId(
+            ids.dashboard.tournamentsList.filters.limitSelect
+          ),
+        },
+        table: {
+          root: page.getByTestId(ids.dashboard.tournamentsList.table.root),
+          // Regex to match any row starting with the ID prefix
+          rows: page.getByTestId(
+            new RegExp(`^${ids.dashboard.tournamentsList.table.row(".*")}$`)
+          ),
+          rowById: (id: string) =>
+            page.getByTestId(ids.dashboard.tournamentsList.table.row(id)),
+          actions: {
+            container: page.getByTestId(
+              ids.dashboard.tournamentsList.table.rowActions
+            ),
+            edit: page.getByTestId(
+              ids.dashboard.tournamentsList.table.actions.edit
+            ),
+            show: page.getByTestId(
+              ids.dashboard.tournamentsList.table.actions.show
+            ),
+            register: page.getByTestId(
+              ids.dashboard.tournamentsList.table.actions.register
+            ),
+            results: page.getByTestId(
+              ids.dashboard.tournamentsList.table.actions.results
+            ),
+          },
+        },
+        emptyState: page.getByTestId(ids.dashboard.tournamentsList.emptyState),
       },
     },
   };
