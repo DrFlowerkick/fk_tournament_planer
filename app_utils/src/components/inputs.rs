@@ -230,7 +230,7 @@ pub fn EnumSelect<E: SelectableOption>(
                         }
                     }
                 }
-                prop:value=value.get().value()
+                prop:value=move || value.get().value()
             >
                 {E::options()
                     .into_iter()

@@ -153,6 +153,75 @@ impl SportPortWebUi for DdcSportPlugin {
             set_expected_rally_duration_seconds.set(cfg.expected_rally_duration_seconds);
         });
 
+        // Sync local inputs back to JSON config continuously using an Effect
+        Effect::new(move || {
+            let sets_cfg_enum = set_sets_cfg.get();
+            let num_sets = set_num_sets.get();
+            let winning_cfg_enum = set_winning_cfg.get();
+            let score = set_score_to_win.get();
+            let margin = set_win_by_margin.get();
+            let cap = set_hard_cap.get();
+            let vp_win = set_victory_points_win.get();
+            let vp_draw = set_victory_points_draw.get();
+            let rally_dur = set_expected_rally_duration_seconds.get();
+
+            untrack(move || {
+                let mut cfg = current_configuration();
+                let mut changed = false;
+
+                // 1. Reconstruct DdcSetCfg
+                // We merge the enum variant (from dropdown) with the number value (from input)
+                let new_sets_cfg = match sets_cfg_enum {
+                    DdcSetCfg::CustomSetsToWin { .. } => DdcSetCfg::CustomSetsToWin {
+                        sets_to_win: num_sets,
+                    },
+                    DdcSetCfg::CustomTotalSets { .. } => DdcSetCfg::CustomTotalSets {
+                        total_sets: num_sets,
+                    },
+                    // For standard variants, the num_sets signal is derived but not authoritative for the config structure
+                    _ => sets_cfg_enum.clone(),
+                };
+
+                if cfg.sets_cfg != new_sets_cfg {
+                    cfg.sets_cfg = new_sets_cfg;
+                    changed = true;
+                }
+
+                // 2. Reconstruct DdcSetWinningCfg
+                let new_winning_cfg = match winning_cfg_enum {
+                    DdcSetWinningCfg::Custom { .. } => DdcSetWinningCfg::Custom {
+                        score_to_win: score,
+                        win_by_margin: margin,
+                        hard_cap: cap,
+                    },
+                    _ => winning_cfg_enum.clone(),
+                };
+
+                if cfg.set_winning_cfg != new_winning_cfg {
+                    cfg.set_winning_cfg = new_winning_cfg;
+                    changed = true;
+                }
+
+                // 3. Simple fields
+                if (cfg.victory_points_win - vp_win).abs() > f32::EPSILON {
+                    cfg.victory_points_win = vp_win;
+                    changed = true;
+                }
+                if (cfg.victory_points_draw - vp_draw).abs() > f32::EPSILON {
+                    cfg.victory_points_draw = vp_draw;
+                    changed = true;
+                }
+                if cfg.expected_rally_duration_seconds != rally_dur {
+                    cfg.expected_rally_duration_seconds = rally_dur;
+                    changed = true;
+                }
+
+                if changed {
+                    config.set(serde_json::to_value(cfg).ok());
+                }
+            });
+        });
+
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">
                 <EnumSelect
@@ -160,7 +229,6 @@ impl SportPortWebUi for DdcSportPlugin {
                     name="sets_cfg"
                     value=set_sets_cfg
                     on_change=move || {
-                        let mut cfg = current_configuration();
                         set_sets_cfg
                             .update(|v| match v {
                                 DdcSetCfg::CustomSetsToWin { sets_to_win } => {
@@ -173,8 +241,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                     set_num_sets.set(v.sets_to_play().0);
                                 }
                             });
-                        cfg.sets_cfg = set_sets_cfg.get();
-                        config.set(serde_json::to_value(cfg).ok());
                     }
                 />
                 {move || {
@@ -191,15 +257,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                     is_loading=is_loading
                                     is_new=is_new
                                     min="1"
-                                    on_blur=move || {
-                                        let mut cfg = current_configuration();
-                                        if let DdcSetCfg::CustomSetsToWin { sets_to_win } = &mut cfg
-                                            .sets_cfg
-                                        {
-                                            *sets_to_win = set_num_sets.get();
-                                        }
-                                        config.set(serde_json::to_value(cfg).ok());
-                                    }
                                 />
                             }
                                 .into_any()
@@ -216,15 +273,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                     is_loading=is_loading
                                     is_new=is_new
                                     min="1"
-                                    on_blur=move || {
-                                        let mut cfg = current_configuration();
-                                        if let DdcSetCfg::CustomTotalSets { total_sets } = &mut cfg
-                                            .sets_cfg
-                                        {
-                                            *total_sets = set_num_sets.get();
-                                        }
-                                        config.set(serde_json::to_value(cfg).ok());
-                                    }
                                 />
                             }
                                 .into_any()
@@ -237,7 +285,6 @@ impl SportPortWebUi for DdcSportPlugin {
                     name="set_winning_cfg"
                     value=set_winning_cfg
                     on_change=move || {
-                        let mut cfg = current_configuration();
                         set_winning_cfg
                             .update(|v| match v {
                                 DdcSetWinningCfg::Custom {
@@ -256,8 +303,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                     set_hard_cap.set(hard_cap);
                                 }
                             });
-                        cfg.set_winning_cfg = set_winning_cfg.get();
-                        config.set(serde_json::to_value(cfg).ok());
                     }
                 />
                 {move || {
@@ -275,15 +320,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                         is_loading=is_loading
                                         is_new=is_new
                                         min="1"
-                                        on_blur=move || {
-                                            let mut cfg = current_configuration();
-                                            if let DdcSetWinningCfg::Custom { score_to_win, .. } = &mut cfg
-                                                .set_winning_cfg
-                                            {
-                                                *score_to_win = set_score_to_win.get();
-                                            }
-                                            config.set(serde_json::to_value(cfg).ok());
-                                        }
                                     />
                                     <ValidatedNumberInput<
                                     u16,
@@ -295,15 +331,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                         is_loading=is_loading
                                         is_new=is_new
                                         min="1"
-                                        on_blur=move || {
-                                            let mut cfg = current_configuration();
-                                            if let DdcSetWinningCfg::Custom { win_by_margin, .. } = &mut cfg
-                                                .set_winning_cfg
-                                            {
-                                                *win_by_margin = set_win_by_margin.get();
-                                            }
-                                            config.set(serde_json::to_value(cfg).ok());
-                                        }
                                     />
                                     <ValidatedNumberInput<
                                     u16,
@@ -315,15 +342,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                         is_loading=is_loading
                                         is_new=is_new
                                         min="1"
-                                        on_blur=move || {
-                                            let mut cfg = current_configuration();
-                                            if let DdcSetWinningCfg::Custom { hard_cap, .. } = &mut cfg
-                                                .set_winning_cfg
-                                            {
-                                                *hard_cap = set_hard_cap.get();
-                                            }
-                                            config.set(serde_json::to_value(cfg).ok());
-                                        }
                                     />
                                 </div>
                             }
@@ -344,11 +362,6 @@ impl SportPortWebUi for DdcSportPlugin {
                         is_new=is_new
                         min="0"
                         step="0.1"
-                        on_blur=move || {
-                            let mut cfg = current_configuration();
-                            cfg.victory_points_win = set_victory_points_win.get();
-                            config.set(serde_json::to_value(cfg).ok());
-                        }
                     />
                     <ValidatedNumberInput<
                     f32,
@@ -361,11 +374,6 @@ impl SportPortWebUi for DdcSportPlugin {
                         is_new=is_new
                         min="0"
                         step="0.1"
-                        on_blur=move || {
-                            let mut cfg = current_configuration();
-                            cfg.victory_points_draw = set_victory_points_draw.get();
-                            config.set(serde_json::to_value(cfg).ok());
-                        }
                     />
                 </div>
                 <ValidatedDurationInput
@@ -376,12 +384,6 @@ impl SportPortWebUi for DdcSportPlugin {
                     error_message=is_valid_expected_rally_duration_seconds
                     is_loading=is_loading
                     is_new=is_new
-                    on_blur=move || {
-                        let mut cfg = current_configuration();
-                        cfg.expected_rally_duration_seconds = set_expected_rally_duration_seconds
-                            .get();
-                        config.set(serde_json::to_value(cfg).ok());
-                    }
                 />
                 <div class="form-control w-full">
                     <label class="label">
