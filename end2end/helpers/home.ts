@@ -119,3 +119,20 @@ export async function goToListTournaments(page: Page, sportId: string) {
   // Expect List Root to be visible
   await expect(DASH.tournamentsList.root).toBeVisible();
 }
+
+/**
+ * Navigates to the "Plan New Tournament" page for a given sport ID.
+ */
+export async function goToNewTournament(page: Page, sportId: string) {
+  // Navigate via URL context to be safe
+  await page.goto(`/?sport_id=${sportId}`);
+
+  const DASH = selectors(page).home.dashboard;
+
+  // Navigate via dashboard link
+  await expect(DASH.nav.planNew).toBeVisible();
+  await DASH.nav.planNew.click();
+
+  // Expect Start Page Root to be visible
+  await expect(DASH.newTournament.root).toBeVisible();
+}

@@ -47,6 +47,19 @@ export const HOME_IDS = {
       },
       emptyState: "tournaments-list-empty",
     },
+    newTournament: {
+      root: "new-tournament-root",
+      form: "new-tournament-form",
+      inputs: {
+        name: "input-nt-name",
+        entrants: "input-nt-entrants",
+        // Mode & Type are implicitly handled specifically for this form or have defaults
+      },
+      actions: {
+        save: "btn-nt-save",
+        cancel: "btn-nt-cancel",
+      },
+    },
   },
 } as const;
 
@@ -117,6 +130,20 @@ export function getHomeSelectors(page: Page) {
           },
         },
         emptyState: page.getByTestId(ids.dashboard.tournamentsList.emptyState),
+      },
+      newTournament: {
+        root: page.getByTestId(ids.dashboard.newTournament.root),
+        form: page.getByTestId(ids.dashboard.newTournament.form),
+        inputs: {
+          name: page.getByTestId(ids.dashboard.newTournament.inputs.name),
+          entrants: page.getByTestId(
+            ids.dashboard.newTournament.inputs.entrants
+          ),
+        },
+        actions: {
+          save: page.getByTestId(ids.dashboard.newTournament.actions.save),
+          cancel: page.getByTestId(ids.dashboard.newTournament.actions.cancel),
+        },
       },
     },
   };
