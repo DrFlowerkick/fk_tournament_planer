@@ -28,7 +28,7 @@ test.describe("Tournaments List Page", () => {
 
     // Verify Filters exist and defaults
     await expect(LIST.filters.status).toBeVisible();
-    await expect(LIST.filters.status).toHaveValue("pending");
+    await expect(LIST.filters.status).toHaveValue("Scheduling");
 
     await expect(LIST.filters.adhocToggle).toBeVisible();
     await expect(LIST.filters.adhocToggle).not.toBeChecked();
@@ -53,8 +53,8 @@ test.describe("Tournaments List Page", () => {
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
     // Change Status
-    await LIST.filters.status.selectOption("resolved");
-    await expect(LIST.filters.status).toHaveValue("resolved");
+    await LIST.filters.status.selectOption("Finished");
+    await expect(LIST.filters.status).toHaveValue("Finished");
 
     // Toggle Adhoc
     await LIST.filters.adhocToggle.check();
@@ -92,7 +92,7 @@ test.describe("Tournaments List Page", () => {
       page,
     }) => {
       const LIST = selectors(page).home.dashboard.tournamentsList;
-      await LIST.filters.status.selectOption("running");
+      await LIST.filters.status.selectOption("Running");
 
       const row = LIST.table.rowById(runningId);
       await row.click();
@@ -106,7 +106,7 @@ test.describe("Tournaments List Page", () => {
       page,
     }) => {
       const LIST = selectors(page).home.dashboard.tournamentsList;
-      await LIST.filters.status.selectOption("resolved");
+      await LIST.filters.status.selectOption("Finished");
 
       const row = LIST.table.rowById(resolvedId);
       await row.click();

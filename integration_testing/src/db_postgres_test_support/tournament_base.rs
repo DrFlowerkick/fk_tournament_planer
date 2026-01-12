@@ -11,7 +11,7 @@ pub fn make_new_tournament_base(label: &str, sport_id: Uuid) -> TournamentBase {
         .set_num_entrants(16)
         .set_tournament_type(TournamentType::Scheduled)
         .set_tournament_mode(TournamentMode::SingleStage)
-        .set_tournament_state(TournamentState::Pending);
+        .set_tournament_state(TournamentState::Scheduling);
     tb
 }
 

@@ -8,39 +8,71 @@ use crate::{
         validation::{FieldError, ValidationErrors, ValidationResult},
     },
 };
+use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// mode of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
 pub enum TournamentType {
+    /// Scheduled Tournament
     #[default]
     Scheduled,
+    /// Adhoc Tournament
     Adhoc,
+}
+
+impl From<String> for TournamentType {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Scheduled" => TournamentType::Scheduled,
+            "Adhoc" => TournamentType::Adhoc,
+            _ => TournamentType::Scheduled, // default
+        }
+    }
 }
 
 /// mode of tournament
 /// If there are Mode specific configuration values, which cannot be placed
 /// in sub structures like Stage, Group, Match, etc., we may need to add them here.
 /// For now, Swiss system needs number of rounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
 pub enum TournamentMode {
+    /// Single Stage
     #[default]
     SingleStage,
+    /// Pool and Final Stage
     PoolAndFinalStage,
+    /// Two Pool Stages and Final Stage
     TwoPoolStagesAndFinalStage,
-    SwissSystem {
-        num_rounds: u32,
-    },
+    /// Swiss System
+    SwissSystem { num_rounds: u32 },
 }
 
 /// status of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
 pub enum TournamentState {
+    /// Scheduling
     #[default]
-    Pending,
+    Scheduling,
+    /// Published
+    Published,
+    /// Running
     ActiveStage(u32),
+    /// Finished
     Finished,
+}
+
+impl From<String> for TournamentState {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Scheduling" => TournamentState::Scheduling,
+            "Published" => TournamentState::Published,
+            "Running" => TournamentState::ActiveStage(0),
+            "Finished" => TournamentState::Finished,
+            _ => TournamentState::Scheduling, // default
+        }
+    }
 }
 
 /// base parameters of a tournament
