@@ -22,7 +22,7 @@ pub struct MockSport {
 
 impl VersionId for MockSport {
     fn get_id_version(&self) -> IdVersion {
-        IdVersion::new(self.id(), 0)
+        IdVersion::new(self.id(), Some(0))
     }
 }
 

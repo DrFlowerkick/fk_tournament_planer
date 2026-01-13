@@ -46,7 +46,7 @@ impl FakeDatabasePort {
     pub fn seed_postal_address(&self, mut addr: PostalAddress) -> Uuid {
         assert!(addr.get_id().is_none());
         let id = Uuid::new_v4();
-        let id_version = IdVersion::new(id, 0);
+        let id_version = IdVersion::new(id, Some(0));
         addr.set_id_version(id_version);
         self.postal_addresses
             .lock()
@@ -70,7 +70,7 @@ impl FakeDatabasePort {
     pub fn seed_sport_config(&self, mut config: SportConfig) -> Uuid {
         assert!(config.get_id().is_none());
         let id = Uuid::new_v4();
-        let id_version = IdVersion::new(id, 0);
+        let id_version = IdVersion::new(id, Some(0));
         config.set_id_version(id_version);
         self.sport_configs.lock().unwrap().insert(id, config);
         id
@@ -90,7 +90,7 @@ impl FakeDatabasePort {
     pub fn seed_tournament_base(&self, mut tb: TournamentBase) -> Uuid {
         assert!(tb.get_id().is_none());
         let id = Uuid::new_v4();
-        let id_version = IdVersion::new(id, 0);
+        let id_version = IdVersion::new(id, Some(0));
         tb.set_id_version(id_version);
         self.tournament_bases.lock().unwrap().insert(id, tb);
         id

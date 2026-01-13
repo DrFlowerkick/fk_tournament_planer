@@ -138,7 +138,8 @@ impl GenericSportPlugin {
 
 impl VersionId for GenericSportPlugin {
     fn get_id_version(&self) -> IdVersion {
-        IdVersion::new(self.id(), 0)
+        // we can increment version later if changes are made to the sport plugin
+        IdVersion::new(self.id(), Some(0))
     }
 }
 #[cfg(test)]
@@ -160,7 +161,7 @@ mod tests {
             "score_free_ticket": 1,
             "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -186,7 +187,7 @@ mod tests {
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -212,7 +213,7 @@ mod tests {
             "score_free_ticket": 1,
             "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -261,7 +262,7 @@ mod tests {
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())

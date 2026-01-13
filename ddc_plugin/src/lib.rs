@@ -69,7 +69,8 @@ impl DdcSportPlugin {
 
 impl VersionId for DdcSportPlugin {
     fn get_id_version(&self) -> IdVersion {
-        IdVersion::new(self.id(), 0)
+        // we can increment version later if changes are made to the sport plugin
+        IdVersion::new(self.id(), Some(0))
     }
 }
 #[cfg(test)]
@@ -88,7 +89,7 @@ mod tests {
             "victory_points_draw": 0.5,
             "expected_rally_duration_seconds": { "secs": 45, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -111,7 +112,7 @@ mod tests {
             "victory_points_draw": 1.0,
             "expected_rally_duration_seconds": { "secs": 30, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -135,7 +136,7 @@ mod tests {
             "victory_points_draw": 0.5,
             "expected_rally_duration_seconds": { "secs": 45, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -199,7 +200,7 @@ mod tests {
             "victory_points_draw": 0.5,
             "expected_rally_duration_seconds": { "secs": 45, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())

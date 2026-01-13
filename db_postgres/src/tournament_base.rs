@@ -64,7 +64,7 @@ impl TryFrom<DbTournamentBase> for TournamentBase {
         let state_from_json: TournamentState = serde_json::from_value(r.state)
             .map_err(|e| DbError::Other(format!("Failed to deserialize state: {e}")))?;
 
-        let id_version = IdVersion::new(r.id, r.version as u32);
+        let id_version = IdVersion::new(r.id, Some(r.version as u32));
         let mut tb = TournamentBase::new(id_version);
 
         tb.set_name(r.name)
@@ -149,60 +149,16 @@ impl DbpTournamentBase for PgDb {
         let mut conn = self.new_connection().await?;
         let w = WriteDbTournamentBase::try_from(tournament)?;
 
-        if let IdVersion::Existing(inner) = tournament.get_id_version() {
-            // UPDATE with optimistic locking
-            let res = diesel::update(
-                tournament_bases.filter(
-                    id.eq(inner.get_id())
-                        .and(version.eq(inner.get_version() as i64)),
-                ),
-            )
-            .set((w, version.eq(sql::<BigInt>("version + 1"))))
-            .returning((
-                id,
-                version,
-                name,
-                sport_id,
-                num_entrants,
-                t_type,
-                mode,
-                state,
-                created_at,
-                updated_at,
-            ))
-            .get_result::<DbTournamentBase>(&mut conn)
-            .await;
-
-            match res {
-                Ok(row) => {
-                    info!(saved_id = %row.id, new_version = row.version, "update_ok");
-                    Ok(row.try_into()?)
-                }
-                Err(diesel::result::Error::NotFound) => {
-                    let exists = diesel::select(diesel::dsl::exists(
-                        tournament_bases.filter(id.eq(inner.get_id())),
-                    ))
-                    .get_result::<bool>(&mut conn)
-                    .await
-                    .map_err(map_db_err)?;
-
-                    if exists {
-                        warn!("optimistic_lock_conflict");
-                        Err(DbError::OptimisticLockConflict)
-                    } else {
-                        warn!("row_missing_on_update");
-                        Err(DbError::NotFound)
-                    }
-                }
-                Err(e) => {
-                    error!(error = %e, "update_failed");
-                    Err(map_db_err(e))
-                }
-            }
-        } else {
-            // INSERT
-            let row = diesel::insert_into(tournament_bases)
-                .values(w)
+        match tournament.get_id_version() {
+            // Case 1: UPDATE (Optimistic Locking)
+            IdVersion::Existing(inner) => {
+                let res = diesel::update(
+                    tournament_bases.filter(
+                        id.eq(inner.get_id())
+                            .and(version.eq(inner.get_version() as i64)),
+                    ),
+                )
+                .set((w, version.eq(sql::<BigInt>("version + 1"))))
                 .returning((
                     id,
                     version,
@@ -216,10 +172,81 @@ impl DbpTournamentBase for PgDb {
                     updated_at,
                 ))
                 .get_result::<DbTournamentBase>(&mut conn)
-                .await
-                .map_err(map_db_err)?;
-            info!(saved_id = %row.id, "insert_ok");
-            Ok(row.try_into()?)
+                .await;
+
+                match res {
+                    Ok(row) => {
+                        info!(saved_id = %row.id, new_version = row.version, "update_ok");
+                        Ok(row.try_into()?)
+                    }
+                    Err(diesel::result::Error::NotFound) => {
+                        let exists = diesel::select(diesel::dsl::exists(
+                            tournament_bases.filter(id.eq(inner.get_id())),
+                        ))
+                        .get_result::<bool>(&mut conn)
+                        .await
+                        .map_err(map_db_err)?;
+
+                        if exists {
+                            warn!("optimistic_lock_conflict");
+                            Err(DbError::OptimisticLockConflict)
+                        } else {
+                            warn!("row_missing_on_update");
+                            Err(DbError::NotFound)
+                        }
+                    }
+                    Err(e) => {
+                        error!(error = %e, "update_failed");
+                        Err(map_db_err(e))
+                    }
+                }
+            }
+            // Case 2: INSERT with specific ID (e.g. Migration)
+            IdVersion::NewWithId(new_id) => {
+                let row = diesel::insert_into(tournament_bases)
+                    .values((id.eq(new_id), w))
+                    .returning((
+                        id,
+                        version,
+                        name,
+                        sport_id,
+                        num_entrants,
+                        t_type,
+                        mode,
+                        state,
+                        created_at,
+                        updated_at,
+                    ))
+                    .get_result::<DbTournamentBase>(&mut conn)
+                    .await
+                    .map_err(map_db_err)?;
+
+                info!(saved_id = %row.id, "insert_ok");
+                Ok(row.try_into()?)
+            }
+            // Case 3: INSERT with DB-generated ID (Standard)
+            IdVersion::New => {
+                let row = diesel::insert_into(tournament_bases)
+                    .values(w)
+                    .returning((
+                        id,
+                        version,
+                        name,
+                        sport_id,
+                        num_entrants,
+                        t_type,
+                        mode,
+                        state,
+                        created_at,
+                        updated_at,
+                    ))
+                    .get_result::<DbTournamentBase>(&mut conn)
+                    .await
+                    .map_err(map_db_err)?;
+
+                info!(saved_id = %row.id, "insert_ok");
+                Ok(row.try_into()?)
+            }
         }
     }
 

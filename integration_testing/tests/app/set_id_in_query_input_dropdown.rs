@@ -103,15 +103,15 @@ async fn test_set_id_in_query_input_dropdown() {
 
     let items: Vec<TestItem> = vec![
         TestItem {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
+            id_version: IdVersion::new(Uuid::new_v4(), Some(1)),
             name: "Item 1".to_string(),
         },
         TestItem {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
+            id_version: IdVersion::new(Uuid::new_v4(), Some(1)),
             name: "Item 2".to_string(),
         },
         TestItem {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
+            id_version: IdVersion::new(Uuid::new_v4(), Some(1)),
             name: "Item 3".to_string(),
         },
     ];

@@ -28,14 +28,14 @@ impl DbpPostalAddress for FakeDatabasePort {
         if let Some(id) = address.get_id() {
             if let Some(existing) = guard.get(&id) {
                 let version = existing.get_version().unwrap() + 1;
-                new.set_id_version(IdVersion::new(id, version));
+                new.set_id_version(IdVersion::new(id, Some(version)));
             } else {
                 // This case can happen if an ID is provided but not found (e.g., update on non-existent row)
                 // For simplicity, we treat it as an insert, but a real DB might error.
-                new.set_id_version(IdVersion::new(id, 0));
+                new.set_id_version(IdVersion::new(id, Some(0)));
             }
         } else {
-            new.set_id_version(IdVersion::new(Uuid::new_v4(), 0));
+            new.set_id_version(IdVersion::new(Uuid::new_v4(), Some(0)));
         }
 
         guard.insert(new.get_id().unwrap(), new.clone());

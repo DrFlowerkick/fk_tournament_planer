@@ -1,9 +1,8 @@
 use super::save_tournament_base_inner;
 use crate::error::AppError;
-use app_core::{TournamentBase, TournamentMode, TournamentState, TournamentType};
+use app_core::TournamentBase;
 use leptos::server_fn::{Protocol, ServerFn, client::Client, server::Server};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Clone, Debug)]
 pub struct MockProtocol<SC, SS> {
@@ -37,15 +36,7 @@ where
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SaveTournamentBase {
-    pub id: Uuid,
-    pub version: u32,
-    pub name: String,
-    pub sport_id: Uuid,
-    pub num_entrants: u32,
-    pub t_type: TournamentType,
-    pub mode: TournamentMode,
-    pub state: TournamentState,
-    pub intent: Option<String>,
+    pub tournament: TournamentBase,
 }
 
 impl ServerFn for SaveTournamentBase {
@@ -60,16 +51,6 @@ impl ServerFn for SaveTournamentBase {
     const PATH: &'static str = "/mock_server";
 
     fn run_body(self) -> impl Future<Output = Result<Self::Output, Self::Error>> + Send {
-        save_tournament_base_inner(
-            self.id,
-            self.version,
-            self.name,
-            self.sport_id,
-            self.num_entrants,
-            self.t_type,
-            self.mode,
-            self.state,
-            self.intent,
-        )
+        save_tournament_base_inner(self.tournament)
     }
 }

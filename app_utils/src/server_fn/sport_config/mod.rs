@@ -134,7 +134,7 @@ pub async fn save_sport_config_inner(
         if id.is_nil() {
             return Err(AppError::NilIdUpdate);
         }
-        let id_version = IdVersion::new(id, version);
+        let id_version = IdVersion::new(id, Some(version));
         mut_sc_core.set_id_version(id_version);
         info!("saving_update");
     } else {

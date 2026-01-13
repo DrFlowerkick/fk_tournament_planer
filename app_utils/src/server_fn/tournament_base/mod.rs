@@ -3,11 +3,11 @@
 #[cfg(feature = "test-mock")]
 pub mod test_support;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-use crate::error::AppError;
 use crate::error::AppResult;
+// IdVersion Import wird hier nicht mehr explizit benötigt, da der Client das Objekt fertig liefert
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-use app_core::{CoreState, utils::id_version::IdVersion};
-use app_core::{TournamentBase, TournamentMode, TournamentState, TournamentType};
+use app_core::CoreState;
+use app_core::TournamentBase;
 use leptos::prelude::*;
 #[cfg(not(feature = "test-mock"))]
 use tracing::instrument;
@@ -77,120 +77,42 @@ async fn list_tournament_bases_inner(
     name = "tournament_base.save",
     skip_all,
     fields(
-        id = %id,
-        version = version,
-        // capture intent without logging full payloads
-        intent = intent.as_deref().unwrap_or(""),
-        // tiny hints only; avoid PII/body dumps
-        name_len = name.len(),
+        id = ?tournament.get_id(),
+        // We only log metadata, not complete payloads
+        name_len = tournament.name.len(),
     )
 )]
-#[allow(clippy::too_many_arguments)]
-pub async fn save_tournament_base(
-    // hidden in the form; nil => new; else => update
-    id: Uuid,
-    // hidden in the form
-    version: u32,
-    name: String,
-    sport_id: Uuid,
-    num_entrants: u32,
-    t_type: TournamentType,
-    mode: TournamentMode,
-    state: TournamentState,
-    // which submit button was clicked: "update" | "create"
-    intent: Option<String>,
-) -> AppResult<TournamentBase> {
-    save_tournament_base_inner(
-        id,
-        version,
-        name,
-        sport_id,
-        num_entrants,
-        t_type,
-        mode,
-        state,
-        intent,
-    )
-    .await
+pub async fn save_tournament_base(tournament: TournamentBase) -> AppResult<TournamentBase> {
+    save_tournament_base_inner(tournament).await
 }
 
 #[cfg(feature = "test-mock")]
 pub use test_support::SaveTournamentBase;
 #[cfg(feature = "test-mock")]
-pub async fn save_tournament_base(
-    id: Uuid,
-    version: u32,
-    name: String,
-    sport_id: Uuid,
-    num_entrants: u32,
-    t_type: TournamentType,
-    mode: TournamentMode,
-    state: TournamentState,
-    intent: Option<String>,
-) -> AppResult<TournamentBase> {
-    save_tournament_base_inner(
-        id,
-        version,
-        name,
-        sport_id,
-        num_entrants,
-        t_type,
-        mode,
-        state,
-        intent,
-    )
-    .await
+pub async fn save_tournament_base(tournament: TournamentBase) -> AppResult<TournamentBase> {
+    save_tournament_base_inner(tournament).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-#[allow(clippy::too_many_arguments)]
-pub async fn save_tournament_base_inner(
-    id: Uuid,
-    version: u32,
-    name: String,
-    sport_id: Uuid,
-    num_entrants: u32,
-    t_type: TournamentType,
-    mode: TournamentMode,
-    state: TournamentState,
-    intent: Option<String>,
-) -> AppResult<TournamentBase> {
+pub async fn save_tournament_base_inner(tournament: TournamentBase) -> AppResult<TournamentBase> {
     let mut core = expect_context::<CoreState>().as_tournament_base_state();
 
-    // get mut handle to wrapped TournamentBase
-    let mut_sc_core = core.get_mut();
+    // We replace the state object in the core directly with the received object.
+    // Prerequisite: The client has already set the correct IdVersion.
+    *core.get_mut() = tournament;
 
-    // Interpret intent
-    let is_update = matches!(intent.as_deref(), Some("update"));
-    if is_update {
-        // set id and version previously loaded
-        if id.is_nil() {
-            return Err(AppError::NilIdUpdate);
-        }
-        let id_version = IdVersion::new(id, version);
-        mut_sc_core.set_id_version(id_version);
-        info!("saving_update");
-    } else {
-        info!("saving_create");
-    }
-
-    // set sport config data from Form inputs
-    mut_sc_core
-        .set_name(name)
-        .set_sport_id(sport_id)
-        .set_num_entrants(num_entrants)
-        .set_tournament_type(t_type)
-        .set_tournament_mode(mode)
-        .set_tournament_state(state);
-
-    // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
+    // Persist; log outcome with the saved id.
     match core.save().await {
         Ok(saved) => {
-            info!(saved_id = %saved.get_id().unwrap(), "save_ok");
+            // After saving, log the ID (especially important for new entries with generated ID)
+            if let Some(id) = saved.get_id() {
+                info!(saved_id = %id, "save_ok");
+            } else {
+                info!("save_ok_no_id_read"); // should not happen
+            }
             Ok(saved.clone())
         }
         Err(e) => {
-            // Primary goal failed -> error
             error!(error = %e, "save_failed");
             Err(e.into())
         }
