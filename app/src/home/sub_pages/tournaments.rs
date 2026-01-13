@@ -1,7 +1,10 @@
 //! listing tournaments
 
 use app_core::{TournamentBase, TournamentState, TournamentType};
-use app_utils::{params::SportParams, server_fn::tournament_base::list_tournament_bases};
+use app_utils::{
+    components::inputs::EnumSelect, params::SportParams,
+    server_fn::tournament_base::list_tournament_bases,
+};
 use leptos::prelude::*;
 use leptos_router::hooks::use_query;
 use uuid::Uuid;
@@ -11,7 +14,7 @@ pub fn ListTournaments() -> impl IntoView {
     let sport_id_query = use_query::<SportParams>();
 
     // Signals for Filters
-    let (status, set_status) = signal(TournamentState::Scheduling);
+    let set_status = RwSignal::new(TournamentState::Scheduling);
     let (include_adhoc, set_include_adhoc) = signal(false);
     let (search_term, set_search_term) = signal("".to_string());
     let (limit, set_limit) = signal(10usize);
@@ -42,9 +45,9 @@ pub fn ListTournaments() -> impl IntoView {
         data.into_iter()
             .filter(|t| {
                 // Filter by status
-                (match status.get() {
+                (match set_status.get() {
                     TournamentState::ActiveStage(_) => matches!(t.get_tournament_state(), TournamentState::ActiveStage(_)),
-                    _ => t.get_tournament_state() == status.get(),
+                    _ => t.get_tournament_state() == set_status.get(),
                 }) &&
                 // Filter by adhoc
                 (include_adhoc.get() || !matches!(t.get_tournament_type(), TournamentType::Adhoc))
@@ -69,31 +72,11 @@ pub fn ListTournaments() -> impl IntoView {
                     <label class="label">
                         <span class="label-text">"Status"</span>
                     </label>
-                    <select
-                        class="select select-bordered"
-                        data-testid="filter-status-select"
-                        on:change=move |ev| {
-                            set_status.set(TournamentState::from(event_target_value(&ev)))
-                        }
-                        prop:value=move || format!("{}", status.get())
-                    >
-                        <option value=format!(
-                            "{}",
-                            TournamentState::Scheduling,
-                        )>{format!("{}", TournamentState::Scheduling)}</option>
-                        <option value=format!(
-                            "{}",
-                            TournamentState::Published,
-                        )>{format!("{}", TournamentState::Published)}</option>
-                        <option value=format!(
-                            "{}",
-                            TournamentState::ActiveStage(0),
-                        )>{format!("{}", TournamentState::ActiveStage(0))}</option>
-                        <option value=format!(
-                            "{}",
-                            TournamentState::Finished,
-                        )>{format!("{}", TournamentState::Finished)}</option>
-                    </select>
+                    <EnumSelect
+                        label="Filter Tournament State"
+                        name="filter-tournament-state"
+                        value=set_status
+                    />
                 </div>
 
                 // Text Search

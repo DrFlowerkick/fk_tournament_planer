@@ -244,6 +244,17 @@ impl TournamentBase {
             );
         }
 
+        if let TournamentMode::SwissSystem { num_rounds } = self.mode {
+            if num_rounds == 0 {
+                errs.add(
+                    FieldError::builder()
+                        .set_field(String::from("mode.num_rounds"))
+                        .add_message("Number of rounds must be > 0. Recommended number of rounds is 'log_2(number of entrants) + 2' or more")
+                        .build(),
+                );
+            }
+        }
+
         let max_num_stages = match self.mode {
             // in Swiss System, each round is a stage
             TournamentMode::SwissSystem { num_rounds } => num_rounds,

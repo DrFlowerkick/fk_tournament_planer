@@ -18,3 +18,8 @@ pub struct SportParams {
 pub struct SportConfigParams {
     pub sport_config_id: Option<Uuid>,
 }
+
+#[derive(Params, Clone, PartialEq, Eq, Debug)]
+pub struct TournamentBaseParams {
+    pub tournament_id: Option<Uuid>,
+}

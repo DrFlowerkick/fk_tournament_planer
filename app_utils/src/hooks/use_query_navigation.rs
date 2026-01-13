@@ -10,6 +10,7 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
     impl Fn(&str) + Clone + Copy + Send + Sync + 'static,
     impl Fn(&str) -> String + Clone + Copy + Send + Sync + 'static,
     impl Fn(&str, &str, Option<&str>) -> String + Clone + Copy + Send + Sync + 'static,
+    impl Fn(&str, Option<&str>) -> String + Clone + Copy + Send + Sync + 'static,
 > {
     let url = use_url();
     let mut_url = RwSignal::new(Url::default());
@@ -42,6 +43,16 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
             format!("{}{}", new_url.path(), qs)
         }
     };
+    let url_with_out_param = move |key: &str, sub_path: Option<&str>| {
+        let mut new_url = mut_url.get();
+        let _ = new_url.search_params_mut().remove(key);
+        let qs = new_url.search_params().to_query_string();
+        if let Some(path) = sub_path {
+            format!("{}{}", path, qs)
+        } else {
+            format!("{}{}", new_url.path(), qs)
+        }
+    };
 
     UseQueryNavigationReturn {
         get,
@@ -52,17 +63,25 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
         nav_url,
         relative_sub_url,
         url_with_param,
+        url_with_out_param,
     }
 }
 
 /// Return type of `use_query_navigation`.
-pub struct UseQueryNavigationReturn<GetFn, UpdateFn, RemoveFn, RelativeSubUrlFn, UrlWithParamFn>
-where
+pub struct UseQueryNavigationReturn<
+    GetFn,
+    UpdateFn,
+    RemoveFn,
+    RelativeSubUrlFn,
+    UrlWithParamFn,
+    UrlWithOutParamFn,
+> where
     GetFn: Fn(&str) -> Option<String>,
     UpdateFn: Fn(&str, &str),
     RemoveFn: Fn(&str),
     RelativeSubUrlFn: Fn(&str) -> String,
     UrlWithParamFn: Fn(&str, &str, Option<&str>) -> String,
+    UrlWithOutParamFn: Fn(&str, Option<&str>) -> String,
 {
     /// Function to get the value of a query parameter by key.
     pub get: GetFn,
@@ -80,6 +99,10 @@ where
     /// Function to generate a URL with a specific query parameter updated.
     /// Optionally takes a sub_path to replace the current path.
     pub url_with_param: UrlWithParamFn,
+
+    /// Function to generate a URL with a specific query parameter removed.
+    /// Optionally takes a sub_path to replace the current path.
+    pub url_with_out_param: UrlWithOutParamFn,
 
     /// Signal to return current path.
     pub path: Signal<String>,

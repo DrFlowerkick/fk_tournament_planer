@@ -26,7 +26,7 @@ export const HOME_IDS = {
     tournamentsList: {
       root: "tournaments-list-root",
       filters: {
-        statusSelect: "filter-status-select",
+        statusSelect: "select-filter-tournament-state",
         includeAdhoc: "filter-include-adhoc-toggle",
         nameSearch: "filter-name-search",
         limitSelect: "filter-limit-select",
