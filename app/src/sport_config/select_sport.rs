@@ -1,6 +1,6 @@
 //! Component for selecting a sport plugin in the sport configuration flow.
 
-use app_core::{SportPluginManagerPort, SportPort, utils::id_version::VersionId};
+use app_core::{SportPluginManagerPort, SportPort, utils::traits::ObjectIdVersion};
 use app_utils::{
     components::{
         banner::AcknowledgmentBanner,

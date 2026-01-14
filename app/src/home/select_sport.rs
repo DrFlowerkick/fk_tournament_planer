@@ -1,6 +1,6 @@
 //! Component for selecting a sport plugin in the sport configuration flow.
 
-use app_core::{SportPluginManagerPort, utils::id_version::VersionId};
+use app_core::{SportPluginManagerPort, utils::traits::ObjectIdVersion};
 use app_utils::{
     global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},

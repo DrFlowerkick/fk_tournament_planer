@@ -14,7 +14,7 @@ pub fn ListTournaments() -> impl IntoView {
     let sport_id_query = use_query::<SportParams>();
 
     // Signals for Filters
-    let set_status = RwSignal::new(TournamentState::Scheduling);
+    let set_status = RwSignal::new(TournamentState::Draft);
     let (include_adhoc, set_include_adhoc) = signal(false);
     let (search_term, set_search_term) = signal("".to_string());
     let (limit, set_limit) = signal(10usize);
@@ -183,7 +183,7 @@ pub fn ListTournaments() -> impl IntoView {
                                                         >
                                                             // Example Logic based on status
                                                             {match t_render_actions.get_tournament_state() {
-                                                                TournamentState::Scheduling | TournamentState::Published => {
+                                                                TournamentState::Draft | TournamentState::Published => {
                                                                     view! {
                                                                         <button
                                                                             class="btn btn-sm btn-primary"

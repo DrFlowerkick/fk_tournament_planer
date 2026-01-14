@@ -2,10 +2,7 @@
 
 use app_core::{
     EntrantGroupScore, Match, SportConfig, SportPort, SportResult,
-    utils::{
-        id_version::{IdVersion, VersionId},
-        validation::ValidationErrors,
-    },
+    utils::{id_version::IdVersion, traits::ObjectIdVersion, validation::ValidationErrors},
 };
 use leptos::prelude::*;
 use serde_json::Value;
@@ -20,7 +17,7 @@ pub struct MockSport {
     pub name: &'static str,
 }
 
-impl VersionId for MockSport {
+impl ObjectIdVersion for MockSport {
     fn get_id_version(&self) -> IdVersion {
         IdVersion::new(self.id(), Some(0))
     }
@@ -90,7 +87,7 @@ impl SportPort for MockSport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use app_core::{SportPluginManagerPort, utils::id_version::VersionId};
+    use app_core::{SportPluginManagerPort, utils::traits::ObjectIdVersion};
     use sport_plugin_manager::SportPluginManagerMap;
     use std::sync::Arc;
 

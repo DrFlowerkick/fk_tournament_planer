@@ -9,8 +9,7 @@ pub mod sport_web_ui;
 use app_core::{
     Match, SportConfig, SportError, SportResult,
     utils::{
-        id_version::{IdVersion, VersionId},
-        namespace::project_namespace,
+        id_version::IdVersion, namespace::project_namespace, traits::ObjectIdVersion,
         validation::ValidationErrors,
     },
 };
@@ -67,7 +66,7 @@ impl DdcSportPlugin {
     }
 }
 
-impl VersionId for DdcSportPlugin {
+impl ObjectIdVersion for DdcSportPlugin {
     fn get_id_version(&self) -> IdVersion {
         // we can increment version later if changes are made to the sport plugin
         IdVersion::new(self.id(), Some(0))

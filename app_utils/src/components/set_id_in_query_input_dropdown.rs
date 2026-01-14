@@ -1,7 +1,7 @@
 //! General input dropdown component to set an ID in the query string.
 
 use crate::hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation};
-use app_core::utils::id_version::VersionId;
+use app_core::utils::traits::ObjectIdVersion;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
@@ -9,7 +9,7 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct SetIdInQueryInputDropdownProperties<I, RenderFn>
 where
-    I: VersionId + Clone + Send + Sync + 'static,
+    I: ObjectIdVersion + Clone + Send + Sync + 'static,
     RenderFn: Fn(&I) -> AnyView + Clone + Send + Sync + 'static,
 {
     pub key: &'static str,
@@ -28,7 +28,7 @@ pub fn SetIdInQueryInputDropdown<I>(
     >,
 ) -> impl IntoView
 where
-    I: VersionId + Clone + Send + Sync + 'static,
+    I: ObjectIdVersion + Clone + Send + Sync + 'static,
 {
     // ---- get properties ----
     let SetIdInQueryInputDropdownProperties {

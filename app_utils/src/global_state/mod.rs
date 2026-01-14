@@ -1,5 +1,7 @@
 //! global state management in reactive system of app
 
+pub mod tournament_editor_state;
+
 use reactive_stores::Store;
 use sport_plugin_manager::SportPluginManagerMap;
 

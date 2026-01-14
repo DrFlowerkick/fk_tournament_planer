@@ -11,10 +11,8 @@ pub struct Round {
     id: Uuid,
     /// id of group
     group_id: Uuid,
-    /// scheduled round number
-    number: usize,
-    /// matches of round, referenced by id, sorted by match number
-    matches: Vec<Uuid>,
+    /// round number in group
+    number: u32,
     /// entrant which has to pause this round
     paused_entrant: PausedEntrant,
 }

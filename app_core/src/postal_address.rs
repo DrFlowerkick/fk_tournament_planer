@@ -2,11 +2,7 @@
 
 use crate::{
     Core, CoreResult, CrMsg, CrTopic,
-    utils::{
-        id_version::{IdVersion, VersionId},
-        normalize::*,
-        validation::*,
-    },
+    utils::{id_version::IdVersion, normalize::*, traits::ObjectIdVersion, validation::*},
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -43,7 +39,7 @@ impl Default for PostalAddress {
     }
 }
 
-impl VersionId for PostalAddress {
+impl ObjectIdVersion for PostalAddress {
     fn get_id_version(&self) -> IdVersion {
         self.id_version
     }

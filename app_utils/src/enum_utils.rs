@@ -28,7 +28,7 @@ impl SelectableOption for TournamentState {
 
     fn options() -> Vec<Self> {
         vec![
-            TournamentState::Scheduling,
+            TournamentState::Draft,
             TournamentState::Published,
             TournamentState::ActiveStage(0),
             TournamentState::Finished,

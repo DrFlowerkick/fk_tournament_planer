@@ -3,8 +3,9 @@
 use crate::{
     Core, CoreError, CoreResult, CrMsg, CrTopic, SportError,
     utils::{
-        id_version::{IdVersion, VersionId},
+        id_version::IdVersion,
         normalize::normalize_ws,
+        traits::ObjectIdVersion,
         validation::{FieldError, ValidationErrors, ValidationResult},
     },
 };
@@ -49,12 +50,23 @@ pub enum TournamentMode {
     SwissSystem { num_rounds: u32 },
 }
 
+impl TournamentMode {
+    pub fn get_num_of_stages(&self) -> u32 {
+        match self {
+            TournamentMode::SingleStage => 1,
+            TournamentMode::PoolAndFinalStage => 2,
+            TournamentMode::TwoPoolStagesAndFinalStage => 3,
+            TournamentMode::SwissSystem { num_rounds: _ } => 1,
+        }
+    }
+}
+
 /// status of tournament
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
 pub enum TournamentState {
-    /// Scheduling
+    /// Draft
     #[default]
-    Scheduling,
+    Draft,
     /// Published
     Published,
     /// Running
@@ -66,11 +78,11 @@ pub enum TournamentState {
 impl From<String> for TournamentState {
     fn from(s: String) -> Self {
         match s.as_str() {
-            "Scheduling" => TournamentState::Scheduling,
+            "Draft" => TournamentState::Draft,
             "Published" => TournamentState::Published,
             "Running" => TournamentState::ActiveStage(0),
             "Finished" => TournamentState::Finished,
-            _ => TournamentState::Scheduling, // default
+            _ => TournamentState::Draft, // default
         }
     }
 }
@@ -108,7 +120,7 @@ impl Default for TournamentBase {
     }
 }
 
-impl VersionId for TournamentBase {
+impl ObjectIdVersion for TournamentBase {
     fn get_id_version(&self) -> IdVersion {
         self.id_version
     }
@@ -131,10 +143,6 @@ impl TournamentBase {
     /// Get the version number of the sport configuration.
     pub fn get_version(&self) -> Option<u32> {
         self.id_version.get_version()
-    }
-
-    pub fn get_id_version(&self) -> IdVersion {
-        self.id_version
     }
 
     /// Get the name of the sport configuration.

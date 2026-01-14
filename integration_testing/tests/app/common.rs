@@ -1,6 +1,6 @@
 // common helpers for tests
 
-use app_core::{Core, CoreBuilder, InitState, SportConfig, utils::id_version::VersionId};
+use app_core::{Core, CoreBuilder, InitState, SportConfig, utils::traits::ObjectIdVersion};
 use futures_util::lock::{Mutex, MutexGuard};
 use generic_sport_plugin::GenericSportPlugin;
 use generic_sport_plugin::config::GenericSportConfig;

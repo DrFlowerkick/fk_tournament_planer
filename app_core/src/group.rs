@@ -11,8 +11,8 @@ pub struct Group {
     id: Uuid,
     /// id of stage
     stage_id: Uuid,
-    /// group number
-    number: usize,
+    /// group number in stage
+    number: u32,
     /// match making mode of group
     /// Normally all groups of one stage share the same mode. This may be not true for final stage,
     /// if number of entrants forces groups with different number of entrants. If you have 9

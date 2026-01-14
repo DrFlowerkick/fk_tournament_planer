@@ -41,7 +41,7 @@ pub fn EditTournament() -> impl IntoView {
     let set_t_type = RwSignal::new(TournamentType::Scheduled);
     let set_mode = RwSignal::new(TournamentMode::SingleStage);
     let set_num_rounds_swiss = RwSignal::new(0_u32);
-    let set_state = RwSignal::new(TournamentState::Scheduling);
+    let set_state = RwSignal::new(TournamentState::Draft);
 
     // We need to track the version for concurrency control (optimistic locking)
     let (version, set_version) = signal(0_u32);
@@ -146,7 +146,7 @@ pub fn EditTournament() -> impl IntoView {
                 </h2>
             </div>
 
-            // ToDo: create inputs and buttons.
+        // ToDo: create inputs and buttons.
         </div>
     }
 }

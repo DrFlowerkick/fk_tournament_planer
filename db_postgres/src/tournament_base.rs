@@ -6,7 +6,7 @@ use crate::{
 };
 use app_core::{
     DbError, DbResult, TournamentBase, TournamentMode, TournamentState, TournamentType,
-    utils::id_version::IdVersion,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};

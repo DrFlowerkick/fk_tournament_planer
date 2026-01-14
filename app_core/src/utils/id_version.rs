@@ -1,3 +1,4 @@
+use crate::utils::traits::ObjectIdVersion;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -32,7 +33,6 @@ impl IdVersion {
             IdVersion::Existing(ExistingInner { id, version: v })
         } else {
             IdVersion::NewWithId(id)
-            
         }
     }
     pub fn get_initial_id(&self) -> Option<Uuid> {
@@ -42,11 +42,18 @@ impl IdVersion {
             None
         }
     }
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_existing_id(&self) -> Option<Uuid> {
         if let IdVersion::Existing(inner) = self {
             Some(inner.id)
         } else {
             None
+        }
+    }
+    pub fn get_id(&self) -> Option<Uuid> {
+        match self {
+            IdVersion::Existing(inner) => Some(inner.id),
+            IdVersion::NewWithId(id) => Some(*id),
+            IdVersion::New => None,
         }
     }
     pub fn get_version(&self) -> Option<u32> {
@@ -58,12 +65,8 @@ impl IdVersion {
     }
 }
 
-impl VersionId for IdVersion {
+impl ObjectIdVersion for IdVersion {
     fn get_id_version(&self) -> IdVersion {
         *self
     }
-}
-
-pub trait VersionId {
-    fn get_id_version(&self) -> IdVersion;
 }
