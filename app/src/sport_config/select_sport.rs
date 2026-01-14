@@ -8,7 +8,7 @@ use app_utils::{
             SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
         },
     },
-    global_state::{GlobalState, GlobalStateStoreFields},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
     params::SportParams,
 };
 use leptos::prelude::*;

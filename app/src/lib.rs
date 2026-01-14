@@ -4,7 +4,7 @@ pub mod home;
 pub mod postal_addresses;
 pub mod sport_config;
 
-use app_utils::global_state::GlobalState;
+use app_utils::state::global_state::GlobalState;
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
 use home::*;

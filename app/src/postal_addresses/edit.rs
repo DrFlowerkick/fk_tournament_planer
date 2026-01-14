@@ -7,7 +7,7 @@ use app_utils::{
         inputs::{TextInput, ValidatedSelect, ValidatedTextInput},
     },
     error::AppError,
-    global_state::{GlobalState, GlobalStateStoreFields},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
     hooks::{
         is_field_valid::is_field_valid,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
@@ -136,7 +136,6 @@ pub fn PostalAddressForm() -> impl IntoView {
             false
         }
     };
-    let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
     let is_general_error = move || {
         if let Some(Err(err)) = save_postal_address.value().get() {
             match err {
@@ -153,6 +152,7 @@ pub fn PostalAddressForm() -> impl IntoView {
             None
         }
     };
+    let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
     let is_disabled = move || {
         addr_res.get().is_none()

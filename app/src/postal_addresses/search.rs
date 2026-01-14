@@ -9,7 +9,7 @@ use app_utils::{
         },
     },
     error::AppError,
-    global_state::{GlobalState, GlobalStateStoreFields},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::AddressParams,
     server_fn::postal_address::{list_postal_addresses, load_postal_address},

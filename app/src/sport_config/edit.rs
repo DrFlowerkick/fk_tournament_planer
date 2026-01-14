@@ -7,7 +7,7 @@ use app_utils::{
         inputs::ValidatedTextInput,
     },
     error::AppError,
-    global_state::{GlobalState, GlobalStateStoreFields},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
     hooks::{
         is_field_valid::is_field_valid,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},

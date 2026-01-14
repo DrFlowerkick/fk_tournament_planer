@@ -9,7 +9,7 @@ pub use sub_pages::*;
 use crate::home::dashboard::SportDashboard;
 use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
-    global_state::{GlobalState, GlobalStateStoreFields},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
     params::SportParams,
 };
 use leptos::prelude::*;

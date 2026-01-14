@@ -9,7 +9,7 @@ use app_utils::{
         },
     },
     error::AppError,
-    global_state::{GlobalState, GlobalStateStoreFields},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::{SportConfigParams, SportParams},
     server_fn::sport_config::{list_sport_configs, load_sport_config},
