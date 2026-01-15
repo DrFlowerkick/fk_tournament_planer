@@ -8,8 +8,8 @@ use app_utils::{
             SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
         },
     },
-    state::global_state::{GlobalState, GlobalStateStoreFields},
     params::SportParams,
+    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
 use leptos_router::{

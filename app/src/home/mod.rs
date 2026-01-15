@@ -9,8 +9,12 @@ pub use sub_pages::*;
 use crate::home::dashboard::SportDashboard;
 use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
-    state::global_state::{GlobalState, GlobalStateStoreFields},
+    components::banner::GlobalErrorBanner,
     params::SportParams,
+    state::{
+        error_state::PageErrorContext,
+        global_state::{GlobalState, GlobalStateStoreFields},
+    },
 };
 use leptos::prelude::*;
 use leptos_router::{hooks::use_query, nested_router::Outlet};
@@ -19,6 +23,9 @@ use reactive_stores::Store;
 /// Renders the home page of fk tournament
 #[component]
 pub fn HomePage() -> impl IntoView {
+    // set context for error reporting
+    let page_error_context = PageErrorContext::new();
+    provide_context::<PageErrorContext>(page_error_context);
     // get global state and sport plugin manager
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
@@ -39,6 +46,7 @@ pub fn HomePage() -> impl IntoView {
     };
 
     view! {
+        <GlobalErrorBanner />
         {move || {
             if is_sport_active() {
                 // Dashboard + Outlet

@@ -15,6 +15,7 @@ use app_utils::{
     state::{
         global_state::{GlobalState, GlobalStateStoreFields},
         tournament_editor_state::TournamentEditorState,
+        error_state::PageErrorContext,
     },
 };
 use leptos::prelude::*;
@@ -33,7 +34,7 @@ pub fn EditTournament() -> impl IntoView {
 
     let is_changed = move || tournament_editor_state.read().is_changed();
 
-    // --- Hooks, Navigation & global state ---
+    // --- Hooks, Navigation & global and error state ---
     let UseQueryNavigationReturn {
         nav_url, update, ..
     } = use_query_navigation();
@@ -42,17 +43,12 @@ pub fn EditTournament() -> impl IntoView {
     let tournament_id_query = use_query::<TournamentBaseParams>();
 
     let global_state = expect_context::<Store<GlobalState>>();
+    let page_error_context = expect_context::<PageErrorContext>();
     let sport_plugin_manager = global_state.sport_plugin_manager();
 
     // Derived Query Params
-    let sport_id = move || sport_id_query.get().ok().and_then(|p| p.sport_id);
-    let is_sport_id_error = move || {
-        if let Some(sport_id) = sport_id() {
-            sport_plugin_manager.get().get_web_ui(&sport_id).is_none()
-        } else {
-            true
-        }
-    };
+    // sport id is save to unwrap here because home page ensures valid sport id before rendering this component
+    let sport_id = move || sport_id_query.get().ok().and_then(|p| p.sport_id).unwrap_or_default();
     let tournament_id = move || tournament_id_query.get().ok().and_then(|p| p.tournament_id);
 
     // Form Signals
@@ -144,7 +140,7 @@ pub fn EditTournament() -> impl IntoView {
             } else {
                 let mut tournament = TournamentBase::default();
                 tournament
-                    .set_sport_id(sport_id().unwrap_or_default())
+                    .set_sport_id(sport_id())
                     .set_id_version(IdVersion::NewWithId(Uuid::new_v4()));
 
                 Ok(tournament)
@@ -190,7 +186,6 @@ pub fn EditTournament() -> impl IntoView {
     let is_disabled = move || {
         is_loading()
             || is_pending.get()
-            || is_sport_id_error()
             || is_save_conflict()
             || is_save_duplicate()
             || is_general_save_error().is_some()
@@ -202,7 +197,7 @@ pub fn EditTournament() -> impl IntoView {
         let mut tb = TournamentBase::default();
         tb.set_id_version(set_id_version.get())
             .set_name(set_name.get())
-            .set_sport_id(sport_id().unwrap_or_default())
+            .set_sport_id(sport_id())
             .set_num_entrants(set_entrants.get())
             .set_tournament_type(set_t_type.get())
             .set_tournament_mode(set_mode.get())
@@ -246,7 +241,7 @@ pub fn EditTournament() -> impl IntoView {
     let on_cancel = move || {
         let navigate = use_navigate();
         let _ = navigate(
-            &format!("/?sport_id={}", sport_id().unwrap_or_default()),
+            &format!("/?sport_id={}", sport_id()),
             Default::default(),
         );
     };

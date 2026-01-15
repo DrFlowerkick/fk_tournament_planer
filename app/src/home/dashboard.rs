@@ -1,7 +1,7 @@
 use app_utils::{
-    state::global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::SportParams,
+    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
 use leptos_router::{components::A, hooks::use_query};

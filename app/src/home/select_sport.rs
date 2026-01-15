@@ -2,8 +2,8 @@
 
 use app_core::{SportPluginManagerPort, utils::traits::ObjectIdVersion};
 use app_utils::{
-    state::global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, hooks::use_navigate};
