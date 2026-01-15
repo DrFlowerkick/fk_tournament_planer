@@ -89,7 +89,7 @@ pub fn AcknowledgmentAndNavigateBanner(
 /// A global error banner that displays the first active error from the PageErrorContext.
 #[component]
 pub fn GlobalErrorBanner() -> impl IntoView {
-    let ctx = use_context::<PageErrorContext>().expect("No Error Context found");
+    let ctx = expect_context::<PageErrorContext>();
 
     view! {
         <Show when=move || ctx.has_errors() fallback=|| ()>

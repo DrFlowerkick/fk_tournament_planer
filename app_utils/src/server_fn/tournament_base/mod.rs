@@ -2,7 +2,7 @@
 
 #[cfg(feature = "test-mock")]
 pub mod test_support;
-#[cfg(any(feature = "ssr", feature = "test-mock"))]
+//#[cfg(any(feature = "ssr", feature = "test-mock"))]
 use crate::error::AppResult;
 // IdVersion Import wird hier nicht mehr explizit benötigt, da der Client das Objekt fertig liefert
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
@@ -79,7 +79,7 @@ async fn list_tournament_bases_inner(
     fields(
         id = ?tournament.get_id(),
         // We only log metadata, not complete payloads
-        name_len = tournament.name.len(),
+        name_len = tournament.get_name().len(),
     )
 )]
 pub async fn save_tournament_base(tournament: TournamentBase) -> AppResult<TournamentBase> {

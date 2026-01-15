@@ -13,12 +13,10 @@ pub struct ErrorAction {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ErrorKey {
-    /// Errors occurring during data listing (Resources)
-    List,
-    /// Errors occurring during data loading (Resources)
-    Load,
-    /// Errors occurring during data saving (Actions)
-    Save,
+    /// Errors occurring during data reading (Resources: Load single, List many)
+    Read,
+    /// Errors occurring during data writing (Actions: Save, Update, Delete)
+    Write,
     /// Catch-all for other errors
     General,
     /// Specific custom error keys
