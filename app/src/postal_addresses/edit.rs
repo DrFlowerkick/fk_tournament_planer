@@ -166,7 +166,6 @@ pub fn PostalAddressForm() -> impl IntoView {
     // --- Props for form fields ---
     let props = FormFieldsProperties {
         id,
-        addr_res,
         cancel_target,
         is_disabled: Signal::derive(is_disabled),
         is_new: Signal::derive(is_new),
@@ -327,7 +326,6 @@ pub fn PostalAddressForm() -> impl IntoView {
 #[derive(Clone, Copy)]
 struct FormFieldsProperties {
     id: Signal<Option<Uuid>>,
-    addr_res: Resource<Result<PostalAddress, AppError>>,
     cancel_target: Callback<(), String>,
     is_disabled: Signal<bool>,
     is_new: Signal<bool>,
@@ -344,7 +342,6 @@ struct FormFieldsProperties {
 fn FormFields(props: FormFieldsProperties) -> impl IntoView {
     let FormFieldsProperties {
         id,
-        addr_res,
         cancel_target,
         is_disabled,
         is_new,
@@ -371,8 +368,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
         }
         addr
     };
-
-    let is_loading = Signal::derive(move || addr_res.get().is_none());
 
     let validation_result = move || current_address().validate();
     let is_valid_addr = move || validation_result().is_ok();
@@ -407,7 +402,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 name="name"
                 value=set_name
                 error_message=is_valid_name
-                is_loading=is_loading
                 is_new=is_new
                 on_blur=move || set_name.set(current_address().get_name().to_string())
             />
@@ -416,7 +410,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 name="street"
                 value=set_street
                 error_message=is_valid_street
-                is_loading=is_loading
                 is_new=is_new
                 on_blur=move || set_street.set(current_address().get_street().to_string())
             />
@@ -426,7 +419,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     name="postal_code"
                     value=set_postal_code
                     error_message=is_valid_postal_code
-                    is_loading=is_loading
                     is_new=is_new
                     on_blur=move || {
                         set_postal_code.set(current_address().get_postal_code().to_string())
@@ -437,7 +429,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     name="locality"
                     value=set_locality
                     error_message=is_valid_locality
-                    is_loading=is_loading
                     is_new=is_new
                     on_blur=move || set_locality.set(current_address().get_locality().to_string())
                 />
@@ -447,7 +438,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 name="region"
                 value=set_region
                 optional=true
-                is_loading=is_loading
                 is_new=is_new
                 on_blur=move || {
                     set_region.set(current_address().get_region().unwrap_or_default().to_string())

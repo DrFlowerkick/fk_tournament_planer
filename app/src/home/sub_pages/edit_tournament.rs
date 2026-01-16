@@ -5,6 +5,7 @@ use app_core::{
     utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use app_utils::{
+    components::inputs::{EnumSelect, ValidatedNumberInput, ValidatedTextInput},
     error::{
         AppError,
         strategy::{handle_read_error, handle_write_error},
@@ -14,11 +15,9 @@ use app_utils::{
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
     params::{SportParams, TournamentBaseParams},
-    server_fn::tournament_base::{SaveTournamentBase, load_tournament_base, save_tournament_base},
+    server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
     state::{
-        error_state::PageErrorContext,
-        global_state::{GlobalState, GlobalStateStoreFields},
-        toast_state::ToastContext,
+        error_state::PageErrorContext, toast_state::ToastContext,
         tournament_editor_state::TournamentEditorState,
     },
 };
@@ -27,7 +26,6 @@ use leptos_router::{
     NavigateOptions,
     hooks::{use_navigate, use_query},
 };
-use reactive_stores::Store;
 use uuid::Uuid;
 
 #[component]
@@ -38,7 +36,7 @@ pub fn EditTournament() -> impl IntoView {
 
     let is_changed = move || tournament_editor_state.read().is_changed();
 
-    // --- Hooks, Navigation & global and error state ---
+    // --- Hooks, Navigation & toast/ error state ---
     let UseQueryNavigationReturn {
         nav_url, update, ..
     } = use_query_navigation();
@@ -46,9 +44,6 @@ pub fn EditTournament() -> impl IntoView {
 
     let sport_id_query = use_query::<SportParams>();
     let tournament_id_query = use_query::<TournamentBaseParams>();
-
-    let global_state = expect_context::<Store<GlobalState>>();
-    let sport_plugin_manager = global_state.sport_plugin_manager();
     let page_err_ctx = expect_context::<PageErrorContext>();
     let toast_ctx = expect_context::<ToastContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
@@ -68,7 +63,7 @@ pub fn EditTournament() -> impl IntoView {
             .unwrap_or_default()
     };
     let tournament_id = move || tournament_id_query.get().ok().and_then(|p| p.tournament_id);
-    let is_new = move || tournament_id().is_none();
+    let is_new = Signal::derive(move || tournament_id().is_none());
 
     // Form Signals
     let set_id_version = RwSignal::new(IdVersion::New);
@@ -91,8 +86,8 @@ pub fn EditTournament() -> impl IntoView {
     // --- Server Resources & Actions  ---
     // load tournament base resource
     let tournament_res = Resource::new(
-        move || tournament_id(),
-        move |t_id| async move {
+        move || (tournament_id(), sport_id()), // Fix: sport_id() hier aufrufen
+        move |(t_id, s_id)| async move {
             if let Some(id) = t_id {
                 match load_tournament_base(id).await {
                     Ok(Some(tournament)) => Ok(tournament),
@@ -105,15 +100,13 @@ pub fn EditTournament() -> impl IntoView {
             } else {
                 let mut tournament = TournamentBase::default();
                 tournament
-                    .set_sport_id(sport_id())
+                    .set_sport_id(s_id)
                     .set_id_version(IdVersion::NewWithId(Uuid::new_v4()));
 
                 Ok(tournament)
             }
         },
     );
-    // derived signals of resource
-    let is_loading = move || tournament_res.get().is_none();
 
     // handle successful load
     Effect::new(move || {
@@ -129,7 +122,7 @@ pub fn EditTournament() -> impl IntoView {
             set_state.set(tournament.get_tournament_state());
 
             tournament_editor_state.update(|state| {
-                state.set_tournament(tournament.clone(), !is_new());
+                state.set_tournament(tournament.clone(), !is_new.get());
             });
         }
     });
@@ -167,7 +160,7 @@ pub fn EditTournament() -> impl IntoView {
         if let Some(tournament) = tournament_editor_state.read().get_tournament_diff() {
             save_tournament_base.dispatch(SaveTournamentBase { tournament });
         }
-        for changed_stage in tournament_editor_state.read().get_stages_diff() {
+        for _changed_stage in tournament_editor_state.read().get_stages_diff() {
             // ToDo: save stages
         }
     };
@@ -187,15 +180,18 @@ pub fn EditTournament() -> impl IntoView {
     };
 
     // Handle read and write errors
-    Effect::new(move || {
-        if let Some(Err(err)) = tournament_res.get() {
-            handle_read_error(
-                &page_err_ctx,
-                component_id.get_value(),
-                &err,
-                refetch_and_reset.clone(),
-                on_cancel.clone(),
-            );
+    Effect::new({
+        let on_cancel = on_cancel.clone();
+        move || {
+            if let Some(Err(err)) = tournament_res.get() {
+                handle_read_error(
+                    &page_err_ctx,
+                    component_id.get_value(),
+                    &err,
+                    refetch_and_reset.clone(),
+                    on_cancel.clone(),
+                );
+            }
         }
     });
     Effect::new(move || {
@@ -211,10 +207,12 @@ pub fn EditTournament() -> impl IntoView {
     });
 
     // --- Disabled Logic ---
-    let is_input_disabled = move || is_loading() || is_pending.get() || page_err_ctx.has_errors();
+    let is_input_disabled = move || is_pending.get() || page_err_ctx.has_errors();
 
     // --- Validation Logic ---
-    let current_tournament_base = move || {
+    // We make this a Memo so that validation doesn't run on every render cycle,
+    // but only when one of the signals changes.
+    let current_tournament_base = Memo::new(move |_| {
         let mut tb = TournamentBase::default();
         tb.set_id_version(set_id_version.get())
             .set_name(set_name.get())
@@ -224,24 +222,28 @@ pub fn EditTournament() -> impl IntoView {
             .set_tournament_mode(set_mode.get())
             .set_tournament_state(set_state.get());
         tb
-    };
+    });
 
-    let validation_result = move || current_tournament_base().validate();
+    // Validation runs against the constantly updated Memo
+    let validation_result = move || current_tournament_base.get().validate();
     let is_valid_tournament = move || validation_result().is_ok();
 
-    // update tournament editor state when valid tournament changes
+    // Sync to Global State: Only if valid!
     Effect::new(move || {
         if is_valid_tournament() {
             tournament_editor_state.update(|state| {
-                state.set_tournament(current_tournament_base(), false);
+                state.set_tournament(current_tournament_base.get(), false);
             });
         }
     });
 
-    let is_valid_name = Signal::derive(move || is_field_valid(validation_result).run("name"));
-    let is_valid_entrants =
+    // Helper for error messages in the inputs
+    // derive creates a read-only signal for the inputs
+    let name_error = Signal::derive(move || is_field_valid(validation_result).run("name"));
+    let entrants_error =
         Signal::derive(move || is_field_valid(validation_result).run("num_entrants"));
-    let is_valid_num_rounds_swiss = Signal::derive(move || {
+    // Only show Swiss Round logic errors if Swiss Mode is active
+    let rounds_error = Signal::derive(move || {
         if let TournamentMode::SwissSystem { .. } = set_mode.get() {
             is_field_valid(validation_result).run("mode.num_rounds")
         } else {
@@ -252,15 +254,102 @@ pub fn EditTournament() -> impl IntoView {
     view! {
         <div
             class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-            data-testid="new-tournament-root"
+            // Test ID helps with integration tests
+            data-testid="tournament-editor-root"
         >
             <div class="w-full flex justify-between items-center border-b pb-4">
                 <h2 class="text-3xl font-bold">
-                    {move || if is_new() { "Plan New Tournament" } else { "Edit Tournament" }}
+                    {move || if is_new.get() { "Plan New Tournament" } else { "Edit Tournament" }}
                 </h2>
+            // Header Actions (optional, if you want buttons at the top too)
             </div>
 
-        // ToDo: create inputs and buttons.
+            // --- Form Area ---
+            <Transition fallback=move || {
+                view! {
+                    <div class="w-full flex justify-center py-8">
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                }
+            }>
+                <fieldset disabled=is_input_disabled class="contents">
+                    <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        // 1. Name
+                        <ValidatedTextInput
+                            label="Tournament Name"
+                            name="name"
+                            value=set_name
+                            error_message=name_error
+                            is_new=is_new
+                        />
+
+                        // 2. Entrants
+                        <ValidatedNumberInput
+                            label="Number of Entrants"
+                            name="num_entrants"
+                            value=set_entrants
+                            error_message=entrants_error
+                            is_new=is_new
+                            min="2".to_string()
+                        />
+
+                        // 3. Tournament Type (Enum Select)
+                        <EnumSelect label="Tournament Type" name="type" value=set_t_type />
+
+                        // 4. Tournament Mode (Enum Select)
+                        <EnumSelect label="Mode" name="mode" value=set_mode />
+
+                        // 5. Conditional Input: Swiss Rounds
+                        <Show when=move || {
+                            matches!(set_mode.get(), TournamentMode::SwissSystem { .. })
+                        }>
+                            <ValidatedNumberInput
+                                label="Rounds (Swiss System)"
+                                name="num_rounds"
+                                value=set_num_rounds_swiss
+                                error_message=rounds_error
+                                is_new=is_new
+                                min="1".to_string()
+                            />
+                        </Show>
+
+                        // 6. State (Enum Select)
+                        <EnumSelect label="Status" name="state" value=set_state />
+                    </div>
+                </fieldset>
+            </Transition>
+
+            // --- Action Buttons ---
+            <div class="w-full flex justify-end gap-4 pt-6 border-t">
+                <button
+                    class="btn btn-ghost"
+                    on:click=move |_| on_cancel().clone()
+                    // Disable cancel only on save, not load
+                    disabled=move || is_pending.get()
+                >
+                    "Cancel"
+                </button>
+
+                <button
+                    class="btn btn-primary"
+                    on:click=move |_| on_save()
+                    // Disabled when: Loading, Saving, Validation failed OR nothing changed
+                    disabled=move || is_input_disabled() || !is_valid_tournament() || !is_changed()
+                >
+                    {move || {
+                        if is_pending.get() {
+                            view! {
+                                <span class="loading loading-spinner"></span>
+                                "Saving..."
+                            }
+                                .into_any()
+                        } else {
+                            "Save Tournament".into_any()
+                        }
+                    }}
+                </button>
+            </div>
         </div>
     }
 }

@@ -13,7 +13,6 @@ pub fn ValidatedTextInput(
     value: RwSignal<String>,
     #[prop(into)] error_message: Signal<Option<String>>,
     // Context signals to handle placeholder logic internally
-    #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     // Optional on blur callback, e.g. for normalization
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
@@ -36,13 +35,7 @@ pub fn ValidatedTextInput(
                 aria-invalid=move || error_message.get().is_some().to_string()
                 prop:value=value
                 placeholder=move || {
-                    if is_loading.get() {
-                        "Loading...".to_string()
-                    } else if is_new.get() {
-                        placeholder_text.clone()
-                    } else {
-                        String::new()
-                    }
+                    if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
                 on:input=move |ev| value.set(event_target_value(&ev))
                 on:blur=move |_| {
@@ -73,7 +66,6 @@ pub fn TextInput(
     value: RwSignal<String>,
     #[prop(into)] optional: bool,
     // Context signals to handle placeholder logic internally
-    #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     // Optional on blur callback, e.g. for normalization
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
@@ -101,13 +93,7 @@ pub fn TextInput(
                 data-testid=format!("input-{}", name)
                 prop:value=value
                 placeholder=move || {
-                    if is_loading.get() {
-                        "Loading...".to_string()
-                    } else if is_new.get() {
-                        placeholder_text.clone()
-                    } else {
-                        String::new()
-                    }
+                    if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
                 on:input=move |ev| value.set(event_target_value(&ev))
                 on:blur=move |_| {
@@ -258,7 +244,6 @@ pub fn ValidatedNumberInput<T>(
     #[prop(into)] name: String,
     value: RwSignal<T>,
     #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String, // "1" for int, "0.1" for float
     #[prop(into, optional)] min: String,
@@ -296,13 +281,7 @@ where
                 // We bind the value via prop:value which expects a string/number
                 prop:value=move || value.get().to_string()
                 placeholder=move || {
-                    if is_loading.get() {
-                        "Loading...".to_string()
-                    } else if is_new.get() {
-                        placeholder_text.clone()
-                    } else {
-                        String::new()
-                    }
+                    if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
@@ -337,7 +316,6 @@ pub fn ValidatedOptionNumberInput<T>(
     #[prop(into)] name: String,
     value: RwSignal<Option<T>>,
     #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String,
     #[prop(into, optional)] min: String,
@@ -379,13 +357,7 @@ where
                     }
                 }
                 placeholder=move || {
-                    if is_loading.get() {
-                        "Loading...".to_string()
-                    } else if is_new.get() {
-                        placeholder_text.clone()
-                    } else {
-                        String::new()
-                    }
+                    if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
@@ -433,7 +405,6 @@ pub fn ValidatedDurationInput(
     value: RwSignal<Duration>,
     #[prop(into)] unit: DurationInputUnit,
     #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_loading: Signal<bool>,
     #[prop(into)] is_new: Signal<bool>,
     // Optional on blur callback, e.g. for update of json config
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
@@ -463,13 +434,7 @@ pub fn ValidatedDurationInput(
                     }
                 }
                 placeholder=move || {
-                    if is_loading.get() {
-                        "Loading...".to_string()
-                    } else if is_new.get() {
-                        placeholder_text.clone()
-                    } else {
-                        String::new()
-                    }
+                    if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);

@@ -188,7 +188,6 @@ pub fn SportConfigForm() -> impl IntoView {
         id: sport_config_id,
         sport_id,
         sport_plugin: Signal::derive(sport_plugin),
-        sc_res,
         cancel_target,
         is_disabled: Signal::derive(is_disabled),
         is_new: Signal::derive(is_new),
@@ -350,7 +349,6 @@ struct FormFieldsProperties {
     id: Signal<Option<Uuid>>,
     sport_id: Signal<Option<Uuid>>,
     sport_plugin: Signal<Option<Arc<dyn SportPortWebUi>>>,
-    sc_res: Resource<Result<SportConfig, AppError>>,
     cancel_target: Callback<(), String>,
     is_disabled: Signal<bool>,
     is_new: Signal<bool>,
@@ -365,7 +363,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
         id,
         sport_id,
         sport_plugin,
-        sc_res,
         cancel_target,
         is_disabled,
         is_new,
@@ -385,8 +382,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
         config
     };
 
-    let is_loading = Signal::derive(move || sc_res.get().is_none());
-
     // --- validation signals ---
     let is_valid_json = RwSignal::new(false);
 
@@ -400,7 +395,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
         config: set_sport_config,
         is_valid_json,
         is_new,
-        is_loading,
     };
 
     view! {
@@ -436,7 +430,6 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 name="name"
                 value=set_name
                 error_message=is_valid_name
-                is_loading=is_loading
                 is_new=is_new
                 on_blur=move || set_name.set(current_config().get_name().to_string())
             />

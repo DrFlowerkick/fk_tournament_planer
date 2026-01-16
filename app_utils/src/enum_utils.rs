@@ -19,11 +19,11 @@ impl SelectableOption for TournamentType {
 
 impl SelectableOption for TournamentState {
     fn value(&self) -> String {
-        format!("{:?}", self)
+        format!("{}", self)
     }
 
     fn label(&self) -> String {
-        format!("{:?}", self)
+        format!("{}", self)
     }
 
     fn options() -> Vec<Self> {
@@ -38,11 +38,11 @@ impl SelectableOption for TournamentState {
 
 impl SelectableOption for TournamentMode {
     fn value(&self) -> String {
-        format!("{:?}", self)
+        format!("{}", self)
     }
 
     fn label(&self) -> String {
-        format!("{:?}", self)
+        format!("{}", self)
     }
 
     fn options() -> Vec<Self> {
