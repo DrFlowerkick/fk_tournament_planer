@@ -66,10 +66,23 @@ e2e_drop:
 	-psql "$(PSQL_URL)" -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='$(E2E_DB_NAME)';" >/dev/null
 	-psql "$(PSQL_URL)" -c 'DROP DATABASE IF EXISTS "$(E2E_DB_NAME)";' >/dev/null
 
-# main e2e target: create DB → set ENV → start E2E → drop DB (even if error)
+# main e2e target (debug): create DB → set ENV → start E2E → drop DB (even if error)
 e2e: e2e_pre
 	@set -e; \
-	echo "▶ run cargo leptos end-to-end against $(E2E_DB_NAME)"; \
+	echo "▶ run cargo leptos end-to-end (debug) against $(E2E_DB_NAME)"; \
+	\
+	# Pass all env to the single cargo process
+	env \
+	  RUST_LOG="$(E2E_LOG)" \
+	  DATABASE_NAME="$(E2E_DB_NAME)" \
+	  cargo leptos end-to-end \
+	|| { rc=$$?; $(MAKE) -s e2e_drop E2E_DB_NAME=$(E2E_DB_NAME); exit $$rc; }
+	@$(MAKE) -s e2e_drop E2E_DB_NAME=$(E2E_DB_NAME)
+
+# e2e target (release): create DB → set ENV → start E2E --release → drop DB (even if error)
+e2e-release: e2e_pre
+	@set -e; \
+	echo "▶ run cargo leptos end-to-end (release) against $(E2E_DB_NAME)"; \
 	\
 	# Pass all env to the single cargo process
 	env \

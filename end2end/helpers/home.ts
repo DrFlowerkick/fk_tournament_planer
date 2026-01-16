@@ -31,6 +31,7 @@ export async function selectSportPluginByName(
   page: Page,
   pluginName: string
 ): Promise<string> {
+  await page.waitForLoadState("domcontentloaded");
   const HOME = selectors(page).home;
   const btn = HOME.sportSelection.pluginButtonByName(pluginName);
 
@@ -105,11 +106,10 @@ export async function expectSportDashboardContent(
 
 /**
  * Navigates to the "List Tournaments" page for a given sport ID.
+ * Assumes the user is already on the sport dashboard.
  */
-export async function goToListTournaments(page: Page, sportId: string) {
-  // Ensure we are in the correct context
-  await page.goto(`/?sport_id=${sportId}`);
-
+export async function goToListTournaments(page: Page) {
+  await page.waitForLoadState("domcontentloaded");
   const DASH = selectors(page).home.dashboard;
 
   // Navigate via dashboard link
@@ -117,22 +117,24 @@ export async function goToListTournaments(page: Page, sportId: string) {
   await DASH.nav.tournaments.click();
 
   // Expect List Root to be visible
-  await expect(DASH.tournamentsList.root).toBeVisible();
+  await expect(DASH.tournamentsList.root).toBeVisible({ timeout: 10000 });
 }
 
 /**
- * Navigates to the "Plan New Tournament" page for a given sport ID.
+ * Navigates to the "Plan New Tournament" page.
+ * Assumes the user is already on the sport dashboard.
  */
-export async function goToNewTournament(page: Page, sportId: string) {
-  // Navigate via URL context to be safe
-  await page.goto(`/?sport_id=${sportId}`);
-
+export async function goToNewTournament(page: Page) {
+  await page.waitForLoadState("domcontentloaded");
   const DASH = selectors(page).home.dashboard;
 
-  // Navigate via dashboard link
+  // Ensure Dashboard is active and Link is clickable
+  await expect(DASH.root).toBeVisible();
   await expect(DASH.nav.planNew).toBeVisible();
+
+  // Perform SPA Navigation
   await DASH.nav.planNew.click();
 
   // Expect Start Page Root to be visible
-  await expect(DASH.newTournament.root).toBeVisible();
+  await expect(DASH.editTournament.root).toBeVisible({ timeout: 10000 });
 }

@@ -70,7 +70,7 @@ pub fn App() -> impl IntoView {
         <Router>
             <div class="flex flex-col min-h-screen">
                 // navigation
-                <header class="navbar bg-base-200">
+                <header class="navbar bg-base-300">
                     <div class="flex-1">
                         <A href="/" attr:class="btn btn-ghost normal-case text-xl">
                             "Tournament Planner"
@@ -88,7 +88,7 @@ pub fn App() -> impl IntoView {
                     </div>
                 </header>
 
-                <main class="flex-grow p-4">
+                <main class="flex-grow p-4 bg-base-200">
                     <Routes fallback=|| "Page not found.".into_view()>
                         <ParentRoute path=path!("/") view=HomePage>
                             <Route

@@ -47,17 +47,19 @@ export const HOME_IDS = {
       },
       emptyState: "tournaments-list-empty",
     },
-    newTournament: {
-      root: "new-tournament-root",
-      form: "new-tournament-form",
+    editTournament: {
+      root: "tournament-editor-root",
+      title: "tournament-editor-title",
+      form: "tournament-editor-form",
       inputs: {
-        name: "input-nt-name",
-        entrants: "input-nt-entrants",
-        // Mode & Type are implicitly handled specifically for this form or have defaults
+        name: "input-tournament-name",
+        entrants: "input-tournament-entrants",
+        mode: "select-tournament-mode",
+        num_rounds_swiss: "input-tournament-swiss-num_rounds",
       },
       actions: {
-        save: "btn-nt-save",
-        cancel: "btn-nt-cancel",
+        save: "btn-tournament-save",
+        cancel: "btn-tournament-cancel",
       },
     },
   },
@@ -131,18 +133,23 @@ export function getHomeSelectors(page: Page) {
         },
         emptyState: page.getByTestId(ids.dashboard.tournamentsList.emptyState),
       },
-      newTournament: {
-        root: page.getByTestId(ids.dashboard.newTournament.root),
-        form: page.getByTestId(ids.dashboard.newTournament.form),
+      editTournament: {
+        root: page.getByTestId(ids.dashboard.editTournament.root),
+        title: page.getByTestId(ids.dashboard.editTournament.title),
+        form: page.getByTestId(ids.dashboard.editTournament.form),
         inputs: {
-          name: page.getByTestId(ids.dashboard.newTournament.inputs.name),
+          name: page.getByTestId(ids.dashboard.editTournament.inputs.name),
           entrants: page.getByTestId(
-            ids.dashboard.newTournament.inputs.entrants
+            ids.dashboard.editTournament.inputs.entrants
+          ),
+          mode: page.getByTestId(ids.dashboard.editTournament.inputs.mode),
+          num_rounds_swiss: page.getByTestId(
+            ids.dashboard.editTournament.inputs.num_rounds_swiss
           ),
         },
         actions: {
-          save: page.getByTestId(ids.dashboard.newTournament.actions.save),
-          cancel: page.getByTestId(ids.dashboard.newTournament.actions.cancel),
+          save: page.getByTestId(ids.dashboard.editTournament.actions.save),
+          cancel: page.getByTestId(ids.dashboard.editTournament.actions.cancel),
         },
       },
     },

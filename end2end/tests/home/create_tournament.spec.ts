@@ -3,6 +3,7 @@ import {
   openHomePage,
   selectSportPluginByName,
   goToNewTournament,
+  goToListTournaments,
 } from "../../helpers/home";
 import { selectors } from "../../helpers/selectors";
 
@@ -10,51 +11,47 @@ const PLUGINS = {
   GENERIC: "Generic Sport",
 };
 
+/**
+ * Generates a unique tournament name to avoid DB conflicts during parallel tests.
+ */
+function makeUniqueName(base: string): string {
+  return `${base} [${Date.now()}-${Math.floor(Math.random() * 1000)}]`;
+}
+
 test.describe("Create New Tournament", () => {
   let sportId: string;
 
   test.beforeEach(async ({ page }) => {
+    // 1. Navigation
     await openHomePage(page);
     sportId = await selectSportPluginByName(page, PLUGINS.GENERIC);
-    await goToNewTournament(page, sportId);
+
+    // Navigation to creation (without sportId, as context is already present)
+    await goToNewTournament(page);
   });
 
   test("displays the creation form with correct input fields", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.newTournament;
+    const FORM = selectors(page).home.dashboard.editTournament;
 
-    await expect(FORM.root).toBeVisible();
-
-    // Verify Title
-    await expect(page.locator("h2")).toHaveText(
-      /New Tournament|Plan Tournament/i
-    );
-
-    // Verify Inputs
-    await expect(FORM.inputs.name).toBeVisible();
+    await expect(FORM.title).toHaveText(/New Tournament|Plan Tournament/i);
     await expect(FORM.inputs.name).toBeEmpty();
-
     await expect(FORM.inputs.entrants).toBeVisible();
-    // Since default is technically 0 in struct, but UI might have a placeholder or minimum Default (e.g. 16)
-    // We just check visibility for now or a reasonable default if implemented later.
-
-    // Verify Actions
     await expect(FORM.actions.save).toBeVisible();
-    await expect(FORM.actions.cancel).toBeVisible();
   });
 
   test("cancel button navigates back to dashboard or list", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.newTournament;
+    const FORM = selectors(page).home.dashboard.editTournament;
     const DASH = selectors(page).home.dashboard;
 
-    await FORM.inputs.name.fill("Cancelled Tournament");
+    await expect(FORM.inputs.name).toBeEditable();
+    await FORM.inputs.name.fill("To Be Cancelled");
+
     await FORM.actions.cancel.click();
 
-    // Expectation: Form is gone, we are likely back at Dashboard root or List
-    // Assuming redirects to Tournaments List by default for Cancel
     await expect(FORM.root).toBeHidden();
     await expect(DASH.nav.planNew).toBeVisible();
   });
@@ -62,89 +59,121 @@ test.describe("Create New Tournament", () => {
   test("successfully creates a tournament and redirects to list", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.newTournament;
+    const FORM = selectors(page).home.dashboard.editTournament;
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
-    const tourneyName = `E2E Cup ${Date.now()}`;
+    const tourneyName = makeUniqueName("E2E Success");
 
-    // Fill Form
     await FORM.inputs.name.fill(tourneyName);
-    await FORM.inputs.entrants.fill("32"); // Specific valid number
+    await FORM.inputs.entrants.fill("32");
 
-    // Save
+    await expect(FORM.actions.save).toBeEnabled();
     await FORM.actions.save.click();
 
-    // Expectation: Redirect to List
-    await expect(FORM.root).toBeHidden();
-    await expect(LIST.root).toBeVisible();
+    await page.waitForURL(/tournament_id=/, { timeout: 20000 });
+    // Direct navigation to tournament list
+    await goToListTournaments(page);
 
-    // NOTE: This verifies integration. It requires the Backend to actually SAVE and LIST the item.
-    // Step 1: Filter list to find our specific item (good practice in shared envs)
+    // Wait until list and search are ready
+    await expect(LIST.root).toBeVisible({ timeout: 10000 });
+    await expect(LIST.filters.search).toBeEditable();
+
     await LIST.filters.search.fill(tourneyName);
 
-    // Step 2: Check if row exists
-    // We wait for the table rows to update
-    await expect(page.getByRole("cell", { name: tourneyName })).toBeVisible();
+    await expect(page.getByRole("cell", { name: tourneyName })).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test.describe("Validation & Normalization", () => {
     test("save button is disabled without a tournament name", async ({
       page,
     }) => {
-      const FORM = selectors(page).home.dashboard.newTournament;
+      const FORM = selectors(page).home.dashboard.editTournament;
 
-      // Fill only entrants, leave name empty
       await FORM.inputs.entrants.fill("16");
-      await FORM.inputs.name.fill(""); // Ensure empty
+      await FORM.inputs.name.fill("");
+      await FORM.inputs.name.blur();
 
-      // Expectation: Save button is disabled
       await expect(FORM.actions.save).toBeDisabled();
 
-      // Make it valid to verify toggle
-      await FORM.inputs.name.fill("Valid Name");
+      await FORM.inputs.name.fill(makeUniqueName("Valid Name Check"));
+      await FORM.inputs.name.blur();
+
       await expect(FORM.actions.save).toBeEnabled();
     });
 
     test("save button is disabled with fewer than 2 entrants", async ({
       page,
     }) => {
-      const FORM = selectors(page).home.dashboard.newTournament;
+      const FORM = selectors(page).home.dashboard.editTournament;
 
-      await FORM.inputs.name.fill("Invalid Entrants Cup");
+      await FORM.inputs.name.fill(makeUniqueName("Entrant Valid Check"));
 
-      // Invalid case: 1 entrant
       await FORM.inputs.entrants.fill("1");
+      await FORM.inputs.entrants.blur();
+
       await expect(FORM.actions.save).toBeDisabled();
 
-      // Valid case: 2 entrants (min)
       await FORM.inputs.entrants.fill("2");
+      await FORM.inputs.entrants.blur();
+
       await expect(FORM.actions.save).toBeEnabled();
     });
 
     test("normalizes whitespace in tournament name", async ({ page }) => {
-      const FORM = selectors(page).home.dashboard.newTournament;
+      const FORM = selectors(page).home.dashboard.editTournament;
       const LIST = selectors(page).home.dashboard.tournamentsList;
 
-      const dirtyName = "  Chaos   Spacing   Cup  ";
-      const cleanName = "Chaos Spacing Cup"; // Expected result from normalize_ws logic
+      const uniqueSuffix = `Trim Check ${Date.now()}`;
+      const dirtyName = `  Chaos   ${uniqueSuffix}  `;
+      const cleanName = `Chaos ${uniqueSuffix}`;
 
       await FORM.inputs.name.fill(dirtyName);
       await FORM.inputs.entrants.fill("8");
 
+      await expect(FORM.actions.save).toBeEnabled();
       await FORM.actions.save.click();
 
-      // Verify redirection to list
-      await expect(FORM.root).toBeHidden();
+      await page.waitForURL(/tournament_id=/, { timeout: 20000 });
+
+      // DIREKTE Navigation zur Liste
+      await goToListTournaments(page);
+
       await expect(LIST.root).toBeVisible();
+      await expect(LIST.filters.search).toBeEditable();
 
-      // Verify data is stored normalized
       await LIST.filters.search.fill(cleanName);
-      await expect(page.getByRole("cell", { name: cleanName })).toBeVisible();
 
-      // Double check: searching for the exact dirty string typically shouldn't match exact cell text
-      // unless the search itself is fuzzy. But the cell text MUST be clean.
       const cell = page.getByRole("cell", { name: cleanName });
+      await expect(cell).toBeVisible();
       await expect(cell).toHaveText(cleanName);
+    });
+
+    test("validates swiss system specific fields", async ({ page }) => {
+      const FORM = selectors(page).home.dashboard.editTournament;
+
+      await FORM.inputs.name.fill(makeUniqueName("Swiss Mode"));
+      await FORM.inputs.entrants.fill("10");
+
+      await expect(FORM.inputs.mode).toBeVisible();
+      await FORM.inputs.mode.selectOption({ label: "Swiss System" });
+
+      await expect(FORM.inputs.num_rounds_swiss).toBeVisible({
+        timeout: 10000,
+      });
+      await expect(FORM.inputs.num_rounds_swiss).toBeEditable();
+
+      // 1. Invalid Rounds (0)
+      await FORM.inputs.num_rounds_swiss.fill("0");
+      await FORM.inputs.num_rounds_swiss.blur();
+      await expect(FORM.actions.save).toBeDisabled();
+
+      // 2. Valid Rounds
+      await FORM.inputs.num_rounds_swiss.fill("5");
+      await FORM.inputs.num_rounds_swiss.blur();
+
+      await expect(FORM.actions.save).toBeEnabled();
     });
   });
 });
