@@ -53,16 +53,11 @@ pub fn EditTournament() -> impl IntoView {
         page_err_ctx.clear_all_for_component(component_id.get_value());
     });
 
-    // Derived Query Params
-    // sport id is save to unwrap here because home page ensures valid sport id before rendering this component
-    let sport_id = move || {
-        sport_id_query
-            .get()
-            .ok()
-            .and_then(|p| p.sport_id)
-            .unwrap_or_default()
-    };
+    // None = effectively navigating away or invalid state.
+    let sport_id = move || sport_id_query.get().ok().and_then(|p| p.sport_id);
+
     let tournament_id = move || tournament_id_query.get().ok().and_then(|p| p.tournament_id);
+
     let is_new = Signal::derive(move || tournament_id().is_none());
 
     // Form Signals
@@ -86,31 +81,38 @@ pub fn EditTournament() -> impl IntoView {
     // --- Server Resources & Actions  ---
     // load tournament base resource
     let tournament_res = Resource::new(
-        move || (tournament_id(), sport_id()), // Fix: sport_id() hier aufrufen
-        move |(t_id, s_id)| async move {
-            if let Some(id) = t_id {
-                match load_tournament_base(id).await {
-                    Ok(Some(tournament)) => Ok(tournament),
-                    Ok(None) => Err(AppError::ResourceNotFound(
-                        "Tournament Base".to_string(),
-                        id,
-                    )),
-                    Err(e) => Err(e),
+        move || (tournament_id(), sport_id()),
+        move |(maybe_t_id, maybe_s_id)| async move {
+            if let Some(s_id) = maybe_s_id {
+                if let Some(t_id) = maybe_t_id {
+                    match load_tournament_base(t_id).await {
+                        Ok(Some(tournament)) => Ok(Some(tournament)),
+                        Ok(None) => Err(AppError::ResourceNotFound(
+                            "Tournament Base".to_string(),
+                            t_id,
+                        )),
+                        Err(e) => Err(e),
+                    }
+                } else {
+                    let mut tournament = TournamentBase::default();
+                    tournament
+                        .set_sport_id(s_id)
+                        .set_id_version(IdVersion::NewWithId(Uuid::new_v4()));
+
+                    Ok(Some(tournament))
                 }
             } else {
-                let mut tournament = TournamentBase::default();
-                tournament
-                    .set_sport_id(s_id)
-                    .set_id_version(IdVersion::NewWithId(Uuid::new_v4()));
-
-                Ok(tournament)
+                Ok(None)
             }
         },
     );
 
     // handle successful load
     Effect::new(move || {
-        if let Some(Ok(tournament)) = tournament_res.get() {
+        // Prevent updates if we are navigating away (sport_id is None)
+        if sport_id().is_some()
+            && let Some(Ok(Some(tournament))) = tournament_res.get()
+        {
             set_id_version.set(tournament.get_id_version());
             set_name.set(tournament.get_name().to_string());
             set_entrants.set(tournament.get_num_entrants());
@@ -175,7 +177,9 @@ pub fn EditTournament() -> impl IntoView {
     let on_cancel = {
         let navigate = navigate.clone();
         move || {
-            let _ = navigate(&format!("/?sport_id={}", sport_id()), Default::default());
+            // Handle Option safely, though UI should prevent click if None
+            let s_id = sport_id().unwrap_or_default();
+            let _ = navigate(&format!("/?sport_id={}", s_id), Default::default());
         }
     };
 
@@ -206,17 +210,14 @@ pub fn EditTournament() -> impl IntoView {
         }
     });
 
-    // --- Disabled Logic ---
-    let is_input_disabled = move || is_pending.get() || page_err_ctx.has_errors();
-
     // --- Validation Logic ---
-    // We make this a Memo so that validation doesn't run on every render cycle,
-    // but only when one of the signals changes.
     let current_tournament_base = Memo::new(move |_| {
         let mut tb = TournamentBase::default();
+        // Here unwrapping is safe/necessary for the setter, strict correctness doesn't matter
+        // if the component is hidden via Show
         tb.set_id_version(set_id_version.get())
             .set_name(set_name.get())
-            .set_sport_id(sport_id())
+            .set_sport_id(sport_id().unwrap_or_default())
             .set_num_entrants(set_entrants.get())
             .set_tournament_type(set_t_type.get())
             .set_tournament_mode(set_mode.get())
@@ -251,105 +252,128 @@ pub fn EditTournament() -> impl IntoView {
         }
     });
 
+    // FIX für Ghost-URL:
+    // Wir prüfen hier auf das ROHE Query-Signal. Wenn das leer ist (Navigation zu Home),
+    // zeigen wir die Komponente gar nicht mehr an. Das verhindert Konflikte im Router.
+    // Helper for navigation guard
+    let has_active_sport_context = move || sport_id().is_some();
+
     view! {
-        <div
-            class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-            // Test ID helps with integration tests
-            data-testid="tournament-editor-root"
-        >
-            <div class="w-full flex justify-between items-center border-b pb-4">
-                <h2 class="text-3xl font-bold">
-                    {move || if is_new.get() { "Plan New Tournament" } else { "Edit Tournament" }}
-                </h2>
-            // Header Actions (optional, if you want buttons at the top too)
-            </div>
+        // Wrap everything in Show using the helper
+        <Show when=has_active_sport_context fallback=|| view! { <div></div> }>
+            <div
+                class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
+                // Test ID helps with integration tests
+                data-testid="tournament-editor-root"
+            >
+                <div class="w-full flex justify-between items-center border-b pb-4">
+                    <h2 class="text-3xl font-bold">
+                        {move || {
+                            if is_new.get() { "Plan New Tournament" } else { "Edit Tournament" }
+                        }}
+                    </h2>
+                // Header Actions (optional, if you want buttons at the top too)
+                </div>
 
-            // --- Form Area ---
-            <Transition fallback=move || {
-                view! {
-                    <div class="w-full flex justify-center py-8">
-                        <span class="loading loading-spinner loading-lg"></span>
-                    </div>
-                }
-            }>
-                <fieldset disabled=is_input_disabled class="contents">
-                    <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                        // 1. Name
-                        <ValidatedTextInput
-                            label="Tournament Name"
-                            name="name"
-                            value=set_name
-                            error_message=name_error
-                            is_new=is_new
-                        />
-
-                        // 2. Entrants
-                        <ValidatedNumberInput
-                            label="Number of Entrants"
-                            name="num_entrants"
-                            value=set_entrants
-                            error_message=entrants_error
-                            is_new=is_new
-                            min="2".to_string()
-                        />
-
-                        // 3. Tournament Type (Enum Select)
-                        <EnumSelect label="Tournament Type" name="type" value=set_t_type />
-
-                        // 4. Tournament Mode (Enum Select)
-                        <EnumSelect label="Mode" name="mode" value=set_mode />
-
-                        // 5. Conditional Input: Swiss Rounds
-                        <Show when=move || {
-                            matches!(set_mode.get(), TournamentMode::SwissSystem { .. })
-                        }>
-                            <ValidatedNumberInput
-                                label="Rounds (Swiss System)"
-                                name="num_rounds"
-                                value=set_num_rounds_swiss
-                                error_message=rounds_error
-                                is_new=is_new
-                                min="1".to_string()
-                            />
-                        </Show>
-
-                        // 6. State (Enum Select)
-                        <EnumSelect label="Status" name="state" value=set_state />
-                    </div>
-                </fieldset>
-            </Transition>
-
-            // --- Action Buttons ---
-            <div class="w-full flex justify-end gap-4 pt-6 border-t">
-                <button
-                    class="btn btn-ghost"
-                    on:click=move |_| on_cancel().clone()
-                    // Disable cancel only on save, not load
-                    disabled=move || is_pending.get()
-                >
-                    "Cancel"
-                </button>
-
-                <button
-                    class="btn btn-primary"
-                    on:click=move |_| on_save()
-                    // Disabled when: Loading, Saving, Validation failed OR nothing changed
-                    disabled=move || is_input_disabled() || !is_valid_tournament() || !is_changed()
-                >
-                    {move || {
-                        if is_pending.get() {
-                            view! {
-                                <span class="loading loading-spinner"></span>
-                                "Saving..."
-                            }
-                                .into_any()
-                        } else {
-                            "Save Tournament".into_any()
+                // --- Form Area ---
+                <Transition fallback=move || {
+                    view! {
+                        <div class="w-full flex justify-center py-8">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    }
+                }>
+                    <fieldset
+                        disabled=move || {
+                            is_pending.try_get().unwrap_or(false) || page_err_ctx.has_errors()
                         }
-                    }}
-                </button>
+                        class="contents"
+                    >
+                        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                            // 1. Name
+                            <ValidatedTextInput
+                                label="Tournament Name"
+                                name="name"
+                                value=set_name
+                                error_message=name_error
+                                is_new=is_new
+                            />
+
+                            // 2. Entrants
+                            <ValidatedNumberInput
+                                label="Number of Entrants"
+                                name="num_entrants"
+                                value=set_entrants
+                                error_message=entrants_error
+                                is_new=is_new
+                                min="2".to_string()
+                            />
+
+                            // 3. Tournament Type (Enum Select)
+                            <EnumSelect label="Tournament Type" name="type" value=set_t_type />
+
+                            // 4. Tournament Mode (Enum Select)
+                            <EnumSelect label="Mode" name="mode" value=set_mode />
+
+                            // 5. Conditional Input: Swiss Rounds
+                            <Show when=move || {
+                                matches!(set_mode.get(), TournamentMode::SwissSystem { .. })
+                            }>
+                                <ValidatedNumberInput
+                                    label="Rounds (Swiss System)"
+                                    name="num_rounds"
+                                    value=set_num_rounds_swiss
+                                    error_message=rounds_error
+                                    is_new=is_new
+                                    min="1".to_string()
+                                />
+                            </Show>
+
+                            // 6. State (Enum Select)
+                            <EnumSelect label="Status" name="state" value=set_state />
+
+                        </div>
+                    </fieldset>
+                </Transition>
+
+                // --- Action Buttons ---
+                <div class="w-full flex justify-end gap-4 pt-6 border-t">
+                    <button
+                        class="btn btn-ghost"
+                        on:click={
+                            let on_cancel = on_cancel.clone();
+                            move |_| on_cancel()
+                        }
+                        // Disable cancel only on save, not load. SAFE access via try_get.
+                        disabled=move || is_pending.try_get().unwrap_or(false)
+                    >
+                        "Cancel"
+                    </button>
+
+                    <button
+                        class="btn btn-primary"
+                        on:click=move |_| on_save()
+                        // Disabled when: Loading, Saving, Validation failed OR nothing changed
+                        disabled=move || {
+                            is_pending.try_get().unwrap_or(false) || page_err_ctx.has_errors()
+                                || !is_valid_tournament() || !is_changed()
+                        }
+                    >
+                        {move || {
+                            if is_pending.try_get().unwrap_or(false) {
+                                view! {
+                                    <span class="loading loading-spinner"></span>
+                                    "Saving..."
+                                }
+                                    .into_any()
+                            } else {
+                                "Save Tournament".into_any()
+                            }
+                        }}
+                    </button>
+                </div>
             </div>
-        </div>
+        </Show>
     }
 }

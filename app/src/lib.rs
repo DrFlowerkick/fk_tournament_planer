@@ -72,9 +72,9 @@ pub fn App() -> impl IntoView {
                 // navigation
                 <header class="navbar bg-base-200">
                     <div class="flex-1">
-                        <a href="/" class="btn btn-ghost normal-case text-xl">
+                        <A href="/" attr:class="btn btn-ghost normal-case text-xl">
                             "Tournament Planner"
-                        </a>
+                        </A>
                     </div>
                     <div class="flex-none">
                         <ul class="menu menu-horizontal px-1">

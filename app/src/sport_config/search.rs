@@ -17,7 +17,7 @@ use app_utils::{
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
 use leptos::{logging::log, prelude::*};
-use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
+use leptos_router::{components::A, hooks::use_query};
 use reactive_stores::Store;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -262,12 +262,6 @@ pub fn SearchSportConfig() -> impl IntoView {
                                 </Transition>
                             </div>
                         </div>
-                        <div class="my-4"></div>
-                        {if cfg!(not(feature = "test-mock")) {
-                            view! { <Outlet /> }.into_any()
-                        } else {
-                            ().into_any()
-                        }}
                     }
                 })
         }
