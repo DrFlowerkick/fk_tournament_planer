@@ -11,7 +11,7 @@ set -e
 ENGINE=${CONTAINER_ENGINE:-docker}
 ENVIRONMENT=${LEPTOS_ENV:-DEV}
 TEST_DIR="$(pwd)"
-IMAGE="mcr.microsoft.com/playwright:v1.44.1-jammy"
+IMAGE="mcr.microsoft.com/playwright:v1.49.0-jammy"
 
 echo "Detected LEPTOS_ENV=$ENVIRONMENT"
 
