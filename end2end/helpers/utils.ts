@@ -4,14 +4,20 @@ import { DropdownLocators } from "./selectors";
 
 /**
  * Waits strictly until the Leptos/WASM app has signaled hydration complete.
- * This looks for the 'data-hydrated="true"' attribute on the body tag.
- * Use this instead of waitForLoadState('domcontentloaded') for reliable interactions.
+ * AND ensures at least one animation frame has passed to guarantee interactivity.
  */
 export async function waitForAppHydration(page: Page) {
-  // Wait for the body tag to receive the attribute set by the Leptos Effect
+  // 1. Wait for the signal from Rust
   await page.waitForSelector('body[data-hydrated="true"]', {
     state: "attached",
     timeout: 10000,
+  });
+
+  // 2. Force a wait for the next animation frame.
+  // WebKit executes Microtasks (WASM) so aggressively that Playwright might interact
+  // with the DOM before the Layout/Paint cycle is fully complete and Event Listeners are bound.
+  await page.evaluate(() => {
+    return new Promise((resolve) => requestAnimationFrame(resolve));
   });
 }
 

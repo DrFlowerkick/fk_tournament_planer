@@ -50,7 +50,9 @@ pub fn ValidatedTextInput(
                     .map(|msg| {
                         view! {
                             <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">{msg}</span>
+                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                                    {msg}
+                                </span>
                             </label>
                         }
                     })
@@ -165,7 +167,9 @@ pub fn ValidatedSelect(
                     .map(|msg| {
                         view! {
                             <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">{msg}</span>
+                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                                    {msg}
+                                </span>
                             </label>
                         }
                     })
@@ -301,7 +305,9 @@ where
                     .map(|msg| {
                         view! {
                             <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">{msg}</span>
+                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                                    {msg}
+                                </span>
                             </label>
                         }
                     })
@@ -379,7 +385,9 @@ where
                     .map(|msg| {
                         view! {
                             <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">{msg}</span>
+                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                                    {msg}
+                                </span>
                             </label>
                         }
                     })
@@ -458,7 +466,9 @@ pub fn ValidatedDurationInput(
                     .map(|msg| {
                         view! {
                             <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">{msg}</span>
+                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                                    {msg}
+                                </span>
                             </label>
                         }
                     })

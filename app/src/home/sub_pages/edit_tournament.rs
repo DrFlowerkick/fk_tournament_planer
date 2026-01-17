@@ -268,10 +268,7 @@ pub fn EditTournament() -> impl IntoView {
             data-testid="tournament-editor-root"
         >
             <div class="w-full flex justify-between items-center pb-4">
-                <h2
-                    class="text-3xl font-bold"
-                    data-testid="tournament-editor-title"
-                >
+                <h2 class="text-3xl font-bold" data-testid="tournament-editor-title">
                     {move || {
                         if is_new.get() { "Plan New Tournament" } else { "Edit Tournament" }
                     }}
