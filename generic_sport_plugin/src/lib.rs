@@ -26,7 +26,7 @@ use uuid::Uuid;
 /// ```
 /// use generic_sport_plugin::GenericSportPlugin;
 /// use app_core::{SportPort, SportConfig, Match};
-/// use app_core::utils::{id_version::{IdVersion, VersionId}, validation::ValidationErrors};
+/// use app_core::utils::{id_version::IdVersion, traits::ObjectIdVersion, validation::ValidationErrors};
 /// use serde_json::json;
 /// use uuid::Uuid;
 ///
@@ -42,7 +42,7 @@ use uuid::Uuid;
 ///     "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
 /// });
 ///
-/// let mut config = SportConfig::new(IdVersion::new(Uuid::new_v4(), 0));
+/// let mut config = SportConfig::new(IdVersion::new(Uuid::new_v4(), Some(0)));
 /// config.set_name("Soccer").set_sport_id(sport_id).set_config(config_json.clone());
 ///
 /// // Validate configuration

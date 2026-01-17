@@ -40,7 +40,8 @@ impl SportPluginManagerMap {
     /// # use app_core::{
     /// #   SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore,
     /// #   utils::{
-    /// #       id_version::{IdVersion, VersionId},
+    /// #       id_version::IdVersion,
+    /// #       traits::ObjectIdVersion,
     /// #       validation::ValidationErrors,
     /// #   }
     /// # };
@@ -50,9 +51,9 @@ impl SportPluginManagerMap {
     /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
-    /// # impl VersionId for MockSport {
+    /// # impl ObjectIdVersion for MockSport {
     /// #     fn get_id_version(&self) -> IdVersion {
-    /// #         IdVersion::new(self.id, 0)
+    /// #         IdVersion::new(self.id, Some(0))
     /// #     }
     /// # }
     /// # impl SportPort for MockSport {
@@ -116,7 +117,8 @@ impl SportPluginManagerMap {
     /// # use app_core::{
     /// #   SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore,
     /// #   utils::{
-    /// #       id_version::{IdVersion, VersionId},
+    /// #       id_version::IdVersion,
+    /// #       traits::ObjectIdVersion,
     /// #       validation::ValidationErrors,
     /// #   }
     /// # };
@@ -126,9 +128,9 @@ impl SportPluginManagerMap {
     /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
-    /// # impl VersionId for MockSport {
+    /// # impl ObjectIdVersion for MockSport {
     /// #     fn get_id_version(&self) -> IdVersion {
-    /// #         IdVersion::new(self.id, 0)
+    /// #         IdVersion::new(self.id, Some(0))
     /// #     }
     /// # }
     /// # impl SportPort for MockSport {
@@ -187,7 +189,8 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use app_core::{
     /// #   SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore,
     /// #   utils::{
-    /// #       id_version::{IdVersion, VersionId},
+    /// #       id_version::IdVersion,
+    /// #       traits::ObjectIdVersion,
     /// #       validation::ValidationErrors,
     /// #   }
     /// # };
@@ -197,9 +200,9 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
-    /// # impl VersionId for MockSport {
+    /// # impl ObjectIdVersion for MockSport {
     /// #     fn get_id_version(&self) -> IdVersion {
-    /// #         IdVersion::new(self.id, 0)
+    /// #         IdVersion::new(self.id, Some(0))
     /// #     }
     /// # }
     /// # impl SportPort for MockSport {
@@ -258,7 +261,8 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use app_core::{
     /// #   SportPort, SportPluginManagerPort, Match, SportConfig, SportResult, EntrantGroupScore,
     /// #   utils::{
-    /// #       id_version::{IdVersion, VersionId},
+    /// #       id_version::IdVersion,
+    /// #       traits::ObjectIdVersion,
     /// #       validation::ValidationErrors,
     /// #   }
     /// # };
@@ -268,9 +272,9 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use shared::{SportPortWebUi, RenderCfgProps};
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
-    /// # impl VersionId for MockSport {
+    /// # impl ObjectIdVersion for MockSport {
     /// #     fn get_id_version(&self) -> IdVersion {
-    /// #         IdVersion::new(self.id, 0)
+    /// #         IdVersion::new(self.id, Some(0))
     /// #     }
     /// # }
     /// # impl SportPort for MockSport {

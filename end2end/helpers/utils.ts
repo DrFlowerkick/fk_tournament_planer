@@ -3,6 +3,19 @@ import { expect, Page, Locator } from "@playwright/test";
 import { DropdownLocators } from "./selectors";
 
 /**
+ * Waits strictly until the Leptos/WASM app has signaled hydration complete.
+ * This looks for the 'data-hydrated="true"' attribute on the body tag.
+ * Use this instead of waitForLoadState('domcontentloaded') for reliable interactions.
+ */
+export async function waitForAppHydration(page: Page) {
+  // Wait for the body tag to receive the attribute set by the Leptos Effect
+  await page.waitForSelector('body[data-hydrated="true"]', {
+    state: "attached",
+    timeout: 10000,
+  });
+}
+
+/**
  * Type a value into a field, then blur by focusing another field.
  * Simulates: focus → type → blur -> normalize -> validate for that field.
  */

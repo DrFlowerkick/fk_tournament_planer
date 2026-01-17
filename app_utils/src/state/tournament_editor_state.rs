@@ -4,7 +4,7 @@ use app_core::{
     Stage, TournamentBase,
     utils::traits::{ObjectIdVersion, ObjectNumber},
 };
-use leptos::logging::warn;
+use leptos::logging::{log, warn};
 use petgraph::{Direction, graphmap::DiGraphMap, visit::Bfs};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -125,7 +125,7 @@ impl TournamentEditorState {
         // to prevent mixing data from Tournament A with Tournament B.
         if let Some(old_id) = self.get_root_id() {
             if old_id != new_id {
-                warn!("Switching tournament context: {} -> {}", old_id, new_id);
+                log!("Switching tournament context: {} -> {}", old_id, new_id);
                 self.structure.clear();
                 self.stages.clear();
                 self.origin_stages.clear();

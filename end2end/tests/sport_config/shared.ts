@@ -8,6 +8,7 @@ import {
 import {
   searchAndOpenByNameOnCurrentPage,
   extractQueryParamFromUrl,
+  waitForAppHydration,
 } from "../../helpers/utils";
 
 export interface SportConfigTestAdapter {
@@ -151,6 +152,10 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
           await pageB.goto(
             `/sport/edit_sc?sport_id=${sportId}&sport_config_id=${configId}`
           );
+
+          // Ensure explicit navigation waits for WASM hydration before interacting
+          await waitForAppHydration(pageB);
+
           // Wait for form to be ready
           await expect(SC_B.form.root).toBeVisible();
 

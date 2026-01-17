@@ -1,6 +1,6 @@
 import { expect, Page } from "@playwright/test";
 import { selectors } from "./selectors";
-import { extractQueryParamFromUrl } from "./utils";
+import { extractQueryParamFromUrl, waitForAppHydration } from "./utils";
 
 export const ROUTES = {
   home: "/",
@@ -11,7 +11,8 @@ export const ROUTES = {
  */
 export async function openHomePage(page: Page) {
   await page.goto(ROUTES.home);
-  await page.waitForLoadState("domcontentloaded");
+  // Ensure app is ready/hydrated before interacting
+  await waitForAppHydration(page);
 
   const HOME = selectors(page).home;
 
@@ -31,12 +32,32 @@ export async function selectSportPluginByName(
   page: Page,
   pluginName: string
 ): Promise<string> {
-  await page.waitForLoadState("domcontentloaded");
+  // Ensure app is ready/hydrated before interacting
+  await waitForAppHydration(page);
+
   const HOME = selectors(page).home;
   const btn = HOME.sportSelection.pluginButtonByName(pluginName);
 
   await expect(btn).toBeVisible();
-  await btn.click();
+
+  // Robust interaction: Retry clicking until URL actually changes.
+  // This solves issues where Firefox/WebKit might register the click
+  // on a button before the event listener is fully attached by WASM.
+  await expect(async () => {
+    await btn.click();
+
+    // Optimistic check: if URL already has sport_id, we are good.
+    // If not, we throw to force a retry of the click.
+    const url = page.url();
+    if (!url.includes("sport_id=")) {
+      throw new Error(
+        "Click performed, but URL did not update yet. Retrying..."
+      );
+    }
+  }).toPass({
+    timeout: 5000, // Total time to retry
+    intervals: [500], // Retry every 500ms
+  });
 
   // Wait for ANY sport_id param to appear in URL
   await page.waitForURL(/sport_id=([0-9a-f-]{36})/);

@@ -30,7 +30,7 @@ const SEED_TOURNAMENTS = [
 async function seedTournaments(page: Page) {
   const FORM = selectors(page).home.dashboard.editTournament;
 
-  // 1. Select Sport
+  // 1. Select Sport (ensure we are in the context)
   await openHomePage(page);
   await selectSportPluginByName(page, PLUGINS.GENERIC);
 
@@ -45,26 +45,15 @@ async function seedTournaments(page: Page) {
 
     // Wait for completion (URL update) to be ready for the next one
     await page.waitForURL(/tournament_id=/, { timeout: 10000 });
-
-    // Back to dashboard for next round
-    await openHomePage(page);
-    await selectSportPluginByName(page, PLUGINS.GENERIC);
   }
 }
 
-export default async () => {
-  const browser = await chromium.launch();
-
-  // Create a browser context with baseURL to allow relative navigation in helpers
-  const context = await browser.newContext({
-    baseURL: "http://localhost:3000",
-  });
-  const page = await context.newPage();
-
-  // 1. Seed Postal Addresses
+async function seedPostalAddresses(page: Page) {
   const NEW_PA_URL = "/postal-address/new_pa";
   await page.goto(NEW_PA_URL);
+
   const names = ["Alpha", "Beta", "Gamma"];
+
   for (const name of names) {
     await expectSavesDisabled(page);
     await fillFields(page, {
@@ -77,21 +66,34 @@ export default async () => {
     });
     await clickSave(page);
     await waitForPostalAddressListUrl(page);
+    // Navigate back for the next one
     await page.goto(NEW_PA_URL);
   }
+}
 
-  // 2. Seed Tournaments
-  // We use try-catch so a failure here doesn't kill the whole test run,
-  // e.g. if the page is not yet reachable.
+export default async () => {
+  const browser = await chromium.launch();
+
+  // Create a browser context with baseURL to allow relative navigation in helpers
+  const context = await browser.newContext({
+    baseURL: "http://localhost:3000",
+  });
+  const page = await context.newPage();
+
   try {
+    console.log("🌱 Seeding Postal Addresses...");
+    await seedPostalAddresses(page);
+    console.log("✅ Postal Addresses Seeded");
+
     console.log("🌱 Seeding Tournaments...");
     await seedTournaments(page);
-    console.log("✅ Seeding Complete");
+    console.log("✅ Tournaments Seeded");
   } catch (e) {
     console.error("❌ Seeding failed:", e);
-    // Optional: throw e; if Seeding is strictly necessary
+    // Throwing error to stop the test run, as seeding is mandatory
+    throw e;
+  } finally {
+    await page.close();
+    await browser.close();
   }
-
-  await page.close();
-  await browser.close();
 };

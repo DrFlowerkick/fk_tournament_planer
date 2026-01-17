@@ -60,6 +60,15 @@ pub fn App() -> impl IntoView {
     // provide global state context
     provide_global_state();
 
+    // HYDRATION MARKER for E2E TESTS:
+    // This effect runs only on the client once the WASM is active and hydration is complete.
+    // We mark the body so Playwright knows exactly when it's safe to click.
+    Effect::new(|_| {
+        if let Some(body) = document().body() {
+            let _ = body.set_attribute("data-hydrated", "true");
+        }
+    });
+
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
 
