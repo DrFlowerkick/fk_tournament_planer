@@ -71,7 +71,7 @@ test.describe("Create New Tournament", () => {
     await FORM.actions.save.click();
 
     await page.waitForURL(/tournament_id=/, { timeout: 20000 });
-    // Direct navigation to tournament list
+    
     await goToListTournaments(page);
 
     // Wait until list and search are ready
@@ -137,7 +137,6 @@ test.describe("Create New Tournament", () => {
 
       await page.waitForURL(/tournament_id=/, { timeout: 20000 });
 
-      // DIREKTE Navigation zur Liste
       await goToListTournaments(page);
 
       await expect(LIST.root).toBeVisible();

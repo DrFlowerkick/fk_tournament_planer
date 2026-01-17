@@ -156,6 +156,11 @@ impl TournamentEditorState {
         }
     }
 
+    // --- Getters for keeping state of new tournament & dependencies ---
+    pub fn get_tournament(&self) -> Option<&TournamentBase> {
+        self.tournament.as_ref()
+    }
+
     // --- Getters for Saving ---
 
     pub fn get_tournament_diff(

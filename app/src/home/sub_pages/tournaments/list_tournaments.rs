@@ -1,17 +1,32 @@
-//! listing tournaments
+//! list tournaments
 
 use app_core::{TournamentBase, TournamentState, TournamentType};
 use app_utils::{
-    components::inputs::EnumSelect, params::SportParams,
+    components::inputs::EnumSelect,
+    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    params::SportParams,
     server_fn::tournament_base::list_tournament_bases,
 };
 use leptos::prelude::*;
-use leptos_router::hooks::use_query;
+use leptos_router::{
+    NavigateOptions,
+    components::A,
+    hooks::{use_navigate, use_query},
+    nested_router::Outlet,
+};
 use uuid::Uuid;
 
 #[component]
 pub fn ListTournaments() -> impl IntoView {
-    let sport_id_query = use_query::<SportParams>();
+    // navigation and query handling Hook
+    let UseQueryNavigationReturn {
+        update,
+        remove,
+        nav_url,
+        relative_sub_url,
+        ..
+    } = use_query_navigation();
+    let navigate = use_navigate();
 
     // Signals for Filters
     let set_status = RwSignal::new(TournamentState::Draft);
@@ -22,7 +37,28 @@ pub fn ListTournaments() -> impl IntoView {
     // Signal for Selected Row (UI interaction)
     let (selected_id, set_selected_id) = signal::<Option<Uuid>>(None);
 
+    // update tournament_id query param when selected_id changes
+    Effect::new({
+        let navigate = navigate.clone();
+        move || {
+            if let Some(t_id) = selected_id.get() {
+                update("tournament_id", &t_id.to_string());
+            } else {
+                remove("tournament_id");
+            }
+            navigate(
+                &nav_url.get(),
+                NavigateOptions {
+                    replace: true,
+                    scroll: false,
+                    ..Default::default()
+                },
+            );
+        }
+    });
+
     // Derived Query Params
+    let sport_id_query = use_query::<SportParams>();
     let sport_id = move || sport_id_query.get().ok().and_then(|p| p.sport_id);
 
     // Resource that fetches data when filters change
@@ -54,6 +90,28 @@ pub fn ListTournaments() -> impl IntoView {
             })
             .collect::<Vec<TournamentBase>>()
     };
+
+    Effect::new({
+        let navigate = navigate.clone();
+        move || {
+            if let Some(t_id) = selected_id.get()
+                && !filtered_tournaments()
+                    .iter()
+                    .any(|t| t.get_id() == Some(t_id))
+            {
+                set_selected_id.set(None);
+                remove("tournament_id");
+                navigate(
+                    &nav_url.get(),
+                    NavigateOptions {
+                        replace: true,
+                        scroll: false,
+                        ..Default::default()
+                    },
+                );
+            }
+        }
+    });
 
     view! {
         <div
@@ -185,18 +243,22 @@ pub fn ListTournaments() -> impl IntoView {
                                                             {match t_render_actions.get_tournament_state() {
                                                                 TournamentState::Draft | TournamentState::Published => {
                                                                     view! {
-                                                                        <button
-                                                                            class="btn btn-sm btn-primary"
-                                                                            data-testid="action-btn-register"
+                                                                        <A
+                                                                            href=relative_sub_url("register")
+                                                                            attr:class="btn btn-sm btn-primary"
+                                                                            attr:data-testid="action-btn-register"
+                                                                            scroll=false
                                                                         >
                                                                             "Register"
-                                                                        </button>
-                                                                        <button
-                                                                            class="btn btn-sm btn-ghost"
-                                                                            data-testid="action-btn-edit"
+                                                                        </A>
+                                                                        <A
+                                                                            href=relative_sub_url("edit")
+                                                                            attr:class="btn btn-sm btn-ghost"
+                                                                            attr:data-testid="action-btn-edit"
+                                                                            scroll=false
                                                                         >
                                                                             "Edit"
-                                                                        </button>
+                                                                        </A>
                                                                         <button class="btn btn-sm" data-testid="action-btn-show">
                                                                             "Show"
                                                                         </button>
@@ -268,5 +330,6 @@ pub fn ListTournaments() -> impl IntoView {
                 </Suspense>
             </div>
         </div>
+        <Outlet />
     }
 }

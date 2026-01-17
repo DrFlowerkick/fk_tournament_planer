@@ -106,8 +106,8 @@ pub fn App() -> impl IntoView {
                                     view! {}
                                 }
                             />
-                            <Route path=path!("tournaments") view=ListTournaments />
-                            <Route path=path!("new-tournament") view=EditTournament />
+                            <TournamentsRoutes />
+                            <NewTournamentRoutes />
                             <Route path=path!("adhoc-tournament") view=AdhocTournament />
                             <Route path=path!("sport-configurations") view=SportConfigurations />
                             <Route path=path!("about-sport") view=AboutSport />

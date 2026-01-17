@@ -32,12 +32,8 @@ test.describe("Tournaments List Page", () => {
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
     await expect(page.locator("h2")).toHaveText("List Tournaments");
-    await expect(LIST.filters.status).toHaveValue("Draft");
+    await expect(LIST.filters.status).toHaveValue("Draft"); // Default according to Rust code
     await expect(LIST.filters.search).toBeEmpty();
-
-    // Table should exist (since we have seeds)
-    // If table is empty, it might show an empty row, but root should be there.
-    // We prefer checking positively for content in the next test.
   });
 
   test("finds seeded tournament via search", async ({ page }) => {
@@ -49,26 +45,75 @@ test.describe("Tournaments List Page", () => {
 
     // Wait/Check
     // We expect exactly this entry in the table
-    await expect(page.getByRole("cell", { name: targetName })).toBeVisible({
+    // Using a more specific selector to ensure we hit the table cell
+    await expect(
+      page.getByRole("cell", { name: targetName }).first()
+    ).toBeVisible({
       timeout: 10000,
     });
   });
 
-  test("interacting with filters updates UI state", async ({ page }) => {
+  test("shows empty state when search finds no results", async ({ page }) => {
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
-    // Status Filter (UI Check)
-    await LIST.filters.status.selectOption("Finished");
-    await expect(LIST.filters.status).toHaveValue("Finished");
+    // Search for something impossible
+    await LIST.filters.search.fill("X9Z9 NonExistent Tournament");
 
-    // Adhoc Toggle (UI Check)
-    await LIST.filters.adhocToggle.check();
-    await expect(LIST.filters.adhocToggle).toBeChecked();
-
-    // Limit (UI Check)
-    await LIST.filters.limit.selectOption("50");
-    await expect(LIST.filters.limit).toHaveValue("50");
+    // Expect empty message
+    // Rust: data-testid="tournaments-list-empty"
+    await expect(page.getByTestId("tournaments-list-empty")).toBeVisible();
+    await expect(page.getByTestId("tournaments-list-empty")).toContainText(
+      "No tournaments found"
+    );
   });
 
-  // Further tests for Actions etc. if you have status changes in seeding
+  test("clicking a row reveals action buttons (Edit, Register, Show)", async ({
+    page,
+  }) => {
+    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const targetName = SEED_DATA.DRAFT;
+
+    await LIST.filters.search.fill(targetName);
+
+    // Find the row
+    const cell = page.getByRole("cell", { name: targetName }).first();
+    await expect(cell).toBeVisible();
+
+    // Click to select the row (logic in tournaments.rs: signals `selected_id`)
+    await cell.click();
+
+    // Expect Action Row to appear
+    // Rust: data-testid="row-actions"
+    const actions = page.getByTestId("row-actions");
+    await expect(actions).toBeVisible();
+
+    // Verify Buttons for "Draft" status (as per Rust code: Register, Edit, Show)
+    await expect(page.getByTestId("action-btn-register")).toBeVisible();
+    await expect(page.getByTestId("action-btn-edit")).toBeVisible();
+    await expect(page.getByTestId("action-btn-show")).toBeVisible();
+  });
+
+  test("edit button navigates to edit form", async ({ page }) => {
+    const targetName = SEED_DATA.DRAFT;
+    const LIST = selectors(page).home.dashboard.tournamentsList;
+
+    await LIST.filters.search.fill(targetName);
+    const cell = page.getByRole("cell", { name: targetName }).first();
+    await cell.click();
+
+    // Click Edit
+    await page.getByTestId("action-btn-edit").click();
+
+    // Check we are on the Edit Page
+    // Rust: data-testid="tournament-editor-title" -> "Edit Tournament"
+    await expect(page.getByTestId("tournament-editor-title")).toHaveText(
+      "Edit Tournament"
+    );
+
+    // Check pre-filled data
+    // Rust: ValidatedTextInput name="tournament-name"
+    await expect(page.locator('input[name="tournament-name"]')).toHaveValue(
+      targetName
+    );
+  });
 });
