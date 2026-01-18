@@ -57,10 +57,27 @@ export const HOME_IDS = {
         mode: "select-tournament-mode",
         num_rounds_swiss: "input-tournament-swiss-num_rounds",
       },
+      links: {
+        configureSingleStage: "link-configure-single-stage",
+        configurePoolStage: "link-configure-pool-stage",
+        configureSwissSystem: "link-configure-swiss-system",
+      },
       actions: {
         save: "btn-tournament-save",
         cancel: "btn-tournament-cancel",
       },
+    },
+    editStage: {
+      root: "stage-editor-root",
+      title: "stage-editor-title",
+      inputs: {
+        numGroups: "input-stage-num-groups",
+      },
+      groupLink: (index: number) => `link-configure-group-${index}`,
+    },
+    editGroup: {
+      root: "group-editor-root",
+      title: "group-editor-title",
     },
   },
 } as const;
@@ -93,41 +110,41 @@ export function getHomeSelectors(page: Page) {
         root: page.getByTestId(ids.dashboard.tournamentsList.root),
         filters: {
           status: page.getByTestId(
-            ids.dashboard.tournamentsList.filters.statusSelect
+            ids.dashboard.tournamentsList.filters.statusSelect,
           ),
           adhocToggle: page.getByTestId(
-            ids.dashboard.tournamentsList.filters.includeAdhoc
+            ids.dashboard.tournamentsList.filters.includeAdhoc,
           ),
           search: page.getByTestId(
-            ids.dashboard.tournamentsList.filters.nameSearch
+            ids.dashboard.tournamentsList.filters.nameSearch,
           ),
           limit: page.getByTestId(
-            ids.dashboard.tournamentsList.filters.limitSelect
+            ids.dashboard.tournamentsList.filters.limitSelect,
           ),
         },
         table: {
           root: page.getByTestId(ids.dashboard.tournamentsList.table.root),
           // Regex to match any row starting with the ID prefix
           rows: page.getByTestId(
-            new RegExp(`^${ids.dashboard.tournamentsList.table.row(".*")}$`)
+            new RegExp(`^${ids.dashboard.tournamentsList.table.row(".*")}$`),
           ),
           rowById: (id: string) =>
             page.getByTestId(ids.dashboard.tournamentsList.table.row(id)),
           actions: {
             container: page.getByTestId(
-              ids.dashboard.tournamentsList.table.rowActions
+              ids.dashboard.tournamentsList.table.rowActions,
             ),
             edit: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.edit
+              ids.dashboard.tournamentsList.table.actions.edit,
             ),
             show: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.show
+              ids.dashboard.tournamentsList.table.actions.show,
             ),
             register: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.register
+              ids.dashboard.tournamentsList.table.actions.register,
             ),
             results: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.results
+              ids.dashboard.tournamentsList.table.actions.results,
             ),
           },
         },
@@ -140,17 +157,41 @@ export function getHomeSelectors(page: Page) {
         inputs: {
           name: page.getByTestId(ids.dashboard.editTournament.inputs.name),
           entrants: page.getByTestId(
-            ids.dashboard.editTournament.inputs.entrants
+            ids.dashboard.editTournament.inputs.entrants,
           ),
           mode: page.getByTestId(ids.dashboard.editTournament.inputs.mode),
           num_rounds_swiss: page.getByTestId(
-            ids.dashboard.editTournament.inputs.num_rounds_swiss
+            ids.dashboard.editTournament.inputs.num_rounds_swiss,
+          ),
+        },
+        links: {
+          configureSingleStage: page.getByTestId(
+            ids.dashboard.editTournament.links.configureSingleStage,
+          ),
+          configurePoolStage: page.getByTestId(
+            ids.dashboard.editTournament.links.configurePoolStage,
+          ),
+          configureSwissSystem: page.getByTestId(
+            ids.dashboard.editTournament.links.configureSwissSystem,
           ),
         },
         actions: {
           save: page.getByTestId(ids.dashboard.editTournament.actions.save),
           cancel: page.getByTestId(ids.dashboard.editTournament.actions.cancel),
         },
+      },
+      editStage: {
+        root: page.getByTestId(ids.dashboard.editStage.root),
+        title: page.getByTestId(ids.dashboard.editStage.title),
+        inputs: {
+          numGroups: page.getByTestId(ids.dashboard.editStage.inputs.numGroups),
+        },
+        groupLink: (index: number) =>
+          page.getByTestId(ids.dashboard.editStage.groupLink(index)),
+      },
+      editGroup: {
+        root: page.getByTestId(ids.dashboard.editGroup.root),
+        title: page.getByTestId(ids.dashboard.editGroup.title),
       },
     },
   };

@@ -23,7 +23,7 @@ use uuid::Uuid;
     fields(id = %id)
 )]
 pub async fn load_stage_by_id(tournament_id: Uuid, id: Uuid) -> AppResult<Option<Stage>> {
-    load_stage_inner(tournament_id, id).await
+    load_stage_by_id_inner(tournament_id, id).await
 }
 
 #[cfg(feature = "test-mock")]
@@ -48,7 +48,7 @@ pub async fn load_stage_by_id_inner(tournament_id: Uuid, id: Uuid) -> AppResult<
     fields(number = %number)
 )]
 pub async fn load_stage_by_number(tournament_id: Uuid, number: u32) -> AppResult<Option<Stage>> {
-    load_stage_inner(tournament_id, number).await
+    load_stage_by_number_inner(tournament_id, number).await
 }
 
 #[cfg(feature = "test-mock")]
