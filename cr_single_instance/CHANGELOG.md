@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_single_instance-v0.7.0...cr_single_instance-v0.8.0) (2026-01-18)
+
+
+### Features
+
+* Initialize tournament setup ([#25](https://github.com/DrFlowerkick/fk_tournament_planer/issues/25)) ([0e27535](https://github.com/DrFlowerkick/fk_tournament_planer/commit/0e275357f7e4b9183a309917ee4fc9e21428d6d9))
+
 ## [0.7.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_single_instance-v0.6.0...cr_single_instance-v0.7.0) (2025-12-24)
 
 

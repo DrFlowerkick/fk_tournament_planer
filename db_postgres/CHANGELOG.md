@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.7.0...db_postgres-v0.8.0) (2026-01-18)
+
+
+### Features
+
+* create and list tournaments ([#26](https://github.com/DrFlowerkick/fk_tournament_planer/issues/26)) ([fdd7519](https://github.com/DrFlowerkick/fk_tournament_planer/commit/fdd751948945698015a23e1554e300d2db032199))
+* Initialize tournament setup ([#25](https://github.com/DrFlowerkick/fk_tournament_planer/issues/25)) ([0e27535](https://github.com/DrFlowerkick/fk_tournament_planer/commit/0e275357f7e4b9183a309917ee4fc9e21428d6d9))
+
 ## [0.7.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.6.0...db_postgres-v0.7.0) (2025-12-24)
 
 
