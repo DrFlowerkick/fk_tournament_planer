@@ -9,10 +9,11 @@ use crate::{
         validation::{FieldError, ValidationErrors, ValidationResult},
     },
 };
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// stage of a tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Stage {
     /// id and version of stage in tournament
     id_version: IdVersion,
