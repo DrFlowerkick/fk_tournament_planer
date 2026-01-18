@@ -1,5 +1,5 @@
 use crate::common::{get_element_by_test_id, get_test_root, lock_test};
-use app_core::utils::id_version::{IdVersion, VersionId};
+use app_core::utils::{id_version::IdVersion, traits::ObjectIdVersion};
 use app_utils::components::set_id_in_query_input_dropdown::{
     SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
 };
@@ -21,7 +21,7 @@ struct TestItem {
     name: String,
 }
 
-impl VersionId for TestItem {
+impl ObjectIdVersion for TestItem {
     fn get_id_version(&self) -> IdVersion {
         self.id_version
     }
@@ -103,15 +103,15 @@ async fn test_set_id_in_query_input_dropdown() {
 
     let items: Vec<TestItem> = vec![
         TestItem {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
+            id_version: IdVersion::new(Uuid::new_v4(), Some(1)),
             name: "Item 1".to_string(),
         },
         TestItem {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
+            id_version: IdVersion::new(Uuid::new_v4(), Some(1)),
             name: "Item 2".to_string(),
         },
         TestItem {
-            id_version: IdVersion::new(Uuid::new_v4(), 1),
+            id_version: IdVersion::new(Uuid::new_v4(), Some(1)),
             name: "Item 3".to_string(),
         },
     ];

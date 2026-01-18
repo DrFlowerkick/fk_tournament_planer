@@ -2,11 +2,7 @@
 
 use crate::{
     Core, CoreResult, CrMsg, CrTopic,
-    utils::{
-        id_version::{IdVersion, VersionId},
-        normalize::*,
-        validation::*,
-    },
+    utils::{id_version::IdVersion, normalize::*, traits::ObjectIdVersion, validation::*},
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -43,7 +39,7 @@ impl Default for PostalAddress {
     }
 }
 
-impl VersionId for PostalAddress {
+impl ObjectIdVersion for PostalAddress {
     fn get_id_version(&self) -> IdVersion {
         self.id_version
     }
@@ -359,7 +355,7 @@ mod test_validate {
 
     // Helper to build a *valid* baseline address we can then tweak per test.
     fn valid_addr() -> PostalAddress {
-        let id_version = IdVersion::new(Uuid::new_v4(), 0);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(0));
         let mut pa = PostalAddress::new(id_version);
         pa.set_name("Main Campus")
             .set_street("Musterstraße 1")

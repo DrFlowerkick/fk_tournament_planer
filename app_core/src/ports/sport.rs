@@ -6,10 +6,7 @@
 
 use crate::{
     EntrantGroupScore, Match, SportConfig,
-    utils::{
-        id_version::{IdVersion, VersionId},
-        validation::ValidationErrors,
-    },
+    utils::{id_version::IdVersion, traits::ObjectIdVersion, validation::ValidationErrors},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -43,14 +40,14 @@ impl From<anyhow::Error> for SportError {
 
 pub type SportResult<T> = Result<T, SportError>;
 
-impl VersionId for Arc<dyn SportPort> {
+impl ObjectIdVersion for Arc<dyn SportPort> {
     fn get_id_version(&self) -> IdVersion {
         self.as_ref().get_id_version()
     }
 }
 
 /// The `SportPort` trait defines the contract for a sport-specific plugin.
-pub trait SportPort: VersionId + Send + Sync + Any {
+pub trait SportPort: ObjectIdVersion + Send + Sync + Any {
     /// Returns a user-friendly name for the sport.
     fn name(&self) -> &'static str;
 

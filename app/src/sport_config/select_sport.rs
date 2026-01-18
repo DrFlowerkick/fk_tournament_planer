@@ -1,6 +1,6 @@
 //! Component for selecting a sport plugin in the sport configuration flow.
 
-use app_core::{SportPluginManagerPort, SportPort, utils::id_version::VersionId};
+use app_core::{SportPluginManagerPort, SportPort, utils::traits::ObjectIdVersion};
 use app_utils::{
     components::{
         banner::AcknowledgmentBanner,
@@ -8,8 +8,8 @@ use app_utils::{
             SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
         },
     },
-    global_state::{GlobalState, GlobalStateStoreFields},
     params::SportParams,
+    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
 use leptos_router::{

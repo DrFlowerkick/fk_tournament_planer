@@ -4,14 +4,14 @@ set -e
 # This script runs Playwright E2E tests in a Docker container or directly based on the LEPTOS_ENV environment variable.
 # usage of TEST_FILTER: pass a filter to run specific tests, e.g.
 # running a single test file with:
-#   TEST_FILTER="tests/setup-id-input.spec.ts" make e2e
+#   TEST_FILTER="setup-id-input.spec.ts" make e2e
 # running a specific test name with grep:
 #   TEST_FILTER='-g "Valid input"' make e2e
 
 ENGINE=${CONTAINER_ENGINE:-docker}
 ENVIRONMENT=${LEPTOS_ENV:-DEV}
 TEST_DIR="$(pwd)"
-IMAGE="mcr.microsoft.com/playwright:v1.44.1-jammy"
+IMAGE="mcr.microsoft.com/playwright:v1.49.0-jammy"
 
 echo "Detected LEPTOS_ENV=$ENVIRONMENT"
 

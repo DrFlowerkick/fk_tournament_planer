@@ -28,12 +28,12 @@ impl DbpSportConfig for FakeDatabasePort {
         if let Some(id) = config.get_id() {
             if let Some(existing) = guard.get(&id) {
                 let version = existing.get_version().unwrap() + 1;
-                new.set_id_version(IdVersion::new(id, version));
+                new.set_id_version(IdVersion::new(id, Some(version)));
             } else {
-                new.set_id_version(IdVersion::new(id, 0));
+                new.set_id_version(IdVersion::new(id, Some(0)));
             }
         } else {
-            new.set_id_version(IdVersion::new(Uuid::new_v4(), 0));
+            new.set_id_version(IdVersion::new(Uuid::new_v4(), Some(0)));
         }
         guard.insert(new.get_id().unwrap(), new.clone());
         Ok(new)

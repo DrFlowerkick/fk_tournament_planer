@@ -3,3 +3,5 @@
 @plugin "daisyui" {
   themes: fantasy --default, business --prefersdark;
 }
+
+@plugin "@iconify/tailwind4";

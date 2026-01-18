@@ -114,7 +114,6 @@ impl SportPortWebUi for GenericSportPlugin {
             config,
             is_valid_json,
             is_new,
-            is_loading,
         } = props;
 
         // --- initialize json config, if is_new ---
@@ -237,7 +236,6 @@ impl SportPortWebUi for GenericSportPlugin {
                     name="sets_to_win"
                     value=set_sets_to_win
                     error_message=is_valid_sets_to_win
-                    is_loading=is_loading
                     is_new=is_new
                     min="1"
                 />
@@ -249,7 +247,6 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="score_to_win"
                         value=set_score_to_win
                         error_message=is_valid_score_to_win
-                        is_loading=is_loading
                         is_new=is_new
                         min="1"
                     />
@@ -260,7 +257,6 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="win_by_margin"
                         value=set_win_by_margin
                         error_message=is_valid_win_by_margin
-                        is_loading=is_loading
                         is_new=is_new
                         min="1"
                     />
@@ -271,7 +267,6 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="hard_cap"
                         value=set_hard_cap
                         error_message=is_valid_hard_cap
-                        is_loading=is_loading
                         is_new=is_new
                         min="1"
                     />
@@ -284,7 +279,6 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="victory_points_win"
                         value=set_victory_points_win
                         error_message=is_valid_victory_points_win
-                        is_loading=is_loading
                         is_new=is_new
                         min="0"
                         step="0.1"
@@ -296,7 +290,6 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="victory_points_draw"
                         value=set_victory_points_draw
                         error_message=is_valid_victory_points_draw
-                        is_loading=is_loading
                         is_new=is_new
                         min="0"
                         step="0.1"
@@ -308,7 +301,6 @@ impl SportPortWebUi for GenericSportPlugin {
                     value=set_expected_match_duration_minutes
                     unit=DurationInputUnit::Minutes
                     error_message=is_valid_expected_match_duration_minutes
-                    is_loading=is_loading
                     is_new=is_new
                 />
             </div>

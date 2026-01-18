@@ -9,8 +9,7 @@ pub mod sport_web_ui;
 use app_core::{
     Match, SportConfig, SportError, SportResult,
     utils::{
-        id_version::{IdVersion, VersionId},
-        namespace::project_namespace,
+        id_version::IdVersion, namespace::project_namespace, traits::ObjectIdVersion,
         validation::ValidationErrors,
     },
 };
@@ -27,7 +26,7 @@ use uuid::Uuid;
 /// ```
 /// use generic_sport_plugin::GenericSportPlugin;
 /// use app_core::{SportPort, SportConfig, Match};
-/// use app_core::utils::{id_version::{IdVersion, VersionId}, validation::ValidationErrors};
+/// use app_core::utils::{id_version::IdVersion, traits::ObjectIdVersion, validation::ValidationErrors};
 /// use serde_json::json;
 /// use uuid::Uuid;
 ///
@@ -43,7 +42,7 @@ use uuid::Uuid;
 ///     "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
 /// });
 ///
-/// let mut config = SportConfig::new(IdVersion::new(Uuid::new_v4(), 0));
+/// let mut config = SportConfig::new(IdVersion::new(Uuid::new_v4(), Some(0)));
 /// config.set_name("Soccer").set_sport_id(sport_id).set_config(config_json.clone());
 ///
 /// // Validate configuration
@@ -136,9 +135,10 @@ impl GenericSportPlugin {
     }
 }
 
-impl VersionId for GenericSportPlugin {
+impl ObjectIdVersion for GenericSportPlugin {
     fn get_id_version(&self) -> IdVersion {
-        IdVersion::new(self.id(), 0)
+        // we can increment version later if changes are made to the sport plugin
+        IdVersion::new(self.id(), Some(0))
     }
 }
 #[cfg(test)]
@@ -160,7 +160,7 @@ mod tests {
             "score_free_ticket": 1,
             "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -186,7 +186,7 @@ mod tests {
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -212,7 +212,7 @@ mod tests {
             "score_free_ticket": 1,
             "expected_match_duration_minutes": { "secs": 5400, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())
@@ -261,7 +261,7 @@ mod tests {
             "score_free_ticket": 8,
             "expected_match_duration_minutes": { "secs": 1800, "nanos": 0 }
         });
-        let id_version = IdVersion::new(Uuid::new_v4(), 1);
+        let id_version = IdVersion::new(Uuid::new_v4(), Some(1));
         let mut sport_config = SportConfig::new(id_version);
         sport_config
             .set_sport_id(plugin.id())

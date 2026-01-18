@@ -1,6 +1,6 @@
 import { expect, Page } from "@playwright/test";
 import { selectors } from "./selectors";
-import { extractQueryParamFromUrl } from "./utils";
+import { extractQueryParamFromUrl, waitForAppHydration } from "./utils";
 
 export const ROUTES = {
   home: "/",
@@ -11,7 +11,8 @@ export const ROUTES = {
  */
 export async function openHomePage(page: Page) {
   await page.goto(ROUTES.home);
-  await page.waitForLoadState("domcontentloaded");
+  // Ensure app is ready/hydrated before interacting
+  await waitForAppHydration(page);
 
   const HOME = selectors(page).home;
 
@@ -31,11 +32,32 @@ export async function selectSportPluginByName(
   page: Page,
   pluginName: string
 ): Promise<string> {
+  // Ensure app is ready/hydrated before interacting
+  await waitForAppHydration(page);
+
   const HOME = selectors(page).home;
   const btn = HOME.sportSelection.pluginButtonByName(pluginName);
 
   await expect(btn).toBeVisible();
-  await btn.click();
+
+  // Robust interaction: Retry clicking until URL actually changes.
+  // This solves issues where Firefox/WebKit might register the click
+  // on a button before the event listener is fully attached by WASM.
+  await expect(async () => {
+    await btn.click();
+
+    // Optimistic check: if URL already has sport_id, we are good.
+    // If not, we throw to force a retry of the click.
+    const url = page.url();
+    if (!url.includes("sport_id=")) {
+      throw new Error(
+        "Click performed, but URL did not update yet. Retrying..."
+      );
+    }
+  }).toPass({
+    timeout: 5000, // Total time to retry
+    intervals: [500], // Retry every 500ms
+  });
 
   // Wait for ANY sport_id param to appear in URL
   await page.waitForURL(/sport_id=([0-9a-f-]{36})/);
@@ -101,4 +123,39 @@ export async function expectSportDashboardContent(
   // About Link should contain Sport Name
   await expect(DASH.nav.about).toBeVisible();
   await expect(DASH.nav.about).toHaveText(`About ${sportName}`);
+}
+
+/**
+ * Navigates to the "List Tournaments" page for a given sport ID.
+ * Assumes the user is already on the sport dashboard.
+ */
+export async function goToListTournaments(page: Page) {
+  await page.waitForLoadState("domcontentloaded");
+  const DASH = selectors(page).home.dashboard;
+
+  // Navigate via dashboard link
+  await expect(DASH.nav.tournaments).toBeVisible();
+  await DASH.nav.tournaments.click();
+
+  // Expect List Root to be visible
+  await expect(DASH.tournamentsList.root).toBeVisible({ timeout: 10000 });
+}
+
+/**
+ * Navigates to the "Plan New Tournament" page.
+ * Assumes the user is already on the sport dashboard.
+ */
+export async function goToNewTournament(page: Page) {
+  await page.waitForLoadState("domcontentloaded");
+  const DASH = selectors(page).home.dashboard;
+
+  // Ensure Dashboard is active and Link is clickable
+  await expect(DASH.root).toBeVisible();
+  await expect(DASH.nav.planNew).toBeVisible();
+
+  // Perform SPA Navigation
+  await DASH.nav.planNew.click();
+
+  // Expect Start Page Root to be visible
+  await expect(DASH.editTournament.root).toBeVisible({ timeout: 10000 });
 }

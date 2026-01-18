@@ -34,7 +34,7 @@ async fn given_new_when_save_then_get_roundtrip_version_is_0() -> Result<()> {
     assert_eq!(fetched.get_sport_id(), sport_id);
     assert_eq!(fetched.get_name(), "Tournament A");
     assert_eq!(fetched.get_num_entrants(), 16);
-    assert_eq!(fetched.get_tournament_state(), TournamentState::Pending);
+    assert_eq!(fetched.get_tournament_state(), TournamentState::Draft);
 
     Ok(())
 }

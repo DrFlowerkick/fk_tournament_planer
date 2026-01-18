@@ -9,15 +9,15 @@ use app_utils::{
         },
     },
     error::AppError,
-    global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::{SportConfigParams, SportParams},
     server_fn::sport_config::{list_sport_configs, load_sport_config},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
 use leptos::{logging::log, prelude::*};
-use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
+use leptos_router::{components::A, hooks::use_query};
 use reactive_stores::Store;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -262,12 +262,6 @@ pub fn SearchSportConfig() -> impl IntoView {
                                 </Transition>
                             </div>
                         </div>
-                        <div class="my-4"></div>
-                        {if cfg!(not(feature = "test-mock")) {
-                            view! { <Outlet /> }.into_any()
-                        } else {
-                            ().into_any()
-                        }}
                     }
                 })
         }

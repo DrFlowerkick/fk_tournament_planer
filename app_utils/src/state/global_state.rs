@@ -1,4 +1,4 @@
-//! global state management in reactive system of app
+//! Global state management for the application
 
 use reactive_stores::Store;
 use sport_plugin_manager::SportPluginManagerMap;

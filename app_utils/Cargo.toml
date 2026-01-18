@@ -19,6 +19,7 @@ gloo-timers.workspace = true
 http.workspace = true
 leptos.workspace = true
 leptos_router.workspace = true
+petgraph.workspace = true
 reactive_stores.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -3,44 +3,88 @@
 use crate::{
     Core, CoreError, CoreResult, CrMsg, CrTopic, SportError,
     utils::{
-        id_version::{IdVersion, VersionId},
+        id_version::IdVersion,
         normalize::normalize_ws,
+        traits::ObjectIdVersion,
         validation::{FieldError, ValidationErrors, ValidationResult},
     },
 };
+use displaydoc::Display;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// mode of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
 pub enum TournamentType {
+    /// Scheduled Tournament
     #[default]
     Scheduled,
+    /// Adhoc Tournament
     Adhoc,
+}
+
+impl From<String> for TournamentType {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Scheduled" => TournamentType::Scheduled,
+            "Adhoc" => TournamentType::Adhoc,
+            _ => TournamentType::Scheduled, // default
+        }
+    }
 }
 
 /// mode of tournament
 /// If there are Mode specific configuration values, which cannot be placed
 /// in sub structures like Stage, Group, Match, etc., we may need to add them here.
 /// For now, Swiss system needs number of rounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
 pub enum TournamentMode {
+    /// Single Stage
     #[default]
     SingleStage,
+    /// Pool and Final Stage
     PoolAndFinalStage,
+    /// Two Pool Stages and Final Stage
     TwoPoolStagesAndFinalStage,
-    SwissSystem {
-        num_rounds: u32,
-    },
+    /// Swiss System
+    SwissSystem { num_rounds: u32 },
+}
+
+impl TournamentMode {
+    pub fn get_num_of_stages(&self) -> u32 {
+        match self {
+            TournamentMode::SingleStage => 1,
+            TournamentMode::PoolAndFinalStage => 2,
+            TournamentMode::TwoPoolStagesAndFinalStage => 3,
+            TournamentMode::SwissSystem { num_rounds: _ } => 1,
+        }
+    }
 }
 
 /// status of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
 pub enum TournamentState {
+    /// Draft
     #[default]
-    Pending,
+    Draft,
+    /// Published
+    Published,
+    /// Running
     ActiveStage(u32),
+    /// Finished
     Finished,
+}
+
+impl From<String> for TournamentState {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Draft" => TournamentState::Draft,
+            "Published" => TournamentState::Published,
+            "Running" => TournamentState::ActiveStage(0),
+            "Finished" => TournamentState::Finished,
+            _ => TournamentState::Draft, // default
+        }
+    }
 }
 
 /// base parameters of a tournament
@@ -76,7 +120,7 @@ impl Default for TournamentBase {
     }
 }
 
-impl VersionId for TournamentBase {
+impl ObjectIdVersion for TournamentBase {
     fn get_id_version(&self) -> IdVersion {
         self.id_version
     }
@@ -99,10 +143,6 @@ impl TournamentBase {
     /// Get the version number of the sport configuration.
     pub fn get_version(&self) -> Option<u32> {
         self.id_version.get_version()
-    }
-
-    pub fn get_id_version(&self) -> IdVersion {
-        self.id_version
     }
 
     /// Get the name of the sport configuration.
@@ -210,6 +250,17 @@ impl TournamentBase {
                     .add_message("number of entrants must be at least 2")
                     .build(),
             );
+        }
+
+        if let TournamentMode::SwissSystem { num_rounds } = self.mode {
+            if num_rounds == 0 {
+                errs.add(
+                    FieldError::builder()
+                        .set_field(String::from("mode.num_rounds"))
+                        .add_message("Number of rounds must be > 0. Recommended number of rounds is 'log_2(number of entrants) + 2' or more")
+                        .build(),
+                );
+            }
         }
 
         let max_num_stages = match self.mode {

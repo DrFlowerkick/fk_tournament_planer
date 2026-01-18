@@ -11,7 +11,7 @@ import {
   openEditForm,
   waitForPostalAddressListUrl,
 } from "../../helpers/postal_address";
-import { typeThenBlur } from "../../helpers/utils";
+import { typeThenBlur, waitForAppHydration } from "../../helpers/utils"; // ADDED IMPORT
 
 // --- Test data ---------------------------------------------------------------
 // Unique test data (avoid partial-unique collisions)
@@ -47,6 +47,9 @@ test.describe("postal address live update (Preview-only UI)", () => {
     try {
       // -------------------- Arrange (A creates address) ----------------------
       await pageA.goto("/"); // baseURL is assumed to be configured in Playwright config.
+
+      // Wait for hydration after raw navigation
+      await waitForAppHydration(pageA);
 
       // Open and create a new, valid address.
       await openNewForm(pageA);
@@ -84,9 +87,7 @@ test.describe("postal address live update (Preview-only UI)", () => {
       // wait for new version
       await expect(PA_A.search.preview.version).toHaveText("1");
       // A's preview should reflect the edited name.
-      await expect(PA_A.search.preview.name).toHaveText(
-        edited.name
-      );
+      await expect(PA_A.search.preview.name).toHaveText(edited.name);
 
       // Optional sanity check: A did not navigate away (no hard reload).
       await expect(pageA).toHaveURL(urlA);

@@ -6,7 +6,10 @@ import {
   expectPreviewShows,
   openPostalAddressList,
 } from "../../helpers/postal_address";
-import { searchAndOpenByNameOnCurrentPage } from "../../helpers/utils";
+import {
+  searchAndOpenByNameOnCurrentPage,
+  waitForAppHydration,
+} from "../../helpers/utils";
 
 test("Create Address (happy path): New → Fill → Save → Verify in search", async ({
   page,
@@ -38,19 +41,19 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
     await clickSave(page);
     // The app may stay on the form or navigate; we normalize by going to search.
     await page.goto("/postal-address");
+
+    // Wait for hydration after raw navigation
+    await waitForAppHydration(page);
+
     await expect(PA.search.dropdown.input).toBeVisible();
   });
 
   await test.step("Find the created address via search", async () => {
-    await searchAndOpenByNameOnCurrentPage(
-      PA.search.dropdown,
-      initial.name,
-      {
-        clearFirst: true,
-        expectUnique: true,
-        waitAriaBusy: true,
-      }
-    );
+    await searchAndOpenByNameOnCurrentPage(PA.search.dropdown, initial.name, {
+      clearFirst: true,
+      expectUnique: true,
+      waitAriaBusy: true,
+    });
   });
 
   await test.step("Verify preview shows the saved data", async () => {

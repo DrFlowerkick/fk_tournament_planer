@@ -5,7 +5,8 @@ import {
   typeThenBlur,
   selectThenBlur,
   extractQueryParamFromUrl,
-} from "./utils";
+  waitForAppHydration,
+} from "./utils"; // Added waitForAppHydration
 
 export const ROUTES = {
   newAddress: "/postal-address/new_pa",
@@ -19,7 +20,10 @@ export async function openPostalAddressList(page: Page) {
   const PA = selectors(page).postalAddress;
   // Navigate to "list" route and assert elements exist
   await page.goto(ROUTES.list);
-  await page.waitForLoadState("domcontentloaded");
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
   await expect(PA.search.dropdown.input).toBeVisible();
   await expect(PA.search.btnNew).toBeVisible();
   await expect(PA.search.btnEdit).toBeVisible();
@@ -33,7 +37,10 @@ export async function waitForPostalAddressListUrl(page: Page) {
   const PA = selectors(page).postalAddress;
   // Wait for URL like /postal-address?address_id=UUID
   await page.waitForURL(/\/postal-address\?address_id=[0-9a-f-]{36}$/);
-  await page.waitForLoadState("domcontentloaded");
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
   await expect(PA.search.dropdown.input).toBeVisible();
   await expect(PA.search.btnNew).toBeVisible();
   await expect(PA.search.btnEdit).toBeVisible();
@@ -54,7 +61,10 @@ export async function openNewForm(page: Page) {
   const PA = selectors(page).postalAddress;
   // Navigate to "new_pa" route and assert the form exists
   await page.goto(ROUTES.newAddress);
-  await page.waitForLoadState("domcontentloaded");
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
   await expect(PA.form.root).toBeVisible();
   await expect(PA.form.btnSave).toBeVisible();
   await expect(PA.form.btnSaveAsNew).toBeHidden();
@@ -77,8 +87,11 @@ export async function clickEditToOpenEditForm(page: Page) {
 export async function openEditForm(page: Page, id: string) {
   await page.goto(`/postal-address/edit_pa?address_id=${id}`);
   // Assert the form is shown again
+
+  // Note: waitForPostalAddressEditUrl internally waits for URL AND hydration
+  // so we don't need an explicit wait here, but the original code had it.
+  // The function call below handles the timing.
   await waitForPostalAddressEditUrl(page);
-  await page.waitForLoadState("domcontentloaded");
 }
 
 /**
@@ -88,7 +101,10 @@ export async function waitForPostalAddressEditUrl(page: Page) {
   const PA = selectors(page).postalAddress;
   // Wait for URL like /postal-address/edit_pa?address_id=UUID
   await page.waitForURL(/\/postal-address\/edit_pa\?address_id=[0-9a-f-]{36}$/);
-  await page.waitForLoadState("domcontentloaded");
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
   await expect(PA.form.root).toBeVisible();
   await expect(PA.form.btnSave).toBeVisible();
   await expect(PA.form.btnSaveAsNew).toBeVisible();
@@ -174,11 +190,7 @@ export async function fillFields(
 
   // region
   if (fields.region !== undefined) {
-    await typeThenBlur(
-      PA.form.inputRegion,
-      fields.region,
-      PA.form.inputName
-    );
+    await typeThenBlur(PA.form.inputRegion, fields.region, PA.form.inputName);
   }
 }
 
@@ -255,15 +267,11 @@ export async function expectPreviewShows(
   await expect(PA.search.preview.root).toBeVisible();
 
   if (expected.name !== undefined) {
-    await expect(PA.search.preview.name).toHaveText(
-      expected.name!
-    );
+    await expect(PA.search.preview.name).toHaveText(expected.name!);
   }
 
   if (expected.street !== undefined) {
-    await expect(PA.search.preview.street).toHaveText(
-      expected.street!
-    );
+    await expect(PA.search.preview.street).toHaveText(expected.street!);
   }
 
   if (expected.postal_code !== undefined) {
@@ -273,15 +281,11 @@ export async function expectPreviewShows(
   }
 
   if (expected.locality !== undefined) {
-    await expect(PA.search.preview.locality).toHaveText(
-      expected.locality!
-    );
+    await expect(PA.search.preview.locality).toHaveText(expected.locality!);
   }
 
   if (expected.region !== undefined) {
-    await expect(PA.search.preview.region).toHaveText(
-      expected.region!
-    );
+    await expect(PA.search.preview.region).toHaveText(expected.region!);
   }
 
   if (expected.country !== undefined) {
@@ -289,8 +293,6 @@ export async function expectPreviewShows(
       "country",
       expected.country
     );
-    await expect(PA.search.preview.country).toHaveText(
-      expectedText
-    );
+    await expect(PA.search.preview.country).toHaveText(expectedText);
   }
 }

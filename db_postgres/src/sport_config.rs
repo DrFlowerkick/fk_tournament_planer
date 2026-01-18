@@ -46,7 +46,7 @@ impl TryFrom<DbSportConfig> for SportConfig {
         if r.version > u32::MAX as i64 {
             return Err(DbError::RowVersionOutOfRange);
         }
-        let id_version = IdVersion::new(r.id, r.version as u32);
+        let id_version = IdVersion::new(r.id, Some(r.version as u32));
         let mut sc = SportConfig::new(id_version);
         sc.set_sport_id(r.sport_id)
             .set_name(r.name)

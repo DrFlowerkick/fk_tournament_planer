@@ -48,7 +48,7 @@ impl TryFrom<DbPostalAddress> for PostalAddress {
         if r.version > u32::MAX as i64 {
             return Err(DbError::RowVersionOutOfRange);
         }
-        let id_version = IdVersion::new(r.id, r.version as u32);
+        let id_version = IdVersion::new(r.id, Some(r.version as u32));
         let mut pa = PostalAddress::new(id_version);
         pa.set_name(r.name)
             .set_street(r.street)

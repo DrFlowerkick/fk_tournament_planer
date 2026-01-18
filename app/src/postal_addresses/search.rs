@@ -9,10 +9,10 @@ use app_utils::{
         },
     },
     error::AppError,
-    global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::AddressParams,
     server_fn::postal_address::{list_postal_addresses, load_postal_address},
+    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;

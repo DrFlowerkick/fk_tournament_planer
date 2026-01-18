@@ -1,5 +1,7 @@
 // app error
 
+pub mod strategy;
+
 use app_core::CoreError;
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};

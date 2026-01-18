@@ -1,7 +1,7 @@
 use app_utils::{
-    global_state::{GlobalState, GlobalStateStoreFields},
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::SportParams,
+    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
 use leptos_router::{components::A, hooks::use_query};
@@ -11,7 +11,9 @@ use reactive_stores::Store;
 pub fn SportDashboard() -> impl IntoView {
     // get query helpers
     let UseQueryNavigationReturn {
-        relative_sub_url, ..
+        relative_sub_url,
+        url_with_out_param,
+        ..
     } = use_query_navigation();
 
     // get global state and sport plugin manager
@@ -70,7 +72,8 @@ pub fn SportDashboard() -> impl IntoView {
                             </A>
 
                             <A
-                                href=relative_sub_url("/new-tournament")
+                                href=url_with_out_param("tournament_id", Some("/new-tournament"))
+
                                 attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-plan-new"
                             >

@@ -3,9 +3,7 @@
 use crate::{
     Core, CoreError, CoreResult, CrMsg, CrTopic, SportError,
     utils::{
-        id_version::{IdVersion, VersionId},
-        normalize::normalize_ws,
-        validation::*,
+        id_version::IdVersion, normalize::normalize_ws, traits::ObjectIdVersion, validation::*,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -37,7 +35,7 @@ impl Default for SportConfig {
     }
 }
 
-impl VersionId for SportConfig {
+impl ObjectIdVersion for SportConfig {
     fn get_id_version(&self) -> IdVersion {
         self.id_version
     }

@@ -21,8 +21,8 @@ pub struct Match {
     group_id: Uuid,
     /// id of round
     round_id: Uuid,
-    /// number of match
-    number: usize,
+    /// number of match in round
+    number: u32,
     /// entrant a, either scheduled or concrete id
     side_a: ScheduledEntrant,
     /// entrant b, either scheduled or concrete id

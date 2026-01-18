@@ -2,6 +2,7 @@
 import { test, expect } from "@playwright/test";
 import { openPostalAddressList } from "../../helpers/postal_address";
 import { selectors } from "../../helpers/selectors";
+import { waitForAppHydration } from "../../helpers/utils"; // ADDED IMPORT
 
 test.describe("Error loading non-existing postal address ID", () => {
   test("shows error message when navigating to non-existing ID", async ({
@@ -11,13 +12,15 @@ test.describe("Error loading non-existing postal address ID", () => {
     const BA = selectors(page).banners;
 
     // -------------------- Arrange: Ensure we are on the list page --------------------
-    // Open the postal address list first
+    // Open the postal address list first (Helper is safe)
     await openPostalAddressList(page);
 
     // Navigate to a non-existing postal address ID
     const nonExistingId = "00000000-0000-0000-0000-000000000000";
     await page.goto(`/postal-address?address_id=${nonExistingId}`);
-    await page.waitForLoadState("domcontentloaded");
+
+    // add hydration check after raw navigation
+    await waitForAppHydration(page);
 
     // Assert that the error message is displayed
     await expect(BA.acknowledgmentNavigate.root).toBeVisible();

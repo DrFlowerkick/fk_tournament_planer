@@ -8,6 +8,7 @@ use app_utils::params::SportParams;
 pub use edit::SportConfigForm;
 use leptos::prelude::*;
 use leptos_router::hooks::use_query;
+use leptos_router::nested_router::Outlet;
 pub use search::SearchSportConfig;
 pub use select_sport::SelectSportPlugin;
 
@@ -28,6 +29,10 @@ pub fn SportConfigPage() -> impl IntoView {
                     ().into_any()
                 }
             }}
+        </div>
+
+        <div class="mt-4">
+            <Outlet />
         </div>
     }
 }

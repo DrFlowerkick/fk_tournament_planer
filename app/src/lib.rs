@@ -4,7 +4,7 @@ pub mod home;
 pub mod postal_addresses;
 pub mod sport_config;
 
-use app_utils::global_state::GlobalState;
+use app_utils::state::global_state::GlobalState;
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
 use home::*;
@@ -60,6 +60,15 @@ pub fn App() -> impl IntoView {
     // provide global state context
     provide_global_state();
 
+    // HYDRATION MARKER for E2E TESTS:
+    // This effect runs only on the client once the WASM is active and hydration is complete.
+    // We mark the body so Playwright knows exactly when it's safe to click.
+    Effect::new(|_| {
+        if let Some(body) = document().body() {
+            let _ = body.set_attribute("data-hydrated", "true");
+        }
+    });
+
     view! {
         <Stylesheet id="leptos" href="/pkg/fk_tournament_planer.css" />
 
@@ -70,11 +79,11 @@ pub fn App() -> impl IntoView {
         <Router>
             <div class="flex flex-col min-h-screen">
                 // navigation
-                <header class="navbar bg-base-200">
+                <header class="navbar bg-base-300">
                     <div class="flex-1">
-                        <a href="/" class="btn btn-ghost normal-case text-xl">
+                        <A href="/" attr:class="btn btn-ghost normal-case text-xl">
                             "Tournament Planner"
-                        </a>
+                        </A>
                     </div>
                     <div class="flex-none">
                         <ul class="menu menu-horizontal px-1">
@@ -88,7 +97,7 @@ pub fn App() -> impl IntoView {
                     </div>
                 </header>
 
-                <main class="flex-grow p-4">
+                <main class="flex-grow p-4 bg-base-200">
                     <Routes fallback=|| "Page not found.".into_view()>
                         <ParentRoute path=path!("/") view=HomePage>
                             <Route
@@ -97,8 +106,8 @@ pub fn App() -> impl IntoView {
                                     view! {}
                                 }
                             />
-                            <Route path=path!("tournaments") view=ListTournaments />
-                            <Route path=path!("new-tournament") view=NewTournament />
+                            <TournamentsRoutes />
+                            <NewTournamentRoutes />
                             <Route path=path!("adhoc-tournament") view=AdhocTournament />
                             <Route path=path!("sport-configurations") view=SportConfigurations />
                             <Route path=path!("about-sport") view=AboutSport />
