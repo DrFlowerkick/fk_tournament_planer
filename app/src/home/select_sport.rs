@@ -51,7 +51,10 @@ pub fn SelectSportPlugin() -> impl IntoView {
                                             href=format!("?sport_id={}", id)
                                             attr:class="btn btn-outline h-auto min-h-[12rem] w-full flex flex-col items-center justify-center p-6 bg-base-100 hover:bg-base-200 hover:border-primary transition-all duration-300 shadow-md hover:shadow-xl rounded-xl border-dashed border-2"
                                             // Stable Test ID derived from name
-                                            attr:data-testid=format!("btn-select-sport-{}", test_id_suffix)
+                                            attr:data-testid=format!(
+                                                "btn-select-sport-{}",
+                                                test_id_suffix,
+                                            )
                                             // Accessibility label
                                             attr:aria-label=plugin_name
                                             prop:replace=true

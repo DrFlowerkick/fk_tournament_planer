@@ -13,6 +13,8 @@ pub enum CrKind {
     SportConfig,
     /// tournament-base
     TournamentBase,
+    /// stage
+    Stage,
 }
 
 impl From<&CrTopic> for CrKind {
@@ -21,6 +23,7 @@ impl From<&CrTopic> for CrKind {
             CrTopic::Address(_) => CrKind::Address,
             CrTopic::SportConfig(_) => CrKind::SportConfig,
             CrTopic::TournamentBase(_) => CrKind::TournamentBase,
+            CrTopic::Stage(_) => CrKind::Stage,
         }
     }
 }
@@ -38,6 +41,7 @@ impl SseUrl for CrTopic {
             CrTopic::Address(id) => *id,
             CrTopic::SportConfig(id) => *id,
             CrTopic::TournamentBase(id) => *id,
+            CrTopic::Stage(id) => *id,
         };
         CR_TOPIC_URL_TEMPLATE
             .replace("{kind}", CrKind::from(self).to_string().as_str())

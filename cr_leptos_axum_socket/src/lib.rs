@@ -112,6 +112,18 @@ pub fn use_client_registry_socket(
                         refetch();
                     }
                 }
+                CrMsg::StageUpdated {
+                    version: meta_version,
+                    ..
+                } => {
+                    if meta_version > version {
+                        log!(
+                            "StageUpdated received: refetching stage expecting version: {}",
+                            meta_version
+                        );
+                        refetch();
+                    }
+                }
             };
             log!("Subscribing to topic: {:?}", topic);
             socket.subscribe(topic, socket_handler);

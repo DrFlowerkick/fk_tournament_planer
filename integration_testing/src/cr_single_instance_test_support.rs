@@ -43,6 +43,7 @@ pub fn notice_version(n: &CrMsg) -> u32 {
         CrMsg::AddressUpdated { version, .. } => *version,
         CrMsg::SportConfigUpdated { version, .. } => *version,
         CrMsg::TournamentBaseUpdated { version, .. } => *version,
+        CrMsg::StageUpdated { version, .. } => *version,
     }
 }
 

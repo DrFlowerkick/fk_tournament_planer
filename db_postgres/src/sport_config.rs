@@ -4,7 +4,10 @@ use crate::{
     PgDb, escape_like, map_db_err,
     schema::{sport_configs, sport_configs::dsl::*},
 };
-use app_core::{DbError, DbResult, DbpSportConfig, SportConfig, utils::id_version::IdVersion};
+use app_core::{
+    DbError, DbResult, DbpSportConfig, SportConfig,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use diesel::{

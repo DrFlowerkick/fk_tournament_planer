@@ -293,7 +293,8 @@ pub fn EditTournament() -> impl IntoView {
                                 "Please select a tournament from the list."
                             </p>
                         </div>
-                    }.into_any()
+                    }
+                        .into_any()
                 } else {
                     view! {
                         // Card wrapping Form and Stage Links

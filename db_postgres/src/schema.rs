@@ -28,6 +28,18 @@ diesel::table! {
 }
 
 diesel::table! {
+    stages (id) {
+        id -> Uuid,
+        version -> Int8,
+        tournament_id -> Uuid,
+        number -> Int4,
+        num_groups -> Int4,
+        created_at -> Timestamptz,
+        updated_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     tournament_bases (id) {
         id -> Uuid,
         version -> Int8,
@@ -42,4 +54,11 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(postal_addresses, sport_configs, tournament_bases,);
+diesel::joinable!(stages -> tournament_bases (tournament_id));
+
+diesel::allow_tables_to_appear_in_same_query!(
+    postal_addresses,
+    sport_configs,
+    stages,
+    tournament_bases,
+);

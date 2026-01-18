@@ -12,6 +12,7 @@ pub enum CrTopic {
     Address(Uuid),
     SportConfig(Uuid),
     TournamentBase(Uuid),
+    Stage(Uuid),
 }
 
 impl Display for CrTopic {
@@ -20,6 +21,7 @@ impl Display for CrTopic {
             CrTopic::Address(id) => write!(f, "address: {id}"),
             CrTopic::SportConfig(id) => write!(f, "sport_config: {id}"),
             CrTopic::TournamentBase(id) => write!(f, "tournament: {id}"),
+            CrTopic::Stage(id) => write!(f, "stage: {id}"),
         }
     }
 }
@@ -30,6 +32,7 @@ impl CrTopic {
             CrTopic::Address(id) => id,
             CrTopic::SportConfig(id) => id,
             CrTopic::TournamentBase(id) => id,
+            CrTopic::Stage(id) => id,
         }
     }
 }
@@ -40,6 +43,7 @@ pub enum CrMsg {
     AddressUpdated { id: Uuid, version: u32 },
     SportConfigUpdated { id: Uuid, version: u32 },
     TournamentBaseUpdated { id: Uuid, version: u32 },
+    StageUpdated { id: Uuid, version: u32 },
 }
 
 /// client registry port trait

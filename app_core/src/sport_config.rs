@@ -60,10 +60,6 @@ impl SportConfig {
         self.id_version.get_version()
     }
 
-    pub fn get_id_version(&self) -> IdVersion {
-        self.id_version
-    }
-
     /// Get the sport ID associated with this configuration.
     pub fn get_sport_id(&self) -> Uuid {
         self.sport_id

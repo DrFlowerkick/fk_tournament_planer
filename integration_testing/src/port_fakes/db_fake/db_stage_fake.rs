@@ -1,37 +1,54 @@
-//! Fakes for DbpTournamentBase port
+//! Fakes for DbpStage port
 
 use super::FakeDatabasePort;
 use app_core::{
-    DbError, DbResult, DbpTournamentBase, TournamentBase,
+    DbError, DbResult, DbpStage, Stage,
     utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use async_trait::async_trait;
 use uuid::Uuid;
 
 #[async_trait]
-impl DbpTournamentBase for FakeDatabasePort {
-    async fn get_tournament_base(&self, id: Uuid) -> DbResult<Option<TournamentBase>> {
-        let mut guard = self.fail_next_get_tb.lock().unwrap();
+impl DbpStage for FakeDatabasePort {
+    async fn get_stage_by_id(&self, stage_id: Uuid) -> DbResult<Option<Stage>> {
+        let mut guard = self.fail_next_get_stage.lock().unwrap();
         if *guard {
             *guard = false;
             return Err(DbError::Other("injected get failure".into()));
         }
-        Ok(self.tournament_bases.lock().unwrap().get(&id).cloned())
+        Ok(self.stages.lock().unwrap().get(&stage_id).cloned())
     }
 
-    async fn save_tournament_base(&self, tournament: &TournamentBase) -> DbResult<TournamentBase> {
-        let mut guard = self.fail_next_save_tb.lock().unwrap();
+    async fn get_stage_by_number(&self, t_id: Uuid, num: u32) -> DbResult<Option<Stage>> {
+        let mut guard = self.fail_next_get_stage.lock().unwrap();
+        if *guard {
+            *guard = false;
+            return Err(DbError::Other("injected get failure".into()));
+        }
+
+        let stages = self.stages.lock().unwrap();
+        let found = stages
+            .values()
+            .find(|s| s.get_tournament_id() == t_id && s.get_number() == num)
+            .cloned();
+
+        Ok(found)
+    }
+
+    async fn save_stage(&self, stage: &Stage) -> DbResult<Stage> {
+        let mut guard = self.fail_next_save_stage.lock().unwrap();
         if *guard {
             *guard = false;
             return Err(DbError::Other("injected save failure".into()));
         }
 
-        let mut guard = self.tournament_bases.lock().unwrap();
-        let mut new = tournament.clone();
+        let mut guard = self.stages.lock().unwrap();
+        let mut new = stage.clone();
 
-        match tournament.get_id_version() {
+        match stage.get_id_version() {
             IdVersion::Existing(inner) => {
                 if let Some(existing) = guard.get(&inner.get_id()) {
+                    // Check Optimistic Locking
                     let existing_v = existing.get_version().unwrap_or(0);
                     let update_v = inner.get_version();
 
@@ -39,6 +56,7 @@ impl DbpTournamentBase for FakeDatabasePort {
                         return Err(DbError::OptimisticLockConflict);
                     }
 
+                    // Increment version
                     new.set_id_version(IdVersion::new(*inner.get_id(), Some(existing_v + 1)));
                 } else {
                     return Err(DbError::NotFound);
@@ -49,8 +67,10 @@ impl DbpTournamentBase for FakeDatabasePort {
             }
             IdVersion::NewWithId(id) => {
                 if guard.contains_key(&id) {
+                    // Simulation: Inserting with specific ID that already exists usually fails
+                    // unless we treat it as an upset/seed. For simplicity in tests:
                     return Err(DbError::Other(format!(
-                        "TournamentBase with ID {} already exists",
+                        "Stage with ID {} already exists",
                         id
                     )));
                 }
@@ -62,35 +82,24 @@ impl DbpTournamentBase for FakeDatabasePort {
         Ok(new)
     }
 
-    async fn list_tournament_bases(
-        &self,
-        sport_id: Uuid,
-        name_filter: Option<&str>,
-        limit: Option<usize>,
-    ) -> DbResult<Vec<TournamentBase>> {
-        let mut guard = self.fail_next_list_tb.lock().unwrap();
+    async fn list_stages_of_tournament(&self, t_id: Uuid) -> DbResult<Vec<Stage>> {
+        let mut guard = self.fail_next_list_stage.lock().unwrap();
         if *guard {
             *guard = false;
             return Err(DbError::Other("injected list failure".into()));
         }
 
-        let filter = name_filter.map(|s| s.to_lowercase());
         let mut rows: Vec<_> = self
-            .tournament_bases
+            .stages
             .lock()
             .unwrap()
             .values()
-            .filter(|sc| sc.get_sport_id() == sport_id)
+            .filter(|s| s.get_tournament_id() == t_id)
             .cloned()
             .collect();
 
-        if let Some(f) = filter {
-            rows.retain(|tb| tb.get_name().to_lowercase().contains(&f));
-        }
-
-        if let Some(lim) = limit {
-            rows.truncate(lim);
-        }
+        // Simulate DB order by number ASC
+        rows.sort_by_key(|s| s.get_number());
 
         Ok(rows)
     }

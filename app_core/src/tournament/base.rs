@@ -338,7 +338,7 @@ impl Core<TournamentBaseState> {
             .save_tournament_base(&self.state.tournament)
             .await?;
 
-        // publish change of sport config to client registry
+        // publish change of tournament base to client registry
         let id =
             self.state.tournament.get_id().expect(
                 "expecting save_tournament_base to return always an existing id and version",

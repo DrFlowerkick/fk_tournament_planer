@@ -109,7 +109,8 @@ run-ssr:
 # -------- Unit Testing & Coverage --------
 .PHONY: test
 test:
-	cargo nextest run --workspace --features "ssr"
+	# Entwicklung: Standard 'cargo test' ist sicher für DB-Cleanup und Synchronisation
+	cargo test --workspace --features "ssr" -- --test-threads 4
 	cargo test --doc --workspace
 
 .PHONY: test-doc
@@ -118,7 +119,7 @@ test-doc:
 
 .PHONY: test-release
 test-release:
-	cargo nextest run --workspace --release --features "ssr"
+	cargo test --workspace --release --features "ssr" -- --test-threads 4
 
 .PHONY: test-wasm
 test-wasm:
@@ -132,22 +133,23 @@ test-wasm-release:
 coverage:
 	# Clean previous coverage artifacts
 	cargo +nightly llvm-cov clean --workspace
-	# 1. Run unit and integration tests via nextest
-	cargo +nightly llvm-cov nextest --workspace --features "ssr" --lcov --output-path coverage/lcov.info
-	# 2. Run doctests and merge coverage data
-	cargo +nightly llvm-cov test --doc --workspace --features "ssr"
-	# 3. Generate the final HTML report from the merged data
+	# Coverage: Wir nutzen nextest für Speed, müssen aber den globalen DB-Cleanup deaktivieren,
+	# da parallele Prozesse sich sonst gegenseitig die DBs löschen.
+	DISABLE_DB_CLEANUP=1 cargo +nightly llvm-cov nextest --workspace --features "ssr" --lcov --output-path coverage/lcov.info
+	# Doctests
+	DISABLE_DB_CLEANUP=1 cargo +nightly llvm-cov test --doc --workspace --features "ssr"
+	# Report
 	cargo +nightly llvm-cov report --html --output-dir coverage
 
 .PHONY: coverage-release
 coverage-release:
 	# Clean previous coverage artifacts
 	cargo +nightly llvm-cov clean --workspace
-	# 1. Run unit and integration tests via nextest (release profile)
-	cargo +nightly llvm-cov nextest --workspace --release --features "ssr" --lcov --output-path coverage/lcov.info
-	# 2. Run doctests and merge coverage data (release profile)
-	cargo +nightly llvm-cov test --doc --workspace --release --features "ssr"
-	# 3. Generate the final HTML report from the merged data (release profile)
+	# Coverage (Release): s.o. Cleanup deaktivieren
+	DISABLE_DB_CLEANUP=1 cargo +nightly llvm-cov nextest --workspace --release --features "ssr" --lcov --output-path coverage/lcov.info
+	# Doctests
+	DISABLE_DB_CLEANUP=1 cargo +nightly llvm-cov test --doc --workspace --release --features "ssr"
+	# Report
 	cargo +nightly llvm-cov report --release --html --output-dir coverage
 
 # -------- Webserver Monitoring & Control --------

@@ -1,6 +1,6 @@
 // database port
 
-use crate::{PostalAddress, SportConfig, TournamentBase};
+use crate::{PostalAddress, SportConfig, Stage, TournamentBase};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -9,7 +9,9 @@ use uuid::Uuid;
 
 /// database port trait
 #[async_trait]
-pub trait DatabasePort: DbpPostalAddress + DbpSportConfig + DbpTournamentBase + Any {
+pub trait DatabasePort:
+    DbpPostalAddress + DbpSportConfig + DbpTournamentBase + DbpStage + Any
+{
     async fn ping_db(&self) -> DbResult<()>;
 }
 
@@ -37,7 +39,7 @@ pub trait DbpSportConfig: Send + Sync {
         limit: Option<usize>,
     ) -> DbResult<Vec<SportConfig>>;
 }
-/// database port trait for sport config
+/// database port trait for tournament base
 #[async_trait]
 pub trait DbpTournamentBase: Send + Sync {
     async fn get_tournament_base(&self, base_id: Uuid) -> DbResult<Option<TournamentBase>>;
@@ -51,6 +53,19 @@ pub trait DbpTournamentBase: Send + Sync {
         name_filter: Option<&str>,
         limit: Option<usize>,
     ) -> DbResult<Vec<TournamentBase>>;
+}
+
+/// database port trait for stage
+#[async_trait]
+pub trait DbpStage: Send + Sync {
+    async fn get_stage_by_id(&self, stage_id: Uuid) -> DbResult<Option<Stage>>;
+    async fn get_stage_by_number(
+        &self,
+        tournament_base_id: Uuid,
+        number: u32,
+    ) -> DbResult<Option<Stage>>;
+    async fn save_stage(&self, stage: &Stage) -> DbResult<Stage>;
+    async fn list_stages_of_tournament(&self, tournament_id: Uuid) -> DbResult<Vec<Stage>>;
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]

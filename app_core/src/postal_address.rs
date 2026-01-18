@@ -58,9 +58,6 @@ impl PostalAddress {
     pub fn get_version(&self) -> Option<u32> {
         self.id_version.get_version()
     }
-    pub fn get_id_version(&self) -> IdVersion {
-        self.id_version
-    }
     pub fn get_name(&self) -> &str {
         self.name.as_str()
     }
