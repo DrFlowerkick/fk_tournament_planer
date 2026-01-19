@@ -23,3 +23,8 @@ pub struct SportConfigParams {
 pub struct TournamentBaseParams {
     pub tournament_id: Option<Uuid>,
 }
+
+#[derive(Params, Clone, PartialEq, Eq, Debug)]
+pub struct StageParams {
+    pub stage_number: Option<u32>,
+}

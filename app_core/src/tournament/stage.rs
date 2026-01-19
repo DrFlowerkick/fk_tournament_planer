@@ -50,9 +50,10 @@ impl ObjectNumber for Stage {
 
 impl Stage {
     /// Create a new `Stage` with the given `IdVersion`.
-    pub fn new(id_version: IdVersion) -> Self {
+    pub fn new(id_version: IdVersion, stage_number: u32) -> Self {
         Stage {
             id_version,
+            number: stage_number,
             ..Default::default()
         }
     }

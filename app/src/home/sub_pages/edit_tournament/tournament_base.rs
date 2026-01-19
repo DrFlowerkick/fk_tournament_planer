@@ -36,10 +36,13 @@ pub fn EditTournament() -> impl IntoView {
     // --- Initialize context for creating and editing tournaments ---
     let tournament_editor_state = RwSignal::new(TournamentEditorState::new());
     provide_context::<RwSignal<TournamentEditorState>>(tournament_editor_state);
+    let page_err_ctx = expect_context::<PageErrorContext>();
+    let toast_ctx = expect_context::<ToastContext>();
+    let component_id = StoredValue::new(Uuid::new_v4());
 
     let is_changed = move || tournament_editor_state.read().is_changed();
 
-    // --- Hooks, Navigation & toast/ error state ---
+    // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
         nav_url,
         update,
@@ -51,9 +54,6 @@ pub fn EditTournament() -> impl IntoView {
 
     let sport_id_query = use_query::<SportParams>();
     let tournament_id_query = use_query::<TournamentBaseParams>();
-    let page_err_ctx = expect_context::<PageErrorContext>();
-    let toast_ctx = expect_context::<ToastContext>();
-    let component_id = StoredValue::new(Uuid::new_v4());
 
     // remove errors on unmount
     on_cleanup(move || {
@@ -116,7 +116,7 @@ pub fn EditTournament() -> impl IntoView {
     // handle successful load
     Effect::new(move || {
         if let Some(Ok(Some(tournament))) = tournament_res.get() {
-            // check if tournament is in TournamentEditorState
+            // check if new tournament is changed in TournamentEditorState
             // if yes, do not reset signals
             if tournament_id().is_none() && tournament_editor_state.read_untracked().is_changed() {
                 return;

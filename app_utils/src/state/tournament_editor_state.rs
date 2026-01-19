@@ -161,6 +161,24 @@ impl TournamentEditorState {
         self.tournament.as_ref()
     }
 
+    pub fn get_stage_number(&self, stage_number: u32) -> Option<&Stage> {
+        let Some(start) = self.get_root_id() else {
+            return None;
+        };
+        for (_source, target, edge) in self.structure.edges_directed(start, Direction::Outgoing) {
+            match edge {
+                DependencyType::Stage => {
+                    if let Some(stage) = self.stages.get(&target)
+                        && stage.get_number() == stage_number
+                    {
+                        return Some(stage);
+                    }
+                }
+            }
+        }
+        None
+    }
+
     // --- Getters for Saving ---
 
     pub fn get_tournament_diff(
