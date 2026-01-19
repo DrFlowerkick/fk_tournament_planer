@@ -188,17 +188,20 @@ pub fn handle_general_error(
     ctx: &PageErrorContext,
     component_id: Uuid,
     error_msg: impl Into<String>,
-    retry_fn: impl Fn() + 'static + Send + Sync + Clone,
+    retry_fn: Option<impl Fn() + 'static + Send + Sync + Clone>,
     go_home_fn: impl Fn() + 'static + Send + Sync + Clone,
 ) {
     let key = ErrorKey::General;
 
     let error_msg = error_msg.into();
 
-    let builder = ActiveError::builder(component_id, error_msg)
-        .with_key(key)
-        .with_retry("Retry", move || retry_fn())
-        .with_cancel("To Dashboard", move || go_home_fn());
+    let mut builder = ActiveError::builder(component_id, error_msg).with_key(key);
+
+    if let Some(retry) = retry_fn {
+        builder = builder.with_retry("Retry", move || retry());
+    }
+
+    let builder = builder.with_cancel("To Dashboard", move || go_home_fn());
 
     ctx.report_error(builder.build());
 }

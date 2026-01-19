@@ -143,7 +143,7 @@ impl TournamentEditorState {
     }
 
     /// Adds a stage to the state and links it to the tournament.
-    pub fn add_stage(&mut self, stage: Stage, is_origin: bool) {
+    pub fn set_stage(&mut self, stage: Stage, is_origin: bool) {
         let Some(stage_id) = stage.get_id_version().get_id() else {
             warn!("Stage has no ID, cannot add to tournament editor state");
             return;

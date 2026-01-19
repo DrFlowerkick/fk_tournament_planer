@@ -12,6 +12,7 @@ use app_utils::{
     },
     hooks::{
         is_field_valid::is_field_valid,
+        use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
     params::{SportParams, TournamentBaseParams},
@@ -141,9 +142,6 @@ pub fn EditTournament() -> impl IntoView {
     // save tournament base action
     let save_tournament_base = ServerAction::<SaveTournamentBase>::new();
 
-    // derived signals of action
-    let is_pending = save_tournament_base.pending();
-
     // handle successful save
     Effect::new({
         let navigate = navigate.clone();
@@ -170,6 +168,12 @@ pub fn EditTournament() -> impl IntoView {
     // save stage action
     let save_stage = ServerAction::<SaveStage>::new();
 
+    // derived signals of action
+    let is_pending = move || {
+        save_tournament_base.pending().try_get().unwrap_or(false)
+            || save_stage.pending().try_get().unwrap_or(false)
+    };
+
     // --- Event Handlers ---
     // save function for save button
     let on_save = move || {
@@ -189,19 +193,12 @@ pub fn EditTournament() -> impl IntoView {
     // retry function for error handling
     let refetch_and_reset = move || {
         save_tournament_base.clear();
+        save_stage.clear();
         tournament_res.refetch();
     };
 
     // cancel function for cancel button and error handling
-    let on_cancel = {
-        let navigate = navigate.clone();
-        move || {
-            // unwrap_or_default() is safe here, because component will be unmounted,
-            // if sport_id is None
-            let s_id = sport_id().unwrap_or_default();
-            let _ = navigate(&format!("/?sport_id={}", s_id), Default::default());
-        }
-    };
+    let on_cancel = use_on_cancel();
 
     // Handle read and write errors
     Effect::new({
@@ -317,8 +314,7 @@ pub fn EditTournament() -> impl IntoView {
                                 }>
                                     <fieldset
                                         disabled=move || {
-                                            is_pending.try_get().unwrap_or(false)
-                                                || page_err_ctx.has_errors()
+                                            is_pending() || page_err_ctx.has_errors()
                                                 || matches!(
                                                     state.get_value(),
                                                     TournamentState::ActiveStage(_) | TournamentState::Finished
@@ -501,7 +497,7 @@ pub fn EditTournament() -> impl IntoView {
                                 class="btn btn-ghost"
                                 data-testid="btn-tournament-cancel"
                                 on:click=move |_| on_cancel()
-                                disabled=move || is_pending.try_get().unwrap_or(false)
+                                disabled=move || is_pending()
                             >
                                 "Cancel"
                             </button>
@@ -511,13 +507,12 @@ pub fn EditTournament() -> impl IntoView {
                                 data-testid="btn-tournament-save"
                                 on:click=move |_| on_save()
                                 disabled=move || {
-                                    is_pending.try_get().unwrap_or(false)
-                                        || page_err_ctx.has_errors() || !is_valid_tournament()
-                                        || !is_changed()
+                                    is_pending() || page_err_ctx.has_errors()
+                                        || !is_valid_tournament() || !is_changed()
                                 }
                             >
                                 {move || {
-                                    if is_pending.try_get().unwrap_or(false) {
+                                    if is_pending() {
                                         view! {
                                             <span class="loading loading-spinner"></span>
                                             "Saving..."

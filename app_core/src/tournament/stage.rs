@@ -50,10 +50,9 @@ impl ObjectNumber for Stage {
 
 impl Stage {
     /// Create a new `Stage` with the given `IdVersion`.
-    pub fn new(id_version: IdVersion, stage_number: u32) -> Self {
+    pub fn new(id_version: IdVersion) -> Self {
         Stage {
             id_version,
-            number: stage_number,
             ..Default::default()
         }
     }
@@ -92,6 +91,12 @@ impl Stage {
     /// Set the tournament ID.
     pub fn set_tournament_id(&mut self, tournament_id: Uuid) -> &mut Self {
         self.tournament_id = tournament_id;
+        self
+    }
+
+    /// Set the scheduled stage number in tournament.
+    pub fn set_number(&mut self, number: u32) -> &mut Self {
+        self.number = number;
         self
     }
 

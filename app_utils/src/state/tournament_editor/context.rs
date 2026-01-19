@@ -39,10 +39,10 @@ impl TournamentEditorContext {
         });
     }
 
-    /// Adds stage based on user input.
-    pub fn add_stage(&self, stage: Stage, is_origin: bool) {
+    /// Sets stage based on user input.
+    pub fn set_stage(&self, stage: Stage, is_origin: bool) {
         self.inner.update(|state| {
-            state.add_stage(stage, is_origin);
+            state.set_stage(stage, is_origin);
         });
     }
 
