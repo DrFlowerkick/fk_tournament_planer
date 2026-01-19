@@ -19,7 +19,7 @@ use app_utils::{
     state::{
         error_state::PageErrorContext,
         toast_state::{ToastContext, ToastVariant},
-        tournament_editor_state::TournamentEditorState,
+        tournament_editor::context::TournamentEditorContext,
     },
 };
 use leptos::prelude::*;
@@ -34,7 +34,7 @@ use uuid::Uuid;
 #[component]
 pub fn EditTournamentStage() -> impl IntoView {
     // --- Get context for creating and editing tournaments ---
-    let tournament_editor = expect_context::<TournamentEditorState>();
+    let tournament_editor_context = expect_context::<TournamentEditorContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
     let toast_ctx = expect_context::<ToastContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
@@ -55,7 +55,9 @@ pub fn EditTournamentStage() -> impl IntoView {
         {
             Some(t_id)
         } else {
-            tournament_editor.get_tournament().and_then(|t| t.get_id())
+            tournament_editor_context
+                .get_tournament()
+                .and_then(|t| t.get_id())
         }
     };
     let stage_number_params = use_params::<StageParams>();
@@ -96,12 +98,12 @@ pub fn EditTournamentStage() -> impl IntoView {
                 // stage successfully loaded
                 set_id_version.set(stage.get_id_version());
                 set_num_groups.set(stage.get_num_groups());
-                tournament_editor.set_stage(stage.clone());
+                tournament_editor_context.add_stage(stage.clone(), true);
             }
             Some(Ok(None)) => {
-                // stage not found, create a new one, if tournament_editor does not have it yet
+                // stage not found, create a new one, if tournament_editor_context does not have it yet
                 let sn = stage_number().unwrap();
-                //if tournament_editor.
+                //if tournament_editor_context.
                 // new stage
                 let new_state = Stage::new(IdVersion::NewWithId(Uuid::new_v4()), sn);
             }

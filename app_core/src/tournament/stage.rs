@@ -95,12 +95,6 @@ impl Stage {
         self
     }
 
-    /// Set the scheduled stage number in tournament.
-    pub fn set_number(&mut self, number: u32) -> &mut Self {
-        self.number = number;
-        self
-    }
-
     /// Set the number of groups in stage.
     pub fn set_num_groups(&mut self, num_groups: u32) -> &mut Self {
         self.num_groups = num_groups;

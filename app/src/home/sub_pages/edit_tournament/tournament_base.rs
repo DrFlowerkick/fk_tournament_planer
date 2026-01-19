@@ -15,11 +15,14 @@ use app_utils::{
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
     params::{SportParams, TournamentBaseParams},
-    server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
+    server_fn::{
+        stage::SaveStage,
+        tournament_base::{SaveTournamentBase, load_tournament_base},
+    },
     state::{
         error_state::PageErrorContext,
         toast_state::{ToastContext, ToastVariant},
-        tournament_editor_state::TournamentEditorState,
+        tournament_editor::context::TournamentEditorContext,
     },
 };
 use leptos::prelude::*;
@@ -34,13 +37,13 @@ use uuid::Uuid;
 #[component]
 pub fn EditTournament() -> impl IntoView {
     // --- Initialize context for creating and editing tournaments ---
-    let tournament_editor_state = RwSignal::new(TournamentEditorState::new());
-    provide_context::<RwSignal<TournamentEditorState>>(tournament_editor_state);
+    let tournament_editor_context = TournamentEditorContext::new();
+    provide_context(tournament_editor_context);
     let page_err_ctx = expect_context::<PageErrorContext>();
     let toast_ctx = expect_context::<ToastContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
 
-    let is_changed = move || tournament_editor_state.read().is_changed();
+    let is_changed = move || tournament_editor_context.is_changed();
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
@@ -116,9 +119,9 @@ pub fn EditTournament() -> impl IntoView {
     // handle successful load
     Effect::new(move || {
         if let Some(Ok(Some(tournament))) = tournament_res.get() {
-            // check if new tournament is changed in TournamentEditorState
+            // check if new tournament is changed in TournamentEditorContext
             // if yes, do not reset signals
-            if tournament_id().is_none() && tournament_editor_state.read_untracked().is_changed() {
+            if tournament_id().is_none() && tournament_editor_context.is_changed() {
                 return;
             }
             set_id_version.set(tournament.get_id_version());
@@ -131,9 +134,7 @@ pub fn EditTournament() -> impl IntoView {
             }
             state.set_value(tournament.get_tournament_state());
 
-            tournament_editor_state.update(|state| {
-                state.set_tournament(tournament.clone(), !is_new.get());
-            });
+            tournament_editor_context.set_tournament(tournament.clone(), !is_new.get());
         }
     });
 
@@ -166,14 +167,22 @@ pub fn EditTournament() -> impl IntoView {
         }
     });
 
+    // save stage action
+    let save_stage = ServerAction::<SaveStage>::new();
+
     // --- Event Handlers ---
     // save function for save button
     let on_save = move || {
-        if let Some(tournament) = tournament_editor_state.read().get_tournament_diff() {
+        if let Some(tournament) = tournament_editor_context.get_tournament_diff() {
             save_tournament_base.dispatch(SaveTournamentBase { tournament });
         }
-        for _changed_stage in tournament_editor_state.read().get_stages_diff() {
-            // ToDo: save stages
+        for changed_stage in tournament_editor_context.get_stages_diff() {
+            save_stage.dispatch(SaveStage {
+                stage: changed_stage,
+            });
+        }
+        for _changed_group in tournament_editor_context.get_groups_diff() {
+            // ToDo: implement SaveGroup server action and dispatch here
         }
     };
 
@@ -251,9 +260,7 @@ pub fn EditTournament() -> impl IntoView {
     // Sync to Global State: Only if valid!
     Effect::new(move || {
         if is_valid_tournament() {
-            tournament_editor_state.update(|state| {
-                state.set_tournament(current_tournament_base.get(), false);
-            });
+            tournament_editor_context.set_tournament(current_tournament_base.get(), false);
         }
     });
 

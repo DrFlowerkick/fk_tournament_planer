@@ -136,7 +136,7 @@ impl ActiveErrorBuilder<HasCancelAction> {
 // --- Context ---
 
 #[derive(Clone, Copy)]
-pub struct PageErrorContext(pub RwSignal<Vec<ActiveError>>);
+pub struct PageErrorContext(RwSignal<Vec<ActiveError>>);
 
 impl PageErrorContext {
     pub fn new() -> Self {

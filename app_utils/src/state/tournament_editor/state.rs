@@ -1,10 +1,10 @@
 //! manage global state for tournament editor
 
 use app_core::{
-    Stage, TournamentBase,
+    Group, Stage, TournamentBase,
     utils::traits::{ObjectIdVersion, ObjectNumber},
 };
-use leptos::logging::{log, warn};
+use leptos::logging::warn;
 use petgraph::{Direction, graphmap::DiGraphMap, visit::Bfs};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -82,6 +82,7 @@ where
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DependencyType {
     Stage,
+    Group,
 }
 
 #[derive(Clone)]
@@ -96,6 +97,10 @@ pub struct TournamentEditorState {
     pub stages: HashMap<Uuid, Stage>,
     /// origin stages from server
     pub origin_stages: HashMap<Uuid, Stage>,
+    /// groups associated with stages (not yet used)
+    pub groups: HashMap<Uuid, Group>,
+    /// origin groups from server (not yet used)
+    pub origin_groups: HashMap<Uuid, Group>,
 }
 
 impl TournamentEditorState {
@@ -106,6 +111,8 @@ impl TournamentEditorState {
             structure: DiGraphMap::new(),
             stages: HashMap::new(),
             origin_stages: HashMap::new(),
+            groups: HashMap::new(),
+            origin_groups: HashMap::new(),
         }
     }
 
@@ -120,40 +127,46 @@ impl TournamentEditorState {
             return;
         };
 
-        // 1. Context Switch Check
-        // If we are loading a completely different tournament ID, we MUST clear dependent data
-        // to prevent mixing data from Tournament A with Tournament B.
-        if let Some(old_id) = self.get_root_id() {
-            if old_id != new_id {
-                log!("Switching tournament context: {} -> {}", old_id, new_id);
-                self.structure.clear();
-                self.stages.clear();
-                self.origin_stages.clear();
-                // We also reset the opposing optional to ensure consistency
-                if is_origin {
-                    self.tournament = None;
-                } else {
-                    self.origin_tournament = None;
-                }
-            }
-        }
-
-        // 2. Ensure Graph Node exists
+        // Ensure Graph Node exists
         self.structure.add_node(new_id);
 
-        // 3. Validation: Check if changes invalidate child objects (e.g. Mode change -> fewer stages)
-        self.cleanup_excess_stages(new_id, &tournament);
-
-        // 4. Assign & Validate
+        // Assign new tournament state
         if is_origin {
             // Case: Loading from DB or Post-Save update.
             // We assume DB state is valid.
             self.origin_tournament = Some(tournament.clone());
-            self.tournament = Some(tournament);
-        } else {
-            // Case: User editing.
-            self.tournament = Some(tournament);
         }
+        self.tournament = Some(tournament);
+
+        // Validation: Check if changes invalidate child objects (e.g. Mode change -> fewer stages)
+        self.cleanup_excess_stages(new_id);
+    }
+
+    /// Adds a stage to the state and links it to the tournament.
+    pub fn add_stage(&mut self, stage: Stage, is_origin: bool) {
+        let Some(stage_id) = stage.get_id_version().get_id() else {
+            warn!("Stage has no ID, cannot add to tournament editor state");
+            return;
+        };
+        let Some(tournament_id) = self.get_root_id() else {
+            warn!("TournamentBase has no ID, cannot add stage to state");
+            return;
+        };
+
+        // Link to tournament root, which although adds the node if missing
+        self.structure
+            .add_edge(tournament_id, stage_id, DependencyType::Stage);
+
+        // Add to stages map
+        if is_origin {
+            // Case: Loading from DB or Post-Save update.
+            // We assume DB state is valid.
+            self.origin_stages.insert(stage_id, stage.clone());
+        }
+        self.stages.insert(stage_id, stage);
+
+        // Validation: Check if changes invalidate child objects (e.g. fewer groups)
+        self.cleanup_excess_groups(stage_id);
     }
 
     // --- Getters for keeping state of new tournament & dependencies ---
@@ -161,19 +174,16 @@ impl TournamentEditorState {
         self.tournament.as_ref()
     }
 
-    pub fn get_stage_number(&self, stage_number: u32) -> Option<&Stage> {
+    pub fn get_stage_by_number(&self, stage_number: u32) -> Option<&Stage> {
         let Some(start) = self.get_root_id() else {
             return None;
         };
         for (_source, target, edge) in self.structure.edges_directed(start, Direction::Outgoing) {
-            match edge {
-                DependencyType::Stage => {
-                    if let Some(stage) = self.stages.get(&target)
-                        && stage.get_number() == stage_number
-                    {
-                        return Some(stage);
-                    }
-                }
+            if let DependencyType::Stage = *edge
+                && let Some(stage) = self.stages.get(&target)
+                && stage.get_number() == stage_number
+            {
+                return Some(stage);
             }
         }
         None
@@ -197,6 +207,15 @@ impl TournamentEditorState {
         self.stages.get_diff(&self.origin_stages, Some(&valid_ids))
     }
 
+    pub fn get_groups_diff(&self) -> <HashMap<Uuid, Group> as Diffable<Group>>::Diff {
+        // We collect ALL valid reachable IDs. The Diffable impl for HashMap will pick
+        // only the ones that exist in the 'groups' map.
+        let valid_ids = self.get_valid_dependencies();
+
+        self.groups.get_diff(&self.origin_groups, Some(&valid_ids))
+    }
+
+    // --- Change Detection ---
     /// Checks if there are any changes compared to the origin state.
     pub fn is_changed(&self) -> bool {
         let Some(start) = self.get_root_id() else {
@@ -218,6 +237,13 @@ impl TournamentEditorState {
                     DependencyType::Stage => {
                         let curr = self.stages.get(&target);
                         let orig = self.origin_stages.get(&target);
+                        if curr != orig {
+                            return true;
+                        }
+                    }
+                    DependencyType::Group => {
+                        let curr = self.groups.get(&target);
+                        let orig = self.origin_groups.get(&target);
                         if curr != orig {
                             return true;
                         }
@@ -244,16 +270,34 @@ impl TournamentEditorState {
     }
 
     /// Checks if the new tournament configuration requires removing stages.
-    fn cleanup_excess_stages(&mut self, root_id: Uuid, tournament: &TournamentBase) {
-        let num_expected = tournament.get_tournament_mode().get_num_of_stages();
+    fn cleanup_excess_stages(&mut self, root_id: Uuid) {
+        if let Some(tournament) = &self.tournament {
+            let num_expected = tournament.get_tournament_mode().get_num_of_stages();
 
-        let excess_ids =
-            self.collect_excess_ids(root_id, DependencyType::Stage, &self.stages, num_expected);
+            let excess_ids =
+                self.collect_excess_ids(root_id, DependencyType::Stage, &self.stages, num_expected);
 
-        for stage_id in excess_ids {
-            // We only remove the graph edge. The object remains in the Map until strictly cleared,
-            // or we could remove it here. Removing edge hides it from the UI traversal.
-            self.structure.remove_edge(root_id, stage_id);
+            for stage_id in excess_ids {
+                // We only remove the graph edge. The object remains in the Map until strictly cleared,
+                // or we could remove it here. Removing edge hides it from the UI traversal.
+                self.structure.remove_edge(root_id, stage_id);
+            }
+        }
+    }
+
+    /// Checks if the new tournament configuration requires removing stages.
+    fn cleanup_excess_groups(&mut self, root_id: Uuid) {
+        if let Some(stage) = self.stages.get(&root_id) {
+            let num_expected = stage.get_num_groups();
+
+            let excess_ids =
+                self.collect_excess_ids(root_id, DependencyType::Group, &self.groups, num_expected);
+
+            for group_id in excess_ids {
+                // We only remove the graph edge. The object remains in the Map until strictly cleared,
+                // or we could remove it here. Removing edge hides it from the UI traversal.
+                self.structure.remove_edge(root_id, group_id);
+            }
         }
     }
 

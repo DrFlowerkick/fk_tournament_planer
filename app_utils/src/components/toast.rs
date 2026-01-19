@@ -21,7 +21,6 @@ pub fn ToastContainer() -> impl IntoView {
                         ToastVariant::Warning => "alert-warning",
                         ToastVariant::Error => "alert-error",
                     };
-
                     let test_id = match toast.variant {
                         ToastVariant::Info => "toast-alert-info",
                         ToastVariant::Success => "toast-alert-success",

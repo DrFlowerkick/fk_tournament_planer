@@ -50,10 +50,9 @@ impl TryFrom<DbStage> for Stage {
         }
 
         let id_version = IdVersion::new(r.id, Some(r.version as u32));
-        let mut s = Stage::new(id_version);
+        let mut s = Stage::new(id_version, r.number as u32);
 
         s.set_tournament_id(r.tournament_id)
-            .set_number(r.number as u32)
             .set_num_groups(r.num_groups as u32);
 
         Ok(s)
