@@ -33,9 +33,7 @@ pub async fn load_stage_by_id(tournament_id: Uuid, id: Uuid) -> AppResult<Option
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 pub async fn load_stage_by_id_inner(tournament_id: Uuid, id: Uuid) -> AppResult<Option<Stage>> {
-    let mut core = expect_context::<CoreState>()
-        .as_stage_state(tournament_id)
-        .await?;
+    let mut core = expect_context::<CoreState>().as_stage_state(tournament_id);
     let tb = core.load_by_id(id).await?.map(|tb| tb.to_owned());
     Ok(tb)
 }
@@ -61,9 +59,7 @@ pub async fn load_stage_by_number_inner(
     tournament_id: Uuid,
     number: u32,
 ) -> AppResult<Option<Stage>> {
-    let mut core = expect_context::<CoreState>()
-        .as_stage_state(tournament_id)
-        .await?;
+    let mut core = expect_context::<CoreState>().as_stage_state(tournament_id);
     let tb = core.load_by_number(number).await?.map(|tb| tb.to_owned());
     Ok(tb)
 }
@@ -82,9 +78,7 @@ pub async fn list_stages_of_tournament(tournament_id: Uuid) -> AppResult<Vec<Sta
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 async fn list_stages_of_tournament_inner(tournament_id: Uuid) -> AppResult<Vec<Stage>> {
-    let core = expect_context::<CoreState>()
-        .as_stage_state(tournament_id)
-        .await?;
+    let mut core = expect_context::<CoreState>().as_stage_state(tournament_id);
     let stages = core.list_stages_of_tournament().await?;
     Ok(stages)
 }
@@ -112,9 +106,7 @@ pub async fn save_stage(stage: Stage) -> AppResult<Stage> {
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 pub async fn save_stage_inner(stage: Stage) -> AppResult<Stage> {
-    let mut core = expect_context::<CoreState>()
-        .as_stage_state(stage.get_tournament_id())
-        .await?;
+    let mut core = expect_context::<CoreState>().as_stage_state(stage.get_tournament_id());
 
     // We replace the state object in the core directly with the received object.
     // Prerequisite: The client has already set the correct IdVersion.

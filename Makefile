@@ -109,9 +109,7 @@ run-ssr:
 # -------- Unit Testing & Coverage --------
 .PHONY: test
 test:
-	# Entwicklung: Standard 'cargo test' ist sicher für DB-Cleanup und Synchronisation
-	cargo test --workspace --features "ssr" -- --test-threads 4
-	cargo test --doc --workspace
+	cargo test --workspace --features "ssr"
 
 .PHONY: test-doc
 test-doc:
@@ -119,7 +117,7 @@ test-doc:
 
 .PHONY: test-release
 test-release:
-	cargo test --workspace --release --features "ssr" -- --test-threads 4
+	cargo test --workspace --release --features "ssr"
 
 .PHONY: test-wasm
 test-wasm:

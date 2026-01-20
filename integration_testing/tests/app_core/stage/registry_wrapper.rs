@@ -5,8 +5,8 @@ use integration_testing::port_fakes::*;
 /// 9) save(): publishes exactly once with correct payload after successful persist
 #[tokio::test]
 async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_correct_payload() {
-    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Arrange: new stage configuration in state
     core.get_mut().set_tournament_id(t_id);
@@ -45,8 +45,8 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
 /// 10) save(): no publish on DB error
 #[tokio::test]
 async fn given_db_failure_when_save_then_no_publish_occurs() {
-    let (mut core, db_fake, cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, db_fake, cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Arrange: ensure DB save fails once
     db_fake.fail_save_stage_once();
@@ -82,8 +82,8 @@ async fn given_db_failure_when_save_then_no_publish_occurs() {
 #[tokio::test]
 async fn given_publish_failure_after_successful_db_save_when_save_then_error_propagates_and_db_state_is_updated()
  {
-    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Arrange: insert a new config (DB should succeed), but inject publish failure
     core.get_mut().set_tournament_id(t_id);
@@ -128,8 +128,8 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
 /// 12) read operations never publish (load, list)
 #[tokio::test]
 async fn given_read_operations_when_invoked_then_never_publish_anything() {
-    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Seed two entries via normal saves (which *do* publish)...
     let mut s1 = core.get().clone();
@@ -166,8 +166,8 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
 /// 13) two consecutive saves → two publishes; versions monotonic
 #[tokio::test]
 async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() {
-    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // First insert
     core.get_mut().set_tournament_id(t_id);

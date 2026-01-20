@@ -191,30 +191,19 @@ impl Stage {
 }
 
 pub struct StageState {
-    tournament: TournamentBase,
+    tournament_id: Uuid,
+    tournament: Option<TournamentBase>,
     stage: Stage,
 }
 
 // switch state to sport config state
-// rationale for input tournament_id: on server side handling a Stage is only
-// meaningful in the context of an existing TournamentBase.
-// This requires Client code to first create/load a TournamentBase Core and then
-// switch to StageState with the TournamentBase's ID.
-// When saving a new tournament, the objects have to be saved in order:
-// TournamentBase, Stages, Groups, Rounds, Matches
-// Otherwise switching state to an object depending on another object that
-// does not yet exist in the DB would result in an error.
 impl<S> Core<S> {
-    pub async fn as_stage_state(&self, tournament_id: Uuid) -> CoreResult<Core<StageState>> {
-        let tournament = self
-            .database
-            .get_tournament_base(tournament_id)
-            .await?
-            .ok_or(CoreError::Db(crate::DbError::NotFound))?;
-        Ok(self.switch_state(StageState {
-            tournament,
+    pub fn as_stage_state(&self, tournament_id: Uuid) -> Core<StageState> {
+        self.switch_state(StageState {
+            tournament_id,
+            tournament: None,
             stage: Stage::default(),
-        }))
+        })
     }
 }
 
@@ -225,19 +214,34 @@ impl Core<StageState> {
     pub fn get_mut(&mut self) -> &mut Stage {
         &mut self.state.stage
     }
-    pub fn get_tournament(&self) -> &TournamentBase {
-        &self.state.tournament
+    pub fn get_tournament(&self) -> Option<&TournamentBase> {
+        self.state.tournament.as_ref()
+    }
+    async fn try_load_tournament(&mut self) -> CoreResult<()> {
+        if self.state.tournament.is_none() {
+            if let Some(tournament) = self
+                .as_tournament_base_state()
+                .load(self.state.tournament_id)
+                .await?
+            {
+                self.state.tournament = Some(tournament.clone());
+            }
+        }
+        Ok(())
     }
     fn validate(&self) -> CoreResult<()> {
-        self.state
-            .stage
-            .validate(&self.state.tournament)
-            .map_err(CoreError::from)?;
+        if let Some(tournament) = self.state.tournament.as_ref() {
+            self.state
+                .stage
+                .validate(tournament)
+                .map_err(CoreError::from)?;
+        }
         Ok(())
     }
     pub async fn load_by_id(&mut self, id: Uuid) -> CoreResult<Option<&Stage>> {
         if let Some(stage) = self.database.get_stage_by_id(id).await? {
             self.state.stage = stage;
+            self.try_load_tournament().await?;
             self.validate()?;
             Ok(Some(self.get()))
         } else {
@@ -245,22 +249,25 @@ impl Core<StageState> {
         }
     }
     pub async fn load_by_number(&mut self, number: u32) -> CoreResult<Option<&Stage>> {
-        let Some(tournament_id) = self.state.tournament.get_id() else {
-            return Ok(None);
-        };
+        self.try_load_tournament().await?;
         if let Some(stage) = self
             .database
-            .get_stage_by_number(tournament_id, number)
+            .get_stage_by_number(self.state.tournament_id, number)
             .await?
         {
             self.state.stage = stage;
+            self.try_load_tournament().await?;
             self.validate()?;
-            Ok(Some(self.get()))
-        } else {
-            Ok(None)
+            return Ok(Some(self.get()));
         }
+        Ok(None)
     }
     pub async fn save(&mut self) -> CoreResult<&Stage> {
+        // Validation of stage requires valid tournament base.
+        // When saving a new tournament, the objects should be saved in order:
+        // TournamentBase, Stages, Groups, Rounds, Matches
+        // Otherwise saved objects may not be validated before saving.
+        self.try_load_tournament().await?;
         self.validate()?;
         self.state.stage = self.database.save_stage(&self.state.stage).await?;
 
@@ -280,17 +287,16 @@ impl Core<StageState> {
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
-    pub async fn list_stages_of_tournament(&self) -> CoreResult<Vec<Stage>> {
-        let Some(tournament_id) = self.state.tournament.get_id() else {
-            return Ok(vec![]);
-        };
+    pub async fn list_stages_of_tournament(&mut self) -> CoreResult<Vec<Stage>> {
         let stages = self
             .database
-            .list_stages_of_tournament(tournament_id)
+            .list_stages_of_tournament(self.state.tournament_id)
             .await?;
-
-        for stage in &stages {
-            stage.validate(&self.state.tournament)?;
+        self.try_load_tournament().await?;
+        if let Some(tournament) = self.state.tournament.as_ref() {
+            for stage in &stages {
+                stage.validate(tournament)?;
+            }
         }
         Ok(stages)
     }

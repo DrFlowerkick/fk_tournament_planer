@@ -6,8 +6,8 @@ use integration_testing::port_fakes::*;
 /// 1) load_by_id(): found → state replaced, Some returned
 #[tokio::test]
 async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_returned() {
-    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Prepare state
     core.get_mut().set_tournament_id(t_id);
@@ -38,8 +38,8 @@ async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_re
 /// 2) load_by_number(): found → state replaced, Some returned
 #[tokio::test]
 async fn given_existing_number_when_load_by_number_then_state_is_replaced_and_some_is_returned() {
-    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Prepare state
     core.get_mut().set_tournament_id(t_id);
@@ -65,7 +65,7 @@ async fn given_existing_number_when_load_by_number_then_state_is_replaced_and_so
 /// 3) load_by_id(): not found → None, state unchanged
 #[tokio::test]
 async fn given_missing_id_when_load_by_id_then_none_and_state_unchanged() {
-    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
+    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes();
 
     core.get_mut().set_number(0);
     let before = core.get().clone();
@@ -81,7 +81,7 @@ async fn given_missing_id_when_load_by_id_then_none_and_state_unchanged() {
 /// 4) load_by_number(): not found → None, state unchanged
 #[tokio::test]
 async fn given_missing_number_when_load_by_number_then_none_and_state_unchanged() {
-    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
+    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes();
 
     core.get_mut().set_number(0);
     let before = core.get().clone();
@@ -96,7 +96,7 @@ async fn given_missing_number_when_load_by_number_then_none_and_state_unchanged(
 /// 5) load(): DB error propagates, state unchanged
 #[tokio::test]
 async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchanged() {
-    let (mut core, db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
+    let (mut core, db_fake, _cr_fake) = make_core_stage_state_with_fakes();
 
     core.get_mut().set_number(0);
     let before = core.get().clone();
@@ -120,8 +120,8 @@ async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchang
 /// 6) save(): persists & replaces state with DB result
 #[tokio::test]
 async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_returned() {
-    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Arrange
     core.get_mut().set_tournament_id(t_id);
@@ -140,7 +140,7 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
 /// 7) save(): DB error propagates, state unchanged
 #[tokio::test]
 async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchanged() {
-    let (mut core, db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
+    let (mut core, db_fake, _cr_fake) = make_core_stage_state_with_fakes();
 
     // Seed state (valid one)
     core.get_mut().set_num_groups(1);
@@ -160,8 +160,8 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 /// 8) list_stages_of_tournament(): listing and sorting
 #[tokio::test]
 async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
-    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
-    let t_id = core.get_tournament().get_id().unwrap();
+    let (mut core, _db_fake, _cr_fake) = make_core_stage_state_with_fakes();
+    let t_id = core.get().get_tournament_id();
 
     // Create 3 stages.
     // Numbers MUST be 0, 1, 2 because TwoPoolStagesAndFinalStage supports exactly 3 stages.
@@ -171,12 +171,12 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
         (1, 8), // Number 1, 8 Groups
     ];
 
-    for (num, grps) in inputs {
+    for (num, groups) in inputs {
         let mut s = core.get().clone();
         s.set_id_version(app_core::utils::id_version::IdVersion::New);
         s.set_tournament_id(t_id);
         s.set_number(num);
-        s.set_num_groups(grps);
+        s.set_num_groups(groups);
         *core.get_mut() = s;
 
         core.save()
@@ -196,14 +196,14 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
     assert_eq!(list[2].get_number(), 2);
 
     // check content correctness (matches inputs above)
-    assert_eq!(list[0].get_num_groups(), 4); // #0 -> 4 grps
-    assert_eq!(list[2].get_num_groups(), 2); // #2 -> 2 grps
+    assert_eq!(list[0].get_num_groups(), 4); // #0 -> 4 groups
+    assert_eq!(list[2].get_num_groups(), 2); // #2 -> 2 groups
 }
 
 /// 9) list_stages_of_tournament(): DB error propagates
 #[tokio::test]
 async fn given_db_fake_failure_when_list_stages_then_error_propagates() {
-    let (core, db_fake, _cr_fake) = make_core_stage_state_with_fakes().await;
+    let (mut core, db_fake, _cr_fake) = make_core_stage_state_with_fakes();
 
     db_fake.fail_list_stage_once();
 

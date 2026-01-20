@@ -371,7 +371,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="w-full mt-6">
                                                             <A
-                                                                href={move || format!("0/0{}", query_string.get())}
+                                                                href=move || format!("0/0{}", query_string.get())
                                                                 attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-single-stage"
                                                                 scroll=false
@@ -389,7 +389,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
                                                             <A
-                                                                href={move || format!("0{}", query_string.get())}
+                                                                href=move || format!("0{}", query_string.get())
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-pool-stage"
                                                                 scroll=false
@@ -398,7 +398,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure Pool Stage"
                                                             </A>
                                                             <A
-                                                                href={move || format!("1{}", query_string.get())}
+                                                                href=move || format!("1{}", query_string.get())
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-final-stage"
                                                                 scroll=false
@@ -416,7 +416,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
                                                             <A
-                                                                href={move || format!("0{}", query_string.get())}
+                                                                href=move || format!("0{}", query_string.get())
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-first-pool-stage"
                                                                 scroll=false
@@ -425,7 +425,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure First Pool Stage"
                                                             </A>
                                                             <A
-                                                                href={move || format!("1{}", query_string.get())}
+                                                                href=move || format!("1{}", query_string.get())
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-second-pool-stage"
                                                                 scroll=false
@@ -434,7 +434,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure Second Pool Stage"
                                                             </A>
                                                             <A
-                                                                href={move || format!("2{}", query_string.get())}
+                                                                href=move || format!("2{}", query_string.get())
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-final-stage"
                                                                 scroll=false
@@ -453,7 +453,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="w-full mt-6">
                                                             <A
-                                                                href={move || format!("0/0{}", query_string.get())}
+                                                                href=move || format!("0/0{}", query_string.get())
                                                                 attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-swiss-system"
                                                                 scroll=false

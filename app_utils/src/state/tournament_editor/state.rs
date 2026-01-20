@@ -468,34 +468,4 @@ mod tests {
         );
         assert_eq!(state.tournament.unwrap().get_name(), "Version 2 Draft");
     }
-
-    #[test]
-    fn test_context_switch_clears_graph() {
-        // Arrange
-        let mut state = TournamentEditorState::new();
-
-        let t1 = create_test_tournament("Tournament A");
-        state.set_tournament(t1.clone(), true);
-
-        // Add a dummy node to graph to simulate dependent data
-        let t1_id = t1.get_id_version().get_id().unwrap();
-        // We know set_tournament adds the root node.
-        assert!(state.structure.contains_node(t1_id));
-
-        // Act: Switch to completely different Tournament
-        let t2 = create_test_tournament("Tournament B");
-        let t2_id = t2.get_id_version().get_id().unwrap();
-        state.set_tournament(t2, true);
-
-        // Assert
-        // The structure should have been cleared and re-initialized with T2
-        assert!(
-            !state.structure.contains_node(t1_id),
-            "Old tournament ID should be gone from graph"
-        );
-        assert!(
-            state.structure.contains_node(t2_id),
-            "New tournament ID should be in graph"
-        );
-    }
 }

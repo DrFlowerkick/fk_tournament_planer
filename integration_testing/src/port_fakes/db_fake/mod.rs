@@ -269,7 +269,7 @@ pub fn make_tournament_base(name: &str, sport_core: &Core<TournamentBaseState>) 
     tb
 }
 
-pub async fn make_core_stage_state_with_fakes() -> (
+pub fn make_core_stage_state_with_fakes() -> (
     Core<StageState>,
     Arc<FakeDatabasePort>,
     Arc<FakeClientRegistryPort>,
@@ -290,10 +290,7 @@ pub async fn make_core_stage_state_with_fakes() -> (
 
     let t_id = db.seed_tournament_base(tb);
 
-    let mut core_stage_state = core
-        .as_stage_state(t_id)
-        .await
-        .expect("Test setup failed: could not switch to stage state");
+    let mut core_stage_state = core.as_stage_state(t_id);
 
     core_stage_state.get_mut().set_tournament_id(t_id);
 

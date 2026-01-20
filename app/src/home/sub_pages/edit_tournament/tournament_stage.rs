@@ -267,11 +267,11 @@ pub fn EditTournamentStage() -> impl IntoView {
                                     }
                                 }>
                                     {move || {
-                                        // Explicit tracking ensures transition works correctly
                                         let _ = stage_res.get();
                                         let is_new = Signal::derive(move || {
                                             matches!(stage_res.get(), Some(Ok(None)))
                                         });
+                                        // Explicit tracking ensures transition works correctly
 
                                         view! {
                                             <fieldset
