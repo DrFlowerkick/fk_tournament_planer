@@ -70,6 +70,7 @@ export const HOME_IDS = {
     editStage: {
       root: "stage-editor-root",
       title: "stage-editor-title",
+      form: "stage-editor-form",
       inputs: {
         numGroups: "input-stage-num-groups",
       },
@@ -183,6 +184,7 @@ export function getHomeSelectors(page: Page) {
       editStage: {
         root: page.getByTestId(ids.dashboard.editStage.root),
         title: page.getByTestId(ids.dashboard.editStage.title),
+        form: page.getByTestId(ids.dashboard.editStage.form),
         inputs: {
           numGroups: page.getByTestId(ids.dashboard.editStage.inputs.numGroups),
         },

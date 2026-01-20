@@ -14,6 +14,9 @@ use leptos::prelude::*;
 #[derive(Clone, Copy, Debug)]
 pub struct TournamentEditorContext {
     inner: RwSignal<TournamentEditorState>,
+    /// Indicates if a save or load operation is currently in progress.
+    /// Used to disable UI elements across all child components.
+    busy: RwSignal<bool>,
 }
 
 impl Default for TournamentEditorContext {
@@ -27,7 +30,20 @@ impl TournamentEditorContext {
     pub fn new() -> Self {
         Self {
             inner: RwSignal::new(TournamentEditorState::new()),
+            busy: RwSignal::new(false),
         }
+    }
+
+    // --- Busy State Management ---
+
+    /// Sets the global busy state of the editor (e.g. during saving).
+    pub fn set_busy(&self, is_busy: bool) {
+        self.busy.set(is_busy);
+    }
+
+    /// Checks if the editor is currently busy (saving/loading).
+    pub fn is_busy(&self) -> bool {
+        self.busy.get()
     }
 
     // --- Actions (Write / Update) ---

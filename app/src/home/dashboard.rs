@@ -66,6 +66,7 @@ pub fn SportDashboard() -> impl IntoView {
                                 href=relative_sub_url("/tournaments")
                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-tournaments"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--trophy] w-6 h-6 mr-2"></span>
                                 "Tournaments"
@@ -76,6 +77,7 @@ pub fn SportDashboard() -> impl IntoView {
 
                                 attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-plan-new"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--plus-circle] w-6 h-6 mr-2"></span>
                                 "Plan New Tournament"
@@ -85,6 +87,7 @@ pub fn SportDashboard() -> impl IntoView {
                                 href=relative_sub_url("/adhoc-tournament")
                                 attr:class="btn btn-accent h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-adhoc"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--play] w-6 h-6 mr-2"></span>
                                 "Start Adhoc Tournament"
@@ -94,6 +97,7 @@ pub fn SportDashboard() -> impl IntoView {
                                 href=relative_sub_url("/sport-configurations")
                                 attr:class="btn btn-neutral h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-config"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--cog-6-tooth] w-6 h-6 mr-2"></span>
                                 "Configurations"
@@ -104,6 +108,7 @@ pub fn SportDashboard() -> impl IntoView {
                                 href=relative_sub_url("/about-sport")
                                 attr:class="btn btn-ghost md:col-span-2 mt-4"
                                 attr:data-testid="link-nav-about"
+                                scroll=false
                             >
                                 {format!("About {}", name)}
                             </A>
