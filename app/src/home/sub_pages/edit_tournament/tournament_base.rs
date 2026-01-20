@@ -77,70 +77,103 @@ pub fn EditTournament() -> impl IntoView {
     let set_id_version = RwSignal::new(IdVersion::New);
     let set_name = RwSignal::new("".to_string());
     let set_entrants = RwSignal::new(0_u32);
-    let t_type = StoredValue::new(TournamentType::Scheduled);
+    let t_type = RwSignal::new(TournamentType::Scheduled);
     let set_mode = RwSignal::new(TournamentMode::SingleStage);
     let set_num_rounds_swiss = RwSignal::new(0_u32);
-    let state = StoredValue::new(TournamentState::Draft);
+    let state = RwSignal::new(TournamentState::Draft);
+
+    let set_signals_from_tournament = move |tournament: &TournamentBase| {
+        set_id_version.set(tournament.get_id_version());
+        set_name.set(tournament.get_name().to_string());
+        set_entrants.set(tournament.get_num_entrants());
+        t_type.set(tournament.get_tournament_type());
+        set_mode.set(tournament.get_tournament_mode());
+        if let TournamentMode::SwissSystem { num_rounds } = tournament.get_tournament_mode() {
+            set_num_rounds_swiss.set(num_rounds);
+        }
+        state.set(tournament.get_tournament_state());
+    };
 
     // --- Server Resources & Actions  ---
     // load tournament base resource
     let tournament_res = Resource::new(
         move || (tournament_id(), sport_id()),
         move |(maybe_t_id, maybe_s_id)| async move {
-            if let Some(s_id) = maybe_s_id {
+            // do we really need to check sport_id here?
+            if let Some(_s_id) = maybe_s_id {
                 if let Some(t_id) = maybe_t_id {
-                    match load_tournament_base(t_id).await {
-                        Ok(Some(tournament)) => Ok(Some(tournament)),
+                    return match load_tournament_base(t_id).await {
                         Ok(None) => Err(AppError::ResourceNotFound(
                             "Tournament Base".to_string(),
                             t_id,
                         )),
-                        Err(e) => Err(e),
-                    }
-                } else {
-                    let mut tournament = TournamentBase::default();
-                    tournament
-                        .set_sport_id(s_id)
-                        .set_id_version(IdVersion::NewWithId(Uuid::new_v4()));
-
-                    Ok(Some(tournament))
+                        load_result => load_result,
+                    };
                 }
-            } else {
-                Ok(None)
             }
+            Ok(None)
         },
     );
-
-    // handle successful load
-    Effect::new(move || {
-        if let Some(Ok(Some(tournament))) = tournament_res.get() {
-            // check if new tournament is changed in TournamentEditorContext
-            // if yes, do not reset signals
-            if tournament_id().is_none() && tournament_editor_context.is_changed() {
-                return;
-            }
-            set_id_version.set(tournament.get_id_version());
-            set_name.set(tournament.get_name().to_string());
-            set_entrants.set(tournament.get_num_entrants());
-            t_type.set_value(tournament.get_tournament_type());
-            set_mode.set(tournament.get_tournament_mode());
-            if let TournamentMode::SwissSystem { num_rounds } = tournament.get_tournament_mode() {
-                set_num_rounds_swiss.set(num_rounds);
-            }
-            state.set_value(tournament.get_tournament_state());
-
-            tournament_editor_context.set_tournament(tournament.clone(), !is_new.get());
-        }
-    });
 
     // save tournament base action
     let save_tournament_base = ServerAction::<SaveTournamentBase>::new();
 
-    // handle successful save
+    // save stage action
+    let save_stage = ServerAction::<SaveStage>::new();
+
+    // retry function for error handling
+    let refetch_and_reset = move || {
+        save_tournament_base.clear();
+        save_stage.clear();
+        tournament_res.refetch();
+    };
+
+    // cancel function for cancel button and error handling
+    let on_cancel = use_on_cancel();
+
+    // handle load tournament base results
+    Effect::new({
+        let on_cancel = on_cancel.clone();
+        move || {
+            match tournament_res.get() {
+                Some(Ok(Some(tournament))) => {
+                    // successful load from database
+                    set_signals_from_tournament(&tournament);
+                    tournament_editor_context.set_tournament(tournament.clone(), !is_new.get());
+                }
+                Some(Ok(None)) => {
+                    // new tournament case - check if tournament is already set in editor context
+                    if let Some(s_id) = sport_id()
+                        && tournament_editor_context.get_tournament().is_none()
+                    {
+                        // create new tournament base with sport id
+                        let mut tournament = TournamentBase::default();
+                        tournament
+                            .set_sport_id(s_id)
+                            .set_id_version(IdVersion::NewWithId(Uuid::new_v4()));
+                        set_signals_from_tournament(&tournament);
+                        tournament_editor_context.set_tournament(tournament, false);
+                    }
+                }
+                Some(Err(err)) => {
+                    handle_read_error(
+                        &page_err_ctx,
+                        component_id.get_value(),
+                        &err,
+                        refetch_and_reset.clone(),
+                        on_cancel.clone(),
+                    );
+                }
+                None => { /* loading state - do nothing */ }
+            }
+        }
+    });
+
+    // handle save tournament base results
     Effect::new({
         let navigate = navigate.clone();
-        move || {
-            if let Some(Ok(tb)) = save_tournament_base.value().get() {
+        move || match save_tournament_base.value().get() {
+            Some(Ok(tb)) => {
                 save_tournament_base.clear();
                 toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
                 update(
@@ -156,62 +189,26 @@ pub fn EditTournament() -> impl IntoView {
                     },
                 );
             }
-        }
-    });
-
-    // save stage action
-    let save_stage = ServerAction::<SaveStage>::new();
-
-    // Sync pending state to global context
-    Effect::new(move || {
-        let busy = save_tournament_base.pending().get() || save_stage.pending().get();
-
-        tournament_editor_context.set_busy(busy);
-    });
-
-    // --- Event Handlers ---
-    // save function for save button
-    let on_save = move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament_diff() {
-            save_tournament_base.dispatch(SaveTournamentBase { tournament });
-        }
-        for changed_stage in tournament_editor_context.get_stages_diff() {
-            save_stage.dispatch(SaveStage {
-                stage: changed_stage,
-            });
-        }
-        for _changed_group in tournament_editor_context.get_groups_diff() {
-            // ToDo: implement SaveGroup server action and dispatch here
-        }
-    };
-
-    // retry function for error handling
-    let refetch_and_reset = move || {
-        save_tournament_base.clear();
-        save_stage.clear();
-        tournament_res.refetch();
-    };
-
-    // cancel function for cancel button and error handling
-    let on_cancel = use_on_cancel();
-
-    // Handle read and write errors
-    Effect::new({
-        let on_cancel = on_cancel.clone();
-        move || {
-            if let Some(Err(err)) = tournament_res.get() {
-                handle_read_error(
+            Some(Err(err)) => {
+                handle_write_error(
                     &page_err_ctx,
+                    &toast_ctx,
                     component_id.get_value(),
                     &err,
                     refetch_and_reset.clone(),
-                    on_cancel.clone(),
                 );
             }
+            None => { /* saving state - do nothing */ }
         }
     });
-    Effect::new(move || {
-        if let Some(Err(err)) = save_tournament_base.value().get() {
+
+    // handle save stage results
+    Effect::new(move || match save_stage.value().get() {
+        Some(Ok(_stage)) => {
+            save_stage.clear();
+            toast_ctx.add("Stage saved successfully", ToastVariant::Success);
+        }
+        Some(Err(err)) => {
             handle_write_error(
                 &page_err_ctx,
                 &toast_ctx,
@@ -220,41 +217,88 @@ pub fn EditTournament() -> impl IntoView {
                 refetch_and_reset.clone(),
             );
         }
+        None => { /* saving state - do nothing */ }
+    });
+
+    // --- Event Handlers ---
+    // save function for save button
+    let is_dispatching = RwSignal::new(false);
+    let on_save = move || {
+        is_dispatching.set(true);
+        // get diffs
+        let tournament_diff = tournament_editor_context.get_tournament_diff();
+        let stages_diff = tournament_editor_context.get_stages_diff();
+        let groups_diff = tournament_editor_context.get_groups_diff();
+        // clear state
+        tournament_editor_context.clear();
+        // dispatch saves
+        if let Some(tournament) = tournament_diff {
+            save_tournament_base.dispatch(SaveTournamentBase { tournament });
+        }
+        for changed_stage in stages_diff {
+            save_stage.dispatch(SaveStage {
+                stage: changed_stage,
+            });
+        }
+        for _changed_group in groups_diff {
+            // ToDo: implement SaveGroup server action and dispatch here
+        }
+        is_dispatching.set(false);
+    };
+
+    // Sync pending state to global context
+    Effect::new(move || {
+        let busy = save_tournament_base.pending().get()
+            || save_stage.pending().get()
+            || is_dispatching.get();
+
+        tournament_editor_context.set_busy(busy);
     });
 
     // --- Validation Logic ---
     let current_tournament_base = Memo::new(move |_| {
-        let mut tb = TournamentBase::default();
+        if let Some(s_id) = sport_id()
+            && let Some(mut tb) = tournament_editor_context.get_tournament_untracked()
+        {
+            // Construct the mode explicitly combining the variant selection and the specific input signal
+            let mode = match set_mode.get() {
+                TournamentMode::SwissSystem { .. } => TournamentMode::SwissSystem {
+                    num_rounds: set_num_rounds_swiss.get(),
+                },
+                other => other,
+            };
 
-        // Construct the mode explicitly combining the variant selection and the specific input signal
-        let mode = match set_mode.get() {
-            TournamentMode::SwissSystem { .. } => TournamentMode::SwissSystem {
-                num_rounds: set_num_rounds_swiss.get(),
-            },
-            other => other,
-        };
-
-        // unwrap_or_default is safe here, because component will be unmounted, if sport_id is None.
-        tb.set_id_version(set_id_version.get())
-            .set_name(set_name.get())
-            .set_sport_id(sport_id().unwrap_or_default())
-            .set_num_entrants(set_entrants.get())
-            .set_tournament_type(t_type.get_value())
-            .set_tournament_mode(mode)
-            .set_tournament_state(state.get_value());
-        tb
+            // unwrap_or_default is safe here, because component will be unmounted, if sport_id is None.
+            tb.set_id_version(set_id_version.get())
+                .set_name(set_name.get())
+                .set_sport_id(s_id)
+                .set_num_entrants(set_entrants.get())
+                .set_tournament_type(t_type.get())
+                .set_tournament_mode(mode)
+                .set_tournament_state(state.get());
+            Some(tb)
+        } else {
+            None
+        }
     });
-
-    // Validation runs against the constantly updated Memo
-    let validation_result = move || current_tournament_base.get().validate();
 
     // Sync to Global State
     Effect::new(move || {
-        tournament_editor_context.set_tournament(current_tournament_base.get(), false);
+        if let Some(current_tournament) = current_tournament_base.get() {
+            tournament_editor_context.set_tournament(current_tournament, false);
+        }
     });
 
-    // Helper for error messages in the inputs
-    // derive creates a read-only signal for the inputs
+    // Validation runs against the constantly updated Memo
+    let validation_result = move || {
+        if let Some(current) = current_tournament_base.get() {
+            current.validate()
+        } else {
+            Ok(())
+        }
+    };
+
+    // error messages for form fields
     let name_error = Signal::derive(move || is_field_valid(validation_result).run("name"));
     let entrants_error =
         Signal::derive(move || is_field_valid(validation_result).run("num_entrants"));
@@ -314,7 +358,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     tournament_editor_context.is_busy()
                                                         || page_err_ctx.has_errors()
                                                         || matches!(
-                                                            state.get_value(),
+                                                            state.get(),
                                                             TournamentState::ActiveStage(_) | TournamentState::Finished
                                                         )
                                                 }
@@ -329,6 +373,11 @@ pub fn EditTournament() -> impl IntoView {
                                                         value=set_name
                                                         error_message=name_error
                                                         is_new=is_new
+                                                        on_blur=move || {
+                                                            if let Some(current_tournament) = current_tournament_base.get() {
+                                                                set_name.set(current_tournament.get_name().to_string());
+                                                            }
+                                                        }
                                                     />
 
                                                     <ValidatedNumberInput

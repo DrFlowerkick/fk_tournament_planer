@@ -32,9 +32,7 @@ pub fn EditTournamentStage() -> impl IntoView {
     let component_id = StoredValue::new(Uuid::new_v4());
 
     // --- Hooks & Navigation ---
-    let UseQueryNavigationReturn {
-        relative_sub_url, ..
-    } = use_query_navigation();
+    let UseQueryNavigationReturn { query_string, .. } = use_query_navigation();
 
     let tournament_id_query = use_query::<TournamentBaseParams>();
     let tournament_id = move || {
@@ -56,8 +54,6 @@ pub fn EditTournamentStage() -> impl IntoView {
             .ok()
             .and_then(|snp| snp.stage_number)
     };
-
-    let has_required_inputs = move || tournament_id().is_some() && stage_number().is_some();
 
     // hide form if tournament mode has only one stage with one group
     let hide_form = move || {
@@ -105,35 +101,6 @@ pub fn EditTournamentStage() -> impl IntoView {
         },
     );
 
-    // handle successful load
-    Effect::new(move || {
-        if !has_required_inputs() {
-            return;
-        }
-        match stage_res.get() {
-            Some(Ok(Some(stage))) => {
-                // stage successfully loaded
-                set_id_version.set(stage.get_id_version());
-                set_num_groups.set(stage.get_num_groups());
-                tournament_editor_context.set_stage(stage, true);
-            }
-            Some(Ok(None)) => {
-                // stage not found, create a new one, if tournament_editor_context does not have it yet
-                let sn = stage_number().unwrap_or(0); // slightly safer fallback
-                if tournament_editor_context.get_stage_by_number(sn).is_none() {
-                    // new stage
-                    let mut new_state = Stage::new(IdVersion::NewWithId(Uuid::new_v4()));
-                    new_state.set_number(sn);
-                    set_id_version.set(new_state.get_id_version());
-                    set_num_groups.set(new_state.get_num_groups());
-                    tournament_editor_context.set_stage(new_state, false);
-                }
-            }
-            _ => (),
-        }
-    });
-
-    // --- handle errors ---
     // retry function for error handling
     let refetch_and_reset = move || {
         stage_res.refetch();
@@ -142,21 +109,57 @@ pub fn EditTournamentStage() -> impl IntoView {
     // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
 
-    // Handle read errors
+    // handle load stage results
     Effect::new({
         let on_cancel = on_cancel.clone();
         move || {
-            if let Some(Err(err)) = stage_res.get() {
-                handle_read_error(
-                    &page_err_ctx,
-                    component_id.get_value(),
-                    &err,
-                    refetch_and_reset.clone(),
-                    on_cancel.clone(),
-                );
+            match stage_res.get() {
+                Some(Ok(Some(stage))) => {
+                    // stage successfully loaded from database
+                    set_id_version.set(stage.get_id_version());
+                    set_num_groups.set(stage.get_num_groups());
+                    tournament_editor_context.set_stage(stage, true);
+                }
+                Some(Ok(None)) => {
+                    // stage not found in database
+                    // --> create a new one, if tournament_editor_context does not have it yet
+                    if let Some(t_id) = tournament_id()
+                        && let Some(sn) = stage_number()
+                    {
+                        if let Some(stage) = tournament_editor_context.get_stage_by_number(sn) {
+                            leptos::logging::log!("Loading stage {} from editor state", sn);
+                            set_id_version.set(stage.get_id_version());
+                            set_num_groups.set(stage.get_num_groups());
+                        } else {
+                            leptos::logging::log!(
+                                "Stage not found on load, creating new stage for number {}",
+                                sn
+                            );
+                            // new stage
+                            let mut new_state = Stage::new(IdVersion::NewWithId(Uuid::new_v4()));
+                            new_state.set_number(sn);
+                            new_state.set_tournament_id(t_id);
+                            set_id_version.set(new_state.get_id_version());
+                            set_num_groups.set(new_state.get_num_groups());
+                            tournament_editor_context.set_stage(new_state, false);
+                        }
+                    }
+                }
+                Some(Err(err)) => {
+                    handle_read_error(
+                        &page_err_ctx,
+                        component_id.get_value(),
+                        &err,
+                        refetch_and_reset.clone(),
+                        on_cancel.clone(),
+                    );
+                }
+                None => { /* loading state - do nothing */ }
             }
         }
     });
+
+    // --- handle errors ---
 
     // handle input errors
     Effect::new({
@@ -190,32 +193,36 @@ pub fn EditTournamentStage() -> impl IntoView {
 
     // --- Validation Logic ---
     let current_stage = Memo::new(move |_| {
-        let mut stage = Stage::new(set_id_version.get());
-        if let Some(tournament_id) = tournament_id() {
-            stage.set_tournament_id(tournament_id);
+        if let Some(sn) = stage_number()
+            && let Some(mut stage) = tournament_editor_context.get_stage_by_number_untracked(sn)
+        {
+            stage.set_num_groups(set_num_groups.get());
+            Some(stage)
+        } else {
+            None
         }
-        if let Some(sn) = stage_number() {
-            stage.set_number(sn);
+    });
+
+    // Sync to Global State
+    Effect::new(move || {
+        if let Some(stage) = current_stage.get() {
+            leptos::logging::log!("Syncing stage to global state: {:?}", stage);
+            tournament_editor_context.set_stage(stage, false);
         }
-        stage.set_num_groups(set_num_groups.get());
-        stage
     });
 
     // Validation runs against the constantly updated Memo
     let validation_result = move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament() {
-            current_stage.get().validate(&tournament)
+        if let Some(tournament) = tournament_editor_context.get_tournament()
+            && let Some(current_stage) = current_stage.get()
+        {
+            current_stage.validate(&tournament)
         } else {
             Ok(())
         }
     };
 
-    // Sync to Global State
-    Effect::new(move || {
-        tournament_editor_context.set_stage(current_stage.get(), false);
-    });
-
-    // Helper for error messages in the inputs
+    // error messages for form fields
     let num_groups_error =
         Signal::derive(move || is_field_valid(validation_result).run("num_groups"));
 
@@ -298,7 +305,9 @@ pub fn EditTournamentStage() -> impl IntoView {
                                                         .map(|i| {
                                                             view! {
                                                                 <A
-                                                                    href=relative_sub_url(&i.to_string())
+                                                                    href=move || {
+                                                                        format!("{}{}", i.to_string(), query_string.get())
+                                                                    }
                                                                     attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                                                     attr:data-testid=format!("link-configure-group-{}", i)
                                                                     scroll=false

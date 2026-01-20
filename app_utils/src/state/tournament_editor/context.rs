@@ -48,6 +48,13 @@ impl TournamentEditorContext {
 
     // --- Actions (Write / Update) ---
 
+    /// Clear the entire editor state.
+    pub fn clear(&self) {
+        self.inner.update(|state| {
+            *state = TournamentEditorState::new();
+        });
+    }
+
     /// Sets tournament configuration based on user input.
     pub fn set_tournament(&self, tournament: TournamentBase, is_origin: bool) {
         self.inner.update(|state| {
@@ -81,9 +88,26 @@ impl TournamentEditorContext {
         self.inner.with(|state| state.get_tournament().cloned())
     }
 
+    /// Returns the current tournament without tracking the signal.
+    ///
+    /// This is useful inside Memos that modify the stage and write it back to the context
+    /// to avoid infinite loops or unnecessary cycles.
+    pub fn get_tournament_untracked(&self) -> Option<TournamentBase> {
+        self.inner.with_untracked(|state| state.get_tournament().cloned())
+    }
+
+    /// Returns a stage by its number.
     pub fn get_stage_by_number(&self, stage_number: u32) -> Option<Stage> {
         self.inner
             .with(|state| state.get_stage_by_number(stage_number).cloned())
+    }
+
+    /// Returns a stage by its number without tracking the signal.
+    ///
+    /// This is useful inside Memos that modify the stage and write it back to the context
+    /// to avoid infinite loops or unnecessary cycles.
+    pub fn get_stage_by_number_untracked(&self, number: u32) -> Option<Stage> {
+        self.inner.with_untracked(|state| state.get_stage_by_number(number).cloned())
     }
 
     /// Retrieves the diff of the tournament base for saving.

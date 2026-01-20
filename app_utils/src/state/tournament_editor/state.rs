@@ -89,7 +89,7 @@ pub enum DependencyType {
 pub struct TournamentEditorState {
     /// new / edited tournament
     pub tournament: Option<TournamentBase>,
-    /// origin tournament from server (snapshot for dirty check)
+    /// origin tournament from server
     pub origin_tournament: Option<TournamentBase>,
     /// map of tournament dependencies
     pub structure: DiGraphMap<Uuid, DependencyType>,
@@ -216,7 +216,7 @@ impl TournamentEditorState {
     }
 
     // --- Change Detection ---
-    
+
     /// Checks if there are any changes compared to the origin state.
     pub fn is_changed(&self) -> bool {
         let Some(start) = self.get_root_id() else {
