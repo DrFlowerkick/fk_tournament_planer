@@ -247,7 +247,6 @@ pub fn EditTournament() -> impl IntoView {
 
     // Validation runs against the constantly updated Memo
     let validation_result = move || current_tournament_base.get().validate();
-    let is_valid_tournament = move || validation_result().is_ok();
 
     // Sync to Global State
     Effect::new(move || {
@@ -501,7 +500,7 @@ pub fn EditTournament() -> impl IntoView {
                                 on:click=move |_| on_save()
                                 disabled=move || {
                                     tournament_editor_context.is_busy() || page_err_ctx.has_errors()
-                                        || !is_valid_tournament() || !is_changed()
+                                        || !tournament_editor_context.is_valid() || !is_changed()
                                 }
                             >
                                 {move || {

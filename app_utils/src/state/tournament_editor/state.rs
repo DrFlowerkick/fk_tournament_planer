@@ -216,6 +216,7 @@ impl TournamentEditorState {
     }
 
     // --- Change Detection ---
+    
     /// Checks if there are any changes compared to the origin state.
     pub fn is_changed(&self) -> bool {
         let Some(start) = self.get_root_id() else {
@@ -252,6 +253,53 @@ impl TournamentEditorState {
             }
         }
         false
+    }
+
+    // --- Validation ---
+
+    /// Validates the entire currently loaded tournament structure.
+    /// Returns `true` if the entire structure represents a valid state that could be saved/started.
+    pub fn is_valid(&self) -> bool {
+        // 1. Root Tournament Check
+        let Some(tournament) = &self.tournament else {
+            return false;
+        };
+
+        // Assuming TournamentBase has a validate() method returning Result
+        if tournament.validate().is_err() {
+            return false;
+        }
+
+        let Some(start) = self.get_root_id() else {
+            return false;
+        };
+
+        // Traverse structure
+        let mut bfs = Bfs::new(&self.structure, start);
+        while let Some(object) = bfs.next(&self.structure) {
+            for (_source, target, edge) in
+                self.structure.edges_directed(object, Direction::Outgoing)
+            {
+                match edge {
+                    DependencyType::Stage => {
+                        // Stage needs Tournament context for validation (e.g. strict entrant limits)
+                        if let Some(stage) = self.stages.get(&target)
+                            && stage.validate(tournament).is_err()
+                        {
+                            return false;
+                        };
+                    }
+                    DependencyType::Group => {
+                        // ToDo: implement group validation
+                        if let Some(_group) = self.groups.get(&target) {
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+
+        true
     }
 
     // --- Helpers ---

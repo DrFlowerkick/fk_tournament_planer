@@ -209,9 +209,6 @@ pub fn EditTournamentStage() -> impl IntoView {
             Ok(())
         }
     };
-    // ToDo: move is_valid into tournament_editor_context to provide "global" validity state for
-    // saving changes.
-    let is_valid_stage = move || validation_result().is_ok();
 
     // Sync to Global State
     Effect::new(move || {

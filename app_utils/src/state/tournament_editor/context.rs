@@ -69,6 +69,13 @@ impl TournamentEditorContext {
         self.inner.with(|state| state.is_changed())
     }
 
+    /// Checks if the current state in the editor is valid according to business rules.
+    ///
+    /// This should typically be checked before enabling global "Save" or "Publish" actions.
+    pub fn is_valid(&self) -> bool {
+        self.inner.with(|state| state.is_valid())
+    }
+
     /// Returns the current tournament for display.
     pub fn get_tournament(&self) -> Option<TournamentBase> {
         self.inner.with(|state| state.get_tournament().cloned())
