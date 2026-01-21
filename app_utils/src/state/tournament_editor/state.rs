@@ -130,6 +130,13 @@ impl TournamentEditorState {
             return;
         };
 
+        if let Some(origin_t) = self.origin_tournament.as_ref()
+        && origin_t.get_id() != tournament.get_id() {
+            // Case: Loading a different tournament than currently in state.
+            // Clear origin tournament
+            self.origin_tournament = None;
+        }
+
         // Ensure Graph Node exists
         self.structure.add_node(new_id);
 
@@ -175,6 +182,10 @@ impl TournamentEditorState {
     // --- Getters for keeping state of new tournament & dependencies ---
     pub fn get_tournament(&self) -> Option<&TournamentBase> {
         self.tournament.as_ref()
+    }
+
+    pub fn get_origin_tournament(&self) -> Option<&TournamentBase> {
+        self.origin_tournament.as_ref()
     }
 
     pub fn get_stage_by_number(&self, stage_number: u32) -> Option<&Stage> {

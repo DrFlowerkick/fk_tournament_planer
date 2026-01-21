@@ -50,6 +50,7 @@ pub fn EditTournament() -> impl IntoView {
     let UseQueryNavigationReturn {
         url_route_with_sub_path,
         url_with_update_query,
+        url_with_remove_query,
         path,
         ..
     } = use_query_navigation();
@@ -168,6 +169,7 @@ pub fn EditTournament() -> impl IntoView {
     // handle load tournament base results
     Effect::new({
         let on_cancel = on_cancel.clone();
+        let navigate = navigate.clone();
         move || {
             match tournament_res.get() {
                 Some(Ok(Some(tournament))) => {
@@ -176,13 +178,54 @@ pub fn EditTournament() -> impl IntoView {
                     tournament_editor_context.set_tournament(tournament.clone(), !is_new.get());
                 }
                 Some(Ok(None)) => {
-                    // new tournament case - check if tournament is already set in editor context
+                    // Case A: Tournament was saved and tournament_id is set in url query,
+                    // but resource status has not changed yet (still loading).
+                    if let Some(t_id) = tournament_id()
+                        && let Some(origin) =
+                            tournament_editor_context.get_origin_tournament_untracked()
+                        && origin.get_id() == Some(t_id)
+                    {
+                        // wait for resource to load
+                        return;
+                    }
+                    // Case B: Invalid ID provided in URL (404 from Server but ID was present in query)
+                    if tournament_id().is_some() {
+                        // The user requested a specific ID, but it doesn't exist.
+                        // We redirect to the "New Tournament" view (same path, but remove tournament_id).
+                        toast_ctx.add(
+                            "Tournament not found. Starting new plan.",
+                            ToastVariant::Warning,
+                        );
+
+                        // Construct clean URL (Base Path + sport_id, implicitly removing tournament_id)
+                        let clean_url = url_with_remove_query("tournament_id", None);
+
+                        navigate(
+                            &clean_url,
+                            NavigateOptions {
+                                replace: true, // Replace history to avoid "Back" loop
+                                scroll: false,
+                                ..Default::default()
+                            },
+                        );
+
+                        return;
+                    }
+                    // Case C: New Tournament Mode (No ID in URL)
+                    // Check if we need to enforce a reset (Force New).
+                    // Reset is needed if:
+                    // 1. Context is empty (None)
+                    // OR
+                    // 2. The origin tournament currently in context has a real ID (Saved Tournament).
+                    //    This handles the switch from "Edit A" -> "New B" without unmounting.
                     if let Some(s_id) = sport_id()
-                        && tournament_editor_context
+                        && (tournament_editor_context
                             .get_tournament_untracked()
                             .is_none()
+                            || tournament_editor_context
+                                .get_origin_tournament_untracked()
+                                .is_some())
                     {
-                        // create new tournament base with sport id
                         let mut tournament = TournamentBase::default();
                         tournament
                             .set_sport_id(s_id)
@@ -217,6 +260,9 @@ pub fn EditTournament() -> impl IntoView {
                     &tb.get_id().map(|id| id.to_string()).unwrap_or_default(),
                     None,
                 );
+                // set saved tb as origin in editor context before navigation to prevent
+                // load effect to reset the editor state
+                tournament_editor_context.set_tournament(tb, true);
                 navigate(
                     &nav_url,
                     NavigateOptions {

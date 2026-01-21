@@ -41,20 +41,13 @@ pub fn PostalAddressForm() -> impl IntoView {
     let UseQueryNavigationReturn {
         url_with_path,
         url_with_update_query,
-        path,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
 
-    let is_new = move || path.read().ends_with("/new_pa") || path.read().is_empty();
     let query = use_query::<AddressParams>();
-    let id = Signal::derive(move || {
-        if is_new() {
-            None
-        } else {
-            query.get().map(|ap| ap.address_id).unwrap_or(None)
-        }
-    });
+    let id = Signal::derive(move || query.get().ok().and_then(|ap| ap.address_id));
+    let is_new = move || id.get().is_none();
 
     let state = expect_context::<Store<GlobalState>>();
     let return_after_address_edit = state.return_after_address_edit();
@@ -68,6 +61,17 @@ pub fn PostalAddressForm() -> impl IntoView {
     let set_region = RwSignal::new(String::new());
     let set_country = RwSignal::new(String::new());
     let set_version = RwSignal::new(0);
+
+    // Helper to populate signals from data
+    let set_signals_from_address = move |addr: &PostalAddress| {
+        set_name.set(addr.get_name().to_string());
+        set_street.set(addr.get_street().to_string());
+        set_postal_code.set(addr.get_postal_code().to_string());
+        set_locality.set(addr.get_locality().to_string());
+        set_region.set(addr.get_region().unwrap_or_default().to_string());
+        set_country.set(addr.get_country().to_string());
+        set_version.set(addr.get_version().unwrap_or_default());
+    };
 
     // --- Server Actions & Resources ---
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
@@ -90,13 +94,6 @@ pub fn PostalAddressForm() -> impl IntoView {
             match maybe_id {
                 Some(id) => match load_postal_address(id).await {
                     Ok(Some(addr)) => {
-                        set_name.set(addr.get_name().to_string());
-                        set_street.set(addr.get_street().to_string());
-                        set_postal_code.set(addr.get_postal_code().to_string());
-                        set_locality.set(addr.get_locality().to_string());
-                        set_region.set(addr.get_region().unwrap_or_default().to_string());
-                        set_country.set(addr.get_country().to_string());
-                        set_version.set(addr.get_version().unwrap_or_default());
                         Ok(addr)
                     }
                     Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
@@ -106,6 +103,13 @@ pub fn PostalAddressForm() -> impl IntoView {
             }
         },
     );
+
+    // Sync signals when resource loads
+    Effect::new(move || {
+        if let Some(Ok(addr)) = addr_res.get() {
+            set_signals_from_address(&addr);
+        }
+    });
 
     let refetch_and_reset = move || {
         save_postal_address.clear();

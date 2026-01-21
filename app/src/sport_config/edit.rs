@@ -34,7 +34,6 @@ pub fn SportConfigForm() -> impl IntoView {
     let UseQueryNavigationReturn {
         url_with_path,
         url_with_update_query,
-        path,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -42,18 +41,14 @@ pub fn SportConfigForm() -> impl IntoView {
     let sport_query = use_query::<SportParams>();
     let sport_id = Signal::derive(move || sport_query.get().map(|s| s.sport_id).unwrap_or(None));
 
-    let is_new = move || path.read().ends_with("/new_sc") || path.read().is_empty();
     let sport_config_query = use_query::<SportConfigParams>();
     let sport_config_id = Signal::derive(move || {
-        if is_new() {
-            None
-        } else {
-            sport_config_query
-                .get()
-                .map(|sc| sc.sport_config_id)
-                .unwrap_or(None)
-        }
+        sport_config_query
+            .get()
+            .ok()
+            .and_then(|sc| sc.sport_config_id)
     });
+    let is_new = move || sport_config_id.get().is_none();
 
     let state = expect_context::<Store<GlobalState>>();
     let return_after_sport_config_edit = state.return_after_sport_config_edit();
@@ -91,6 +86,7 @@ pub fn SportConfigForm() -> impl IntoView {
 
     Effect::new(move || {
         if let Some(Ok(sc)) = save_sport_config.value().get() {
+            save_sport_config.clear();
             let nav_url = url_with_update_query(
                 "sport_config_id",
                 &sc.get_id().map(|id| id.to_string()).unwrap_or_default(),
@@ -105,12 +101,7 @@ pub fn SportConfigForm() -> impl IntoView {
         move |maybe_id| async move {
             match maybe_id {
                 Some(id) => match load_sport_config(id).await {
-                    Ok(Some(sc)) => {
-                        set_name.set(sc.get_name().to_string());
-                        set_sport_config.set(Some(sc.get_config().clone()));
-                        set_version.set(sc.get_version().unwrap_or_default());
-                        Ok(sc)
-                    }
+                    Ok(Some(sc)) => Ok(sc),
                     Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
                     Err(e) => Err(e),
                 },
@@ -118,6 +109,14 @@ pub fn SportConfigForm() -> impl IntoView {
             }
         },
     );
+
+    Effect::new(move || {
+        if let Some(Ok(sc)) = sc_res.get() {
+            set_name.set(sc.get_name().to_string());
+            set_sport_config.set(Some(sc.get_config().clone()));
+            set_version.set(sc.get_version().unwrap_or_default());
+        }
+    });
 
     let refetch_and_reset = move || {
         save_sport_config.clear();

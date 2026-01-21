@@ -17,29 +17,16 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
     let path = Signal::derive(move || url.get().path().to_string());
     let query_string = Signal::derive(move || url.get().search_params().to_query_string());
     let nav_url = Signal::derive(move || format!("{}{}", path.get(), query_string.get()));
-    // Functions to generate URLs with modified paths or query parameters
-    // All functions use untracked url to avoid unnecessary re-computations
-    let url_with_path = move |path: &str| {
-        format!(
-            "{}{}",
-            path,
-            url.get_untracked().search_params().to_query_string()
-        )
-    };
+    let url_with_path = move |path: &str| format!("{}{}", path, query_string.get());
     let url_route_with_sub_path = move |sub_path: &str| {
-        let mut mr = matched_route.get_untracked();
+        let mut mr = matched_route.get();
         if mr == "/" {
             mr = "".to_string();
         }
-        format!(
-            "{}/{}{}",
-            mr,
-            sub_path,
-            url.get_untracked().search_params().to_query_string()
-        )
+        format!("{}/{}{}", mr, sub_path, query_string.get())
     };
     let url_with_update_query = move |key: &str, value: &str, sub_path: Option<&str>| {
-        let mut new_url = url.get_untracked();
+        let mut new_url = url.get();
         new_url
             .search_params_mut()
             .replace(key.to_string(), value.to_string());
@@ -51,7 +38,7 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
         }
     };
     let url_with_remove_query = move |key: &str, sub_path: Option<&str>| {
-        let mut new_url = url.get_untracked();
+        let mut new_url = url.get();
         let _ = new_url.search_params_mut().remove(key);
         let qs = new_url.search_params().to_query_string();
         if let Some(path) = sub_path {

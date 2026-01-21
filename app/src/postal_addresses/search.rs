@@ -261,7 +261,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         }
                     }} <div class="card-actions justify-end mt-4">
                         <A
-                            href=move || url_with_path("new_pa")
+                            href=move || url_with_remove_query("address_id", Some("new_pa"))
                             attr:class="btn btn-primary"
                             attr:data-testid="btn-new-address"
                             attr:disabled=is_disabled

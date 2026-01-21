@@ -127,6 +127,20 @@ impl TournamentEditorContext {
             .with_untracked(|state| state.get_tournament().cloned())
     }
 
+    /// Returns the origin tournament for display.
+    pub fn get_origin_tournament(&self) -> Option<TournamentBase> {
+        self.inner.with(|state| state.get_origin_tournament().cloned())
+    }
+
+    /// Returns the origin tournament without tracking the signal.
+    ///
+    /// This is useful inside Memos that modify the stage and write it back to the context
+    /// to avoid infinite loops or unnecessary cycles.
+    pub fn get_origin_tournament_untracked(&self) -> Option<TournamentBase> {
+        self.inner
+            .with_untracked(|state| state.get_origin_tournament().cloned())
+    }
+
     /// Returns a stage by its number.
     pub fn get_stage_by_number(&self, stage_number: u32) -> Option<Stage> {
         self.inner
