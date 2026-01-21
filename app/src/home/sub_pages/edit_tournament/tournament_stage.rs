@@ -204,12 +204,22 @@ pub fn EditTournamentStage() -> impl IntoView {
     });
 
     // Sync to Global State
-    Effect::new(move || {
-        if let Some(stage) = current_stage.get() {
-            leptos::logging::log!("Syncing stage to global state: {:?}", stage);
-            tournament_editor_context.set_stage(stage, false);
-        }
-    });
+    Effect::watch(
+        move || current_stage.get(),
+        move |may_be_s, prev_s, _| {
+            if let Some(stage) = may_be_s {
+                leptos::logging::log!("Syncing stage to global state: {:?}", stage);
+                tournament_editor_context.set_stage(stage.clone(), false);
+                if let Some(Some(prev_stage)) = prev_s {
+                    // Trigger URL validation if structural fields changed
+                    if stage.get_num_groups() < prev_stage.get_num_groups() {
+                        tournament_editor_context.trigger_url_validation();
+                    }
+                }
+            }
+        },
+        true,
+    );
 
     // Validation runs against the constantly updated Memo
     let validation_result = move || {

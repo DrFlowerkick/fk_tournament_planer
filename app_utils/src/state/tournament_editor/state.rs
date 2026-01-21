@@ -6,7 +6,10 @@ use app_core::{
 };
 use leptos::logging::warn;
 use petgraph::{Direction, graphmap::DiGraphMap, visit::Bfs};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    fmt::Write,
+};
 use uuid::Uuid;
 
 // --- Traits for Change Detection ---
@@ -300,6 +303,73 @@ impl TournamentEditorState {
         }
 
         true
+    }
+
+    /// Validates if the provided object params exist in the current tournament structure.
+    pub fn validate_url(
+        &self,
+        stage_number: Option<u32>,
+        group_number: Option<u32>,
+        _round_number: Option<u32>,
+        _match_number: Option<u32>,
+    ) -> Option<String> {
+        let Some(start) = self.get_root_id() else {
+            return None;
+        };
+
+        let mut is_invalid = false;
+        let mut valid_path = String::new();
+        let mut queue: VecDeque<(Uuid, DependencyType)> = VecDeque::new();
+        queue.push_back((start, DependencyType::Stage));
+
+        // Traverse structure by existing dependencies and given params
+        while let Some((current, dependency_type)) = queue.pop_front() {
+            match dependency_type {
+                DependencyType::Stage => {
+                    let Some(sn) = stage_number else {
+                        break;
+                    };
+                    if let Some((_source, target, _edge)) = self
+                        .structure
+                        .edges_directed(current, Direction::Outgoing)
+                        .find(|(_, t, _)| {
+                            if let Some(stage) = self.stages.get(t) {
+                                stage.get_number() == sn
+                            } else {
+                                false
+                            }
+                        })
+                    {
+                        write!(&mut valid_path, "{}", sn).unwrap();
+                        queue.push_back((target, DependencyType::Group));
+                    } else {
+                        is_invalid = true;
+                    }
+                }
+                DependencyType::Group => {
+                    let Some(gn) = group_number else {
+                        break;
+                    };
+                    if let Some((_source, _target, _edge)) = self
+                        .structure
+                        .edges_directed(current, Direction::Outgoing)
+                        .find(|(_, t, _)| {
+                            if let Some(group) = self.groups.get(t) {
+                                group.get_object_number() == gn
+                            } else {
+                                false
+                            }
+                        })
+                    {
+                        write!(&mut valid_path, "/{}", gn).unwrap();
+                        // Further dependencies (e.g. rounds) can be added here
+                    } else {
+                        is_invalid = true;
+                    }
+                }
+            }
+        }
+        is_invalid.then_some(valid_path)
     }
 
     // --- Helpers ---

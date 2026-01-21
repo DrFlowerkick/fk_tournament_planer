@@ -17,6 +17,8 @@ pub struct TournamentEditorContext {
     /// Indicates if a save or load operation is currently in progress.
     /// Used to disable UI elements across all child components.
     busy: RwSignal<bool>,
+    /// Simple counter to trigger URL validation checks manually
+    url_validation_trigger: RwSignal<usize>,
 }
 
 impl Default for TournamentEditorContext {
@@ -31,6 +33,7 @@ impl TournamentEditorContext {
         Self {
             inner: RwSignal::new(TournamentEditorState::new()),
             busy: RwSignal::new(false),
+            url_validation_trigger: RwSignal::new(0),
         }
     }
 
@@ -44,6 +47,33 @@ impl TournamentEditorContext {
     /// Checks if the editor is currently busy (saving/loading).
     pub fn is_busy(&self) -> bool {
         self.busy.get()
+    }
+
+    // --- URL Validation Trigger and Navigation ---
+
+    /// Triggers a global check of the current navigation path validity.
+    /// This should be called by components after modifying structural data (e.g. changing mode or group counts).
+    pub fn trigger_url_validation(&self) {
+        self.url_validation_trigger.update(|v| *v += 1);
+    }
+
+    /// Returns the trigger signal for effects to listen to.
+    /// Use signal with 'track()' to re-run validation when triggered.
+    pub fn url_validation_trigger(&self) -> ReadSignal<usize> {
+        self.url_validation_trigger.read_only()
+    }
+
+    /// Validates the current URL parameters against the editor state.
+    pub fn validate_url(
+        &self,
+        stage_number: Option<u32>,
+        group_number: Option<u32>,
+        round_number: Option<u32>,
+        match_number: Option<u32>,
+    ) -> Option<String> {
+        self.inner.with(|state| {
+            state.validate_url(stage_number, group_number, round_number, match_number)
+        })
     }
 
     // --- Actions (Write / Update) ---
@@ -93,7 +123,8 @@ impl TournamentEditorContext {
     /// This is useful inside Memos that modify the stage and write it back to the context
     /// to avoid infinite loops or unnecessary cycles.
     pub fn get_tournament_untracked(&self) -> Option<TournamentBase> {
-        self.inner.with_untracked(|state| state.get_tournament().cloned())
+        self.inner
+            .with_untracked(|state| state.get_tournament().cloned())
     }
 
     /// Returns a stage by its number.
@@ -107,7 +138,8 @@ impl TournamentEditorContext {
     /// This is useful inside Memos that modify the stage and write it back to the context
     /// to avoid infinite loops or unnecessary cycles.
     pub fn get_stage_by_number_untracked(&self, number: u32) -> Option<Stage> {
-        self.inner.with_untracked(|state| state.get_stage_by_number(number).cloned())
+        self.inner
+            .with_untracked(|state| state.get_stage_by_number(number).cloned())
     }
 
     /// Retrieves the diff of the tournament base for saving.

@@ -15,7 +15,7 @@ use app_utils::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::{SportParams, TournamentBaseParams},
+    params::{SportParams, StageParams, TournamentBaseParams},
     server_fn::{
         stage::SaveStage,
         tournament_base::{SaveTournamentBase, load_tournament_base},
@@ -73,7 +73,40 @@ pub fn EditTournament() -> impl IntoView {
         tournament_id().is_none() && path.get().starts_with("/new-tournament")
     });
 
-    // Form Signals
+    // --- Structural Integrity & Auto-Navigation Watchdog ---
+    // params in url
+    // ToDo: add params for objects, which are not implemented, yet.
+    let stage_params = use_query::<StageParams>();
+    let stage_number = move || stage_params.get().ok().and_then(|p| p.stage_number);
+
+    // url validation effect
+    Effect::new({
+        let navigate = navigate.clone();
+        move || {
+            // Listen to the explicit trigger
+            tournament_editor_context.url_validation_trigger().track();
+
+            // Validate url against current params and navigate if invalid params detected
+            if let Some(redirect_path) =
+                tournament_editor_context.validate_url(stage_number(), None, None, None)
+            {
+                leptos::logging::warn!(
+                    "Structural change invalidated current path. Redirecting to: {}",
+                    redirect_path
+                );
+
+                navigate(
+                    &format!("{}{}", redirect_path, query_string.get()),
+                    NavigateOptions {
+                        replace: true, // Replace history to avoid dead ends
+                        ..Default::default()
+                    },
+                );
+            }
+        }
+    });
+
+    // --- Form Signals ---
     let set_id_version = RwSignal::new(IdVersion::New);
     let set_name = RwSignal::new("".to_string());
     let set_entrants = RwSignal::new(0_u32);
@@ -144,7 +177,7 @@ pub fn EditTournament() -> impl IntoView {
                 Some(Ok(None)) => {
                     // new tournament case - check if tournament is already set in editor context
                     if let Some(s_id) = sport_id()
-                        && tournament_editor_context.get_tournament().is_none()
+                        && tournament_editor_context.get_tournament_untracked().is_none()
                     {
                         // create new tournament base with sport id
                         let mut tournament = TournamentBase::default();
@@ -283,11 +316,23 @@ pub fn EditTournament() -> impl IntoView {
     });
 
     // Sync to Global State
-    Effect::new(move || {
-        if let Some(current_tournament) = current_tournament_base.get() {
-            tournament_editor_context.set_tournament(current_tournament, false);
-        }
-    });
+    Effect::watch(
+        move || current_tournament_base.get(),
+        move |may_be_t, prev_t, _| {
+            if let Some(current_tournament) = may_be_t {
+                tournament_editor_context.set_tournament(current_tournament.clone(), false);
+                if let Some(Some(prev_tournament)) = prev_t {
+                    // Trigger URL validation if structural fields changed
+                    if current_tournament.get_tournament_mode().get_num_of_stages()
+                        < prev_tournament.get_tournament_mode().get_num_of_stages()
+                    {
+                        tournament_editor_context.trigger_url_validation();
+                    }
+                }
+            }
+        },
+        true,
+    );
 
     // Validation runs against the constantly updated Memo
     let validation_result = move || {
