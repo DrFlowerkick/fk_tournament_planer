@@ -46,6 +46,26 @@ pub enum CrMsg {
     StageUpdated { id: Uuid, version: u32 },
 }
 
+impl CrMsg {
+    pub fn id(&self) -> Uuid {
+        match self {
+            CrMsg::AddressUpdated { id, .. } => *id,
+            CrMsg::SportConfigUpdated { id, .. } => *id,
+            CrMsg::TournamentBaseUpdated { id, .. } => *id,
+            CrMsg::StageUpdated { id, .. } => *id,
+        }
+    }
+
+    pub fn version(&self) -> u32 {
+        match self {
+            CrMsg::AddressUpdated { version, .. } => *version,
+            CrMsg::SportConfigUpdated { version, .. } => *version,
+            CrMsg::TournamentBaseUpdated { version, .. } => *version,
+            CrMsg::StageUpdated { version, .. } => *version,
+        }
+    }
+}
+
 /// client registry port trait
 #[async_trait]
 pub trait ClientRegistryPort: Send + Sync + Any {

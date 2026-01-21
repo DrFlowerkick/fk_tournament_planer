@@ -32,7 +32,10 @@ pub fn EditTournamentStage() -> impl IntoView {
     let component_id = StoredValue::new(Uuid::new_v4());
 
     // --- Hooks & Navigation ---
-    let UseQueryNavigationReturn { query_string, .. } = use_query_navigation();
+    let UseQueryNavigationReturn {
+        url_route_with_sub_path,
+        ..
+    } = use_query_navigation();
 
     let tournament_id_query = use_query::<TournamentBaseParams>();
     let tournament_id = move || {
@@ -49,19 +52,45 @@ pub fn EditTournamentStage() -> impl IntoView {
 
     let stage_number_params = use_params::<StageParams>();
     let stage_number = move || {
-        stage_number_params
-            .get()
-            .ok()
-            .and_then(|snp| snp.stage_number)
+        if let Ok(snp) = stage_number_params.get()
+            && let Some(sn) = snp.stage_number
+            && let Some(tournament) = tournament_editor_context.get_tournament()
+            && tournament.get_tournament_mode().get_num_of_stages() > sn
+        {
+            return Some(sn);
+        }
+        None
+    };
+    let editor_title = move || {
+        if let Some(sn) = stage_number()
+            && let Some(tournament) = tournament_editor_context.get_tournament()
+            && let Some(title) = tournament.get_tournament_mode().get_stage_name(sn)
+        {
+            format!("Edit {}", title)
+        } else {
+            "Edit Tournament Stage".to_string()
+        }
     };
 
-    // hide form if tournament mode has only one stage with one group
+    // check invalid stage_number in params
+    Effect::new(move || {
+        if let Ok(snp) = stage_number_params.get()
+            && let Some(sn) = snp.stage_number
+            && let Some(tournament) = tournament_editor_context.get_tournament()
+            && tournament.get_tournament_mode().get_num_of_stages() <= sn
+        {
+            // invalid stage number -> signal url validation
+            tournament_editor_context.trigger_url_validation();
+        }
+    });
+
+    // hide form if tournament mode has only one stage with one group OR if invalid stage number
     let hide_form = move || {
         if let Some(tournament) = tournament_editor_context.get_tournament() {
             matches!(
                 tournament.get_tournament_mode(),
                 TournamentMode::SingleStage | TournamentMode::SwissSystem { num_rounds: _ }
-            )
+            ) || stage_number().is_none()
         } else {
             false
         }
@@ -127,14 +156,9 @@ pub fn EditTournamentStage() -> impl IntoView {
                         && let Some(sn) = stage_number()
                     {
                         if let Some(stage) = tournament_editor_context.get_stage_by_number(sn) {
-                            leptos::logging::log!("Loading stage {} from editor state", sn);
                             set_id_version.set(stage.get_id_version());
                             set_num_groups.set(stage.get_num_groups());
                         } else {
-                            leptos::logging::log!(
-                                "Stage not found on load, creating new stage for number {}",
-                                sn
-                            );
                             // new stage
                             let mut new_state = Stage::new(IdVersion::NewWithId(Uuid::new_v4()));
                             new_state.set_number(sn);
@@ -161,36 +185,6 @@ pub fn EditTournamentStage() -> impl IntoView {
 
     // --- handle errors ---
 
-    // handle input errors
-    Effect::new({
-        let on_cancel = on_cancel.clone();
-        move || {
-            if tournament_id().is_none() {
-                handle_general_error(
-                    &page_err_ctx,
-                    component_id.get_value(),
-                    "Stage Editing requires Tournament ID.",
-                    Some(refetch_and_reset.clone()),
-                    on_cancel.clone(),
-                );
-            }
-        }
-    });
-    Effect::new({
-        let on_cancel = on_cancel.clone();
-        move || {
-            if stage_number().is_none() {
-                handle_general_error(
-                    &page_err_ctx,
-                    component_id.get_value(),
-                    "Stage Editing requires Stage Number.",
-                    Some(refetch_and_reset.clone()),
-                    on_cancel.clone(),
-                );
-            }
-        }
-    });
-
     // --- Validation Logic ---
     let current_stage = Memo::new(move |_| {
         if let Some(sn) = stage_number()
@@ -204,22 +198,11 @@ pub fn EditTournamentStage() -> impl IntoView {
     });
 
     // Sync to Global State
-    Effect::watch(
-        move || current_stage.get(),
-        move |may_be_s, prev_s, _| {
-            if let Some(stage) = may_be_s {
-                leptos::logging::log!("Syncing stage to global state: {:?}", stage);
-                tournament_editor_context.set_stage(stage.clone(), false);
-                if let Some(Some(prev_stage)) = prev_s {
-                    // Trigger URL validation if structural fields changed
-                    if stage.get_num_groups() < prev_stage.get_num_groups() {
-                        tournament_editor_context.trigger_url_validation();
-                    }
-                }
-            }
-        },
-        true,
-    );
+    Effect::new(move || {
+        if let Some(stage) = current_stage.get() {
+            tournament_editor_context.set_stage(stage.clone(), false);
+        }
+    });
 
     // Validation runs against the constantly updated Memo
     let validation_result = move || {
@@ -265,7 +248,7 @@ pub fn EditTournamentStage() -> impl IntoView {
                     >
                         <div class="w-full flex justify-between items-center pb-4">
                             <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
-                                "Edit Tournament Stage"
+                                {move || editor_title()}
                             </h2>
                         </div>
 
@@ -310,25 +293,23 @@ pub fn EditTournamentStage() -> impl IntoView {
 
                                             // group editor links
                                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
-                                                {move || {
-                                                    (0..set_num_groups.get())
-                                                        .map(|i| {
-                                                            view! {
-                                                                <A
-                                                                    href=move || {
-                                                                        format!("{}{}", i.to_string(), query_string.get())
-                                                                    }
-                                                                    attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
-                                                                    attr:data-testid=format!("link-configure-group-{}", i)
-                                                                    scroll=false
-                                                                >
-                                                                    <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                                    {format!("Configure Group {}", i + 1)}
-                                                                </A>
-                                                            }
-                                                        })
-                                                        .collect_view()
-                                                }}
+                                                <For
+                                                    each=move || 0..set_num_groups.get()
+                                                    key=|i| *i
+                                                    children=move |i| {
+                                                        view! {
+                                                            <A
+                                                                href=move || url_route_with_sub_path(&i.to_string())
+                                                                attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
+                                                                attr:data-testid=format!("link-configure-group-{}", i)
+                                                                scroll=false
+                                                            >
+                                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                                                {format!("Configure Group {}", i + 1)}
+                                                            </A>
+                                                        }
+                                                    }
+                                                />
                                             </div>
                                         }
                                     }}

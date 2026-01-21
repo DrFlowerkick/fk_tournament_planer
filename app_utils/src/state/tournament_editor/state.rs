@@ -313,10 +313,12 @@ impl TournamentEditorState {
         _round_number: Option<u32>,
         _match_number: Option<u32>,
     ) -> Option<String> {
+        let Some(tournament) = self.get_tournament() else {
+            return None;
+        };
         let Some(start) = self.get_root_id() else {
             return None;
         };
-
         let mut is_invalid = false;
         let mut valid_path = String::new();
         let mut queue: VecDeque<(Uuid, DependencyType)> = VecDeque::new();
@@ -329,43 +331,35 @@ impl TournamentEditorState {
                     let Some(sn) = stage_number else {
                         break;
                     };
-                    if let Some((_source, target, _edge)) = self
-                        .structure
-                        .edges_directed(current, Direction::Outgoing)
-                        .find(|(_, t, _)| {
-                            if let Some(stage) = self.stages.get(t) {
-                                stage.get_number() == sn
-                            } else {
-                                false
-                            }
-                        })
-                    {
-                        write!(&mut valid_path, "{}", sn).unwrap();
-                        queue.push_back((target, DependencyType::Group));
-                    } else {
+                    // check if stage number is valid
+                    if tournament.get_tournament_mode().get_num_of_stages() <= sn {
                         is_invalid = true;
+                        break;
+                    }
+                    // valid stage number
+                    write!(&mut valid_path, "{}", sn).unwrap();
+                    // add stage to queue, if it exists in state
+                    if let Some(stage) = self.get_stage_by_number(sn)
+                        && let Some(id) = stage.get_id()
+                    {
+                        queue.push_back((id, DependencyType::Group));
                     }
                 }
                 DependencyType::Group => {
                     let Some(gn) = group_number else {
                         break;
                     };
-                    if let Some((_source, _target, _edge)) = self
-                        .structure
-                        .edges_directed(current, Direction::Outgoing)
-                        .find(|(_, t, _)| {
-                            if let Some(group) = self.groups.get(t) {
-                                group.get_object_number() == gn
-                            } else {
-                                false
-                            }
-                        })
+                    // check if group number is valid
+                    if let Some(stage) = self.stages.get(&current)
+                        && stage.get_num_groups() <= gn
                     {
-                        write!(&mut valid_path, "/{}", gn).unwrap();
-                        // Further dependencies (e.g. rounds) can be added here
-                    } else {
                         is_invalid = true;
+                        break;
                     }
+                    // valid group number
+                    write!(&mut valid_path, "{}", gn).unwrap();
+                    // add group to queue, if it exists in state
+                    // ToDo: implement group lookup by number
                 }
             }
         }

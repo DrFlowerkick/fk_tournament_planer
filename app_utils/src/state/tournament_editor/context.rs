@@ -71,7 +71,7 @@ impl TournamentEditorContext {
         round_number: Option<u32>,
         match_number: Option<u32>,
     ) -> Option<String> {
-        self.inner.with(|state| {
+        self.inner.with_untracked(|state| {
             state.validate_url(stage_number, group_number, round_number, match_number)
         })
     }

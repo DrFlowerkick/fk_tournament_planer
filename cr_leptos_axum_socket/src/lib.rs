@@ -10,7 +10,6 @@ use axum::{
     extract::{State, WebSocketUpgrade},
     response::Response,
 };
-use leptos::logging::log;
 use leptos::prelude::*;
 #[cfg(feature = "ssr")]
 use leptos_axum_socket::{ServerSocket, handlers::upgrade_websocket};
@@ -67,7 +66,6 @@ pub fn use_client_registry_socket(
     version: ReadSignal<u32>,
     refetch: Arc<dyn Fn() + Send + Sync + 'static>,
 ) {
-    // ToDo: clean up logs
     let socket = expect_socket_context();
 
     let prev_topic = StoredValue::new(None::<CrTopic>);
@@ -75,57 +73,11 @@ pub fn use_client_registry_socket(
     let subscribe = {
         move |topic: CrTopic, refetch: Arc<dyn Fn() + Send + Sync + 'static>| {
             let version = version.get_untracked();
-            let socket_handler = move |msg: &CrSocketMsg| match msg.msg {
-                CrMsg::AddressUpdated {
-                    version: meta_version,
-                    ..
-                } => {
-                    if meta_version > version {
-                        log!(
-                            "AddressUpdated received: refetching address expecting version: {}",
-                            meta_version
-                        );
-                        refetch();
-                    }
-                }
-                CrMsg::SportConfigUpdated {
-                    version: meta_version,
-                    ..
-                } => {
-                    if meta_version > version {
-                        log!(
-                            "SportConfigUpdated received: refetching config expecting version: {}",
-                            meta_version
-                        );
-                        refetch();
-                    }
-                }
-                CrMsg::TournamentBaseUpdated {
-                    version: meta_version,
-                    ..
-                } => {
-                    if meta_version > version {
-                        log!(
-                            "TournamentBaseUpdated received: refetching tournament expecting version: {}",
-                            meta_version
-                        );
-                        refetch();
-                    }
-                }
-                CrMsg::StageUpdated {
-                    version: meta_version,
-                    ..
-                } => {
-                    if meta_version > version {
-                        log!(
-                            "StageUpdated received: refetching stage expecting version: {}",
-                            meta_version
-                        );
-                        refetch();
-                    }
+            let socket_handler = move |msg: &CrSocketMsg| {
+                if msg.msg.version() > version {
+                    refetch();
                 }
             };
-            log!("Subscribing to topic: {:?}", topic);
             socket.subscribe(topic, socket_handler);
         }
     };
@@ -133,13 +85,10 @@ pub fn use_client_registry_socket(
     Effect::watch(
         move || topic.get(),
         move |tp, _, _| {
-            log!("Topic changed: {:?}", tp);
-            log!("Previous topic: {:?}", prev_topic.get_value());
             if let Some(topic) = tp {
                 if let Some(prev_tp) = prev_topic.get_value()
                     && prev_tp != *topic
                 {
-                    log!("Unsubscribing from previous topic: {:?}", prev_tp);
                     socket.unsubscribe(prev_tp);
                     subscribe(*topic, refetch.clone());
                     prev_topic.set_value(Some(*topic));
@@ -154,7 +103,6 @@ pub fn use_client_registry_socket(
 
     on_cleanup(move || {
         if let Some(topic) = topic.get_untracked() {
-            log!("Cleaning up subscription for topic: {:?}", topic);
             socket.unsubscribe(topic);
         }
     });

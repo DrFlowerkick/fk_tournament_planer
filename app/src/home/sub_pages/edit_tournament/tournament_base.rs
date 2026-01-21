@@ -30,7 +30,7 @@ use leptos::prelude::*;
 use leptos_router::{
     NavigateOptions,
     components::A,
-    hooks::{use_navigate, use_query},
+    hooks::{use_navigate, use_params, use_query},
     nested_router::Outlet,
 };
 use uuid::Uuid;
@@ -48,7 +48,7 @@ pub fn EditTournament() -> impl IntoView {
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        url_with_path,
+        url_route_with_sub_path,
         url_with_update_query,
         path,
         ..
@@ -75,8 +75,13 @@ pub fn EditTournament() -> impl IntoView {
     // --- Structural Integrity & Auto-Navigation Watchdog ---
     // params in url
     // ToDo: add params for objects, which are not implemented, yet.
-    let stage_params = use_query::<StageParams>();
-    let stage_number = move || stage_params.get().ok().and_then(|p| p.stage_number);
+    let stage_params = use_params::<StageParams>();
+    let stage_number = move || {
+        stage_params
+            .get_untracked()
+            .ok()
+            .and_then(|p| p.stage_number)
+    };
 
     // url validation effect
     Effect::new({
@@ -89,15 +94,12 @@ pub fn EditTournament() -> impl IntoView {
             if let Some(redirect_path) =
                 tournament_editor_context.validate_url(stage_number(), None, None, None)
             {
-                leptos::logging::warn!(
-                    "Structural change invalidated current path. Redirecting to: {}",
-                    redirect_path
-                );
-
+                // Navigate to the corrected path
                 navigate(
-                    &url_with_path(&redirect_path),
+                    &url_route_with_sub_path(&redirect_path),
                     NavigateOptions {
                         replace: true, // Replace history to avoid dead ends
+                        scroll: false,
                         ..Default::default()
                     },
                 );
@@ -318,23 +320,11 @@ pub fn EditTournament() -> impl IntoView {
     });
 
     // Sync to Global State
-    Effect::watch(
-        move || current_tournament_base.get(),
-        move |may_be_t, prev_t, _| {
-            if let Some(current_tournament) = may_be_t {
-                tournament_editor_context.set_tournament(current_tournament.clone(), false);
-                if let Some(Some(prev_tournament)) = prev_t {
-                    // Trigger URL validation if structural fields changed
-                    if current_tournament.get_tournament_mode().get_num_of_stages()
-                        < prev_tournament.get_tournament_mode().get_num_of_stages()
-                    {
-                        tournament_editor_context.trigger_url_validation();
-                    }
-                }
-            }
-        },
-        true,
-    );
+    Effect::new(move || {
+        if let Some(current_tournament) = current_tournament_base.get() {
+            tournament_editor_context.set_tournament(current_tournament.clone(), false);
+        }
+    });
 
     // Validation runs against the constantly updated Memo
     let validation_result = move || {
@@ -468,7 +458,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="w-full mt-6">
                                                             <A
-                                                                href=move || url_with_path("0/0")
+                                                                href=move || url_route_with_sub_path("0/0")
                                                                 attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-single-stage"
                                                                 scroll=false
@@ -486,7 +476,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
                                                             <A
-                                                                href=move || url_with_path("0")
+                                                                href=move || url_route_with_sub_path("0")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-pool-stage"
                                                                 scroll=false
@@ -495,7 +485,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure Pool Stage"
                                                             </A>
                                                             <A
-                                                                href=move || url_with_path("1")
+                                                                href=move || url_route_with_sub_path("1")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-final-stage"
                                                                 scroll=false
@@ -513,7 +503,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
                                                             <A
-                                                                href=move || url_with_path("0")
+                                                                href=move || url_route_with_sub_path("0")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-first-pool-stage"
                                                                 scroll=false
@@ -522,7 +512,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure First Pool Stage"
                                                             </A>
                                                             <A
-                                                                href=move || url_with_path("1")
+                                                                href=move || url_route_with_sub_path("1")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-second-pool-stage"
                                                                 scroll=false
@@ -531,7 +521,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure Second Pool Stage"
                                                             </A>
                                                             <A
-                                                                href=move || url_with_path("2")
+                                                                href=move || url_route_with_sub_path("2")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-final-stage"
                                                                 scroll=false
@@ -550,7 +540,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="w-full mt-6">
                                                             <A
-                                                                href=move || url_with_path("0/0")
+                                                                href=move || url_route_with_sub_path("0/0")
                                                                 attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-swiss-system"
                                                                 scroll=false
