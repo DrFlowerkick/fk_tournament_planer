@@ -20,10 +20,9 @@ use uuid::Uuid;
 pub fn ListTournaments() -> impl IntoView {
     // navigation and query handling Hook
     let UseQueryNavigationReturn {
-        update,
-        remove,
-        nav_url,
-        relative_sub_url,
+        url_with_path,
+        url_with_update_query,
+        url_with_remove_query,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -41,13 +40,13 @@ pub fn ListTournaments() -> impl IntoView {
     Effect::new({
         let navigate = navigate.clone();
         move || {
-            if let Some(t_id) = selected_id.get() {
-                update("tournament_id", &t_id.to_string());
+            let nav_url = if let Some(t_id) = selected_id.get() {
+                url_with_update_query("tournament_id", &t_id.to_string(), None)
             } else {
-                remove("tournament_id");
-            }
+                url_with_remove_query("tournament_id", None)
+            };
             navigate(
-                &nav_url.get(),
+                &nav_url,
                 NavigateOptions {
                     replace: true,
                     scroll: false,
@@ -100,9 +99,9 @@ pub fn ListTournaments() -> impl IntoView {
                     .any(|t| t.get_id() == Some(t_id))
             {
                 set_selected_id.set(None);
-                remove("tournament_id");
+                let nav_url = url_with_remove_query("tournament_id", None);
                 navigate(
-                    &nav_url.get(),
+                    &nav_url,
                     NavigateOptions {
                         replace: true,
                         scroll: false,
@@ -244,7 +243,7 @@ pub fn ListTournaments() -> impl IntoView {
                                                                 TournamentState::Draft | TournamentState::Published => {
                                                                     view! {
                                                                         <A
-                                                                            href=relative_sub_url("register")
+                                                                            href=url_with_path("register")
                                                                             attr:class="btn btn-sm btn-primary"
                                                                             attr:data-testid="action-btn-register"
                                                                             scroll=false
@@ -252,7 +251,7 @@ pub fn ListTournaments() -> impl IntoView {
                                                                             "Register"
                                                                         </A>
                                                                         <A
-                                                                            href=relative_sub_url("edit")
+                                                                            href=url_with_path("edit")
                                                                             attr:class="btn btn-sm btn-ghost"
                                                                             attr:data-testid="action-btn-edit"
                                                                             scroll=false

@@ -39,11 +39,12 @@ fn get_sorted_countries() -> Vec<(String, String)> {
 pub fn PostalAddressForm() -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
-        update,
+        url_with_path,
+        url_with_update_query,
         path,
-        query_string,
         ..
     } = use_query_navigation();
+    let navigate = use_navigate();
 
     let is_new = move || path.read().ends_with("/new_pa") || path.read().is_empty();
     let query = use_query::<AddressParams>();
@@ -57,9 +58,7 @@ pub fn PostalAddressForm() -> impl IntoView {
 
     let state = expect_context::<Store<GlobalState>>();
     let return_after_address_edit = state.return_after_address_edit();
-    let cancel_target = Callback::new(move |_: ()| {
-        format!("{}{}", return_after_address_edit.get(), query_string.get())
-    });
+    let cancel_target = Callback::new(move |_: ()| url_with_path(&return_after_address_edit.get()));
 
     // --- Signals for form fields ---
     let set_name = RwSignal::new(String::new());
@@ -76,12 +75,11 @@ pub fn PostalAddressForm() -> impl IntoView {
     Effect::new(move || {
         if let Some(Ok(pa)) = save_postal_address.value().get() {
             save_postal_address.clear();
-            update(
+            let nav_url = url_with_update_query(
                 "address_id",
                 &pa.get_id().map(|id| id.to_string()).unwrap_or_default(),
+                Some(&return_after_address_edit.get()),
             );
-            let nav_url = format!("{}{}", return_after_address_edit.get(), query_string.get());
-            let navigate = use_navigate();
             navigate(&nav_url, NavigateOptions::default());
         }
     });

@@ -28,10 +28,9 @@ pub fn SearchSportConfig() -> impl IntoView {
     let sport_query = use_query::<SportParams>();
     let sport_config_query = use_query::<SportConfigParams>();
     let UseQueryNavigationReturn {
-        remove,
-        relative_sub_url,
+        url_with_path,
+        url_with_remove_query,
         path,
-        nav_url,
         ..
     } = use_query_navigation();
 
@@ -153,10 +152,7 @@ pub fn SearchSportConfig() -> impl IntoView {
     });
 
     // reset url when unexpectedly no sport config found
-    let reset_url = move || {
-        remove("sport_config_id");
-        nav_url.get()
-    };
+    let reset_url = move || url_with_remove_query("sport_config_id", None);
 
     let props = SetIdInQueryInputDropdownProperties {
         key: "sport_config_id",
@@ -243,7 +239,7 @@ pub fn SearchSportConfig() -> impl IntoView {
                                         }
                                     }} <div class="card-actions justify-end mt-4">
                                         <A
-                                            href=move || relative_sub_url("new_sc")
+                                            href=move || url_with_path("new_sc")
                                             attr:class="btn btn-primary"
                                             attr:data-testid="btn-new-sport-config"
                                             attr:disabled=is_disabled
@@ -251,7 +247,7 @@ pub fn SearchSportConfig() -> impl IntoView {
                                             "New"
                                         </A>
                                         <A
-                                            href=move || relative_sub_url("edit_sc")
+                                            href=move || url_with_path("edit_sc")
                                             attr:class="btn btn-secondary"
                                             attr:data-testid="btn-edit-sport-config"
                                             attr:disabled=move || is_disabled() || id.get().is_none()

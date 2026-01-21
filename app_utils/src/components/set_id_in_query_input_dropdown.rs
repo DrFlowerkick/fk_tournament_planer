@@ -41,18 +41,18 @@ where
     } = props;
     // ---- initialize query navigation ----
     let UseQueryNavigationReturn {
-        get,
-        update,
-        nav_url,
+        get_query,
+        url_with_update_query,
         ..
     } = use_query_navigation();
+    let navigate = use_navigate();
 
     // ---- search_text, dropdown-status & keyboard-highlight ----
     let (open, set_open) = signal(false);
     let (hi, set_hi) = signal::<Option<usize>>(None);
 
     // selection handler
-    let select_idx = move |i: usize| {
+    let select_idx = Callback::new(move |i: usize| {
         if let Some(item) = list_items.read_untracked().get(i) {
             // 1) update UI state
             search_text.set("".to_string());
@@ -60,24 +60,24 @@ where
             set_hi.set(None);
             // 2) check if id has changed
             let item_id = item.get_id_version().get_id();
-            let current_id = get(key).and_then(|v| Uuid::parse_str(&v).ok());
+            let current_id = get_query(key).and_then(|v| Uuid::parse_str(&v).ok());
             if item_id == current_id {
                 // no change -> just reset name
                 name.notify();
                 return;
             }
             // 3) update URL query parameter with new id
-            update(
+            let nav_url = url_with_update_query(
                 key,
                 &item
                     .get_id_version()
                     .get_id()
                     .unwrap_or_default()
                     .to_string(),
+                None,
             );
-            let navigate = use_navigate();
             navigate(
-                &nav_url.get(),
+                &nav_url,
                 NavigateOptions {
                     // replace=true prevents „history spam“
                     replace: true,
@@ -85,7 +85,7 @@ where
                 },
             );
         }
-    };
+    });
 
     // keyboard control
     let on_key = move |ev: web_sys::KeyboardEvent| {
@@ -106,7 +106,7 @@ where
             "Enter" => {
                 if let Some(i) = hi.get() {
                     ev.prevent_default();
-                    select_idx(i);
+                    select_idx.run(i);
                 }
             }
             "Escape" => {
@@ -212,7 +212,7 @@ where
                                                                 class:active=move || is_hi()
                                                                 class:bg-base-200=move || is_hi()
                                                                 on:mouseenter=move |_| set_hi.set(Some(i))
-                                                                on:mousedown=move |_| select_idx(i)
+                                                                on:mousedown=move |_| select_idx.run(i)
                                                             >
                                                                 {render_item(&a)}
                                                             </p>

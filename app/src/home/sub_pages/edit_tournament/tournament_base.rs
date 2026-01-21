@@ -48,10 +48,9 @@ pub fn EditTournament() -> impl IntoView {
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        nav_url,
-        update,
+        url_with_path,
+        url_with_update_query,
         path,
-        query_string,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -96,7 +95,7 @@ pub fn EditTournament() -> impl IntoView {
                 );
 
                 navigate(
-                    &format!("{}{}", redirect_path, query_string.get()),
+                    &url_with_path(&redirect_path),
                     NavigateOptions {
                         replace: true, // Replace history to avoid dead ends
                         ..Default::default()
@@ -177,7 +176,9 @@ pub fn EditTournament() -> impl IntoView {
                 Some(Ok(None)) => {
                     // new tournament case - check if tournament is already set in editor context
                     if let Some(s_id) = sport_id()
-                        && tournament_editor_context.get_tournament_untracked().is_none()
+                        && tournament_editor_context
+                            .get_tournament_untracked()
+                            .is_none()
                     {
                         // create new tournament base with sport id
                         let mut tournament = TournamentBase::default();
@@ -209,12 +210,13 @@ pub fn EditTournament() -> impl IntoView {
             Some(Ok(tb)) => {
                 save_tournament_base.clear();
                 toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
-                update(
+                let nav_url = url_with_update_query(
                     "tournament_id",
                     &tb.get_id().map(|id| id.to_string()).unwrap_or_default(),
+                    None,
                 );
                 navigate(
-                    &nav_url.get(),
+                    &nav_url,
                     NavigateOptions {
                         replace: true,
                         scroll: false,
@@ -419,7 +421,9 @@ pub fn EditTournament() -> impl IntoView {
                                                         error_message=name_error
                                                         is_new=is_new
                                                         on_blur=move || {
-                                                            if let Some(current_tournament) = current_tournament_base.get() {
+                                                            if let Some(current_tournament) = current_tournament_base
+                                                                .get()
+                                                            {
                                                                 set_name.set(current_tournament.get_name().to_string());
                                                             }
                                                         }
@@ -464,7 +468,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="w-full mt-6">
                                                             <A
-                                                                href=move || format!("0/0{}", query_string.get())
+                                                                href=move || url_with_path("0/0")
                                                                 attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-single-stage"
                                                                 scroll=false
@@ -482,7 +486,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
                                                             <A
-                                                                href=move || format!("0{}", query_string.get())
+                                                                href=move || url_with_path("0")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-pool-stage"
                                                                 scroll=false
@@ -491,7 +495,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure Pool Stage"
                                                             </A>
                                                             <A
-                                                                href=move || format!("1{}", query_string.get())
+                                                                href=move || url_with_path("1")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-final-stage"
                                                                 scroll=false
@@ -509,7 +513,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
                                                             <A
-                                                                href=move || format!("0{}", query_string.get())
+                                                                href=move || url_with_path("0")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-first-pool-stage"
                                                                 scroll=false
@@ -518,7 +522,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure First Pool Stage"
                                                             </A>
                                                             <A
-                                                                href=move || format!("1{}", query_string.get())
+                                                                href=move || url_with_path("1")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-second-pool-stage"
                                                                 scroll=false
@@ -527,7 +531,7 @@ pub fn EditTournament() -> impl IntoView {
                                                                 "Configure Second Pool Stage"
                                                             </A>
                                                             <A
-                                                                href=move || format!("2{}", query_string.get())
+                                                                href=move || url_with_path("2")
                                                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-final-stage"
                                                                 scroll=false
@@ -546,7 +550,7 @@ pub fn EditTournament() -> impl IntoView {
                                                     view! {
                                                         <div class="w-full mt-6">
                                                             <A
-                                                                href=move || format!("0/0{}", query_string.get())
+                                                                href=move || url_with_path("0/0")
                                                                 attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                                                 attr:data-testid="link-configure-swiss-system"
                                                                 scroll=false

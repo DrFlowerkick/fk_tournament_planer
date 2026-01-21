@@ -11,8 +11,8 @@ use reactive_stores::Store;
 pub fn SportDashboard() -> impl IntoView {
     // get query helpers
     let UseQueryNavigationReturn {
-        relative_sub_url,
-        url_with_out_param,
+        url_with_path,
+        url_with_remove_query,
         ..
     } = use_query_navigation();
 
@@ -72,7 +72,7 @@ pub fn SportDashboard() -> impl IntoView {
                         // Navigation Links Grid
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
                             <A
-                                href=relative_sub_url("/tournaments")
+                                href=url_with_path("tournaments")
                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-tournaments"
                                 scroll=false
@@ -82,7 +82,7 @@ pub fn SportDashboard() -> impl IntoView {
                             </A>
 
                             <A
-                                href=url_with_out_param("tournament_id", Some("/new-tournament"))
+                                href=url_with_remove_query("tournament_id", Some("new-tournament"))
 
                                 attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-plan-new"
@@ -93,7 +93,7 @@ pub fn SportDashboard() -> impl IntoView {
                             </A>
 
                             <A
-                                href=relative_sub_url("/adhoc-tournament")
+                                href=url_with_path("adhoc-tournament")
                                 attr:class="btn btn-accent h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-adhoc"
                                 scroll=false
@@ -103,7 +103,7 @@ pub fn SportDashboard() -> impl IntoView {
                             </A>
 
                             <A
-                                href=relative_sub_url("/sport-configurations")
+                                href=url_with_path("sport-configurations")
                                 attr:class="btn btn-neutral h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-config"
                                 scroll=false
@@ -114,7 +114,7 @@ pub fn SportDashboard() -> impl IntoView {
 
                             // Full width About link
                             <A
-                                href=relative_sub_url("/about-sport")
+                                href=url_with_path("about-sport")
                                 attr:class="btn btn-ghost md:col-span-2 mt-4"
                                 attr:data-testid="link-nav-about"
                                 scroll=false

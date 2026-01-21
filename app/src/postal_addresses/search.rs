@@ -34,10 +34,9 @@ pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url query parameters & navigation helpers
     let query = use_query::<AddressParams>();
     let UseQueryNavigationReturn {
-        remove,
-        relative_sub_url,
+        url_with_path,
+        url_with_remove_query,
         path,
-        nav_url,
         ..
     } = use_query_navigation();
 
@@ -131,10 +130,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
     });
 
     // reset url when unexpectedly no address found
-    let reset_url = move || {
-        remove("address_id");
-        nav_url.get()
-    };
+    let reset_url = move || url_with_remove_query("address_id", None);
 
     let props = SetIdInQueryInputDropdownProperties {
         key: "address_id",
@@ -265,7 +261,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         }
                     }} <div class="card-actions justify-end mt-4">
                         <A
-                            href=move || relative_sub_url("new_pa")
+                            href=move || url_with_path("new_pa")
                             attr:class="btn btn-primary"
                             attr:data-testid="btn-new-address"
                             attr:disabled=is_disabled
@@ -273,7 +269,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             "New"
                         </A>
                         <A
-                            href=move || relative_sub_url("edit_pa")
+                            href=move || url_with_path("edit_pa")
                             attr:class="btn btn-secondary"
                             attr:data-testid="btn-edit-address"
                             attr:disabled=move || is_disabled() || id.get().is_none()

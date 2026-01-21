@@ -32,11 +32,12 @@ use uuid::Uuid;
 pub fn SportConfigForm() -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
-        update,
+        url_with_path,
+        url_with_update_query,
         path,
-        query_string,
         ..
     } = use_query_navigation();
+    let navigate = use_navigate();
 
     let sport_query = use_query::<SportParams>();
     let sport_id = Signal::derive(move || sport_query.get().map(|s| s.sport_id).unwrap_or(None));
@@ -58,13 +59,8 @@ pub fn SportConfigForm() -> impl IntoView {
     let return_after_sport_config_edit = state.return_after_sport_config_edit();
     let sport_plugin_manager = state.sport_plugin_manager();
 
-    let cancel_target = Callback::new(move |_: ()| {
-        format!(
-            "{}{}",
-            return_after_sport_config_edit.get(),
-            query_string.get()
-        )
-    });
+    let cancel_target =
+        Callback::new(move |_: ()| url_with_path(&return_after_sport_config_edit.get()));
 
     let sport_plugin = move || {
         if let Ok(sport_params) = sport_query.get()
@@ -95,17 +91,11 @@ pub fn SportConfigForm() -> impl IntoView {
 
     Effect::new(move || {
         if let Some(Ok(sc)) = save_sport_config.value().get() {
-            save_sport_config.clear();
-            update(
+            let nav_url = url_with_update_query(
                 "sport_config_id",
                 &sc.get_id().map(|id| id.to_string()).unwrap_or_default(),
+                Some(&return_after_sport_config_edit.get()),
             );
-            let nav_url = format!(
-                "{}{}",
-                return_after_sport_config_edit.get(),
-                query_string.get()
-            );
-            let navigate = use_navigate();
             navigate(&nav_url, NavigateOptions::default());
         }
     });
