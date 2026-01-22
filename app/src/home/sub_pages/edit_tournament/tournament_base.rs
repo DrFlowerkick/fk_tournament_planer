@@ -406,9 +406,9 @@ pub fn EditTournament() -> impl IntoView {
                     }}
                 </h2>
             </div>
-
-            {move || {
-                if !is_new.get() && tournament_id().is_none() {
+            <Show
+                when=move || is_new.get() || tournament_id().is_some()
+                fallback=|| {
                     view! {
                         <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
                             <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
@@ -417,197 +417,193 @@ pub fn EditTournament() -> impl IntoView {
                             </p>
                         </div>
                     }
-                        .into_any()
-                } else {
-                    view! {
-                        // Card wrapping Form and Stage Links
-                        <div class="card w-full bg-base-100 shadow-xl">
-                            <div class="card-body">
-                                // --- Form Area ---
-                                <Transition fallback=move || {
-                                    view! {
-                                        <div class="w-full flex justify-center py-8">
-                                            <span class="loading loading-spinner loading-lg"></span>
+                }
+            >
+                // Card wrapping Form and Stage Links
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        // --- Form Area ---
+                        <Transition fallback=move || {
+                            view! {
+                                <div class="w-full flex justify-center py-8">
+                                    <span class="loading loading-spinner loading-lg"></span>
+                                </div>
+                            }
+                        }>
+                            {move || {
+                                let _ = tournament_res.get();
+                                // Access the resource to trigger loading state
+
+                                view! {
+                                    <fieldset
+                                        disabled=move || {
+                                            tournament_editor_context.is_busy()
+                                                || page_err_ctx.has_errors()
+                                                || matches!(
+                                                    state.get(),
+                                                    TournamentState::ActiveStage(_) | TournamentState::Finished
+                                                )
+                                        }
+                                        class="contents"
+                                        data-testid="tournament-editor-form"
+                                    >
+                                        <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                                            <ValidatedTextInput
+                                                label="Tournament Name"
+                                                name="tournament-name"
+                                                value=set_name
+                                                error_message=name_error
+                                                is_new=is_new
+                                                on_blur=move || {
+                                                    if let Some(current_tournament) = current_tournament_base
+                                                        .get()
+                                                    {
+                                                        set_name.set(current_tournament.get_name().to_string());
+                                                    }
+                                                }
+                                            />
+
+                                            <ValidatedNumberInput
+                                                label="Number of Entrants"
+                                                name="tournament-entrants"
+                                                value=set_entrants
+                                                error_message=entrants_error
+                                                is_new=is_new
+                                                min="2".to_string()
+                                            />
+
+                                            <EnumSelect
+                                                label="Mode"
+                                                name="tournament-mode"
+                                                value=set_mode
+                                            />
+
+                                            <Show when=move || {
+                                                matches!(set_mode.get(), TournamentMode::SwissSystem { .. })
+                                            }>
+                                                <ValidatedNumberInput
+                                                    label="Rounds (Swiss System)"
+                                                    name="tournament-swiss-num_rounds"
+                                                    value=set_num_rounds_swiss
+                                                    error_message=rounds_error
+                                                    is_new=is_new
+                                                    min="1".to_string()
+                                                />
+                                            </Show>
+
                                         </div>
-                                    }
-                                }>
-                                    {move || {
-                                        let _ = tournament_res.get();
-                                        // Access the resource to trigger loading state
-
-                                        view! {
-                                            <fieldset
-                                                disabled=move || {
-                                                    tournament_editor_context.is_busy()
-                                                        || page_err_ctx.has_errors()
-                                                        || matches!(
-                                                            state.get(),
-                                                            TournamentState::ActiveStage(_) | TournamentState::Finished
-                                                        )
-                                                }
-                                                class="contents"
-                                                data-testid="tournament-editor-form"
-                                            >
-                                                <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                                                    <ValidatedTextInput
-                                                        label="Tournament Name"
-                                                        name="tournament-name"
-                                                        value=set_name
-                                                        error_message=name_error
-                                                        is_new=is_new
-                                                        on_blur=move || {
-                                                            if let Some(current_tournament) = current_tournament_base
-                                                                .get()
-                                                            {
-                                                                set_name.set(current_tournament.get_name().to_string());
-                                                            }
-                                                        }
-                                                    />
-
-                                                    <ValidatedNumberInput
-                                                        label="Number of Entrants"
-                                                        name="tournament-entrants"
-                                                        value=set_entrants
-                                                        error_message=entrants_error
-                                                        is_new=is_new
-                                                        min="2".to_string()
-                                                    />
-
-                                                    <EnumSelect
-                                                        label="Mode"
-                                                        name="tournament-mode"
-                                                        value=set_mode
-                                                    />
-
-                                                    <Show when=move || {
-                                                        matches!(set_mode.get(), TournamentMode::SwissSystem { .. })
-                                                    }>
-                                                        <ValidatedNumberInput
-                                                            label="Rounds (Swiss System)"
-                                                            name="tournament-swiss-num_rounds"
-                                                            value=set_num_rounds_swiss
-                                                            error_message=rounds_error
-                                                            is_new=is_new
-                                                            min="1".to_string()
-                                                        />
-                                                    </Show>
-
+                                    </fieldset>
+                                    // stages editor links
+                                    {move || match set_mode.get() {
+                                        TournamentMode::SingleStage => {
+                                            // set up single stage editor
+                                            // with single stage we only have one group in stage
+                                            // therefore we "skip" the stage editor and go directly to group editor
+                                            view! {
+                                                <div class="w-full mt-6">
+                                                    <A
+                                                        href=move || url_route_with_sub_path("0/0")
+                                                        attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid="link-configure-single-stage"
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--user-group] w-6 h-6 mr-2"></span>
+                                                        "Edit Single Stage"
+                                                    </A>
                                                 </div>
-                                            </fieldset>
-                                            // stages editor links
-                                            {move || match set_mode.get() {
-                                                TournamentMode::SingleStage => {
-                                                    // set up single stage editor
-                                                    // with single stage we only have one group in stage
-                                                    // therefore we "skip" the stage editor and go directly to group editor
-                                                    view! {
-                                                        <div class="w-full mt-6">
-                                                            <A
-                                                                href=move || url_route_with_sub_path("0/0")
-                                                                attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid="link-configure-single-stage"
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--user-group] w-6 h-6 mr-2"></span>
-                                                                "Configure Single Stage"
-                                                            </A>
-                                                        </div>
-                                                    }
-                                                        .into_any()
-                                                }
-                                                TournamentMode::PoolAndFinalStage => {
-                                                    // set up pool and final stage editor
-                                                    // with pool and final stage we have two stages to configure
-                                                    view! {
-                                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
-                                                            <A
-                                                                href=move || url_route_with_sub_path("0")
-                                                                attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid="link-configure-pool-stage"
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                                "Configure Pool Stage"
-                                                            </A>
-                                                            <A
-                                                                href=move || url_route_with_sub_path("1")
-                                                                attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid="link-configure-final-stage"
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                                "Configure Final Stage"
-                                                            </A>
-                                                        </div>
-                                                    }
-                                                        .into_any()
-                                                }
-                                                TournamentMode::TwoPoolStagesAndFinalStage => {
-                                                    // set up two pool stages and final stage editor
-                                                    // with pool and final stage we have three stages to configure
-                                                    view! {
-                                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
-                                                            <A
-                                                                href=move || url_route_with_sub_path("0")
-                                                                attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid="link-configure-first-pool-stage"
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                                "Configure First Pool Stage"
-                                                            </A>
-                                                            <A
-                                                                href=move || url_route_with_sub_path("1")
-                                                                attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid="link-configure-second-pool-stage"
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                                "Configure Second Pool Stage"
-                                                            </A>
-                                                            <A
-                                                                href=move || url_route_with_sub_path("2")
-                                                                attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid="link-configure-final-stage"
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                                "Configure Final Stage"
-                                                            </A>
-                                                        </div>
-                                                    }
-                                                        .into_any()
-                                                }
-                                                TournamentMode::SwissSystem { .. } => {
-                                                    // set up swiss system stage editor
-                                                    // with swiss system we only have one group in stage
-                                                    // therefore we "skip" the stage editor and go directly to group editor
-                                                    view! {
-                                                        <div class="w-full mt-6">
-                                                            <A
-                                                                href=move || url_route_with_sub_path("0/0")
-                                                                attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid="link-configure-swiss-system"
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--user-group] w-6 h-6 mr-2"></span>
-                                                                "Configure Swiss System"
-                                                            </A>
-                                                        </div>
-                                                    }
-                                                        .into_any()
-                                                }
-                                            }}
+                                            }
+                                                .into_any()
+                                        }
+                                        TournamentMode::PoolAndFinalStage => {
+                                            // set up pool and final stage editor
+                                            // with pool and final stage we have two stages to configure
+                                            view! {
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
+                                                    <A
+                                                        href=move || url_route_with_sub_path("0")
+                                                        attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid="link-configure-pool-stage"
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                                        "Edit Pool Stage"
+                                                    </A>
+                                                    <A
+                                                        href=move || url_route_with_sub_path("1")
+                                                        attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid="link-configure-final-stage"
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                                        "Edit Final Stage"
+                                                    </A>
+                                                </div>
+                                            }
+                                                .into_any()
+                                        }
+                                        TournamentMode::TwoPoolStagesAndFinalStage => {
+                                            // set up two pool stages and final stage editor
+                                            // with pool and final stage we have three stages to configure
+                                            view! {
+                                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
+                                                    <A
+                                                        href=move || url_route_with_sub_path("0")
+                                                        attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid="link-configure-first-pool-stage"
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                                        "Edit First Pool Stage"
+                                                    </A>
+                                                    <A
+                                                        href=move || url_route_with_sub_path("1")
+                                                        attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid="link-configure-second-pool-stage"
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                                        "Edit Second Pool Stage"
+                                                    </A>
+                                                    <A
+                                                        href=move || url_route_with_sub_path("2")
+                                                        attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid="link-configure-final-stage"
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                                        "Edit Final Stage"
+                                                    </A>
+                                                </div>
+                                            }
+                                                .into_any()
+                                        }
+                                        TournamentMode::SwissSystem { .. } => {
+                                            // set up swiss system stage editor
+                                            // with swiss system we only have one group in stage
+                                            // therefore we "skip" the stage editor and go directly to group editor
+                                            view! {
+                                                <div class="w-full mt-6">
+                                                    <A
+                                                        href=move || url_route_with_sub_path("0/0")
+                                                        attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid="link-configure-swiss-system"
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--user-group] w-6 h-6 mr-2"></span>
+                                                        "Edit Swiss System"
+                                                    </A>
+                                                </div>
+                                            }
+                                                .into_any()
                                         }
                                     }}
-                                </Transition>
-                            </div>
-                        </div>
-                    }
-                        .into_any()
-                }
-            }}
+                                }
+                            }}
+                        </Transition>
+                    </div>
+                </div>
+            </Show>
 
             <Outlet />
 

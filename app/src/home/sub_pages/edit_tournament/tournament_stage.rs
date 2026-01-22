@@ -237,90 +237,83 @@ pub fn EditTournamentStage() -> impl IntoView {
     });
 
     view! {
-        {move || {
-            if hide_form() {
-                ().into_any()
-            } else {
-                view! {
-                    <div
-                        class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-                        data-testid="stage-editor-root"
-                    >
-                        <div class="w-full flex justify-between items-center pb-4">
-                            <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
-                                {move || editor_title()}
-                            </h2>
-                        </div>
+        <Show when=move || !hide_form()>
+            <div
+                class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
+                data-testid="stage-editor-root"
+            >
+                <div class="w-full flex justify-between items-center pb-4">
+                    <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
+                        {move || editor_title()}
+                    </h2>
+                </div>
 
-                        // Card wrapping Form and Group Links
-                        <div class="card w-full bg-base-100 shadow-xl">
-                            <div class="card-body">
-                                // --- Form Area ---
-                                <Transition fallback=move || {
-                                    view! {
-                                        <div class="w-full flex justify-center py-8">
-                                            <span class="loading loading-spinner loading-lg"></span>
-                                        </div>
-                                    }
-                                }>
-                                    {move || {
-                                        let _ = stage_res.get();
-                                        let is_new = Signal::derive(move || {
-                                            matches!(stage_res.get(), Some(Ok(None)))
-                                        });
-                                        // Explicit tracking ensures transition works correctly
+                // Card wrapping Form and Group Links
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        // --- Form Area ---
+                        <Transition fallback=move || {
+                            view! {
+                                <div class="w-full flex justify-center py-8">
+                                    <span class="loading loading-spinner loading-lg"></span>
+                                </div>
+                            }
+                        }>
+                            {move || {
+                                let _ = stage_res.get();
+                                let is_new = Signal::derive(move || {
+                                    matches!(stage_res.get(), Some(Ok(None)))
+                                });
+                                // Explicit tracking ensures transition works correctly
 
-                                        view! {
-                                            <fieldset
-                                                disabled=move || {
-                                                    tournament_editor_context.is_busy()
-                                                        || page_err_ctx.has_errors() || is_active_or_done()
-                                                }
-                                                class="contents"
-                                                data-testid="stage-editor-form"
-                                            >
-                                                <div class="w-full max-w-md grid grid-cols-1 gap-6">
-                                                    <ValidatedNumberInput
-                                                        label="Number of Groups"
-                                                        name="stage-num-groups"
-                                                        value=set_num_groups
-                                                        error_message=num_groups_error
-                                                        is_new=is_new
-                                                        min="1".to_string()
-                                                    />
-                                                </div>
-                                            </fieldset>
-
-                                            // group editor links
-                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
-                                                <For
-                                                    each=move || 0..set_num_groups.get()
-                                                    key=|i| *i
-                                                    children=move |i| {
-                                                        view! {
-                                                            <A
-                                                                href=move || url_route_with_sub_path(&i.to_string())
-                                                                attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
-                                                                attr:data-testid=format!("link-configure-group-{}", i)
-                                                                scroll=false
-                                                            >
-                                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                                {format!("Configure Group {}", i + 1)}
-                                                            </A>
-                                                        }
-                                                    }
-                                                />
-                                            </div>
+                                view! {
+                                    <fieldset
+                                        disabled=move || {
+                                            tournament_editor_context.is_busy()
+                                                || page_err_ctx.has_errors() || is_active_or_done()
                                         }
-                                    }}
-                                </Transition>
-                            </div>
-                        </div>
+                                        class="contents"
+                                        data-testid="stage-editor-form"
+                                    >
+                                        <div class="w-full max-w-md grid grid-cols-1 gap-6">
+                                            <ValidatedNumberInput
+                                                label="Number of Groups"
+                                                name="stage-num-groups"
+                                                value=set_num_groups
+                                                error_message=num_groups_error
+                                                is_new=is_new
+                                                min="1".to_string()
+                                            />
+                                        </div>
+                                    </fieldset>
+
+                                    // group editor links
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
+                                        <For
+                                            each=move || 0..set_num_groups.get()
+                                            key=|i| *i
+                                            children=move |i| {
+                                                view! {
+                                                    <A
+                                                        href=move || url_route_with_sub_path(&i.to_string())
+                                                        attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
+                                                        attr:data-testid=format!("link-configure-group-{}", i)
+                                                        scroll=false
+                                                    >
+                                                        <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                                        {format!("Edit Group {}", i + 1)}
+                                                    </A>
+                                                }
+                                            }
+                                        />
+                                    </div>
+                                }
+                            }}
+                        </Transition>
                     </div>
-                }
-                    .into_any()
-            }
-        }}
+                </div>
+            </div>
+        </Show>
         <Outlet />
     }
 }

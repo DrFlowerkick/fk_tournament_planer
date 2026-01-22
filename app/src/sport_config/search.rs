@@ -239,7 +239,10 @@ pub fn SearchSportConfig() -> impl IntoView {
                                         }
                                     }} <div class="card-actions justify-end mt-4">
                                         <A
-                                            href=move || url_with_remove_query("sport_config_id", Some("new_sc"))
+                                            href=move || url_with_remove_query(
+                                                "sport_config_id",
+                                                Some("new_sc"),
+                                            )
                                             attr:class="btn btn-primary"
                                             attr:data-testid="btn-new-sport-config"
                                             attr:disabled=is_disabled

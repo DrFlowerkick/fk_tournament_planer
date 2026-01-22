@@ -131,7 +131,8 @@ impl TournamentEditorState {
         };
 
         if let Some(origin_t) = self.origin_tournament.as_ref()
-        && origin_t.get_id() != tournament.get_id() {
+            && origin_t.get_id() != tournament.get_id()
+        {
             // Case: Loading a different tournament than currently in state.
             // Clear origin tournament
             self.origin_tournament = None;

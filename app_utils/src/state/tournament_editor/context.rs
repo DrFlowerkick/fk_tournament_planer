@@ -129,7 +129,8 @@ impl TournamentEditorContext {
 
     /// Returns the origin tournament for display.
     pub fn get_origin_tournament(&self) -> Option<TournamentBase> {
-        self.inner.with(|state| state.get_origin_tournament().cloned())
+        self.inner
+            .with(|state| state.get_origin_tournament().cloned())
     }
 
     /// Returns the origin tournament without tracking the signal.

@@ -93,9 +93,7 @@ pub fn PostalAddressForm() -> impl IntoView {
         move |maybe_id| async move {
             match maybe_id {
                 Some(id) => match load_postal_address(id).await {
-                    Ok(Some(addr)) => {
-                        Ok(addr)
-                    }
+                    Ok(Some(addr)) => Ok(addr),
                     Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
                     Err(e) => Err(e),
                 },
