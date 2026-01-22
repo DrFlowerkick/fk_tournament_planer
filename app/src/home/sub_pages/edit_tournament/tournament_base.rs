@@ -50,7 +50,6 @@ pub fn EditTournament() -> impl IntoView {
     let UseQueryNavigationReturn {
         url_route_with_sub_path,
         url_with_update_query,
-        url_with_remove_query,
         path,
         ..
     } = use_query_navigation();
@@ -169,7 +168,6 @@ pub fn EditTournament() -> impl IntoView {
     // handle load tournament base results
     Effect::new({
         let on_cancel = on_cancel.clone();
-        let navigate = navigate.clone();
         move || {
             match tournament_res.get() {
                 Some(Ok(Some(tournament))) => {
@@ -188,30 +186,7 @@ pub fn EditTournament() -> impl IntoView {
                         // wait for resource to load
                         return;
                     }
-                    // Case B: Invalid ID provided in URL (404 from Server but ID was present in query)
-                    if tournament_id().is_some() {
-                        // The user requested a specific ID, but it doesn't exist.
-                        // We redirect to the "New Tournament" view (same path, but remove tournament_id).
-                        toast_ctx.add(
-                            "Tournament not found. Starting new plan.",
-                            ToastVariant::Warning,
-                        );
-
-                        // Construct clean URL (Base Path + sport_id, implicitly removing tournament_id)
-                        let clean_url = url_with_remove_query("tournament_id", None);
-
-                        navigate(
-                            &clean_url,
-                            NavigateOptions {
-                                replace: true, // Replace history to avoid "Back" loop
-                                scroll: false,
-                                ..Default::default()
-                            },
-                        );
-
-                        return;
-                    }
-                    // Case C: New Tournament Mode (No ID in URL)
+                    // Case B: New Tournament Mode (No ID in URL)
                     // Check if we need to enforce a reset (Force New).
                     // Reset is needed if:
                     // 1. Context is empty (None)
