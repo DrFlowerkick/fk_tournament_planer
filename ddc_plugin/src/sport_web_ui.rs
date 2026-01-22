@@ -90,6 +90,7 @@ impl SportPortWebUi for DdcSportPlugin {
         } = props;
 
         // --- initialize json config, if is_new ---
+        // ToDo: maybe this needs to be reactive
         if is_new.get() {
             let default = DdcSportConfig::default();
             config.set(serde_json::to_value(default).ok());
@@ -253,7 +254,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                     name="num_sets"
                                     value=set_num_sets
                                     error_message=is_valid_sets_cfg
-                                    is_new=is_new
                                     min="1"
                                 />
                             }
@@ -268,7 +268,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                     name="num_sets"
                                     value=set_num_sets
                                     error_message=is_valid_sets_cfg
-                                    is_new=is_new
                                     min="1"
                                 />
                             }
@@ -314,7 +313,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                         name="score_to_win"
                                         value=set_score_to_win
                                         error_message=is_valid_score_to_win
-                                        is_new=is_new
                                         min="1"
                                     />
                                     <ValidatedNumberInput<
@@ -324,7 +322,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                         name="win_by_margin"
                                         value=set_win_by_margin
                                         error_message=is_valid_win_by_margin
-                                        is_new=is_new
                                         min="1"
                                     />
                                     <ValidatedNumberInput<
@@ -334,7 +331,6 @@ impl SportPortWebUi for DdcSportPlugin {
                                         name="hard_cap"
                                         value=set_hard_cap
                                         error_message=is_valid_hard_cap
-                                        is_new=is_new
                                         min="1"
                                     />
                                 </div>
@@ -352,7 +348,6 @@ impl SportPortWebUi for DdcSportPlugin {
                         name="victory_points_win"
                         value=set_victory_points_win
                         error_message=is_valid_victory_points_win
-                        is_new=is_new
                         min="0"
                         step="0.1"
                     />
@@ -363,7 +358,6 @@ impl SportPortWebUi for DdcSportPlugin {
                         name="victory_points_draw"
                         value=set_victory_points_draw
                         error_message=is_valid_victory_points_draw
-                        is_new=is_new
                         min="0"
                         step="0.1"
                     />
@@ -374,7 +368,6 @@ impl SportPortWebUi for DdcSportPlugin {
                     value=set_expected_rally_duration_seconds
                     unit=DurationInputUnit::Seconds
                     error_message=is_valid_expected_rally_duration_seconds
-                    is_new=is_new
                 />
                 <div class="form-control w-full">
                     <label class="label">

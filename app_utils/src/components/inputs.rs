@@ -248,7 +248,6 @@ pub fn ValidatedNumberInput<T>(
     #[prop(into)] name: String,
     value: RwSignal<T>,
     #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String, // "1" for int, "0.1" for float
     #[prop(into, optional)] min: String,
     // Optional on blur callback, e.g. for update of json config
@@ -258,7 +257,6 @@ where
     T: FromStr + Display + Default + Copy + Send + Sync + 'static,
     <T as FromStr>::Err: std::fmt::Debug,
 {
-    let placeholder_text = format!("Enter {}...", label.to_lowercase());
     // Default step to "1" if not provided
     let step_val = if step.is_empty() {
         "1".to_string()
@@ -284,9 +282,6 @@ where
                 aria-invalid=move || error_message.get().is_some().to_string()
                 // We bind the value via prop:value which expects a string/number
                 prop:value=move || value.get().to_string()
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
-                }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
                     if let Ok(val) = val_str.parse::<T>() {
@@ -322,7 +317,6 @@ pub fn ValidatedOptionNumberInput<T>(
     #[prop(into)] name: String,
     value: RwSignal<Option<T>>,
     #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_new: Signal<bool>,
     #[prop(into, optional)] step: String,
     #[prop(into, optional)] min: String,
     // Optional on blur callback, e.g. for update of json config
@@ -332,7 +326,6 @@ where
     T: FromStr + Display + Copy + Send + Sync + 'static,
     <T as FromStr>::Err: std::fmt::Debug,
 {
-    let placeholder_text = format!("Enter {}...", label.to_lowercase());
     // Default step to "1" if not provided
     let step_val = if step.is_empty() {
         "1".to_string()
@@ -361,9 +354,6 @@ where
                         Some(v) => v.to_string(),
                         None => String::new(),
                     }
-                }
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
@@ -413,12 +403,9 @@ pub fn ValidatedDurationInput(
     value: RwSignal<Duration>,
     #[prop(into)] unit: DurationInputUnit,
     #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_new: Signal<bool>,
     // Optional on blur callback, e.g. for update of json config
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView {
-    let placeholder_text = format!("Enter {} ({})...", label.to_lowercase(), unit);
-
     view! {
         <div class="form-control w-full">
             <label class="label">
@@ -440,9 +427,6 @@ pub fn ValidatedDurationInput(
                         DurationInputUnit::Minutes => (value.get().as_secs() / 60).to_string(),
                         DurationInputUnit::Hours => (value.get().as_secs() / 3600).to_string(),
                     }
-                }
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);

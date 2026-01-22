@@ -378,7 +378,7 @@ pub fn EditTournament() -> impl IntoView {
                                             match may_be_t {
                                                 Some(tournament) => {
                                                     tournament_editor_context
-                                                        .set_tournament(tournament.clone(), !is_new.get());
+                                                        .set_tournament(tournament.clone(), true);
                                                     set_signals_from_tournament(&tournament);
                                                 }
                                                 None => {
@@ -436,7 +436,6 @@ pub fn EditTournament() -> impl IntoView {
                                             name="tournament-entrants"
                                             value=set_entrants
                                             error_message=entrants_error
-                                            is_new=is_new
                                             min="2".to_string()
                                         />
 
@@ -454,7 +453,6 @@ pub fn EditTournament() -> impl IntoView {
                                                 name="tournament-swiss-num_rounds"
                                                 value=set_num_rounds_swiss
                                                 error_message=rounds_error
-                                                is_new=is_new
                                                 min="1".to_string()
                                             />
                                         </Show>

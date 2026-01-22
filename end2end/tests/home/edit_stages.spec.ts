@@ -105,7 +105,7 @@ test.describe("Configuration of Tournament Stages", () => {
     // "EditTournamentStage" title SHOULD be visible
     await expect(STAGE.title).toBeVisible();
     // Use ignoreCase/regex to match title text
-    await expect(STAGE.title).toHaveText(/Edit Tournament Stage/i);
+    await expect(STAGE.title).toHaveText(/Edit Pool Stage/i);
 
     // "EditTournamentGroup" title should NOT be visible (we are at stage level)
     await expect(GROUP.title).toBeHidden();
