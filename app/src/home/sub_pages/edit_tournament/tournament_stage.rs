@@ -131,16 +131,15 @@ pub fn EditTournamentStage() -> impl IntoView {
     );
 
     // retry function for error handling
-    let refetch_and_reset = move || {
+    let refetch_and_reset = Callback::new(move |()| {
         stage_res.refetch();
-    };
+    });
 
     // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
 
     // handle load stage results
     Effect::new({
-        let on_cancel = on_cancel.clone();
         move || {
             match stage_res.get() {
                 Some(Ok(Some(stage))) => {
@@ -174,8 +173,8 @@ pub fn EditTournamentStage() -> impl IntoView {
                         &page_err_ctx,
                         component_id.get_value(),
                         &err,
-                        refetch_and_reset.clone(),
-                        on_cancel.clone(),
+                        refetch_and_reset,
+                        on_cancel,
                     );
                 }
                 None => { /* loading state - do nothing */ }
@@ -222,15 +221,14 @@ pub fn EditTournamentStage() -> impl IntoView {
     // validation checks valid stage number, but since stage number is from params
     // and not editable here, we report it generally
     Effect::new({
-        let on_cancel = on_cancel.clone();
         move || {
             if let Some(error_msg) = is_field_valid(validation_result).run("number") {
                 handle_general_error(
                     &page_err_ctx,
                     component_id.get_value(),
                     error_msg,
-                    Some(refetch_and_reset.clone()),
-                    on_cancel.clone(),
+                    Some(refetch_and_reset),
+                    on_cancel,
                 );
             }
         }

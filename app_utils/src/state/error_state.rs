@@ -66,7 +66,6 @@ impl ActiveErrorBuilder<NoCancelAction> {
     fn new(component_id: Uuid, message: impl Into<String>) -> Self {
         Self {
             component_id,
-            // Requirement 1: Default to General
             key: ErrorKey::General,
             message: message.into(),
             retry_action: None,
@@ -80,7 +79,7 @@ impl ActiveErrorBuilder<NoCancelAction> {
     pub fn with_cancel(
         self,
         label: impl Into<String>,
-        on_click: impl Fn() + 'static + Send + Sync,
+        on_click: Callback<()>,
     ) -> ActiveErrorBuilder<HasCancelAction> {
         ActiveErrorBuilder {
             component_id: self.component_id,
@@ -89,7 +88,30 @@ impl ActiveErrorBuilder<NoCancelAction> {
             retry_action: self.retry_action,
             cancel_action: Some(ErrorAction {
                 label: label.into(),
-                on_click: Callback::new(move |_| on_click()),
+                on_click,
+            }),
+            _marker: std::marker::PhantomData,
+        }
+    }
+
+    /// Sets the mandatory cancel/dismiss action.
+    /// Transitions the builder state from NoCancelAction to HasCancelAction.
+    pub fn with_clear_error_on_cancel(
+        self,
+        label: impl Into<String>,
+    ) -> ActiveErrorBuilder<HasCancelAction> {
+        let error_ctx = expect_context::<PageErrorContext>();
+        let cancel_key = self.key.clone();
+        ActiveErrorBuilder {
+            component_id: self.component_id,
+            key: self.key,
+            message: self.message,
+            retry_action: self.retry_action,
+            cancel_action: Some(ErrorAction {
+                label: label.into(),
+                on_click: Callback::new(move |()| {
+                    error_ctx.clear_error(self.component_id, cancel_key.clone());
+                }),
             }),
             _marker: std::marker::PhantomData,
         }
@@ -105,14 +127,10 @@ impl<State> ActiveErrorBuilder<State> {
     }
 
     /// Adds or replaces a primary retry action.
-    pub fn with_retry(
-        mut self,
-        label: impl Into<String>,
-        on_click: impl Fn() + 'static + Send + Sync,
-    ) -> Self {
+    pub fn with_retry(mut self, label: impl Into<String>, on_click: Callback<()>) -> Self {
         self.retry_action = Some(ErrorAction {
             label: label.into(),
-            on_click: Callback::new(move |_| on_click()),
+            on_click,
         });
         self
     }
