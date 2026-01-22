@@ -8,7 +8,10 @@ use leptos::{
     web_sys::{Event, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
 use leptos_axum_socket::provide_socket_context;
-use leptos_router::components::Router;
+use leptos_router::{
+    components::{Route, Router, Routes},
+    path,
+};
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
@@ -29,7 +32,9 @@ async fn test_plugin_selection_renders() {
         provide_global_state();
         view! {
             <Router>
-                <SelectSportPlugin />
+                <Routes fallback=|| "Page not found.".into_view()>
+                    <Route path=path!("/sport") view=SelectSportPlugin />
+                </Routes>
             </Router>
         }
     });

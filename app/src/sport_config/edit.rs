@@ -2,18 +2,23 @@
 
 use app_core::SportConfig;
 use app_utils::{
-    components::{
-        banner::{AcknowledgmentAndNavigateBanner, AcknowledgmentBanner},
-        inputs::ValidatedTextInput,
+    components::inputs::ValidatedTextInput,
+    error::{
+        AppError,
+        strategy::{handle_general_error, handle_read_error, handle_write_error},
     },
-    error::AppError,
     hooks::{
         is_field_valid::is_field_valid,
+        use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
     params::{SportConfigParams, SportParams},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
-    state::global_state::{GlobalState, GlobalStateStoreFields},
+    state::{
+        error_state::PageErrorContext,
+        global_state::{GlobalState, GlobalStateStoreFields},
+        toast_state::{ToastContext, ToastVariant},
+    },
 };
 use leptos::{logging::log, prelude::*};
 #[cfg(feature = "test-mock")]
@@ -48,7 +53,14 @@ pub fn SportConfigForm() -> impl IntoView {
             .ok()
             .and_then(|sc| sc.sport_config_id)
     });
-    let is_new = move || sport_config_id.get().is_none();
+
+    let toast_ctx = expect_context::<ToastContext>();
+    let page_err_ctx = expect_context::<PageErrorContext>();
+    let component_id = StoredValue::new(Uuid::new_v4());
+    // remove errors on unmount
+    on_cleanup(move || {
+        page_err_ctx.clear_all_for_component(component_id.get_value());
+    });
 
     let state = expect_context::<Store<GlobalState>>();
     let return_after_sport_config_edit = state.return_after_sport_config_edit();
@@ -77,6 +89,7 @@ pub fn SportConfigForm() -> impl IntoView {
     };
 
     // --- Signals for form fields ---
+    let (is_new, set_is_new) = signal(false);
     let set_name = RwSignal::new(String::new());
     let set_sport_config = RwSignal::new(None::<Value>);
     let set_version = RwSignal::new(0);
@@ -84,9 +97,35 @@ pub fn SportConfigForm() -> impl IntoView {
     // --- Server Actions & Resources ---
     let save_sport_config = ServerAction::<SaveSportConfig>::new();
 
-    Effect::new(move || {
-        if let Some(Ok(sc)) = save_sport_config.value().get() {
+    let sc_res = Resource::new(
+        move || sport_config_id.get(),
+        move |maybe_id| async move {
+            match maybe_id {
+                Some(id) => match load_sport_config(id).await {
+                    Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
+                    load_result => load_result,
+                },
+                None => Ok(None),
+            }
+        },
+    );
+
+    let refetch_and_reset = Callback::new(move |()| {
+        save_sport_config.clear();
+        sc_res.refetch();
+    });
+
+    // cancel function for cancel button and error handling
+    let on_cancel = use_on_cancel();
+
+    // handle save result
+    Effect::new(move || match save_sport_config.value().get() {
+        Some(Ok(sc)) => {
             save_sport_config.clear();
+            toast_ctx.add(
+                "Sport Configuration saved successfully",
+                ToastVariant::Success,
+            );
             let nav_url = url_with_update_query(
                 "sport_config_id",
                 &sc.get_id().map(|id| id.to_string()).unwrap_or_default(),
@@ -94,34 +133,17 @@ pub fn SportConfigForm() -> impl IntoView {
             );
             navigate(&nav_url, NavigateOptions::default());
         }
-    });
-
-    let sc_res = Resource::new(
-        move || sport_config_id.get(),
-        move |maybe_id| async move {
-            match maybe_id {
-                Some(id) => match load_sport_config(id).await {
-                    Ok(Some(sc)) => Ok(sc),
-                    Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
-                    Err(e) => Err(e),
-                },
-                None => Ok(Default::default()),
-            }
-        },
-    );
-
-    Effect::new(move || {
-        if let Some(Ok(sc)) = sc_res.get() {
-            set_name.set(sc.get_name().to_string());
-            set_sport_config.set(Some(sc.get_config().clone()));
-            set_version.set(sc.get_version().unwrap_or_default());
+        Some(Err(err)) => {
+            handle_write_error(
+                &page_err_ctx,
+                &toast_ctx,
+                component_id.get_value(),
+                &err,
+                refetch_and_reset,
+            );
         }
+        None => { /* saving state - do nothing */ }
     });
-
-    let refetch_and_reset = move || {
-        save_sport_config.clear();
-        sc_res.refetch();
-    };
 
     // --- Signals for UI state & errors ---
     // reset these signals with save_sport_config.clear() when needed
@@ -179,7 +201,7 @@ pub fn SportConfigForm() -> impl IntoView {
         sport_plugin: Signal::derive(sport_plugin),
         cancel_target,
         is_disabled: Signal::derive(is_disabled),
-        is_new: Signal::derive(is_new),
+        is_new: is_new.into(),
         set_name,
         set_sport_config,
         set_version,
@@ -192,7 +214,7 @@ pub fn SportConfigForm() -> impl IntoView {
                     {move || {
                         format!(
                             "{} {} Configuration",
-                            if is_new() { "New" } else { "Edit" },
+                            if is_new.get() { "New" } else { "Edit" },
                             sport_name(),
                         )
                     }}
@@ -204,128 +226,94 @@ pub fn SportConfigForm() -> impl IntoView {
                         </div>
                     }
                 }>
-                    {move || {
-                        sc_res
-                            .get()
-                            .map(|res| match res {
-                                Err(msg) => {
-                                    // --- General Load Error Banner ---
-                                    view! {
-                                        <AcknowledgmentAndNavigateBanner
-                                            msg=format!(
-                                                "An unexpected error occurred during load: {msg}",
-                                            )
-                                            ack_btn_text="Reload"
-                                            ack_action=refetch_and_reset
-                                            nav_btn_text="Cancel"
-                                            navigate_url=cancel_target.run(())
-                                        />
+                    <ErrorBoundary fallback=move |errors| {
+                        for (_err_id, err) in errors.get().into_iter() {
+                            let e = err.into_inner();
+                            if let Some(app_err) = e.downcast_ref::<AppError>() {
+                                handle_read_error(
+                                    &page_err_ctx,
+                                    component_id.get_value(),
+                                    app_err,
+                                    refetch_and_reset,
+                                    on_cancel,
+                                );
+                            } else {
+                                handle_general_error(
+                                    &page_err_ctx,
+                                    component_id.get_value(),
+                                    "An unexpected error occurred.",
+                                    None,
+                                    on_cancel,
+                                );
+                            }
+                        }
+                    }>
+                        // check if we have new or existing sport config
+                        {move || {
+                            sc_res
+                                .and_then(|may_be_sc| {
+                                    match may_be_sc {
+                                        Some(sport_config) => {
+                                            set_name.set(sport_config.get_name().to_string());
+                                            set_sport_config
+                                                .set(Some(sport_config.get_config().clone()));
+                                            set_version
+                                                .set(sport_config.get_version().unwrap_or_default());
+                                            set_is_new.set(false);
+                                        }
+                                        None => {
+                                            let sport_config = SportConfig::default();
+                                            set_name.set(sport_config.get_name().to_string());
+                                            set_sport_config
+                                                .set(Some(sport_config.get_config().clone()));
+                                            set_version
+                                                .set(sport_config.get_version().unwrap_or_default());
+                                            set_is_new.set(true);
+                                        }
                                     }
-                                        .into_any()
-                                }
-                                Ok(_addr) => {
+                                })
+                        }} // --- Sport Config Form ---
+                        <div data-testid="form-sport-config">
+                            {
+                                #[cfg(not(feature = "test-mock"))]
+                                {
                                     view! {
-                                        // --- Conflict Banner ---
-                                        {move || {
-                                            if is_conflict() {
-                                                view! {
-                                                    <AcknowledgmentBanner
-                                                        msg="A newer version of this sport configuration exists. Reloading will discard your changes."
-                                                        ack_btn_text="Reload"
-                                                        ack_action=refetch_and_reset.clone()
-                                                    />
-                                                }
-                                                    .into_any()
-                                            } else {
-                                                ().into_any()
-                                            }
-                                        }}
-
-                                        // --- Duplicate Banner ---
-                                        {move || {
-                                            if is_duplicate() {
-                                                view! {
-                                                    <AcknowledgmentBanner
-                                                        msg=format!(
-                                                            "A sport configuration with name '{}' already exists for '{}'. ",
-                                                            set_name.get(),
-                                                            sport_name(),
-                                                        )
-                                                        ack_btn_text="Ok"
-                                                        ack_action=move || save_sport_config.clear()
-                                                    />
-                                                }
-                                                    .into_any()
-                                            } else {
-                                                ().into_any()
-                                            }
-                                        }}
-                                        // --- General Save Error Banner ---
-                                        {move || {
-                                            if let Some(msg) = is_general_error() {
-                                                view! {
-                                                    <AcknowledgmentAndNavigateBanner
-                                                        msg=format!(
-                                                            "An unexpected error occurred during saving: {msg}",
-                                                        )
-                                                        ack_btn_text="Dismiss"
-                                                        ack_action=move || save_sport_config.clear()
-                                                        nav_btn_text="Return to Search Sport Config"
-                                                        navigate_url=cancel_target.run(())
-                                                    />
-                                                }
-                                                    .into_any()
-                                            } else {
-                                                ().into_any()
-                                            }
-                                        }}
-                                        // --- Sport Config Form ---
-                                        <div data-testid="form-sport-config">
-                                            {
-                                                #[cfg(not(feature = "test-mock"))]
-                                                {
-                                                    view! {
-                                                        <ActionForm action=save_sport_config>
-                                                            <FormFields props=props />
-                                                        </ActionForm>
-                                                    }
-                                                }
-                                                #[cfg(feature = "test-mock")]
-                                                {
-                                                    view! {
-                                                        <form on:submit=move |ev| {
-                                                            ev.prevent_default();
-                                                            let intent = ev
-                                                                .submitter()
-                                                                .and_then(|el| {
-                                                                    el.dyn_into::<web_sys::HtmlButtonElement>().ok()
-                                                                })
-                                                                .map(|btn| btn.value());
-                                                            let data = SaveSportConfig {
-                                                                id: sport_config_id.get().unwrap_or(Uuid::nil()),
-                                                                version: set_version.get(),
-                                                                sport_id: sport_id.get().unwrap_or(Uuid::nil()),
-                                                                name: set_name.get(),
-                                                                config: set_sport_config
-                                                                    .get()
-                                                                    .unwrap_or_default()
-                                                                    .to_string(),
-                                                                intent,
-                                                            };
-                                                            save_sport_config.dispatch(data);
-                                                        }>
-                                                            <FormFields props=props />
-                                                        </form>
-                                                    }
-                                                }
-                                            }
-                                        </div>
+                                        <ActionForm action=save_sport_config>
+                                            <FormFields props=props />
+                                        </ActionForm>
                                     }
-                                        .into_any()
                                 }
-                            })
-                    }}
-
+                                #[cfg(feature = "test-mock")]
+                                {
+                                    view! {
+                                        <form on:submit=move |ev| {
+                                            ev.prevent_default();
+                                            let intent = ev
+                                                .submitter()
+                                                .and_then(|el| {
+                                                    el.dyn_into::<web_sys::HtmlButtonElement>().ok()
+                                                })
+                                                .map(|btn| btn.value());
+                                            let data = SaveSportConfig {
+                                                id: sport_config_id.get().unwrap_or(Uuid::nil()),
+                                                version: set_version.get(),
+                                                sport_id: sport_id.get().unwrap_or(Uuid::nil()),
+                                                name: set_name.get(),
+                                                config: set_sport_config
+                                                    .get()
+                                                    .unwrap_or_default()
+                                                    .to_string(),
+                                                intent,
+                                            };
+                                            save_sport_config.dispatch(data);
+                                        }>
+                                            <FormFields props=props />
+                                        </form>
+                                    }
+                                }
+                            }
+                        </div>
+                    </ErrorBoundary>
                 </Transition>
             </div>
         </div>

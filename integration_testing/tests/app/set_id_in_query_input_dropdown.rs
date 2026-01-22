@@ -1,4 +1,4 @@
-use crate::common::{get_element_by_test_id, get_test_root, lock_test};
+use crate::common::{get_element_by_test_id, get_test_root, lock_test, set_url};
 use app_core::utils::{id_version::IdVersion, traits::ObjectIdVersion};
 use app_utils::components::set_id_in_query_input_dropdown::{
     SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
@@ -10,7 +10,12 @@ use leptos::{
     wasm_bindgen::JsCast,
     web_sys::{Event, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
-use leptos_router::{components::Router, hooks::use_query, params::Params};
+use leptos_router::{
+    components::{Route, Router, Routes},
+    hooks::use_query,
+    params::Params,
+    path,
+};
 use std::time::Duration;
 use uuid::Uuid;
 use wasm_bindgen_test::*;
@@ -33,7 +38,7 @@ pub struct WasmTestParams {
 }
 
 #[component]
-fn WasmTestWrapper(items: Vec<TestItem>) -> impl IntoView {
+fn WasmTestWrapper(#[prop(into)] items: Vec<TestItem>) -> impl IntoView {
     // This component is defined inside the test function
     let key = "wasm_test_item_id";
     let placeholder = "Enter name of test item...";
@@ -116,12 +121,23 @@ async fn test_set_id_in_query_input_dropdown() {
         },
     ];
 
+    // Set initial URL for testing
+    set_url("/test_query_input_dropdown");
+
     let _mount_guard = mount_to(get_test_root(), {
         let items = items.clone();
         move || {
             view! {
                 <Router>
-                    <WasmTestWrapper items=items />
+                    <Routes fallback=|| "Page not found.".into_view()>
+                        <Route
+                            path=path!("/test_query_input_dropdown")
+                            view=move || {
+                                let items = items.clone();
+                                view! { <WasmTestWrapper items=items /> }
+                            }
+                        />
+                    </Routes>
                 </Router>
             }
         }

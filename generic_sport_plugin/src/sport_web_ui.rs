@@ -117,13 +117,16 @@ impl SportPortWebUi for GenericSportPlugin {
         } = props;
 
         // --- initialize json config, if is_new ---
-        // ToDo: maybe this needs to be reactive
-        if is_new.get() {
-            let default = GenericSportConfig::default();
-            config.set(serde_json::to_value(default).ok());
-        }
+        Effect::new(move || {
+            if is_new.get() {
+                let default = GenericSportConfig::default();
+                config.set(serde_json::to_value(default).ok());
+            }
+        });
 
         // --- extract current configuration ---
+        // ToDo: refactor this to keep the Result of parse in a Signal and use below ErrorBoundary to investigate the error.
+        // For now, we ignore errors in parsing here, as validation is done below.
         let current_configuration = move || {
             if let Some(json_cfg) = config.get()
                 && let Ok(cfg) = GenericSportConfig::parse_config(json_cfg)
