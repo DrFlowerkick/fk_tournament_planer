@@ -39,27 +39,19 @@ fn get_sorted_countries() -> Vec<(String, String)> {
 pub fn PostalAddressForm() -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
-        update,
-        path,
-        query_string,
+        url_with_path,
+        url_with_update_query,
         ..
     } = use_query_navigation();
+    let navigate = use_navigate();
 
-    let is_new = move || path.read().ends_with("/new_pa") || path.read().is_empty();
     let query = use_query::<AddressParams>();
-    let id = Signal::derive(move || {
-        if is_new() {
-            None
-        } else {
-            query.get().map(|ap| ap.address_id).unwrap_or(None)
-        }
-    });
+    let id = Signal::derive(move || query.get().ok().and_then(|ap| ap.address_id));
+    let is_new = move || id.get().is_none();
 
     let state = expect_context::<Store<GlobalState>>();
     let return_after_address_edit = state.return_after_address_edit();
-    let cancel_target = Callback::new(move |_: ()| {
-        format!("{}{}", return_after_address_edit.get(), query_string.get())
-    });
+    let cancel_target = Callback::new(move |_: ()| url_with_path(&return_after_address_edit.get()));
 
     // --- Signals for form fields ---
     let set_name = RwSignal::new(String::new());
@@ -70,18 +62,28 @@ pub fn PostalAddressForm() -> impl IntoView {
     let set_country = RwSignal::new(String::new());
     let set_version = RwSignal::new(0);
 
+    // Helper to populate signals from data
+    let set_signals_from_address = move |addr: &PostalAddress| {
+        set_name.set(addr.get_name().to_string());
+        set_street.set(addr.get_street().to_string());
+        set_postal_code.set(addr.get_postal_code().to_string());
+        set_locality.set(addr.get_locality().to_string());
+        set_region.set(addr.get_region().unwrap_or_default().to_string());
+        set_country.set(addr.get_country().to_string());
+        set_version.set(addr.get_version().unwrap_or_default());
+    };
+
     // --- Server Actions & Resources ---
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
 
     Effect::new(move || {
         if let Some(Ok(pa)) = save_postal_address.value().get() {
             save_postal_address.clear();
-            update(
+            let nav_url = url_with_update_query(
                 "address_id",
                 &pa.get_id().map(|id| id.to_string()).unwrap_or_default(),
+                Some(&return_after_address_edit.get()),
             );
-            let nav_url = format!("{}{}", return_after_address_edit.get(), query_string.get());
-            let navigate = use_navigate();
             navigate(&nav_url, NavigateOptions::default());
         }
     });
@@ -91,16 +93,7 @@ pub fn PostalAddressForm() -> impl IntoView {
         move |maybe_id| async move {
             match maybe_id {
                 Some(id) => match load_postal_address(id).await {
-                    Ok(Some(addr)) => {
-                        set_name.set(addr.get_name().to_string());
-                        set_street.set(addr.get_street().to_string());
-                        set_postal_code.set(addr.get_postal_code().to_string());
-                        set_locality.set(addr.get_locality().to_string());
-                        set_region.set(addr.get_region().unwrap_or_default().to_string());
-                        set_country.set(addr.get_country().to_string());
-                        set_version.set(addr.get_version().unwrap_or_default());
-                        Ok(addr)
-                    }
+                    Ok(Some(addr)) => Ok(addr),
                     Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
                     Err(e) => Err(e),
                 },
@@ -108,6 +101,13 @@ pub fn PostalAddressForm() -> impl IntoView {
             }
         },
     );
+
+    // Sync signals when resource loads
+    Effect::new(move || {
+        if let Some(Ok(addr)) = addr_res.get() {
+            set_signals_from_address(&addr);
+        }
+    });
 
     let refetch_and_reset = move || {
         save_postal_address.clear();
@@ -369,16 +369,15 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
         addr
     };
 
-    let validation_result = move || current_address().validate();
-    let is_valid_addr = move || validation_result().is_ok();
+    let validation_result = Signal::derive(move || current_address().validate());
+    let is_valid_addr = move || validation_result.get().is_ok();
 
-    let is_valid_name = Signal::derive(move || is_field_valid(validation_result).run("Name"));
-    let is_valid_street = Signal::derive(move || is_field_valid(validation_result).run("Street"));
+    let is_valid_name = Signal::derive(move || is_field_valid(validation_result, "Name"));
+    let is_valid_street = Signal::derive(move || is_field_valid(validation_result, "Street"));
     let is_valid_postal_code =
-        Signal::derive(move || is_field_valid(validation_result).run("PostalCode"));
-    let is_valid_locality =
-        Signal::derive(move || is_field_valid(validation_result).run("Locality"));
-    let is_valid_country = Signal::derive(move || is_field_valid(validation_result).run("Country"));
+        Signal::derive(move || is_field_valid(validation_result, "PostalCode"));
+    let is_valid_locality = Signal::derive(move || is_field_valid(validation_result, "Locality"));
+    let is_valid_country = Signal::derive(move || is_field_valid(validation_result, "Country"));
     let countries = get_sorted_countries();
 
     view! {
@@ -401,7 +400,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Name"
                 name="name"
                 value=set_name
-                error_message=is_valid_name
+                validation_error=is_valid_name
                 is_new=is_new
                 on_blur=move || set_name.set(current_address().get_name().to_string())
             />
@@ -409,7 +408,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Street & number"
                 name="street"
                 value=set_street
-                error_message=is_valid_street
+                validation_error=is_valid_street
                 is_new=is_new
                 on_blur=move || set_street.set(current_address().get_street().to_string())
             />
@@ -418,7 +417,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     label="Postal code"
                     name="postal_code"
                     value=set_postal_code
-                    error_message=is_valid_postal_code
+                    validation_error=is_valid_postal_code
                     is_new=is_new
                     on_blur=move || {
                         set_postal_code.set(current_address().get_postal_code().to_string())
@@ -428,7 +427,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     label="City"
                     name="locality"
                     value=set_locality
-                    error_message=is_valid_locality
+                    validation_error=is_valid_locality
                     is_new=is_new
                     on_blur=move || set_locality.set(current_address().get_locality().to_string())
                 />
@@ -447,7 +446,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Country"
                 name="country"
                 value=set_country
-                error_message=is_valid_country
+                validation_error=is_valid_country
                 options=countries
             />
             <div class="card-actions justify-end mt-4">

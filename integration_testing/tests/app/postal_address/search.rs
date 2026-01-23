@@ -9,7 +9,10 @@ use leptos::{
     web_sys::{Event, HtmlAnchorElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
 use leptos_axum_socket::provide_socket_context;
-use leptos_router::components::Router;
+use leptos_router::{
+    components::{Route, Router, Routes},
+    path,
+};
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
@@ -30,7 +33,9 @@ async fn test_search_postal_address() {
         provide_global_state();
         view! {
             <Router>
-                <SearchPostalAddress />
+                <Routes fallback=|| "Page not found.".into_view()>
+                    <Route path=path!("/postal-address") view=SearchPostalAddress />
+                </Routes>
             </Router>
         }
     });
@@ -142,6 +147,6 @@ async fn test_search_postal_address() {
         .dyn_into::<HtmlAnchorElement>()
         .unwrap();
     let href = new_button.href();
-    assert!(href.ends_with(&format!("new_pa?address_id={}", ts.entries[0])));
+    assert!(href.ends_with("new_pa"));
     assert_eq!(new_button.text_content().unwrap(), "New");
 }

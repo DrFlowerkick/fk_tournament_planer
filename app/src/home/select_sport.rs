@@ -1,21 +1,13 @@
 //! Component for selecting a sport plugin in the sport configuration flow.
 
 use app_core::{SportPluginManagerPort, utils::traits::ObjectIdVersion};
-use app_utils::{
-    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    state::global_state::{GlobalState, GlobalStateStoreFields},
-};
+use app_utils::state::global_state::{GlobalState, GlobalStateStoreFields};
 use leptos::prelude::*;
-use leptos_router::{NavigateOptions, hooks::use_navigate};
+use leptos_router::components::A;
 use reactive_stores::Store;
 
 #[component]
 pub fn SelectSportPlugin() -> impl IntoView {
-    // get query helpers
-    let UseQueryNavigationReturn {
-        nav_url, update, ..
-    } = use_query_navigation();
-
     // get global state and sport plugin manager
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
@@ -25,22 +17,6 @@ pub fn SelectSportPlugin() -> impl IntoView {
         // Sort plugins alphabetically by name to ensure stable order
         list.sort_by_key(|plugin| plugin.name());
         list
-    });
-
-    let (selected_sport_id, set_selected_sport_id) = signal::<Option<uuid::Uuid>>(None);
-
-    Effect::new(move || {
-        if let Some(sport_id) = selected_sport_id.get() {
-            update("sport_id", &sport_id.to_string());
-            let navigate = use_navigate();
-            navigate(
-                &nav_url.get(),
-                NavigateOptions {
-                    replace: true,
-                    ..Default::default()
-                },
-            );
-        }
     });
 
     view! {
@@ -71,17 +47,21 @@ pub fn SelectSportPlugin() -> impl IntoView {
                             {match web_ui_plugin {
                                 Some(ui) => {
                                     view! {
-                                        <button
-                                            class="btn btn-outline h-auto min-h-[12rem] w-full flex flex-col items-center justify-center p-6 bg-base-100 hover:bg-base-200 hover:border-primary transition-all duration-300 shadow-md hover:shadow-xl rounded-xl border-dashed border-2"
+                                        <A
+                                            href=format!("?sport_id={}", id)
+                                            attr:class="btn btn-outline h-auto min-h-[12rem] w-full flex flex-col items-center justify-center p-6 bg-base-100 hover:bg-base-200 hover:border-primary transition-all duration-300 shadow-md hover:shadow-xl rounded-xl border-dashed border-2"
                                             // Stable Test ID derived from name
-                                            data-testid=format!("btn-select-sport-{}", test_id_suffix)
+                                            attr:data-testid=format!(
+                                                "btn-select-sport-{}",
+                                                test_id_suffix,
+                                            )
                                             // Accessibility label
-                                            aria-label=plugin_name
-                                            on:click=move |_| set_selected_sport_id.set(Some(id))
+                                            attr:aria-label=plugin_name
+                                            prop:replace=true
                                         >
                                             // The plugin renders its own representation inside our wrapper button
                                             {ui.render_plugin_selection()}
-                                        </button>
+                                        </A>
                                     }
                                         .into_any()
                                 }

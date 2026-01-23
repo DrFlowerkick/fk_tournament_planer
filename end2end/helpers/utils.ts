@@ -19,6 +19,7 @@ export async function waitForAppHydration(page: Page) {
   await page.evaluate(() => {
     return new Promise((resolve) => requestAnimationFrame(resolve));
   });
+  await page.waitForLoadState("domcontentloaded");
 }
 
 /**
@@ -28,7 +29,7 @@ export async function waitForAppHydration(page: Page) {
 export async function typeThenBlur(
   inputLocator: Locator,
   value: string,
-  blurToLocator: Locator
+  blurToLocator: Locator,
 ) {
   await expect(inputLocator).toBeVisible();
   await inputLocator.fill(value);
@@ -42,7 +43,7 @@ export async function typeThenBlur(
 export async function selectThenBlur(
   selectLocator: Locator,
   value: string,
-  blurToLocator: Locator
+  blurToLocator: Locator,
 ) {
   await expect(selectLocator).toBeVisible();
   // Playwright specific method for <select>
@@ -57,7 +58,7 @@ export async function selectThenBlur(
 export async function expectFieldValidity(
   inputLocator: Locator,
   expectedValue: string,
-  isInvalid: boolean
+  isInvalid: boolean,
 ) {
   await expect(inputLocator).toHaveValue(expectedValue);
   if (isInvalid) {
@@ -92,7 +93,7 @@ export async function searchAndOpenByNameOnCurrentPage(
     clearFirst?: boolean;
     expectUnique?: boolean;
     waitAriaBusy?: boolean;
-  } = {}
+  } = {},
 ) {
   const { input, list, items } = dropdown;
   const { clearFirst = true, expectUnique = true, waitAriaBusy = true } = opts;
@@ -129,4 +130,11 @@ export async function searchAndOpenByNameOnCurrentPage(
   // Option B: just take the first visible match
   await expect(row.first()).toBeVisible();
   await row.first().click();
+}
+
+/**
+ * Generates a unique name with a timestamp to avoid DB conflicts during parallel tests.
+ */
+export function makeUniqueName(base: string): string {
+  return `${base} [${Date.now()}-${Math.floor(Math.random() * 1000)}]`;
 }

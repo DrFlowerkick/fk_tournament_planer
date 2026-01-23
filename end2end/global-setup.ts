@@ -4,6 +4,7 @@
 import { chromium, Page } from "@playwright/test";
 import {
   expectSavesDisabled,
+  expectSavesEnabled,
   fillFields,
   clickSave,
   waitForPostalAddressListUrl,
@@ -64,6 +65,7 @@ async function seedPostalAddresses(page: Page) {
       region: "",
       country: "DE",
     });
+    await expectSavesEnabled(page);
     await clickSave(page);
     await waitForPostalAddressListUrl(page);
     // Navigate back for the next one

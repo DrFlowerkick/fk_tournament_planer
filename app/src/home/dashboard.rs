@@ -11,8 +11,8 @@ use reactive_stores::Store;
 pub fn SportDashboard() -> impl IntoView {
     // get query helpers
     let UseQueryNavigationReturn {
-        relative_sub_url,
-        url_with_out_param,
+        url_with_path,
+        url_with_remove_query,
         ..
     } = use_query_navigation();
 
@@ -21,11 +21,15 @@ pub fn SportDashboard() -> impl IntoView {
     let sport_plugin_manager = state.sport_plugin_manager();
     let sport_id_query = use_query::<SportParams>();
 
-    let sport_plugin = move || {
+    // Helper to get both ID and Plugin for the view
+    let sport_data = move || {
         if let Ok(params) = sport_id_query.get()
             && let Some(sport_id) = params.sport_id
         {
-            sport_plugin_manager.get().get_web_ui(&sport_id)
+            sport_plugin_manager
+                .get()
+                .get_web_ui(&sport_id)
+                .map(|plugin| (sport_id, plugin))
         } else {
             None
         }
@@ -33,7 +37,7 @@ pub fn SportDashboard() -> impl IntoView {
 
     view! {
         {move || {
-            if let Some(plugin) = sport_plugin() {
+            if let Some((sport_id, plugin)) = sport_data() {
                 let name = plugin.name();
 
                 view! {
@@ -43,12 +47,17 @@ pub fn SportDashboard() -> impl IntoView {
                     >
                         // Header Section
                         <div class="text-center mb-8 max-w-2xl">
-                            <h1
-                                class="text-4xl md:text-5xl font-bold mb-4"
-                                data-testid="sport-dashboard-title"
+                            <A
+                                href=format!("/?sport_id={}", sport_id)
+                                attr:class="no-underline text-inherit"
                             >
-                                {format!("{} Tournament Planer", name)}
-                            </h1>
+                                <h1
+                                    class="text-4xl md:text-5xl font-bold mb-4 hover:opacity-80 transition-opacity"
+                                    data-testid="sport-dashboard-title"
+                                >
+                                    {format!("{} Tournament Planer", name)}
+                                </h1>
+                            </A>
                             <p
                                 class="text-xl text-base-content/70"
                                 data-testid="sport-dashboard-desc"
@@ -63,37 +72,41 @@ pub fn SportDashboard() -> impl IntoView {
                         // Navigation Links Grid
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
                             <A
-                                href=relative_sub_url("/tournaments")
+                                href=url_with_path("tournaments")
                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-tournaments"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--trophy] w-6 h-6 mr-2"></span>
                                 "Tournaments"
                             </A>
 
                             <A
-                                href=url_with_out_param("tournament_id", Some("/new-tournament"))
+                                href=url_with_remove_query("tournament_id", Some("new-tournament"))
 
                                 attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-plan-new"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--plus-circle] w-6 h-6 mr-2"></span>
                                 "Plan New Tournament"
                             </A>
 
                             <A
-                                href=relative_sub_url("/adhoc-tournament")
+                                href=url_with_path("adhoc-tournament")
                                 attr:class="btn btn-accent h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-adhoc"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--play] w-6 h-6 mr-2"></span>
                                 "Start Adhoc Tournament"
                             </A>
 
                             <A
-                                href=relative_sub_url("/sport-configurations")
+                                href=url_with_path("sport-configurations")
                                 attr:class="btn btn-neutral h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-config"
+                                scroll=false
                             >
                                 <span class="icon-[heroicons--cog-6-tooth] w-6 h-6 mr-2"></span>
                                 "Configurations"
@@ -101,9 +114,10 @@ pub fn SportDashboard() -> impl IntoView {
 
                             // Full width About link
                             <A
-                                href=relative_sub_url("/about-sport")
+                                href=url_with_path("about-sport")
                                 attr:class="btn btn-ghost md:col-span-2 mt-4"
                                 attr:data-testid="link-nav-about"
+                                scroll=false
                             >
                                 {format!("About {}", name)}
                             </A>

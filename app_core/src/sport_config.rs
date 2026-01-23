@@ -11,7 +11,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 /// `SportConfig` represents the configuration for a specific sport.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SportConfig {
     /// Unique identifier for the sport configuration.
     id_version: IdVersion,
@@ -58,10 +58,6 @@ impl SportConfig {
     /// Get the version number of the sport configuration.
     pub fn get_version(&self) -> Option<u32> {
         self.id_version.get_version()
-    }
-
-    pub fn get_id_version(&self) -> IdVersion {
-        self.id_version
     }
 
     /// Get the sport ID associated with this configuration.

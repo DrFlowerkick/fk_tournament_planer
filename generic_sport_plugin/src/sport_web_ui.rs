@@ -17,8 +17,6 @@ use std::time::Duration;
 impl SportPortWebUi for GenericSportPlugin {
     fn render_plugin_selection(&self) -> AnyView {
         view! {
-            // We use 'w-full' to ensure that Flexbox is properly centered
-            // 'gap-4' provides spacing between the icon/emoji and the text
             <div
                 class="flex flex-col items-center justify-center gap-4 w-full"
                 data-testid="generic-sport-plugin-selection"
@@ -113,16 +111,11 @@ impl SportPortWebUi for GenericSportPlugin {
         let RenderCfgProps {
             config,
             is_valid_json,
-            is_new,
         } = props;
 
-        // --- initialize json config, if is_new ---
-        if is_new.get() {
-            let default = GenericSportConfig::default();
-            config.set(serde_json::to_value(default).ok());
-        }
-
         // --- extract current configuration ---
+        // ToDo: refactor this to keep the Result of parse in a Signal and use below ErrorBoundary to investigate the error.
+        // For now, we ignore errors in parsing here, as validation is done below.
         let current_configuration = move || {
             if let Some(json_cfg) = config.get()
                 && let Ok(cfg) = GenericSportConfig::parse_config(json_cfg)
@@ -133,26 +126,27 @@ impl SportPortWebUi for GenericSportPlugin {
             }
         };
 
-        let validation_result = move || current_configuration().validate(ValidationErrors::new());
+        let validation_result =
+            Signal::derive(move || current_configuration().validate(ValidationErrors::new()));
 
         Effect::new(move || {
-            is_valid_json.set(validation_result().is_ok());
+            is_valid_json.set(validation_result.get().is_ok());
         });
 
         let is_valid_sets_to_win =
-            Signal::derive(move || is_field_valid(validation_result).run("sets_to_win"));
+            Signal::derive(move || is_field_valid(validation_result, "sets_to_win"));
         let is_valid_score_to_win =
-            Signal::derive(move || is_field_valid(validation_result).run("score_to_win"));
+            Signal::derive(move || is_field_valid(validation_result, "score_to_win"));
         let is_valid_win_by_margin =
-            Signal::derive(move || is_field_valid(validation_result).run("win_by_margin"));
+            Signal::derive(move || is_field_valid(validation_result, "win_by_margin"));
         let is_valid_hard_cap =
-            Signal::derive(move || is_field_valid(validation_result).run("hard_cap"));
+            Signal::derive(move || is_field_valid(validation_result, "hard_cap"));
         let is_valid_victory_points_win =
-            Signal::derive(move || is_field_valid(validation_result).run("victory_points_win"));
+            Signal::derive(move || is_field_valid(validation_result, "victory_points_win"));
         let is_valid_victory_points_draw =
-            Signal::derive(move || is_field_valid(validation_result).run("victory_points_draw"));
+            Signal::derive(move || is_field_valid(validation_result, "victory_points_draw"));
         let is_valid_expected_match_duration_minutes = Signal::derive(move || {
-            is_field_valid(validation_result).run("expected_match_duration_minutes")
+            is_field_valid(validation_result, "expected_match_duration_minutes")
         });
         // --- Signals for form fields ---
         let set_sets_to_win = RwSignal::new(0_u16);
@@ -235,8 +229,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     label="Sets to Win"
                     name="sets_to_win"
                     value=set_sets_to_win
-                    error_message=is_valid_sets_to_win
-                    is_new=is_new
+                    validation_error=is_valid_sets_to_win
                     min="1"
                 />
                 <div class="grid grid-cols-3 gap-4">
@@ -246,8 +239,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         label="Score to Win a Set"
                         name="score_to_win"
                         value=set_score_to_win
-                        error_message=is_valid_score_to_win
-                        is_new=is_new
+                        validation_error=is_valid_score_to_win
                         min="1"
                     />
                     <ValidatedOptionNumberInput<
@@ -256,8 +248,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         label="Win by Margin"
                         name="win_by_margin"
                         value=set_win_by_margin
-                        error_message=is_valid_win_by_margin
-                        is_new=is_new
+                        validation_error=is_valid_win_by_margin
                         min="1"
                     />
                     <ValidatedOptionNumberInput<
@@ -266,8 +257,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         label="Hard Cap"
                         name="hard_cap"
                         value=set_hard_cap
-                        error_message=is_valid_hard_cap
-                        is_new=is_new
+                        validation_error=is_valid_hard_cap
                         min="1"
                     />
                 </div>
@@ -278,8 +268,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         label="Victory Points for Win"
                         name="victory_points_win"
                         value=set_victory_points_win
-                        error_message=is_valid_victory_points_win
-                        is_new=is_new
+                        validation_error=is_valid_victory_points_win
                         min="0"
                         step="0.1"
                     />
@@ -289,8 +278,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         label="Victory Points for Draw"
                         name="victory_points_draw"
                         value=set_victory_points_draw
-                        error_message=is_valid_victory_points_draw
-                        is_new=is_new
+                        validation_error=is_valid_victory_points_draw
                         min="0"
                         step="0.1"
                     />
@@ -300,8 +288,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     name="expected_match_duration_minutes"
                     value=set_expected_match_duration_minutes
                     unit=DurationInputUnit::Minutes
-                    error_message=is_valid_expected_match_duration_minutes
-                    is_new=is_new
+                    validation_error=is_valid_expected_match_duration_minutes
                 />
             </div>
         }

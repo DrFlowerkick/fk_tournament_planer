@@ -45,7 +45,7 @@ pub async fn list_tournament_bases(
     sport_id: Uuid,
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<app_core::TournamentBase>> {
+) -> AppResult<Vec<TournamentBase>> {
     list_tournament_bases_inner(sport_id, name, limit).await
 }
 
@@ -54,7 +54,7 @@ pub async fn list_tournament_bases(
     sport_id: Uuid,
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<app_core::TournamentBase>> {
+) -> AppResult<Vec<TournamentBase>> {
     list_tournament_bases_inner(sport_id, name, limit).await
 }
 
@@ -63,7 +63,7 @@ async fn list_tournament_bases_inner(
     sport_id: Uuid,
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<app_core::TournamentBase>> {
+) -> AppResult<Vec<TournamentBase>> {
     let core = expect_context::<CoreState>().as_tournament_base_state();
     let configs = core
         .list_sport_tournaments(sport_id, Some(&name), limit)

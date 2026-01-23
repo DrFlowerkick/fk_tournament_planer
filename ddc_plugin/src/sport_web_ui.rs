@@ -86,16 +86,11 @@ impl SportPortWebUi for DdcSportPlugin {
         let RenderCfgProps {
             config,
             is_valid_json,
-            is_new,
         } = props;
 
-        // --- initialize json config, if is_new ---
-        if is_new.get() {
-            let default = DdcSportConfig::default();
-            config.set(serde_json::to_value(default).ok());
-        }
-
         // --- extract current configuration ---
+        // ToDo: refactor this to keep the Result of parse in a Signal and use below ErrorBoundary to investigate the error.
+        // For now, we ignore errors in parsing here, as validation is done below.
         let current_configuration = move || {
             if let Some(json_cfg) = config.get()
                 && let Ok(cfg) = DdcSportConfig::parse_config(json_cfg)
@@ -106,26 +101,27 @@ impl SportPortWebUi for DdcSportPlugin {
             }
         };
 
-        let validation_result = move || current_configuration().validate(ValidationErrors::new());
+        let validation_result =
+            Signal::derive(move || current_configuration().validate(ValidationErrors::new()));
 
         Effect::new(move || {
-            is_valid_json.set(validation_result().is_ok());
+            is_valid_json.set(validation_result.get().is_ok());
         });
 
         let is_valid_sets_cfg =
-            Signal::derive(move || is_field_valid(validation_result).run("sets_cfg"));
+            Signal::derive(move || is_field_valid(validation_result, "sets_cfg"));
         let is_valid_score_to_win =
-            Signal::derive(move || is_field_valid(validation_result).run("score_to_win"));
+            Signal::derive(move || is_field_valid(validation_result, "score_to_win"));
         let is_valid_win_by_margin =
-            Signal::derive(move || is_field_valid(validation_result).run("win_by_margin"));
+            Signal::derive(move || is_field_valid(validation_result, "win_by_margin"));
         let is_valid_hard_cap =
-            Signal::derive(move || is_field_valid(validation_result).run("hard_cap"));
+            Signal::derive(move || is_field_valid(validation_result, "hard_cap"));
         let is_valid_victory_points_win =
-            Signal::derive(move || is_field_valid(validation_result).run("victory_points_win"));
+            Signal::derive(move || is_field_valid(validation_result, "victory_points_win"));
         let is_valid_victory_points_draw =
-            Signal::derive(move || is_field_valid(validation_result).run("victory_points_draw"));
+            Signal::derive(move || is_field_valid(validation_result, "victory_points_draw"));
         let is_valid_expected_rally_duration_seconds = Signal::derive(move || {
-            is_field_valid(validation_result).run("expected_rally_duration_seconds")
+            is_field_valid(validation_result, "expected_rally_duration_seconds")
         });
         // --- Signals for form fields ---
         let set_sets_cfg = RwSignal::new(DdcSetCfg::default());
@@ -252,8 +248,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                     label="Sets to Win"
                                     name="num_sets"
                                     value=set_num_sets
-                                    error_message=is_valid_sets_cfg
-                                    is_new=is_new
+                                    validation_error=is_valid_sets_cfg
                                     min="1"
                                 />
                             }
@@ -267,8 +262,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                     label="Total Sets"
                                     name="num_sets"
                                     value=set_num_sets
-                                    error_message=is_valid_sets_cfg
-                                    is_new=is_new
+                                    validation_error=is_valid_sets_cfg
                                     min="1"
                                 />
                             }
@@ -313,8 +307,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                         label="Score to Win a Set"
                                         name="score_to_win"
                                         value=set_score_to_win
-                                        error_message=is_valid_score_to_win
-                                        is_new=is_new
+                                        validation_error=is_valid_score_to_win
                                         min="1"
                                     />
                                     <ValidatedNumberInput<
@@ -323,8 +316,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                         label="Win by Margin"
                                         name="win_by_margin"
                                         value=set_win_by_margin
-                                        error_message=is_valid_win_by_margin
-                                        is_new=is_new
+                                        validation_error=is_valid_win_by_margin
                                         min="1"
                                     />
                                     <ValidatedNumberInput<
@@ -333,8 +325,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                         label="Hard Cap"
                                         name="hard_cap"
                                         value=set_hard_cap
-                                        error_message=is_valid_hard_cap
-                                        is_new=is_new
+                                        validation_error=is_valid_hard_cap
                                         min="1"
                                     />
                                 </div>
@@ -351,8 +342,7 @@ impl SportPortWebUi for DdcSportPlugin {
                         label="Victory Points for Win"
                         name="victory_points_win"
                         value=set_victory_points_win
-                        error_message=is_valid_victory_points_win
-                        is_new=is_new
+                        validation_error=is_valid_victory_points_win
                         min="0"
                         step="0.1"
                     />
@@ -362,8 +352,7 @@ impl SportPortWebUi for DdcSportPlugin {
                         label="Victory Points for Draw"
                         name="victory_points_draw"
                         value=set_victory_points_draw
-                        error_message=is_valid_victory_points_draw
-                        is_new=is_new
+                        validation_error=is_valid_victory_points_draw
                         min="0"
                         step="0.1"
                     />
@@ -373,8 +362,7 @@ impl SportPortWebUi for DdcSportPlugin {
                     name="expected_rally_duration_seconds"
                     value=set_expected_rally_duration_seconds
                     unit=DurationInputUnit::Seconds
-                    error_message=is_valid_expected_rally_duration_seconds
-                    is_new=is_new
+                    validation_error=is_valid_expected_rally_duration_seconds
                 />
                 <div class="form-control w-full">
                     <label class="label">

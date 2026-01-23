@@ -4,7 +4,10 @@ use crate::{
     PgDb, escape_like, map_db_err,
     schema::{postal_addresses, postal_addresses::dsl::*},
 };
-use app_core::{DbError, DbResult, DbpPostalAddress, PostalAddress, utils::id_version::IdVersion};
+use app_core::{
+    DbError, DbResult, DbpPostalAddress, PostalAddress,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
+};
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use diesel::{

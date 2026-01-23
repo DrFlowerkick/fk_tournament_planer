@@ -10,7 +10,6 @@ mod round;
 mod scoring;
 mod sport_config;
 mod sport_plugin;
-mod stage;
 mod timing;
 mod tournament;
 pub mod utils;
@@ -25,7 +24,6 @@ pub use round::*;
 pub use scoring::*;
 pub use sport_config::*;
 pub use sport_plugin::*;
-pub use stage::*;
 pub use timing::*;
 pub use tournament::*;
 

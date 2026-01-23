@@ -21,10 +21,19 @@ pub fn ToastContainer() -> impl IntoView {
                         ToastVariant::Warning => "alert-warning",
                         ToastVariant::Error => "alert-error",
                     };
+                    let test_id = match toast.variant {
+                        ToastVariant::Info => "toast-alert-info",
+                        ToastVariant::Success => "toast-alert-success",
+                        ToastVariant::Warning => "toast-alert-warning",
+                        ToastVariant::Error => "toast-alert-error",
+                    };
 
                     view! {
                         // Animations (fade-in) could be done via CSS
-                        <div class=format!("alert {} shadow-lg min-w-[300px]", alert_class)>
+                        <div
+                            class=format!("alert {} shadow-lg min-w-[300px]", alert_class)
+                            data-testid=test_id
+                        >
                             // Icon based on type (optional)
                             <span>{toast.message}</span>
                         </div>

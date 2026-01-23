@@ -19,24 +19,24 @@ use leptos_router::{
 #[component(transparent)]
 pub fn TournamentsRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
-      <ParentRoute path=path!("tournaments") view=ListTournaments>
-        <ParentRoute path=path!("edit") view=EditTournament>
-            <EditSubRoutes />
+        <ParentRoute path=path!("tournaments") view=ListTournaments>
+            <ParentRoute path=path!("edit") view=EditTournament>
+                <EditSubRoutes />
+                <Route
+                    path=path!("")
+                    view={
+                        view! {}
+                    }
+                />
+            </ParentRoute>
             <Route
                 path=path!("")
                 view={
                     view! {}
                 }
             />
+            <Route path=path!("register") view=RegisterAtTournament />
         </ParentRoute>
-        <Route
-            path=path!("")
-            view={
-                view! {}
-            }
-        />
-        <Route path=path!("register") view=RegisterAtTournament/>
-      </ParentRoute>
     }
     .into_inner()
     .into_any_nested_route()

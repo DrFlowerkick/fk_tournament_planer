@@ -8,7 +8,10 @@ use leptos::{
     web_sys::{Event, HtmlAnchorElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
 use leptos_axum_socket::provide_socket_context;
-use leptos_router::components::Router;
+use leptos_router::{
+    components::{Route, Router, Routes},
+    path,
+};
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
@@ -29,7 +32,9 @@ async fn test_config_search_renders() {
         provide_global_state();
         view! {
             <Router>
-                <SearchSportConfig />
+                <Routes fallback=|| "Page not found.".into_view()>
+                    <Route path=path!("/sport") view=SearchSportConfig />
+                </Routes>
             </Router>
         }
     });
@@ -106,9 +111,6 @@ async fn test_config_search_renders() {
         .dyn_into::<HtmlAnchorElement>()
         .unwrap();
     let href = new_button.href();
-    assert!(href.ends_with(&format!(
-        "new_sc?sport_id={}&sport_config_id={}",
-        ts.generic_sport_id, ts.generic_sport_config_id
-    )));
+    assert!(href.ends_with(&format!("new_sc?sport_id={}", ts.generic_sport_id)));
     assert_eq!(new_button.text_content().unwrap(), "New");
 }

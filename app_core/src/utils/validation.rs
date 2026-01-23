@@ -35,6 +35,10 @@ impl Display for FieldError {
     }
 }
 
+// Implement the Error trait to make it compatible with the ecosystem
+impl std::error::Error for FieldError {}
+pub type FieldResult<T> = Result<T, FieldError>;
+
 impl FieldError {
     pub fn get_field(&self) -> &str {
         &self.field

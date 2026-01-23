@@ -59,6 +59,23 @@ impl TournamentMode {
             TournamentMode::SwissSystem { num_rounds: _ } => 1,
         }
     }
+    pub fn get_stage_name(&self, stage_number: u32) -> Option<String> {
+        match self {
+            TournamentMode::SingleStage => Some("Single Stage".to_string()),
+            TournamentMode::PoolAndFinalStage => match stage_number {
+                0 => Some("Pool Stage".to_string()),
+                1 => Some("Final Stage".to_string()),
+                _ => None,
+            },
+            TournamentMode::TwoPoolStagesAndFinalStage => match stage_number {
+                0 => Some("First Pool Stage".to_string()),
+                1 => Some("Second Pool Stage".to_string()),
+                2 => Some("Final Stage".to_string()),
+                _ => None,
+            },
+            TournamentMode::SwissSystem { num_rounds: _ } => Some("Swiss System".to_string()),
+        }
+    }
 }
 
 /// status of tournament
@@ -338,7 +355,7 @@ impl Core<TournamentBaseState> {
             .save_tournament_base(&self.state.tournament)
             .await?;
 
-        // publish change of sport config to client registry
+        // publish change of tournament base to client registry
         let id =
             self.state.tournament.get_id().expect(
                 "expecting save_tournament_base to return always an existing id and version",

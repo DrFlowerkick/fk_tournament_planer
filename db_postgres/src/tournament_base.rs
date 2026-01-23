@@ -5,7 +5,8 @@ use crate::{
     schema::{tournament_bases, tournament_bases::dsl::*},
 };
 use app_core::{
-    DbError, DbResult, TournamentBase, TournamentMode, TournamentState, TournamentType,
+    DbError, DbResult, DbpTournamentBase, TournamentBase, TournamentMode, TournamentState,
+    TournamentType,
     utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use async_trait::async_trait;
@@ -21,11 +22,6 @@ use diesel::{
 use diesel_async::RunQueryDsl;
 use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
-
-// Wir benötigen diesen Trait wahrscheinlich in app_core/src/ports/database.rs definiert,
-// hier nehme ich an, er existiert und hat die Signaturen wie in base.rs verwendet.
-// Falls nicht, muss er in app_core definiert werden.
-use app_core::DbpTournamentBase;
 
 // ------------------- DB-Row (SELECT/RETURNING) -------------------
 #[derive(Debug, Queryable)]

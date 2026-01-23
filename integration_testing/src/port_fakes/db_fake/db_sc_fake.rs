@@ -1,7 +1,10 @@
 //! Fake implementation of DbpSportConfig for testing
 
 use super::FakeDatabasePort;
-use app_core::{DbError, DbResult, DbpSportConfig, SportConfig, utils::id_version::IdVersion};
+use app_core::{
+    DbError, DbResult, DbpSportConfig, SportConfig,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
+};
 use async_trait::async_trait;
 use uuid::Uuid;
 
@@ -25,16 +28,37 @@ impl DbpSportConfig for FakeDatabasePort {
 
         let mut guard = self.sport_configs.lock().unwrap();
         let mut new = config.clone();
-        if let Some(id) = config.get_id() {
-            if let Some(existing) = guard.get(&id) {
-                let version = existing.get_version().unwrap() + 1;
-                new.set_id_version(IdVersion::new(id, Some(version)));
-            } else {
+
+        match config.get_id_version() {
+            IdVersion::Existing(inner) => {
+                if let Some(existing) = guard.get(&inner.get_id()) {
+                    let existing_v = existing.get_version().unwrap_or(0);
+                    let update_v = inner.get_version(); // This unwrap is safe for Existing, but version is u32
+
+                    if existing_v != update_v {
+                        return Err(DbError::OptimisticLockConflict);
+                    }
+
+                    // Increment version
+                    new.set_id_version(IdVersion::new(*inner.get_id(), Some(existing_v + 1)));
+                } else {
+                    return Err(DbError::NotFound);
+                }
+            }
+            IdVersion::New => {
+                new.set_id_version(IdVersion::new(Uuid::new_v4(), Some(0)));
+            }
+            IdVersion::NewWithId(id) => {
+                if guard.contains_key(&id) {
+                    return Err(DbError::Other(format!(
+                        "SportConfig with ID {} already exists",
+                        id
+                    )));
+                }
                 new.set_id_version(IdVersion::new(id, Some(0)));
             }
-        } else {
-            new.set_id_version(IdVersion::new(Uuid::new_v4(), Some(0)));
         }
+
         guard.insert(new.get_id().unwrap(), new.clone());
         Ok(new)
     }

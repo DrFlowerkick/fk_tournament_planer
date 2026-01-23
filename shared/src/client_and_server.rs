@@ -16,5 +16,4 @@ pub trait SportPortWebUi: Send + Sync + SportPort {
 pub struct RenderCfgProps {
     pub config: RwSignal<Option<Value>>,
     pub is_valid_json: RwSignal<bool>,
-    pub is_new: Signal<bool>,
 }

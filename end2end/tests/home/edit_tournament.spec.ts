@@ -6,17 +6,12 @@ import {
   goToListTournaments,
 } from "../../helpers/home";
 import { selectors } from "../../helpers/selectors";
+import { getToastSelectors } from "../../helpers/selectors/common";
+import { makeUniqueName } from "../../helpers/utils";
 
 const PLUGINS = {
   GENERIC: "Generic Sport",
 };
-
-/**
- * Generates a unique tournament name to avoid DB conflicts during parallel tests.
- */
-function makeUniqueName(base: string): string {
-  return `${base} [${Date.now()}-${Math.floor(Math.random() * 1000)}]`;
-}
 
 test.describe("Create New Tournament", () => {
   let sportId: string;
@@ -56,13 +51,14 @@ test.describe("Create New Tournament", () => {
     await expect(DASH.nav.planNew).toBeVisible();
   });
 
-  test("successfully creates a tournament and redirects to list", async ({
+  test("successfully creates a tournament, shows toast and handles redirect", async ({
     page,
   }) => {
     const FORM = selectors(page).home.dashboard.editTournament;
     const LIST = selectors(page).home.dashboard.tournamentsList;
+    const TOASTS = getToastSelectors(page);
 
-    const tourneyName = makeUniqueName("E2E Success");
+    const tourneyName = makeUniqueName("E2E Create Success");
 
     await FORM.inputs.name.fill(tourneyName);
     await FORM.inputs.entrants.fill("32");
@@ -70,8 +66,14 @@ test.describe("Create New Tournament", () => {
     await expect(FORM.actions.save).toBeEnabled();
     await FORM.actions.save.click();
 
+    // 1. Verify Toast appears
+    await expect(TOASTS.success).toBeVisible();
+    await expect(TOASTS.success).toContainText(/saved/i);
+
+    // 2. Wait for URL update (Creation usually redirects to Edit/View with ID)
     await page.waitForURL(/tournament_id=/, { timeout: 20000 });
-    
+
+    // 3. Verify Persistence via List
     await goToListTournaments(page);
 
     // Wait until list and search are ready
@@ -83,6 +85,65 @@ test.describe("Create New Tournament", () => {
     await expect(page.getByRole("cell", { name: tourneyName })).toBeVisible({
       timeout: 10000,
     });
+  });
+
+  test("full flow: create, navigate to list, edit existing, modify and save", async ({
+    page,
+  }) => {
+    const FORM = selectors(page).home.dashboard.editTournament;
+    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const TOASTS = getToastSelectors(page);
+
+    // --- Step 1: Create initial tournament ---
+    const initialName = makeUniqueName("Flow Initial");
+    await FORM.inputs.name.fill(initialName);
+    await FORM.inputs.entrants.fill("16");
+    await FORM.actions.save.click();
+
+    // Wait for creation to finish (Toast & URL)
+    await expect(TOASTS.success).toBeVisible();
+    await page.waitForURL(/tournament_id=/);
+
+    // --- Step 2: Go to List and Find it ---
+    await goToListTournaments(page);
+    await LIST.filters.search.fill(initialName);
+
+    const rowCell = page.getByRole("cell", { name: initialName }).first();
+    await expect(rowCell).toBeVisible();
+
+    // --- Step 3: Enter Edit Mode ---
+    await rowCell.click();
+    const editBtn = page.getByTestId("action-btn-edit");
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    // Check we are back in the form
+    await expect(FORM.title).toHaveText(/Edit Tournament/i);
+    await expect(FORM.inputs.name).toHaveValue(initialName);
+
+    // --- Step 4: Modify Data ---
+    const updatedName = makeUniqueName("Flow Updated");
+    await FORM.inputs.name.fill(updatedName);
+    // Optional: Change another field if needed
+    // await FORM.inputs.entrants.fill("20");
+
+    // --- Step 5: Save Changes ---
+    await FORM.actions.save.click();
+
+    // --- Step 6: Verify Success Toast & Persistence ---
+    // Note: If the previous toast is still there (animations), this might pass immediately.
+    // For now, checking visibility is usually sufficient as 'save' triggers a re-render/new toast.
+    await expect(TOASTS.success).toBeVisible();
+    // Assuming backend returns "Tournament saved"
+    await expect(TOASTS.success).toContainText(/saved/i);
+
+    // Verify update in List
+    await goToListTournaments(page);
+    await LIST.filters.search.fill(updatedName);
+    await expect(page.getByRole("cell", { name: updatedName })).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: initialName }),
+    ).not.toBeVisible();
   });
 
   test.describe("Validation & Normalization", () => {

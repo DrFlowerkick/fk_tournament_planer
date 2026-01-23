@@ -30,7 +30,7 @@ export async function openHomePage(page: Page) {
  */
 export async function selectSportPluginByName(
   page: Page,
-  pluginName: string
+  pluginName: string,
 ): Promise<string> {
   // Ensure app is ready/hydrated before interacting
   await waitForAppHydration(page);
@@ -51,7 +51,7 @@ export async function selectSportPluginByName(
     const url = page.url();
     if (!url.includes("sport_id=")) {
       throw new Error(
-        "Click performed, but URL did not update yet. Retrying..."
+        "Click performed, but URL did not update yet. Retrying...",
       );
     }
   }).toPass({
@@ -91,7 +91,7 @@ export async function expectSportViewActive(page: Page, pluginId: string) {
  */
 export async function expectSportDashboardContent(
   page: Page,
-  sportName: string
+  sportName: string,
 ) {
   const DASH = selectors(page).home.dashboard;
 
@@ -130,7 +130,7 @@ export async function expectSportDashboardContent(
  * Assumes the user is already on the sport dashboard.
  */
 export async function goToListTournaments(page: Page) {
-  await page.waitForLoadState("domcontentloaded");
+  await waitForAppHydration(page);
   const DASH = selectors(page).home.dashboard;
 
   // Navigate via dashboard link
@@ -146,7 +146,7 @@ export async function goToListTournaments(page: Page) {
  * Assumes the user is already on the sport dashboard.
  */
 export async function goToNewTournament(page: Page) {
-  await page.waitForLoadState("domcontentloaded");
+  await waitForAppHydration(page);
   const DASH = selectors(page).home.dashboard;
 
   // Ensure Dashboard is active and Link is clickable

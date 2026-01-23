@@ -8,7 +8,7 @@ export interface DropdownLocators {
 
 export function getDropdown(
   page: Page,
-  ids: { input: string; suggestList: string; suggestItem: string }
+  ids: { input: string; suggestList: string; suggestItem: string },
 ): DropdownLocators {
   return {
     input: page.getByTestId(ids.input),
@@ -36,5 +36,21 @@ export function getBannerSelectors(page: Page) {
       btnAction: page.getByTestId(BANNER_IDS.btnAckNavAction),
       btnNavigate: page.getByTestId(BANNER_IDS.btnAckNav),
     },
+  };
+}
+
+export const TOAST_IDS = {
+  success: "toast-alert-success",
+  error: "toast-alert-error",
+  info: "toast-alert-info",
+  warning: "toast-alert-warning",
+} as const;
+
+export function getToastSelectors(page: Page) {
+  return {
+    success: page.getByTestId(TOAST_IDS.success),
+    error: page.getByTestId(TOAST_IDS.error),
+    info: page.getByTestId(TOAST_IDS.info),
+    warning: page.getByTestId(TOAST_IDS.warning),
   };
 }

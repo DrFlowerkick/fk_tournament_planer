@@ -1,12 +1,14 @@
 mod db_pa_fake;
 mod db_sc_fake;
+mod db_stage_fake;
 mod db_tb_fake;
 
 use crate::port_fakes::MockSport;
 use app_core::{
     ClientRegistryPort, Core, CoreBuilder, CrError, CrMsg, CrResult, CrTopic, DatabasePort,
     DbResult, InitState, PostalAddress, PostalAddressState, SportConfig, SportConfigState,
-    TournamentBase, TournamentBaseState, utils::id_version::IdVersion,
+    SportPluginManagerPort, Stage, StageState, TournamentBase, TournamentBaseState, TournamentMode,
+    utils::id_version::IdVersion,
 };
 use async_trait::async_trait;
 use sport_plugin_manager::SportPluginManagerMap;
@@ -34,6 +36,11 @@ pub struct FakeDatabasePort {
     fail_next_get_tb: Arc<Mutex<bool>>,
     fail_next_save_tb: Arc<Mutex<bool>>,
     fail_next_list_tb: Arc<Mutex<bool>>,
+    // for stage
+    stages: Arc<Mutex<HashMap<Uuid, Stage>>>,
+    fail_next_get_stage: Arc<Mutex<bool>>,
+    fail_next_save_stage: Arc<Mutex<bool>>,
+    fail_next_list_stage: Arc<Mutex<bool>>,
 }
 
 impl FakeDatabasePort {
@@ -105,6 +112,26 @@ impl FakeDatabasePort {
     pub fn fail_list_tb_once(&self) {
         *self.fail_next_list_tb.lock().unwrap() = true;
     }
+
+    // --- Stage Helpers ---
+    pub fn seed_stage(&self, mut stage: Stage) -> Uuid {
+        assert!(stage.get_id().is_none());
+        let id = Uuid::new_v4();
+        let id_version = IdVersion::new(id, Some(0));
+        stage.set_id_version(id_version);
+        self.stages.lock().unwrap().insert(id, stage);
+        id
+    }
+
+    pub fn fail_get_stage_once(&self) {
+        *self.fail_next_get_stage.lock().unwrap() = true;
+    }
+    pub fn fail_save_stage_once(&self) {
+        *self.fail_next_save_stage.lock().unwrap() = true;
+    }
+    pub fn fail_list_stage_once(&self) {
+        *self.fail_next_list_stage.lock().unwrap() = true;
+    }
 }
 
 // Blanket impl: your DatabasePort is a supertrait of DbpPostalAddress and DbpSportConfig.
@@ -148,6 +175,25 @@ impl ClientRegistryPort for FakeClientRegistryPort {
         self.published.lock().unwrap().push(notice);
         Ok(())
     }
+}
+
+/// Convenience: construct a realistic PostalAddress for seeding.
+pub fn make_addr(
+    name: &str,
+    street: &str,
+    postal: &str,
+    city: &str,
+    region: &str,
+    country: &str,
+) -> PostalAddress {
+    let mut pa = PostalAddress::new(IdVersion::New);
+    pa.set_name(name)
+        .set_street(street)
+        .set_postal_code(postal)
+        .set_locality(city)
+        .set_region(region)
+        .set_country(country);
+    pa
 }
 
 /// Helper: build a Core<InitState> wired with our trait fakes.
@@ -223,21 +269,30 @@ pub fn make_tournament_base(name: &str, sport_core: &Core<TournamentBaseState>) 
     tb
 }
 
-/// Convenience: construct a realistic PostalAddress for seeding.
-pub fn make_addr(
-    name: &str,
-    street: &str,
-    postal: &str,
-    city: &str,
-    region: &str,
-    country: &str,
-) -> PostalAddress {
-    let mut pa = PostalAddress::new(IdVersion::New);
-    pa.set_name(name)
-        .set_street(street)
-        .set_postal_code(postal)
-        .set_locality(city)
-        .set_region(region)
-        .set_country(country);
-    pa
+pub fn make_core_stage_state_with_fakes() -> (
+    Core<StageState>,
+    Arc<FakeDatabasePort>,
+    Arc<FakeClientRegistryPort>,
+) {
+    let (core, db, cr, spm) = make_core_with_fakes();
+
+    let sport_id = spm.list()[0].get_id_version().get_id().unwrap();
+
+    let mut tb = TournamentBase::new(IdVersion::New);
+    tb.set_name("Stage Context Tournament")
+        .set_sport_id(sport_id)
+        // IMPORTANT: Must be at least 2x max(num_groups) used in tests.
+        // Tests use up to 8 groups, so 16 would be min. Using 32 to be safe.
+        .set_num_entrants(32)
+        // IMPORTANT: Use a mode that allows multiple stages and multiple groups.
+        // TwoPoolStagesAndFinalStage allows 3 stages (indices 0, 1, 2).
+        .set_tournament_mode(TournamentMode::TwoPoolStagesAndFinalStage);
+
+    let t_id = db.seed_tournament_base(tb);
+
+    let mut core_stage_state = core.as_stage_state(t_id);
+
+    core_stage_state.get_mut().set_tournament_id(t_id);
+
+    (core_stage_state, db, cr)
 }

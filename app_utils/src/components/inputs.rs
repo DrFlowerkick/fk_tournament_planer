@@ -1,5 +1,6 @@
 //! Input components for the app
 
+use app_core::utils::validation::FieldResult;
 use displaydoc::Display;
 use leptos::prelude::*;
 use std::fmt::Display;
@@ -11,7 +12,7 @@ pub fn ValidatedTextInput(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<String>,
-    #[prop(into)] error_message: Signal<Option<String>>,
+    #[prop(into)] validation_error: Signal<FieldResult<()>>,
     // Context signals to handle placeholder logic internally
     #[prop(into)] is_new: Signal<bool>,
     // Optional on blur callback, e.g. for normalization
@@ -23,16 +24,16 @@ pub fn ValidatedTextInput(
     view! {
         <div class="form-control w-full">
             <label class="label">
-                <span class="label-text">{label.clone()}</span>
+                <span class="label-text">{label}</span>
             </label>
             <input
                 type="text"
                 class="input input-bordered w-full"
-                class:input-error=move || error_message.get().is_some()
+                class:input-error=move || validation_error.get().is_err()
                 name=name.clone()
                 // Auto-generate test-id
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || error_message.get().is_some().to_string()
+                aria-invalid=move || validation_error.get().is_err().to_string()
                 prop:value=value
                 placeholder=move || {
                     if is_new.get() { placeholder_text.clone() } else { String::new() }
@@ -44,19 +45,13 @@ pub fn ValidatedTextInput(
                     }
                 }
             />
-            {move || {
-                error_message
-                    .get()
-                    .map(|msg| {
-                        view! {
-                            <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                                    {msg}
-                                </span>
-                            </label>
-                        }
-                    })
-            }}
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -113,7 +108,7 @@ pub fn ValidatedSelect(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<String>,
-    #[prop(into)] error_message: Signal<Option<String>>,
+    #[prop(into)] validation_error: Signal<FieldResult<()>>,
     /// List of (value, label) tuples for the options
     #[prop(into)]
     options: Vec<(String, String)>,
@@ -134,11 +129,11 @@ pub fn ValidatedSelect(
             </label>
             <select
                 class="select select-bordered w-full"
-                class:select-error=move || error_message.get().is_some()
+                class:select-error=move || validation_error.get().is_err()
                 name=name.clone()
                 // Auto-generate test-id
                 data-testid=format!("select-{}", name)
-                aria-invalid=move || error_message.get().is_some().to_string()
+                aria-invalid=move || validation_error.get().is_err().to_string()
                 on:change=move |ev| value.set(event_target_value(&ev))
                 on:blur=move |_| {
                     if let Some(cb) = on_blur {
@@ -161,19 +156,13 @@ pub fn ValidatedSelect(
                     })
                     .collect_view()}
             </select>
-            {move || {
-                error_message
-                    .get()
-                    .map(|msg| {
-                        view! {
-                            <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                                    {msg}
-                                </span>
-                            </label>
-                        }
-                    })
-            }}
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -247,8 +236,7 @@ pub fn ValidatedNumberInput<T>(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<T>,
-    #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_new: Signal<bool>,
+    #[prop(into)] validation_error: Signal<FieldResult<()>>,
     #[prop(into, optional)] step: String, // "1" for int, "0.1" for float
     #[prop(into, optional)] min: String,
     // Optional on blur callback, e.g. for update of json config
@@ -258,7 +246,6 @@ where
     T: FromStr + Display + Default + Copy + Send + Sync + 'static,
     <T as FromStr>::Err: std::fmt::Debug,
 {
-    let placeholder_text = format!("Enter {}...", label.to_lowercase());
     // Default step to "1" if not provided
     let step_val = if step.is_empty() {
         "1".to_string()
@@ -267,6 +254,8 @@ where
     };
     // Default min to "0" if not provided
     let min = if min.is_empty() { "0".to_string() } else { min };
+
+    let (parse_err, set_parse_err) = signal(None::<String>);
 
     view! {
         <div class="form-control w-full">
@@ -278,19 +267,22 @@ where
                 step=step_val
                 min=min
                 class="input input-bordered w-full"
-                class:input-error=move || error_message.get().is_some()
+                class:input-error=move || validation_error.get().is_err()
                 name=name.clone()
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || error_message.get().is_some().to_string()
+                aria-invalid=move || validation_error.get().is_err().to_string()
                 // We bind the value via prop:value which expects a string/number
                 prop:value=move || value.get().to_string()
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
-                }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
-                    if let Ok(val) = val_str.parse::<T>() {
-                        value.set(val);
+                    match val_str.parse::<T>() {
+                        Ok(val) => {
+                            value.set(val);
+                            set_parse_err.set(None);
+                        }
+                        Err(err) => {
+                            set_parse_err.set(Some(format!("Invalid number format: {:?}", err)));
+                        }
                     }
                 }
                 on:blur=move |_| {
@@ -299,19 +291,20 @@ where
                     }
                 }
             />
-            {move || {
-                error_message
-                    .get()
-                    .map(|msg| {
-                        view! {
-                            <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                                    {msg}
-                                </span>
-                            </label>
-                        }
-                    })
-            }}
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
+            <Show when=move || parse_err.get().is_some()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { parse_err.get().clone().unwrap_or_default() }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -321,8 +314,7 @@ pub fn ValidatedOptionNumberInput<T>(
     #[prop(into)] label: String,
     #[prop(into)] name: String,
     value: RwSignal<Option<T>>,
-    #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_new: Signal<bool>,
+    #[prop(into)] validation_error: Signal<FieldResult<()>>,
     #[prop(into, optional)] step: String,
     #[prop(into, optional)] min: String,
     // Optional on blur callback, e.g. for update of json config
@@ -332,7 +324,6 @@ where
     T: FromStr + Display + Copy + Send + Sync + 'static,
     <T as FromStr>::Err: std::fmt::Debug,
 {
-    let placeholder_text = format!("Enter {}...", label.to_lowercase());
     // Default step to "1" if not provided
     let step_val = if step.is_empty() {
         "1".to_string()
@@ -341,6 +332,8 @@ where
     };
     // Default min to "0" if not provided
     let min = if min.is_empty() { "0".to_string() } else { min };
+
+    let (parse_err, set_parse_err) = signal(None::<String>);
 
     view! {
         <div class="form-control w-full">
@@ -352,25 +345,31 @@ where
                 step=step_val
                 min=min
                 class="input input-bordered w-full"
-                class:input-error=move || error_message.get().is_some()
+                class:input-error=move || validation_error.get().is_err()
                 name=name.clone()
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || error_message.get().is_some().to_string()
+                aria-invalid=move || validation_error.get().is_err().to_string()
                 prop:value=move || {
                     match value.get() {
                         Some(v) => v.to_string(),
                         None => String::new(),
                     }
                 }
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
-                }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
                     if val_str.is_empty() {
                         value.set(None);
-                    } else if let Ok(val) = val_str.parse::<T>() {
-                        value.set(Some(val));
+                    } else {
+                        match val_str.parse::<T>() {
+                            Ok(val) => {
+                                value.set(Some(val));
+                                set_parse_err.set(None);
+                            }
+                            Err(err) => {
+                                set_parse_err
+                                    .set(Some(format!("Invalid number format: {:?}", err)));
+                            }
+                        }
                     }
                 }
                 on:blur=move |_| {
@@ -379,19 +378,20 @@ where
                     }
                 }
             />
-            {move || {
-                error_message
-                    .get()
-                    .map(|msg| {
-                        view! {
-                            <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                                    {msg}
-                                </span>
-                            </label>
-                        }
-                    })
-            }}
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
+            <Show when=move || parse_err.get().is_some()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { parse_err.get().clone().unwrap_or_default() }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -412,12 +412,11 @@ pub fn ValidatedDurationInput(
     #[prop(into)] name: String,
     value: RwSignal<Duration>,
     #[prop(into)] unit: DurationInputUnit,
-    #[prop(into)] error_message: Signal<Option<String>>,
-    #[prop(into)] is_new: Signal<bool>,
+    #[prop(into)] validation_error: Signal<FieldResult<()>>,
     // Optional on blur callback, e.g. for update of json config
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView {
-    let placeholder_text = format!("Enter {} ({})...", label.to_lowercase(), unit);
+    let (parse_err, set_parse_err) = signal(None::<String>);
 
     view! {
         <div class="form-control w-full">
@@ -429,10 +428,10 @@ pub fn ValidatedDurationInput(
                 min="0"
                 step="1"
                 class="input input-bordered w-full"
-                class:input-error=move || error_message.get().is_some()
+                class:input-error=move || validation_error.get().is_err()
                 name=name.clone()
                 data-testid=format!("input-{}", name)
-                aria-invalid=move || error_message.get().is_some().to_string()
+                aria-invalid=move || validation_error.get().is_err().to_string()
                 // Convert Duration to unit for display
                 prop:value=move || {
                     match unit {
@@ -441,16 +440,23 @@ pub fn ValidatedDurationInput(
                         DurationInputUnit::Hours => (value.get().as_secs() / 3600).to_string(),
                     }
                 }
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
-                }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
-                    if let Ok(input) = val_str.parse::<u64>() {
-                        match unit {
-                            DurationInputUnit::Seconds => value.set(Duration::from_secs(input)),
-                            DurationInputUnit::Minutes => value.set(Duration::from_secs(input * 60)),
-                            DurationInputUnit::Hours => value.set(Duration::from_secs(input * 3600)),
+                    match val_str.parse::<u64>() {
+                        Ok(input) => {
+                            match unit {
+                                DurationInputUnit::Seconds => value.set(Duration::from_secs(input)),
+                                DurationInputUnit::Minutes => {
+                                    value.set(Duration::from_secs(input * 60))
+                                }
+                                DurationInputUnit::Hours => {
+                                    value.set(Duration::from_secs(input * 3600))
+                                }
+                            }
+                            set_parse_err.set(None);
+                        }
+                        Err(err) => {
+                            set_parse_err.set(Some(format!("Invalid number format: {:?}", err)));
                         }
                     }
                 }
@@ -460,19 +466,20 @@ pub fn ValidatedDurationInput(
                     }
                 }
             />
-            {move || {
-                error_message
-                    .get()
-                    .map(|msg| {
-                        view! {
-                            <label class="label">
-                                <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                                    {msg}
-                                </span>
-                            </label>
-                        }
-                    })
-            }}
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
+            <Show when=move || parse_err.get().is_some()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { parse_err.get().clone().unwrap_or_default() }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }

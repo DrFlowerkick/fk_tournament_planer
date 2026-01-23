@@ -15,7 +15,9 @@
 //! Important:
 //! Call `init_tracing()` at the start of each test. Use `TestDb::new().await` to get a fresh DB + pool.
 
+use super::tournament_base::make_new_tournament_base;
 use anyhow::Result;
+use app_core::DbpTournamentBase;
 use db_postgres::{PgDb, url_custom_db};
 use diesel::{QueryableByName, sql_query, sql_types::Text};
 use diesel_async::{
@@ -25,6 +27,7 @@ use diesel_async::{
 use std::{sync::Arc, sync::Once, time::Duration};
 use tracing::{info, warn};
 use url::Url;
+use uuid::Uuid;
 
 static TRACING: Once = Once::new();
 static BOOTSTRAP: Once = Once::new();
@@ -212,5 +215,26 @@ impl TestDb {
     /// adapter of implemented database port
     pub fn adapter(&self) -> Arc<PgDb> {
         self.db.clone()
+    }
+
+    /// Create a new tournament in the test database for stage tests.
+    pub async fn setup_tournament(&self) -> Result<Uuid> {
+        // We strictly need a valid sport_id for the tournament FK, depending on DB schema strictness.
+        // Usually TournamentBase -> SportConfig FK exists. Ideally we'd create a SportConfig first.
+        // Assuming for this low-level DB test we might not have enforced FK to SportConfig OR
+        // we need to create a dummy sport ID if the DB enforces it.
+        // Let's be safe and assume we generate a random UUID for sport_id,
+        // BUT if the DB schema has FK constraint to sport_configs, this will fail.
+        // If your schema enforces FK to sports, we need to create a sport first.
+        // Based on previous files, 'tournament_bases' has 'sport_id uuid NOT NULL'.
+        // To be perfectly safe in an integration test environment:
+        let sport_id = Uuid::new_v4();
+
+        // Note: If you have FK constraints from tournament -> sport, you'd need:
+        // let sc = SportConfig::new(IdVersion::NewWithId(sport_id)); ... save_sport_config(&sc)...
+
+        let tb = make_new_tournament_base("For Stage Test", sport_id);
+        let saved = self.db.save_tournament_base(&tb).await?;
+        Ok(saved.get_id().unwrap())
     }
 }

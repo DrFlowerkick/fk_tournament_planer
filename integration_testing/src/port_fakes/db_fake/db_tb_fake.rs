@@ -2,7 +2,8 @@
 
 use super::FakeDatabasePort;
 use app_core::{
-    DbError, DbResult, DbpTournamentBase, TournamentBase, utils::id_version::IdVersion,
+    DbError, DbResult, DbpTournamentBase, TournamentBase,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use async_trait::async_trait;
 use uuid::Uuid;
@@ -17,6 +18,7 @@ impl DbpTournamentBase for FakeDatabasePort {
         }
         Ok(self.tournament_bases.lock().unwrap().get(&id).cloned())
     }
+
     async fn save_tournament_base(&self, tournament: &TournamentBase) -> DbResult<TournamentBase> {
         let mut guard = self.fail_next_save_tb.lock().unwrap();
         if *guard {
@@ -26,22 +28,40 @@ impl DbpTournamentBase for FakeDatabasePort {
 
         let mut guard = self.tournament_bases.lock().unwrap();
         let mut new = tournament.clone();
-        if let Some(id) = tournament.get_id() {
-            if let Some(existing) = guard.get(&id) {
-                let version = existing.get_version().unwrap() + 1;
-                new.set_id_version(IdVersion::new(id, Some(version)));
-            } else {
-                // This case can happen if an ID is provided but not found (e.g., update on non-existent row)
-                // For simplicity, we treat it as an insert, but a real DB might error.
+
+        match tournament.get_id_version() {
+            IdVersion::Existing(inner) => {
+                if let Some(existing) = guard.get(&inner.get_id()) {
+                    let existing_v = existing.get_version().unwrap_or(0);
+                    let update_v = inner.get_version();
+
+                    if existing_v != update_v {
+                        return Err(DbError::OptimisticLockConflict);
+                    }
+
+                    new.set_id_version(IdVersion::new(*inner.get_id(), Some(existing_v + 1)));
+                } else {
+                    return Err(DbError::NotFound);
+                }
+            }
+            IdVersion::New => {
+                new.set_id_version(IdVersion::new(Uuid::new_v4(), Some(0)));
+            }
+            IdVersion::NewWithId(id) => {
+                if guard.contains_key(&id) {
+                    return Err(DbError::Other(format!(
+                        "TournamentBase with ID {} already exists",
+                        id
+                    )));
+                }
                 new.set_id_version(IdVersion::new(id, Some(0)));
             }
-        } else {
-            new.set_id_version(IdVersion::new(Uuid::new_v4(), Some(0)));
         }
 
         guard.insert(new.get_id().unwrap(), new.clone());
         Ok(new)
     }
+
     async fn list_tournament_bases(
         &self,
         sport_id: Uuid,
