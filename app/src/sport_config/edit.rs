@@ -1,6 +1,6 @@
 //! Sport Config Edit Module
 
-use app_core::SportConfig;
+use app_core::{SportConfig, utils::validation::FieldResult};
 use app_utils::{
     components::inputs::ValidatedTextInput,
     error::{
@@ -149,6 +149,7 @@ pub fn SportConfigForm() -> impl IntoView {
     // reset these signals with save_sport_config.clear() when needed
     let pending = save_sport_config.pending();
 
+    // ToDo: refactor error handling to avoid duplication with above Effect
     let is_conflict = move || {
         if let Some(Err(AppError::Core(ce))) = save_sport_config.value().get()
             && ce.is_optimistic_lock_conflict()
@@ -195,6 +196,39 @@ pub fn SportConfigForm() -> impl IntoView {
             || is_general_error().is_some()
     };
 
+    // --- Validation & Normalization ---
+    let current_config = Memo::new(move |_| {
+        if let Some(s_id) = sport_id.get()
+            && let Some(cfg) = set_sport_config.get()
+        {
+            let mut config = SportConfig::default();
+            config
+                .set_name(set_name.get())
+                .set_sport_id(s_id)
+                .set_config(cfg);
+            Some(config)
+        } else {
+            None
+        }
+    });
+
+    // --- validation signals ---
+    let is_valid_json = RwSignal::new(false);
+
+    // This only validates the non json fields, which is currently only "name"
+    let validation_result = Signal::derive(move || {
+        if let Some(cfg) = current_config.get() {
+            cfg.validate()
+        } else {
+            Ok(())
+        }
+    });
+
+    let is_valid_config =
+        Signal::derive(move || validation_result.get().is_ok() && is_valid_json.get());
+
+    let is_valid_name = Signal::derive(move || is_field_valid(validation_result, "name"));
+
     let props = FormFieldsProperties {
         id: sport_config_id,
         sport_id,
@@ -205,6 +239,10 @@ pub fn SportConfigForm() -> impl IntoView {
         set_name,
         set_sport_config,
         set_version,
+        is_valid_name,
+        is_valid_json,
+        is_valid_config,
+        current_config,
     };
 
     view! {
@@ -262,13 +300,13 @@ pub fn SportConfigForm() -> impl IntoView {
                                             set_is_new.set(false);
                                         }
                                         None => {
-                                            let sport_config = SportConfig::default();
-                                            set_name.set(sport_config.get_name().to_string());
-                                            set_sport_config
-                                                .set(Some(sport_config.get_config().clone()));
-                                            set_version
-                                                .set(sport_config.get_version().unwrap_or_default());
-                                            set_is_new.set(true);
+                                            if let Some(plugin) = sport_plugin() {
+                                                let plugin_config = plugin.get_default_config();
+                                                set_name.set("".into());
+                                                set_sport_config.set(Some(plugin_config));
+                                                set_version.set(0);
+                                                set_is_new.set(true);
+                                            }
                                         }
                                     }
                                 })
@@ -332,6 +370,10 @@ struct FormFieldsProperties {
     set_name: RwSignal<String>,
     set_sport_config: RwSignal<Option<Value>>,
     set_version: RwSignal<u32>,
+    is_valid_name: Signal<FieldResult<()>>,
+    is_valid_json: RwSignal<bool>,
+    is_valid_config: Signal<bool>,
+    current_config: Memo<Option<SportConfig>>,
 }
 
 #[component]
@@ -346,32 +388,16 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
         set_name,
         set_sport_config,
         set_version,
+        is_valid_name,
+        is_valid_json,
+        is_valid_config,
+        current_config,
     } = props;
     let navigate = use_navigate();
-
-    // --- Derived Signal for Validation & Normalization ---
-    let current_config = move || {
-        let mut config = SportConfig::default();
-        config
-            .set_name(set_name.get())
-            .set_sport_id(sport_id.get().unwrap_or_default())
-            .set_config(set_sport_config.get().unwrap_or_default());
-        config
-    };
-
-    // --- validation signals ---
-    let is_valid_json = RwSignal::new(false);
-
-    // This only validates the non json fields, which is currently only "name"
-    let validation_result = move || current_config().validate();
-    let is_valid_config = move || validation_result().is_ok() && is_valid_json.get();
-
-    let is_valid_name = Signal::derive(move || is_field_valid(validation_result).run("name"));
 
     let props = RenderCfgProps {
         config: set_sport_config,
         is_valid_json,
-        is_new,
     };
 
     view! {
@@ -406,9 +432,13 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 label="Name"
                 name="name"
                 value=set_name
-                error_message=is_valid_name
+                validation_error=is_valid_name
                 is_new=is_new
-                on_blur=move || set_name.set(current_config().get_name().to_string())
+                on_blur=move || {
+                    if let Some(cfg) = current_config.get() {
+                        set_name.set(cfg.get_name().to_string());
+                    }
+                }
             />
             // Sport specific configuration UI
             {move || { sport_plugin.get().map(|plugin| plugin.render_configuration(props)) }}
@@ -420,7 +450,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     value=move || if is_new.get() { "create" } else { "update" }
                     data-testid="btn-save"
                     class="btn btn-primary"
-                    prop:disabled=move || is_disabled.get() || !is_valid_config()
+                    prop:disabled=move || is_disabled.get() || !is_valid_config.get()
                 >
                     "Save"
                 </button>
@@ -431,7 +461,9 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                     value="create"
                     data-testid="btn-save-as-new"
                     class="btn btn-secondary"
-                    prop:disabled=move || is_disabled.get() || is_new.get() || !is_valid_config()
+                    prop:disabled=move || {
+                        is_disabled.get() || is_new.get() || !is_valid_config.get()
+                    }
                     prop:hidden=move || is_new.get()
                 >
                     "Save as new"

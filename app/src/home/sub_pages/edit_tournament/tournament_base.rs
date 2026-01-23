@@ -292,24 +292,23 @@ pub fn EditTournament() -> impl IntoView {
     });
 
     // Validation runs against the constantly updated Memo
-    let validation_result = move || {
+    let validation_result = Signal::derive(move || {
         if let Some(current) = current_tournament_base.get() {
             current.validate()
         } else {
             Ok(())
         }
-    };
+    });
 
     // error messages for form fields
-    let name_error = Signal::derive(move || is_field_valid(validation_result).run("name"));
-    let entrants_error =
-        Signal::derive(move || is_field_valid(validation_result).run("num_entrants"));
+    let name_error = Signal::derive(move || is_field_valid(validation_result, "name"));
+    let entrants_error = Signal::derive(move || is_field_valid(validation_result, "num_entrants"));
     // Only show Swiss Round logic errors if Swiss Mode is active
     let rounds_error = Signal::derive(move || {
         if let TournamentMode::SwissSystem { .. } = set_mode.get() {
-            is_field_valid(validation_result).run("mode.num_rounds")
+            is_field_valid(validation_result, "mode.num_rounds")
         } else {
-            None
+            Ok(())
         }
     });
 
@@ -420,7 +419,7 @@ pub fn EditTournament() -> impl IntoView {
                                             label="Tournament Name"
                                             name="tournament-name"
                                             value=set_name
-                                            error_message=name_error
+                                            validation_error=name_error
                                             is_new=is_new
                                             on_blur=move || {
                                                 if let Some(current_tournament) = current_tournament_base
@@ -435,7 +434,7 @@ pub fn EditTournament() -> impl IntoView {
                                             label="Number of Entrants"
                                             name="tournament-entrants"
                                             value=set_entrants
-                                            error_message=entrants_error
+                                            validation_error=entrants_error
                                             min="2".to_string()
                                         />
 
@@ -452,7 +451,7 @@ pub fn EditTournament() -> impl IntoView {
                                                 label="Rounds (Swiss System)"
                                                 name="tournament-swiss-num_rounds"
                                                 value=set_num_rounds_swiss
-                                                error_message=rounds_error
+                                                validation_error=rounds_error
                                                 min="1".to_string()
                                             />
                                         </Show>

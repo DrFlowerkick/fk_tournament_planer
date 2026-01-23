@@ -159,7 +159,7 @@ pub fn EditTournamentStage() -> impl IntoView {
     });
 
     // Validation runs against the constantly updated Memo
-    let validation_result = move || {
+    let validation_result = Signal::derive(move || {
         if let Some(tournament) = tournament_editor_context.get_tournament()
             && let Some(current_stage) = current_stage.get()
         {
@@ -167,27 +167,10 @@ pub fn EditTournamentStage() -> impl IntoView {
         } else {
             Ok(())
         }
-    };
+    });
 
     // error messages for form fields
-    let num_groups_error =
-        Signal::derive(move || is_field_valid(validation_result).run("num_groups"));
-
-    // validation checks valid stage number, but since stage number is from params
-    // and not editable here, we report it generally
-    Effect::new({
-        move || {
-            if let Some(error_msg) = is_field_valid(validation_result).run("number") {
-                handle_general_error(
-                    &page_err_ctx,
-                    component_id.get_value(),
-                    error_msg,
-                    Some(refetch_and_reset),
-                    on_cancel,
-                );
-            }
-        }
-    });
+    let num_groups_error = Signal::derive(move || is_field_valid(validation_result, "num_groups"));
 
     view! {
         <Show when=move || !hide_form()>
@@ -280,7 +263,7 @@ pub fn EditTournamentStage() -> impl IntoView {
                                             label="Number of Groups"
                                             name="stage-num-groups"
                                             value=set_num_groups
-                                            error_message=num_groups_error
+                                            validation_error=num_groups_error
                                             min="1".to_string()
                                         />
                                     </div>
