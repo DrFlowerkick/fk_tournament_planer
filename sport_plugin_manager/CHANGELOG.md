@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/sport_plugin_manager-v0.8.0...sport_plugin_manager-v0.9.0) (2026-01-23)
+
+
+### Miscellaneous Chores
+
+* **sport_plugin_manager:** Synchronize fk_tournament versions
+
 ## [0.8.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/sport_plugin_manager-v0.7.0...sport_plugin_manager-v0.8.0) (2026-01-18)
 
 
