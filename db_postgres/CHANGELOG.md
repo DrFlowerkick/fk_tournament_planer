@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.8.0...db_postgres-v0.9.0) (2026-01-23)
+
+
+### Features
+
+* Stage configuration ([#28](https://github.com/DrFlowerkick/fk_tournament_planer/issues/28)) ([dbd0d5a](https://github.com/DrFlowerkick/fk_tournament_planer/commit/dbd0d5aeadf1bac879eaa9383295bec793c113d3))
+
 ## [0.8.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.7.0...db_postgres-v0.8.0) (2026-01-18)
 
 
