@@ -24,7 +24,7 @@ pub fn ValidatedTextInput(
     view! {
         <div class="form-control w-full">
             <label class="label">
-                <span class="label-text">{label.clone()}</span>
+                <span class="label-text">{label}</span>
             </label>
             <input
                 type="text"
@@ -45,19 +45,13 @@ pub fn ValidatedTextInput(
                     }
                 }
             />
-            <ErrorBoundary fallback=move |errors| {
-                view! {
-                    <label class="label">
-                        <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                            {move || {
-                                errors.get().into_iter().next().map(|(_, e)| e.to_string())
-                            }}
-                        </span>
-                    </label>
-                }
-            }>
-                <p hidden>{validation_error}</p>
-            </ErrorBoundary>
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -162,19 +156,13 @@ pub fn ValidatedSelect(
                     })
                     .collect_view()}
             </select>
-            <ErrorBoundary fallback=move |errors| {
-                view! {
-                    <label class="label">
-                        <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                            {move || {
-                                errors.get().into_iter().next().map(|(_, e)| e.to_string())
-                            }}
-                        </span>
-                    </label>
-                }
-            }>
-                <p hidden>{validation_error}</p>
-            </ErrorBoundary>
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -267,6 +255,8 @@ where
     // Default min to "0" if not provided
     let min = if min.is_empty() { "0".to_string() } else { min };
 
+    let (parse_err, set_parse_err) = signal(None::<String>);
+
     view! {
         <div class="form-control w-full">
             <label class="label">
@@ -285,8 +275,14 @@ where
                 prop:value=move || value.get().to_string()
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
-                    if let Ok(val) = val_str.parse::<T>() {
-                        value.set(val);
+                    match val_str.parse::<T>() {
+                        Ok(val) => {
+                            value.set(val);
+                            set_parse_err.set(None);
+                        }
+                        Err(err) => {
+                            set_parse_err.set(Some(format!("Invalid number format: {:?}", err)));
+                        }
                     }
                 }
                 on:blur=move |_| {
@@ -295,19 +291,20 @@ where
                     }
                 }
             />
-            <ErrorBoundary fallback=move |errors| {
-                view! {
-                    <label class="label">
-                        <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                            {move || {
-                                errors.get().into_iter().next().map(|(_, e)| e.to_string())
-                            }}
-                        </span>
-                    </label>
-                }
-            }>
-                <p hidden>{validation_error}</p>
-            </ErrorBoundary>
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
+            <Show when=move || parse_err.get().is_some()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { parse_err.get().clone().unwrap_or_default() }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -336,6 +333,8 @@ where
     // Default min to "0" if not provided
     let min = if min.is_empty() { "0".to_string() } else { min };
 
+    let (parse_err, set_parse_err) = signal(None::<String>);
+
     view! {
         <div class="form-control w-full">
             <label class="label">
@@ -360,8 +359,17 @@ where
                     let val_str = event_target_value(&ev);
                     if val_str.is_empty() {
                         value.set(None);
-                    } else if let Ok(val) = val_str.parse::<T>() {
-                        value.set(Some(val));
+                    } else {
+                        match val_str.parse::<T>() {
+                            Ok(val) => {
+                                value.set(Some(val));
+                                set_parse_err.set(None);
+                            }
+                            Err(err) => {
+                                set_parse_err
+                                    .set(Some(format!("Invalid number format: {:?}", err)));
+                            }
+                        }
                     }
                 }
                 on:blur=move |_| {
@@ -370,19 +378,20 @@ where
                     }
                 }
             />
-            <ErrorBoundary fallback=move |errors| {
-                view! {
-                    <label class="label">
-                        <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                            {move || {
-                                errors.get().into_iter().next().map(|(_, e)| e.to_string())
-                            }}
-                        </span>
-                    </label>
-                }
-            }>
-                <p hidden>{validation_error}</p>
-            </ErrorBoundary>
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
+            <Show when=move || parse_err.get().is_some()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { parse_err.get().clone().unwrap_or_default() }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }
@@ -407,6 +416,8 @@ pub fn ValidatedDurationInput(
     // Optional on blur callback, e.g. for update of json config
     #[prop(into, optional)] on_blur: Option<Callback<()>>,
 ) -> impl IntoView {
+    let (parse_err, set_parse_err) = signal(None::<String>);
+
     view! {
         <div class="form-control w-full">
             <label class="label">
@@ -431,11 +442,21 @@ pub fn ValidatedDurationInput(
                 }
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
-                    if let Ok(input) = val_str.parse::<u64>() {
-                        match unit {
-                            DurationInputUnit::Seconds => value.set(Duration::from_secs(input)),
-                            DurationInputUnit::Minutes => value.set(Duration::from_secs(input * 60)),
-                            DurationInputUnit::Hours => value.set(Duration::from_secs(input * 3600)),
+                    match val_str.parse::<u64>() {
+                        Ok(input) => {
+                            match unit {
+                                DurationInputUnit::Seconds => value.set(Duration::from_secs(input)),
+                                DurationInputUnit::Minutes => {
+                                    value.set(Duration::from_secs(input * 60))
+                                }
+                                DurationInputUnit::Hours => {
+                                    value.set(Duration::from_secs(input * 3600))
+                                }
+                            }
+                            set_parse_err.set(None);
+                        }
+                        Err(err) => {
+                            set_parse_err.set(Some(format!("Invalid number format: {:?}", err)));
                         }
                     }
                 }
@@ -445,19 +466,20 @@ pub fn ValidatedDurationInput(
                     }
                 }
             />
-            <ErrorBoundary fallback=move |errors| {
-                view! {
-                    <label class="label">
-                        <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                            {move || {
-                                errors.get().into_iter().next().map(|(_, e)| e.to_string())
-                            }}
-                        </span>
-                    </label>
-                }
-            }>
-                <p hidden>{validation_error}</p>
-            </ErrorBoundary>
+            <Show when=move || validation_error.get().is_err()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
+            <Show when=move || parse_err.get().is_some()>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || { parse_err.get().clone().unwrap_or_default() }}
+                    </span>
+                </label>
+            </Show>
         </div>
     }
 }

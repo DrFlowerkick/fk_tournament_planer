@@ -308,49 +308,52 @@ pub fn SportConfigForm() -> impl IntoView {
                                                 set_is_new.set(true);
                                             }
                                         }
+                                    };
+                                    view! {
+                                        // --- Sport Config Form ---
+                                        <div data-testid="form-sport-config">
+                                            {
+                                                #[cfg(not(feature = "test-mock"))]
+                                                {
+                                                    view! {
+                                                        <ActionForm action=save_sport_config>
+                                                            <FormFields props=props />
+                                                        </ActionForm>
+                                                    }
+                                                }
+                                                #[cfg(feature = "test-mock")]
+                                                {
+                                                    view! {
+                                                        <form on:submit=move |ev| {
+                                                            ev.prevent_default();
+                                                            let intent = ev
+                                                                .submitter()
+                                                                .and_then(|el| {
+                                                                    el.dyn_into::<web_sys::HtmlButtonElement>().ok()
+                                                                })
+                                                                .map(|btn| btn.value());
+                                                            let data = SaveSportConfig {
+                                                                id: sport_config_id.get().unwrap_or(Uuid::nil()),
+                                                                version: set_version.get(),
+                                                                sport_id: sport_id.get().unwrap_or(Uuid::nil()),
+                                                                name: set_name.get(),
+                                                                config: set_sport_config
+                                                                    .get()
+                                                                    .unwrap_or_default()
+                                                                    .to_string(),
+                                                                intent,
+                                                            };
+                                                            save_sport_config.dispatch(data);
+                                                        }>
+                                                            <FormFields props=props />
+                                                        </form>
+                                                    }
+                                                }
+                                            }
+                                        </div>
                                     }
                                 })
-                        }} // --- Sport Config Form ---
-                        <div data-testid="form-sport-config">
-                            {
-                                #[cfg(not(feature = "test-mock"))]
-                                {
-                                    view! {
-                                        <ActionForm action=save_sport_config>
-                                            <FormFields props=props />
-                                        </ActionForm>
-                                    }
-                                }
-                                #[cfg(feature = "test-mock")]
-                                {
-                                    view! {
-                                        <form on:submit=move |ev| {
-                                            ev.prevent_default();
-                                            let intent = ev
-                                                .submitter()
-                                                .and_then(|el| {
-                                                    el.dyn_into::<web_sys::HtmlButtonElement>().ok()
-                                                })
-                                                .map(|btn| btn.value());
-                                            let data = SaveSportConfig {
-                                                id: sport_config_id.get().unwrap_or(Uuid::nil()),
-                                                version: set_version.get(),
-                                                sport_id: sport_id.get().unwrap_or(Uuid::nil()),
-                                                name: set_name.get(),
-                                                config: set_sport_config
-                                                    .get()
-                                                    .unwrap_or_default()
-                                                    .to_string(),
-                                                intent,
-                                            };
-                                            save_sport_config.dispatch(data);
-                                        }>
-                                            <FormFields props=props />
-                                        </form>
-                                    }
-                                }
-                            }
-                        </div>
+                        }}
                     </ErrorBoundary>
                 </Transition>
             </div>
