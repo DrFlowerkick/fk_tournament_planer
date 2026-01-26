@@ -211,12 +211,14 @@ pub fn SearchSportConfig() -> impl IntoView {
                                                 }
                                                 Ok(sport_config) => {
                                                     name.set(sport_config.get_name().to_string());
-                                                    set_id.set(sport_config.get_id());
                                                     set_version
                                                         .set(sport_config.get_version().unwrap_or_default());
-                                                    if let Some(id) = sport_config.get_id() {
-                                                        let new_topic = CrTopic::SportConfig(id);
+                                                    if sport_config.get_version().is_some() {
+                                                        let new_topic = CrTopic::SportConfig(sport_config.get_id());
                                                         set_topic.set(Some(new_topic));
+                                                        set_id.set(Some(sport_config.get_id()));
+                                                    } else {
+                                                        set_id.set(None);
                                                     }
                                                     ().into_any()
                                                 }
@@ -224,7 +226,7 @@ pub fn SearchSportConfig() -> impl IntoView {
                                     }} <SetIdInQueryInputDropdown props=props />
                                     {move || {
                                         if let Some(Ok(sport_config)) = sport_config_res.get() {
-                                            if sport_config.get_id().is_some() {
+                                            if sport_config.get_version().is_some() {
                                                 sp.render_preview(&sport_config)
                                             } else {
                                                 view! {

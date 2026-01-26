@@ -77,7 +77,7 @@ async fn list_tournament_bases_inner(
     name = "tournament_base.save",
     skip_all,
     fields(
-        id = ?tournament.get_id(),
+        id = %tournament.get_id(),
         // We only log metadata, not complete payloads
         name_len = tournament.get_name().len(),
     )
@@ -105,11 +105,8 @@ pub async fn save_tournament_base_inner(tournament: TournamentBase) -> AppResult
     match core.save().await {
         Ok(saved) => {
             // After saving, log the ID (especially important for new entries with generated ID)
-            if let Some(id) = saved.get_id() {
-                info!(saved_id = %id, "save_ok");
-            } else {
-                info!("save_ok_no_id_read"); // should not happen
-            }
+            let id = saved.get_id();
+            info!(saved_id = %id, "save_ok");
             Ok(saved.clone())
         }
         Err(e) => {

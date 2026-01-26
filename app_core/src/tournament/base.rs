@@ -6,7 +6,7 @@ use crate::{
         id_version::IdVersion,
         normalize::normalize_ws,
         traits::ObjectIdVersion,
-        validation::{FieldError, FieldResult, ValidationErrors, ValidationResult},
+        validation::{FieldError, ValidationErrors, ValidationResult},
     },
 };
 use displaydoc::Display;
@@ -105,7 +105,7 @@ impl From<String> for TournamentState {
 }
 
 /// base parameters of a tournament
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct TournamentBase {
     /// Unique identifier for the tournament
     id_version: IdVersion,
@@ -121,20 +121,6 @@ pub struct TournamentBase {
     mode: TournamentMode,
     /// state of tournament
     state: TournamentState,
-}
-
-impl Default for TournamentBase {
-    fn default() -> Self {
-        TournamentBase {
-            id_version: IdVersion::New,
-            name: "".into(),
-            sport_id: Uuid::nil(),
-            num_entrants: 0,
-            t_type: TournamentType::default(),
-            mode: TournamentMode::default(),
-            state: TournamentState::default(),
-        }
-    }
 }
 
 impl ObjectIdVersion for TournamentBase {
@@ -153,7 +139,7 @@ impl TournamentBase {
     }
 
     /// Get the unique identifier of the sport configuration.
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         self.id_version.get_id()
     }
 
@@ -219,13 +205,6 @@ impl TournamentBase {
         self
     }
 
-    pub fn set_name_validated(&mut self, name: impl Into<String>) -> FieldResult<&mut Self> {
-        let name_str = name.into();
-        Self::validate_name(&name_str)?;
-        self.name = normalize_ws(name_str);
-        Ok(self)
-    }
-
     /// Set the sport ID associated with this configuration.
     pub fn set_sport_id(&mut self, sport_id: Uuid) -> &mut Self {
         self.sport_id = sport_id;
@@ -236,12 +215,6 @@ impl TournamentBase {
     pub fn set_num_entrants(&mut self, num_entrants: u32) -> &mut Self {
         self.num_entrants = num_entrants;
         self
-    }
-
-    pub fn set_num_entrants_validated(&mut self, num_entrants: u32) -> FieldResult<&mut Self> {
-        Self::validate_num_entrants(num_entrants)?;
-        self.num_entrants = num_entrants;
-        Ok(self)
     }
 
     /// Set the type of the tournament.
@@ -256,70 +229,50 @@ impl TournamentBase {
         self
     }
 
-    pub fn set_tournament_mode_validated(
-        &mut self,
-        mode: TournamentMode,
-    ) -> FieldResult<&mut Self> {
-        Self::validate_mode(mode)?;
-        self.mode = mode;
-        Ok(self)
-    }
-
     /// Set the current state of the tournament.
     pub fn set_tournament_state(&mut self, state: TournamentState) -> &mut Self {
         self.state = state;
         self
     }
 
-    // --- Validation ---
-
-    /// validate tournament name
-    fn validate_name(name: &str) -> FieldResult<&str> {
-        if name.trim().is_empty() {
-            return Err(FieldError::builder()
-                .set_field(String::from("name"))
-                .add_required()
-                .build());
-        }
-        Ok(name)
-    }
-
-    fn validate_num_entrants(num_entrants: u32) -> FieldResult<u32> {
-        if num_entrants < 2 {
-            return Err(FieldError::builder()
-                .set_field(String::from("num_entrants"))
-                .add_message("number of entrants must be at least 2")
-                .build());
-        }
-        Ok(num_entrants)
-    }
-
-    fn validate_mode(mode: TournamentMode) -> FieldResult<TournamentMode> {
-        match mode {
-            TournamentMode::SwissSystem { num_rounds } => {
-                if num_rounds == 0 {
-                    return Err(FieldError::builder()
-                        .set_field(String::from("mode.num_rounds"))
-                        .add_message("number of rounds must be > 0")
-                        .build());
-                }
-            }
-            _ => {}
-        }
-        Ok(mode)
-    }
-
     /// Validate the tournament configuration.
     pub fn validate(&self) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
-        if let Err(e) = Self::validate_name(&self.name) {
-            errs.add(e);
+        let object_id = self.get_id();
+
+        if self.name.trim().is_empty() {
+            errs.add(
+                FieldError::builder()
+                    .set_field(String::from("name"))
+                    .add_required()
+                    .set_object_id(object_id)
+                    .build(),
+            );
         }
-        if let Err(e) = Self::validate_num_entrants(self.num_entrants) {
-            errs.add(e);
+
+        if self.num_entrants < 2 {
+            errs.add(
+                FieldError::builder()
+                    .set_field(String::from("num_entrants"))
+                    .add_message("number of entrants must be at least 2")
+                    .set_object_id(object_id)
+                    .build(),
+            );
         }
-        if let Err(e) = Self::validate_mode(self.mode) {
-            errs.add(e);
+
+        match self.mode {
+            TournamentMode::SwissSystem { num_rounds } => {
+                if num_rounds == 0 {
+                    errs.add(
+                        FieldError::builder()
+                            .set_field(String::from("mode.num_rounds"))
+                            .add_message("number of rounds must be > 0")
+                            .set_object_id(object_id)
+                            .build(),
+                    );
+                }
+            }
+            _ => {}
         }
 
         // ToDo: refine validation of active stage based on mode, when active stage is implemented
@@ -340,6 +293,7 @@ impl TournamentBase {
                         .add_message(
                             "active stage exceeds maximum number of stages for the tournament mode",
                         )
+                        .set_object_id(object_id)
                         .build(),
                 );
             }
@@ -399,10 +353,7 @@ impl Core<TournamentBaseState> {
             .await?;
 
         // publish change of tournament base to client registry
-        let id =
-            self.state.tournament.get_id().expect(
-                "expecting save_tournament_base to return always an existing id and version",
-            );
+        let id = self.state.tournament.get_id();
         let version =
             self.state.tournament.get_version().expect(
                 "expecting save_tournament_base to return always an existing id and version",

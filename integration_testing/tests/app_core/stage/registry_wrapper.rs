@@ -1,4 +1,4 @@
-use app_core::{CoreError, CrError, CrMsg, DbError};
+use app_core::{CoreError, CrError, CrMsg, DbError, utils::id_version::IdVersion};
 
 use integration_testing::port_fakes::*;
 
@@ -25,7 +25,7 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
 
     match &notices[0] {
         CrMsg::StageUpdated { id, version } => {
-            let persisted_id = saved.get_id().expect("id should exist after insert");
+            let persisted_id = saved.get_id();
             assert_eq!(*id, persisted_id, "published id must match saved id");
             assert_eq!(
                 Some(*version),
@@ -110,7 +110,7 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
     // DB part already succeeded → core state should now have an Existing id & version 0
     let after = core.get().clone();
     assert!(
-        after.get_id().is_some(),
+        after.get_version().is_some(),
         "id should be set after DB success even if publish failed"
     );
     assert_eq!(
@@ -133,15 +133,15 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
 
     // Seed two entries via normal saves (which *do* publish)...
     let mut s1 = core.get().clone();
-    s1.set_id_version(app_core::utils::id_version::IdVersion::New);
+    s1.set_id_version(IdVersion::default());
     s1.set_tournament_id(t_id);
     s1.set_number(0);
     s1.set_num_groups(2);
     *core.get_mut() = s1;
-    let saved_id = core.save().await.expect("seed 0").get_id().unwrap();
+    let saved_id = core.save().await.expect("seed 0").get_id();
 
     let mut s2 = core.get().clone();
-    s2.set_id_version(app_core::utils::id_version::IdVersion::New);
+    s2.set_id_version(IdVersion::default());
     s2.set_tournament_id(t_id);
     s2.set_number(1);
     s2.set_num_groups(2);
@@ -175,14 +175,14 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
     core.get_mut().set_num_groups(2);
 
     let first = core.save().await.expect("first save").clone();
-    let id = first.get_id().expect("id assigned on first save");
+    let id = first.get_id();
     assert_eq!(first.get_version(), Some(0));
 
     // Update same stage (simulate a change)
     core.get_mut().set_num_groups(4);
 
     let second = core.save().await.expect("second save (update)");
-    assert_eq!(second.get_id().unwrap(), id);
+    assert_eq!(second.get_id(), id);
     assert!(
         second.get_version() > first.get_version(),
         "update should bump version (monotonic)"

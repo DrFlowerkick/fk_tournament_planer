@@ -6,6 +6,7 @@ use app_utils::components::inputs::SelectableOption;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt::Display, time::Duration};
+use uuid::Uuid;
 
 /// DdcSetCfg - configuration for sets in Double Disc Court (DDC)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq)]
@@ -75,7 +76,7 @@ impl SelectableOption for DdcSetCfg {
 
 impl DdcSetCfg {
     /// validates the set configuration
-    pub fn validate(&self, mut errs: ValidationErrors) -> ValidationErrors {
+    pub fn validate(&self, object_id: Uuid, mut errs: ValidationErrors) -> ValidationErrors {
         match self {
             DdcSetCfg::CustomSetsToWin { sets_to_win } => {
                 if *sets_to_win == 0 {
@@ -84,6 +85,7 @@ impl DdcSetCfg {
                             .set_field("sets_cfg")
                             .add_user_defined_code("invalid_value")
                             .add_message("sets_to_win must be at least 1")
+                            .set_object_id(object_id)
                             .build(),
                     );
                 }
@@ -95,6 +97,7 @@ impl DdcSetCfg {
                             .set_field("sets_cfg")
                             .add_user_defined_code("invalid_value")
                             .add_message("total_sets must be at least 1")
+                            .set_object_id(object_id)
                             .build(),
                     );
                 }
@@ -215,7 +218,7 @@ impl DdcSetWinningCfg {
     }
 
     /// Validates the set winning configuration
-    pub fn validate(&self, mut errs: ValidationErrors) -> ValidationErrors {
+    pub fn validate(&self, object_id: Uuid, mut errs: ValidationErrors) -> ValidationErrors {
         match self {
             DdcSetWinningCfg::Custom {
                 score_to_win,
@@ -228,6 +231,7 @@ impl DdcSetWinningCfg {
                             .set_field("score_to_win")
                             .add_user_defined_code("invalid_value")
                             .add_message("score_to_win must be at least 1")
+                            .set_object_id(object_id)
                             .build(),
                     );
                 }
@@ -239,6 +243,7 @@ impl DdcSetWinningCfg {
                             .add_message(
                                 "score_to_win must be greater than or equal to win_by_margin",
                             )
+                            .set_object_id(object_id)
                             .build(),
                     );
                 }
@@ -248,6 +253,7 @@ impl DdcSetWinningCfg {
                             .set_field("win_by_margin")
                             .add_user_defined_code("invalid_value")
                             .add_message("win_by_margin must be at least 1")
+                            .set_object_id(object_id)
                             .build(),
                     );
                 }
@@ -259,6 +265,7 @@ impl DdcSetWinningCfg {
                             .add_message(
                                 "hard_cap must be greater than score_to_win plus win_by_margin",
                             )
+                            .set_object_id(object_id)
                             .build(),
                     );
                 }
@@ -352,15 +359,16 @@ impl DdcSportConfig {
             ))),
         }
     }
-    pub fn validate(&self, errs: ValidationErrors) -> ValidationResult<()> {
-        let errs = self.sets_cfg.validate(errs);
-        let mut errs = self.set_winning_cfg.validate(errs);
+    pub fn validate(&self, object_id: Uuid, errs: ValidationErrors) -> ValidationResult<()> {
+        let errs = self.sets_cfg.validate(object_id, errs);
+        let mut errs = self.set_winning_cfg.validate(object_id, errs);
         if self.victory_points_win <= 0.0 {
             errs.add(
                 FieldError::builder()
                     .set_field("victory_points_win")
                     .add_user_defined_code("invalid_value")
                     .add_message("victory_points_win must be greater than 0")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -370,6 +378,7 @@ impl DdcSportConfig {
                     .set_field("victory_points_draw")
                     .add_user_defined_code("invalid_value")
                     .add_message("victory_points_draw must be greater than 0")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -379,6 +388,7 @@ impl DdcSportConfig {
                     .set_field("victory_points_draw")
                     .add_user_defined_code("invalid_value")
                     .add_message("victory_points_draw must be less than victory_points_win")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -388,6 +398,7 @@ impl DdcSportConfig {
                     .set_field("expected_rally_duration_seconds")
                     .add_user_defined_code("invalid_value")
                     .add_message("expected_rally_duration_seconds must be greater than 0")
+                    .set_object_id(object_id)
                     .build(),
             );
         }

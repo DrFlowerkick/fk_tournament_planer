@@ -125,10 +125,7 @@ impl TournamentEditorState {
     /// Handles context switching (loading a different tournament) and performs
     /// cleanup of dependent objects if business rules require it (only when editing).
     pub fn set_tournament(&mut self, tournament: TournamentBase, is_origin: bool) {
-        let Some(new_id) = tournament.get_id_version().get_id() else {
-            warn!("TournamentBase has no ID, cannot set tournament state");
-            return;
-        };
+        let new_id = tournament.get_id();
 
         if let Some(origin_t) = self.origin_tournament.as_ref()
             && origin_t.get_id() != tournament.get_id()
@@ -155,10 +152,7 @@ impl TournamentEditorState {
 
     /// Adds a stage to the state and links it to the tournament.
     pub fn set_stage(&mut self, stage: Stage, is_origin: bool) {
-        let Some(stage_id) = stage.get_id_version().get_id() else {
-            warn!("Stage has no ID, cannot add to tournament editor state");
-            return;
-        };
+        let stage_id = stage.get_id();
         let Some(tournament_id) = self.get_root_id() else {
             warn!("TournamentBase has no ID, cannot add stage to state");
             return;
@@ -351,10 +345,8 @@ impl TournamentEditorState {
                     // valid stage number
                     write!(&mut valid_path, "{}", sn).unwrap();
                     // add stage to queue, if it exists in state
-                    if let Some(stage) = self.get_stage_by_number(sn)
-                        && let Some(id) = stage.get_id()
-                    {
-                        queue.push_back((id, DependencyType::Group));
+                    if let Some(stage) = self.get_stage_by_number(sn) {
+                        queue.push_back((stage.get_id(), DependencyType::Group));
                     }
                 }
                 DependencyType::Group => {
@@ -385,12 +377,8 @@ impl TournamentEditorState {
         // prefer origin ID as anchor, fallback to current
         self.origin_tournament
             .as_ref()
-            .and_then(|t| t.get_id_version().get_id())
-            .or_else(|| {
-                self.tournament
-                    .as_ref()
-                    .and_then(|t| t.get_id_version().get_id())
-            })
+            .map(|t| t.get_id())
+            .or_else(|| self.tournament.as_ref().map(|t| t.get_id()))
     }
 
     /// Checks if the new tournament configuration requires removing stages.

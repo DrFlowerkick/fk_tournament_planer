@@ -8,7 +8,7 @@ use app_core::{
     ClientRegistryPort, Core, CoreBuilder, CrError, CrMsg, CrResult, CrTopic, DatabasePort,
     DbResult, InitState, PostalAddress, PostalAddressState, SportConfig, SportConfigState,
     SportPluginManagerPort, Stage, StageState, TournamentBase, TournamentBaseState, TournamentMode,
-    utils::id_version::IdVersion,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use async_trait::async_trait;
 use sport_plugin_manager::SportPluginManagerMap;
@@ -51,14 +51,14 @@ impl FakeDatabasePort {
     // --- Postal Address Helpers ---
 
     pub fn seed_postal_address(&self, mut addr: PostalAddress) -> Uuid {
-        assert!(addr.get_id().is_none());
+        assert!(addr.get_id_version().is_new());
         let id = Uuid::new_v4();
         let id_version = IdVersion::new(id, Some(0));
         addr.set_id_version(id_version);
         self.postal_addresses
             .lock()
             .unwrap()
-            .insert(addr.get_id().unwrap(), addr);
+            .insert(addr.get_id(), addr);
         id
     }
 
@@ -75,7 +75,7 @@ impl FakeDatabasePort {
     // --- Sport Config Helpers ---
 
     pub fn seed_sport_config(&self, mut config: SportConfig) -> Uuid {
-        assert!(config.get_id().is_none());
+        assert!(config.get_id_version().is_new());
         let id = Uuid::new_v4();
         let id_version = IdVersion::new(id, Some(0));
         config.set_id_version(id_version);
@@ -95,7 +95,7 @@ impl FakeDatabasePort {
 
     // --- Tournament Base Helpers ---
     pub fn seed_tournament_base(&self, mut tb: TournamentBase) -> Uuid {
-        assert!(tb.get_id().is_none());
+        assert!(tb.get_id_version().is_new());
         let id = Uuid::new_v4();
         let id_version = IdVersion::new(id, Some(0));
         tb.set_id_version(id_version);
@@ -115,7 +115,7 @@ impl FakeDatabasePort {
 
     // --- Stage Helpers ---
     pub fn seed_stage(&self, mut stage: Stage) -> Uuid {
-        assert!(stage.get_id().is_none());
+        assert!(stage.get_id_version().is_new());
         let id = Uuid::new_v4();
         let id_version = IdVersion::new(id, Some(0));
         stage.set_id_version(id_version);
@@ -186,7 +186,7 @@ pub fn make_addr(
     region: &str,
     country: &str,
 ) -> PostalAddress {
-    let mut pa = PostalAddress::new(IdVersion::New);
+    let mut pa = PostalAddress::default();
     pa.set_name(name)
         .set_street(street)
         .set_postal_code(postal)
@@ -239,11 +239,8 @@ pub fn make_core_sport_config_state_with_fakes() -> (
 }
 
 pub fn make_sport_config(name: &str, sport_core: &Core<SportConfigState>) -> SportConfig {
-    let mut sc = SportConfig::new(IdVersion::New);
-    let sport_id = sport_core.sport_plugins.list()[0]
-        .get_id_version()
-        .get_id()
-        .unwrap();
+    let mut sc = SportConfig::default();
+    let sport_id = sport_core.sport_plugins.list()[0].get_id_version().get_id();
     sc.set_name(name).set_sport_id(sport_id);
     sc
 }
@@ -258,11 +255,8 @@ pub fn make_core_tournament_base_state_with_fakes() -> (
 }
 
 pub fn make_tournament_base(name: &str, sport_core: &Core<TournamentBaseState>) -> TournamentBase {
-    let mut tb = TournamentBase::new(IdVersion::New);
-    let sport_id = sport_core.sport_plugins.list()[0]
-        .get_id_version()
-        .get_id()
-        .unwrap();
+    let mut tb = TournamentBase::default();
+    let sport_id = sport_core.sport_plugins.list()[0].get_id_version().get_id();
     tb.set_name(name)
         .set_sport_id(sport_id)
         .set_num_entrants(10);
@@ -276,9 +270,9 @@ pub fn make_core_stage_state_with_fakes() -> (
 ) {
     let (core, db, cr, spm) = make_core_with_fakes();
 
-    let sport_id = spm.list()[0].get_id_version().get_id().unwrap();
+    let sport_id = spm.list()[0].get_id_version().get_id();
 
-    let mut tb = TournamentBase::new(IdVersion::New);
+    let mut tb = TournamentBase::default();
     tb.set_name("Stage Context Tournament")
         .set_sport_id(sport_id)
         // IMPORTANT: Must be at least 2x max(num_groups) used in tests.

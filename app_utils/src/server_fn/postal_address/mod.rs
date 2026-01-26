@@ -192,7 +192,7 @@ pub async fn save_postal_address_inner(
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {
         Ok(saved) => {
-            info!(saved_id = %saved.get_id().unwrap(), "save_ok");
+            info!(saved_id = %saved.get_id(), "save_ok");
             Ok(saved.clone())
         }
         Err(e) => {

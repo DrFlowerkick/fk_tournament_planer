@@ -2982,6 +2982,7 @@ dependencies = [
  "leptos",
  "leptos-axum-socket",
  "serde_json",
+ "uuid",
 ]
 
 [[package]]

@@ -6,9 +6,13 @@ use std::{
     fmt::{self, Display},
 };
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct FieldError {
+    // id of the object where the field error occurred
+    object_id: Uuid,
+    // name of the field with error
     field: String,
     // e.g. "required", "invalid_format"
     code: String,
@@ -55,8 +59,9 @@ impl FieldError {
 }
 
 impl FieldError {
-    pub fn builder() -> FieldErrorBuilder<NoField> {
+    pub fn builder() -> FieldErrorBuilder<NoField, NoId> {
         FieldErrorBuilder {
+            object_id: NoId {},
             field: NoField {},
             code: "".into(),
             message: "".into(),
@@ -95,17 +100,20 @@ pub type ValidationResult<T> = Result<T, ValidationErrors>;
 
 pub struct NoField {}
 pub struct Field(String);
+pub struct NoId {}
 
-pub struct FieldErrorBuilder<F> {
+pub struct FieldErrorBuilder<F, I> {
+    object_id: I,
     field: F,
     code: String,
     message: String,
     params: HashMap<String, String>,
 }
 
-impl FieldErrorBuilder<NoField> {
-    pub fn set_field(self, field: impl Into<String>) -> FieldErrorBuilder<Field> {
+impl FieldErrorBuilder<NoField, NoId> {
+    pub fn set_field(self, field: impl Into<String>) -> FieldErrorBuilder<Field, NoId> {
         FieldErrorBuilder {
+            object_id: NoId {},
             field: Field(field.into()),
             code: self.code,
             message: self.message,
@@ -114,7 +122,7 @@ impl FieldErrorBuilder<NoField> {
     }
 }
 
-impl FieldErrorBuilder<Field> {
+impl<I> FieldErrorBuilder<Field, I> {
     /// set code to required
     pub fn add_required(mut self) -> Self {
         self.code = "required".into();
@@ -140,9 +148,23 @@ impl FieldErrorBuilder<Field> {
         self.params.insert(key, value.into());
         self
     }
+    /// set object id
+    pub fn set_object_id(self, object_id: Uuid) -> FieldErrorBuilder<Field, Uuid> {
+        FieldErrorBuilder {
+            object_id,
+            field: self.field,
+            code: self.code,
+            message: self.message,
+            params: self.params,
+        }
+    }
+}
+
+impl FieldErrorBuilder<Field, Uuid> {
     /// build FieldError
     pub fn build(self) -> FieldError {
         FieldError {
+            object_id: self.object_id,
             field: self.field.0,
             code: self.code,
             message: self.message,

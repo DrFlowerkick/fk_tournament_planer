@@ -78,7 +78,7 @@ pub fn SelectSportPlugin() -> impl IntoView {
             let sport_name = sport_list
                 .get_untracked()
                 .iter()
-                .find(|spi| spi.get_id_version().get_id() == Some(sport_id))
+                .find(|spi| spi.get_id_version().get_id() == sport_id)
                 .map(|spi| spi.name())
                 .unwrap_or_default();
             name.set(sport_name.to_string());

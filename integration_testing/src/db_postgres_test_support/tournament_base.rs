@@ -1,11 +1,9 @@
-use app_core::{
-    TournamentBase, TournamentMode, TournamentState, TournamentType, utils::id_version::IdVersion,
-};
+use app_core::{TournamentBase, TournamentMode, TournamentState, TournamentType};
 use uuid::Uuid;
 
 /// Build a valid "new" TournamentBase with deterministic fields.
 pub fn make_new_tournament_base(label: &str, sport_id: Uuid) -> TournamentBase {
-    let mut tb = TournamentBase::new(IdVersion::New);
+    let mut tb = TournamentBase::default();
     tb.set_name(format!("Tournament {label}"))
         .set_sport_id(sport_id)
         .set_num_entrants(16)

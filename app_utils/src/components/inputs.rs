@@ -38,7 +38,7 @@ pub fn ValidatedTextInput(
                 placeholder=move || {
                     if is_new.get() { placeholder_text.clone() } else { String::new() }
                 }
-                on:input=move |ev| value.set(event_target_value(&ev))
+                on:input:target=move |ev| value.set(ev.target().value())
                 on:blur=move |_| {
                     if let Some(cb) = on_blur {
                         cb.run(());
@@ -49,6 +49,95 @@ pub fn ValidatedTextInput(
                 <label class="label">
                     <span class="label-text-alt text-error w-full text-left block whitespace-normal">
                         {move || { validation_error.get().err().map(|e| e.to_string()) }}
+                    </span>
+                </label>
+            </Show>
+        </div>
+    }
+}
+
+// ToDo: replace all instances of ValidatedTextInput and TextInput with this more advanced component
+// ToDo: validation at write DOES NOT support indirect invalidation: field foo get's invalidated because
+// field bar changed. Therefore we cannot rely only on on_write validation results.
+#[component]
+pub fn TextInputWithValidation<T>(
+    #[prop(into)] label: String,
+    #[prop(into)] name: String,
+    /// Reactive read-access to Option<T>.
+    /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into)]
+    value: Signal<Option<T>>,
+    /// Callback to push changes to source of value and return a FieldResult.
+    /// Returns Err if validation fails.
+    #[prop(into)]
+    on_write: Callback<String, FieldResult<()>>,
+    #[prop(into, default = false)] optional: bool,
+) -> impl IntoView
+where
+    T: Display + Clone + Send + Sync + 'static,
+{
+    // Local buffer: Some(string) while typing, None when synced with Core
+    let (draft, set_draft) = signal(None::<String>);
+
+    // Persistent error state from validation or parsing
+    let (error, set_error) = signal(None::<String>);
+
+    // Derived: What to actually show in the <input>
+    let display_value = move || match draft.get() {
+        Some(d) => d,
+        None => value.get().map(|v| v.to_string()).unwrap_or_default(),
+    };
+
+    // Derived: Error visibility logic
+    // We hide errors while the user is actively typing (proactive reset)
+    let show_error = move || draft.get().is_none() && error.get().is_some();
+
+    // Auto-generate label and placeholder text based on label and optionality
+    let (label, placeholder_text) = if optional {
+        (
+            format!("{} (optional)", label.clone()),
+            format!("Enter {} (optional)...", label.to_lowercase()),
+        )
+    } else {
+        (label.clone(), format!("Enter {}...", label.to_lowercase()))
+    };
+    view! {
+        <div class="form-control w-full">
+            <label class="label">
+                <span class="label-text">{label}</span>
+            </label>
+            <input
+                type="text"
+                class="input input-bordered w-full"
+                aria-invalid=move || show_error().to_string()
+                prop:value=display_value
+                name=name.clone()
+                // Auto-generate test-id
+                data-testid=format!("input-{}", name)
+                placeholder=placeholder_text
+                // USER TYPING: Update draft to take control from the core
+                on:input:target=move |ev| {
+                    set_draft.set(Some(ev.target().value()));
+                }
+                // USER FINISHED: Release control and attempt to commit to core
+                on:change:target=move |ev| {
+                    let new_val = ev.target().value();
+                    match on_write.run(new_val) {
+                        Ok(_) => {
+                            set_error.set(None);
+                        }
+                        Err(e) => {
+                            set_error.set(Some(e.to_string()));
+                        }
+                    }
+                    set_draft.set(None);
+                }
+            />
+            // Display error only when not typing and an error exists
+            <Show when=show_error>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || error.get()}
                     </span>
                 </label>
             </Show>

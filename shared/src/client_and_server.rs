@@ -3,6 +3,7 @@
 use app_core::{SportConfig, SportPort};
 use leptos::prelude::*;
 use serde_json::Value;
+use uuid::Uuid;
 
 /// Trait for rendering sport port specifics in web ui, e.g., configuration forms and previews.
 pub trait SportPortWebUi: Send + Sync + SportPort {
@@ -14,6 +15,7 @@ pub trait SportPortWebUi: Send + Sync + SportPort {
 
 #[derive(Clone, Copy)]
 pub struct RenderCfgProps {
+    pub object_id: Signal<Uuid>,
     pub config: RwSignal<Option<Value>>,
     pub is_valid_json: RwSignal<bool>,
 }

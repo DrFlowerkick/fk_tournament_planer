@@ -198,11 +198,13 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                 }
                                 Ok(addr) => {
                                     name.set(addr.get_name().to_string());
-                                    set_id.set(addr.get_id());
                                     set_version.set(addr.get_version().unwrap_or_default());
-                                    if let Some(id) = addr.get_id() {
-                                        let new_topic = CrTopic::Address(id);
+                                    if addr.get_version().is_some() {
+                                        let new_topic = CrTopic::Address(addr.get_id());
                                         set_topic.set(Some(new_topic));
+                                        set_id.set(Some(addr.get_id()));
+                                    } else {
+                                        set_id.set(None);
                                     }
                                     ().into_any()
                                 }
@@ -210,52 +212,43 @@ pub fn SearchPostalAddress() -> impl IntoView {
                     }} <SetIdInQueryInputDropdown props=props />
                     {move || {
                         if let Some(Ok(addr)) = addr_res.get() {
-                            if addr.get_id().is_some() {
-                                view! {
-                                    <div
-                                        class="card w-full bg-base-200 shadow-md mt-4"
-                                        data-testid="address-preview"
-                                    >
-                                        <div class="card-body">
-                                            <h3 class="card-title" data-testid="preview-address-name">
-                                                {addr.get_name().to_string()}
-                                            </h3>
-                                            <p data-testid="preview-street">
-                                                {addr.get_street().to_string()}
-                                            </p>
-                                            <p data-testid="preview-postal_locality">
-                                                <span data-testid="preview-postal_code">
-                                                    {addr.get_postal_code().to_string()}
-                                                </span>
-                                                " "
-                                                <span data-testid="preview-locality">
-                                                    {addr.get_locality().to_string()}
-                                                </span>
-                                            </p>
-                                            <p data-testid="preview-region">
-                                                {addr.get_region().unwrap_or_default().to_string()}
-                                            </p>
-                                            <p data-testid="preview-country">
-                                                {display_country(&addr.get_country())}
-                                            </p>
-                                            <p class="hidden" data-testid="preview-address-id">
-                                                {addr.get_id().unwrap_or_default().to_string()}
-                                            </p>
-                                            <p class="hidden" data-testid="preview-address-version">
-                                                {addr.get_version().unwrap_or_default()}
-                                            </p>
-                                        </div>
+                            view! {
+                                <div
+                                    class="card w-full bg-base-200 shadow-md mt-4"
+                                    data-testid="address-preview"
+                                >
+                                    <div class="card-body">
+                                        <h3 class="card-title" data-testid="preview-address-name">
+                                            {addr.get_name().to_string()}
+                                        </h3>
+                                        <p data-testid="preview-street">
+                                            {addr.get_street().to_string()}
+                                        </p>
+                                        <p data-testid="preview-postal_locality">
+                                            <span data-testid="preview-postal_code">
+                                                {addr.get_postal_code().to_string()}
+                                            </span>
+                                            " "
+                                            <span data-testid="preview-locality">
+                                                {addr.get_locality().to_string()}
+                                            </span>
+                                        </p>
+                                        <p data-testid="preview-region">
+                                            {addr.get_region().unwrap_or_default().to_string()}
+                                        </p>
+                                        <p data-testid="preview-country">
+                                            {display_country(&addr.get_country())}
+                                        </p>
+                                        <p class="hidden" data-testid="preview-address-id">
+                                            {addr.get_id().to_string()}
+                                        </p>
+                                        <p class="hidden" data-testid="preview-address-version">
+                                            {addr.get_version().unwrap_or_default()}
+                                        </p>
                                     </div>
-                                }
-                                    .into_any()
-                            } else {
-                                view! {
-                                    <div class="mt-4">
-                                        <p>"No address selected."</p>
-                                    </div>
-                                }
-                                    .into_any()
+                                </div>
                             }
+                                .into_any()
                         } else {
                             ().into_any()
                         }

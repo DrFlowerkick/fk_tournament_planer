@@ -1,4 +1,4 @@
-use app_core::{CoreError, DbError};
+use app_core::{CoreError, DbError, utils::id_version::IdVersion};
 use uuid::Uuid;
 
 use integration_testing::port_fakes::*;
@@ -18,8 +18,7 @@ async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_re
         .save()
         .await
         .expect("initial save should succeed")
-        .get_id()
-        .unwrap();
+        .get_id();
 
     // Change state to verify reload
     core.get_mut().set_num_groups(1);
@@ -30,7 +29,7 @@ async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_re
 
     // Assert state was replaced by the record from DB
     let got = core.get().clone();
-    assert_eq!(got.get_id(), Some(id));
+    assert_eq!(got.get_id(), id);
     assert_eq!(got.get_number(), 0);
     assert_eq!(got.get_num_groups(), 4);
 }
@@ -134,7 +133,7 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
     // Assert
     assert_eq!(saved.get_version(), Some(0));
     assert_eq!(core.get().get_id(), saved.get_id());
-    assert!(core.get().get_id().is_some());
+    assert!(core.get().get_version().is_some());
 }
 
 /// 7) save(): DB error propagates, state unchanged
@@ -173,7 +172,7 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
 
     for (num, groups) in inputs {
         let mut s = core.get().clone();
-        s.set_id_version(app_core::utils::id_version::IdVersion::New);
+        s.set_id_version(IdVersion::default());
         s.set_tournament_id(t_id);
         s.set_number(num);
         s.set_num_groups(groups);

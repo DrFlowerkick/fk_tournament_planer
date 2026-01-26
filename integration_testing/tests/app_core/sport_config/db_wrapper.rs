@@ -16,8 +16,7 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
         .save()
         .await
         .expect("initial save should succeed")
-        .get_id()
-        .unwrap();
+        .get_id();
 
     // Act
     let res = core.load(id).await.expect("db ok");
@@ -25,7 +24,7 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
 
     // Assert state was replaced by the record from DB (version set to 0 by fake)
     let got = core.get().clone();
-    assert_eq!(got.get_id(), Some(id));
+    assert_eq!(got.get_id(), id);
     assert_eq!(got.get_name(), "Config A");
     assert_eq!(got.get_version(), Some(0), "initial insert sets version 0");
 }
@@ -81,10 +80,7 @@ async fn given_db_fake_failure_when_load_then_error_propagates_and_state_unchang
 async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_returned() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
-    let sport_id = core.sport_plugins.list()[0]
-        .get_id_version()
-        .get_id()
-        .unwrap();
+    let sport_id = core.sport_plugins.list()[0].get_id_version().get_id();
 
     // Arrange a new config in state
     core.get_mut().set_name("Config B");
@@ -102,10 +98,7 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
 async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchanged() {
     let (mut core, db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
-    let sport_id = core.sport_plugins.list()[0]
-        .get_id_version()
-        .get_id()
-        .unwrap();
+    let sport_id = core.sport_plugins.list()[0].get_id_version().get_id();
 
     // Arrange a new config in state
     core.get_mut().set_name("Config B");
@@ -136,10 +129,7 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 async fn given_filter_and_limit_when_list_sport_configs_then_db_fake_results_are_forwarded() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
-    let sport_id = core.sport_plugins.list()[0]
-        .get_id_version()
-        .get_id()
-        .unwrap();
+    let sport_id = core.sport_plugins.list()[0].get_id_version().get_id();
     // Seed via saves:
     for nm in ["Max Config", "Mara Config", "Zoe Config"] {
         *core.get_mut() = make_sport_config(nm, &core);
@@ -163,10 +153,7 @@ async fn given_filter_and_limit_when_list_sport_configs_then_db_fake_results_are
 #[tokio::test]
 async fn given_only_limit_when_list_sport_configs_then_limit_is_respected() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
-    let sport_id = core.sport_plugins.list()[0]
-        .get_id_version()
-        .get_id()
-        .unwrap();
+    let sport_id = core.sport_plugins.list()[0].get_id_version().get_id();
 
     for i in 0..5 {
         let nm = format!("Name{i}");

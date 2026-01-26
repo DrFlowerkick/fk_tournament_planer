@@ -34,9 +34,9 @@ pub fn SelectSportPlugin() -> impl IntoView {
             >
                 <For
                     each=move || sport_list.get()
-                    key=|plugin| plugin.get_id_version().get_id().unwrap_or_default()
+                    key=|plugin| plugin.get_id_version().get_id()
                     children=move |plugin| {
-                        let id = plugin.get_id_version().get_id().unwrap_or_default();
+                        let id = plugin.get_id_version().get_id();
                         let web_ui_plugin = sport_plugin_manager.get().get_web_ui(&id);
                         let plugin_name = plugin.name();
                         let test_id_suffix = plugin_name.replace(" ", "");

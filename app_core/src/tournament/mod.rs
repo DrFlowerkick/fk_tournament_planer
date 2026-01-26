@@ -233,8 +233,10 @@ impl Tournament {
             let mut stage = Stage::new(IdVersion::new(stage_id, None));
             // only allow valid stage number
             stage
-                .set_number_validated(stage_number, tournament)?
+                .set_number(stage_number)
                 .set_tournament_id(tournament_id);
+            // validate stage before adding to validate stage_number
+            stage.validate(tournament)?;
             self.set_stage(stage)
         }
     }
@@ -243,9 +245,7 @@ impl Tournament {
 
     /// Setter for the tournament base. Expects a valid base with ID.
     pub fn set_base(&mut self, base: TournamentBase) -> CoreResult<&TournamentBase> {
-        let Some(new_id) = base.get_id_version().get_id() else {
-            return Err(CoreError::MissingId("Base Tournament".into()));
-        };
+        let new_id = base.get_id_version().get_id();
 
         // only allow valid base
         base.validate()?;
@@ -262,20 +262,17 @@ impl Tournament {
     }
 
     pub fn set_base_name(&mut self, name: impl Into<String>) -> CoreResult<()> {
-        let base = self.expect_base_mut()?;
-        base.set_name_validated(name)?;
+        self.expect_base_mut()?.set_name(name);
         Ok(())
     }
 
     pub fn set_base_num_entrants(&mut self, num_entrants: u32) -> CoreResult<()> {
-        let base = self.expect_base_mut()?;
-        base.set_num_entrants_validated(num_entrants)?;
+        self.expect_base_mut()?.set_num_entrants(num_entrants);
         Ok(())
     }
 
     pub fn set_base_mode(&mut self, mode: TournamentMode) -> CoreResult<()> {
-        let base = self.expect_base_mut()?;
-        base.set_tournament_mode_validated(mode)?;
+        self.expect_base_mut()?.set_tournament_mode(mode);
         Ok(())
     }
 
@@ -285,9 +282,7 @@ impl Tournament {
 
     /// Adds a stage to the state and links it to the tournament.
     pub fn set_stage(&mut self, stage: Stage) -> CoreResult<&Stage> {
-        let Some(stage_id) = stage.get_id_version().get_id() else {
-            return Err(CoreError::MissingId("Stage".into()));
-        };
+        let stage_id = stage.get_id_version().get_id();
         // only allow valid stage
         let tournament = self.expect_base()?;
         stage.validate(tournament)?;
@@ -295,13 +290,12 @@ impl Tournament {
         // check for existing stage with same number but different ID
         let tournament_id = self.expect_tournament_id()?;
         if let Some(stage) = self.get_stage_by_number(stage.get_number())
-            && let Some(existing_id) = stage.get_id_version().get_id()
-            && existing_id != stage_id
+            && stage.get_id() != stage_id
         {
             // remove edge to existing stage with same number but different ID from structure
             // If the existing stage is already persisted in database, this will result in an
             // error during saving, since unique constraint on (tournament_id, stage_number) will be violated.
-            self.structure.remove_edge(tournament_id, existing_id);
+            self.structure.remove_edge(tournament_id, stage.get_id());
         }
 
         // Link to tournament root, which although adds the node if missing
@@ -323,13 +317,10 @@ impl Tournament {
         stage_id: Uuid,
         num_groups: u32,
     ) -> CoreResult<()> {
-        let Some(tournament) = self.base.as_ref() else {
-            return Err(CoreError::MissingId("TournamentBase".into()));
-        };
         let Some(stage) = self.stages.get_mut(&stage_id) else {
             return Err(CoreError::MissingId("Stage".into()));
         };
-        stage.set_num_groups_validated(num_groups, tournament)?;
+        stage.set_num_groups(num_groups);
 
         Ok(())
     }
@@ -450,7 +441,8 @@ impl Tournament {
     }
 
     /// Validates the entire tournament structure.
-    /// Returns `true` if the entire structure represents a valid state that could be saved/started.
+    /// Returns Ok(()) if the entire structure represents a valid state that could be saved/started.
+    /// Else returns all validation errors found.
     pub fn is_valid(&self) -> bool {
         // 1. Root Tournament Check
         let Some(tournament) = self.get_base() else {
@@ -532,10 +524,8 @@ impl Tournament {
                     // valid stage number
                     valid_numbers.push(sn);
                     // add stage to queue, if it exists in state
-                    if let Some(stage) = self.get_stage_by_number(sn)
-                        && let Some(id) = stage.get_id()
-                    {
-                        queue.push_back((id, DependencyType::Group));
+                    if let Some(stage) = self.get_stage_by_number(sn) {
+                        queue.push_back((stage.get_id(), DependencyType::Group));
                     }
                 }
                 DependencyType::Group => {
@@ -563,7 +553,7 @@ impl Tournament {
 
     /// Returns the root tournament ID, returning None if base is not set.
     fn get_root_id(&self) -> Option<Uuid> {
-        self.get_base().and_then(|t| t.get_id())
+        self.get_base().map(|t| t.get_id())
     }
 
     /// Expects the base tournament, returning an error if not set.

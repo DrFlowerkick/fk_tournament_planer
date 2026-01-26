@@ -108,7 +108,7 @@ pub fn EditTournament() -> impl IntoView {
     });
 
     // --- Form Signals ---
-    let set_id_version = RwSignal::new(IdVersion::New);
+    let set_id_version = RwSignal::new(IdVersion::default());
     let set_name = RwSignal::new("".to_string());
     let set_entrants = RwSignal::new(0_u32);
     let t_type = RwSignal::new(TournamentType::Scheduled);
@@ -172,11 +172,8 @@ pub fn EditTournament() -> impl IntoView {
             Some(Ok(tb)) => {
                 save_tournament_base.clear();
                 toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
-                let nav_url = url_with_update_query(
-                    "tournament_id",
-                    &tb.get_id().map(|id| id.to_string()).unwrap_or_default(),
-                    None,
-                );
+                let nav_url =
+                    url_with_update_query("tournament_id", &tb.get_id().to_string(), None);
                 // set saved tb as origin in editor context before navigation to prevent
                 // load effect to reset the editor state
                 tournament_editor_context.set_tournament(tb, true);

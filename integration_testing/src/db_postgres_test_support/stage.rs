@@ -1,9 +1,9 @@
-use app_core::{Stage, utils::id_version::IdVersion};
+use app_core::Stage;
 use uuid::Uuid;
 
 /// Build a valid "new" Stage.
 pub fn make_new_stage(t_id: Uuid, number: u32) -> Stage {
-    let mut s = Stage::new(IdVersion::New);
+    let mut s = Stage::default();
     s.set_tournament_id(t_id)
         .set_number(number)
         .set_num_groups(2); // Default used in tests

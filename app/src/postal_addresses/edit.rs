@@ -15,6 +15,7 @@ use app_utils::{
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
+// ToDo: implement trait SelectableOption for CountryCode and use that here
 use isocountry::CountryCode;
 use leptos::prelude::*;
 #[cfg(feature = "test-mock")]
@@ -81,7 +82,7 @@ pub fn PostalAddressForm() -> impl IntoView {
             save_postal_address.clear();
             let nav_url = url_with_update_query(
                 "address_id",
-                &pa.get_id().map(|id| id.to_string()).unwrap_or_default(),
+                &pa.get_id().to_string(),
                 Some(&return_after_address_edit.get()),
             );
             navigate(&nav_url, NavigateOptions::default());

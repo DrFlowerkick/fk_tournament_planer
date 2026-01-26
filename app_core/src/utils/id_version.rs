@@ -5,9 +5,14 @@ use uuid::Uuid;
 /// IdVersion always provides a valid combination of id and version
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum IdVersion {
-    New,
     NewWithId(Uuid),
     Existing(ExistingInner),
+}
+
+impl Default for IdVersion {
+    fn default() -> Self {
+        IdVersion::NewWithId(Uuid::new_v4())
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -17,8 +22,8 @@ pub struct ExistingInner {
 }
 
 impl ExistingInner {
-    pub fn get_id(&self) -> &Uuid {
-        &self.id
+    pub fn get_id(&self) -> Uuid {
+        self.id
     }
     pub fn get_version(&self) -> u32 {
         self.version
@@ -28,32 +33,17 @@ impl ExistingInner {
 impl IdVersion {
     pub fn new(id: Uuid, version: Option<u32>) -> IdVersion {
         if id.is_nil() {
-            IdVersion::New
+            IdVersion::NewWithId(Uuid::new_v4())
         } else if let Some(v) = version {
             IdVersion::Existing(ExistingInner { id, version: v })
         } else {
             IdVersion::NewWithId(id)
         }
     }
-    pub fn get_initial_id(&self) -> Option<Uuid> {
-        if let IdVersion::NewWithId(id) = self {
-            Some(*id)
-        } else {
-            None
-        }
-    }
-    pub fn get_existing_id(&self) -> Option<Uuid> {
-        if let IdVersion::Existing(inner) = self {
-            Some(inner.id)
-        } else {
-            None
-        }
-    }
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         match self {
-            IdVersion::Existing(inner) => Some(inner.id),
-            IdVersion::NewWithId(id) => Some(*id),
-            IdVersion::New => None,
+            IdVersion::Existing(inner) => inner.id,
+            IdVersion::NewWithId(id) => *id,
         }
     }
     pub fn get_version(&self) -> Option<u32> {
@@ -62,6 +52,9 @@ impl IdVersion {
         } else {
             None
         }
+    }
+    pub fn is_new(&self) -> bool {
+        matches!(self, IdVersion::NewWithId(_))
     }
 }
 

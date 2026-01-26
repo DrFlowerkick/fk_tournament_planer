@@ -47,7 +47,7 @@ pub fn EditTournamentStage() -> impl IntoView {
         } else {
             tournament_editor_context
                 .get_tournament()
-                .and_then(|t| t.get_id())
+                .map(|t| t.get_id())
         }
     };
 
@@ -113,7 +113,7 @@ pub fn EditTournamentStage() -> impl IntoView {
     };
 
     // Form Signals
-    let set_id_version = RwSignal::new(IdVersion::New);
+    let set_id_version = RwSignal::new(IdVersion::default());
     let set_num_groups = RwSignal::new(1u32);
 
     // --- Server Resources & Actions  ---

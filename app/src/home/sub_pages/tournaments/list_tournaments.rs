@@ -94,9 +94,7 @@ pub fn ListTournaments() -> impl IntoView {
         let navigate = navigate.clone();
         move || {
             if let Some(t_id) = selected_id.get()
-                && !filtered_tournaments()
-                    .iter()
-                    .any(|t| t.get_id() == Some(t_id))
+                && !filtered_tournaments().iter().any(|t| t.get_id() == t_id)
             {
                 set_selected_id.set(None);
                 let nav_url = url_with_remove_query("tournament_id", None);
@@ -221,11 +219,11 @@ pub fn ListTournaments() -> impl IntoView {
                                     <tbody>
                                         <For
                                             each=move || data.clone()
-                                            key=|t| t.get_id().unwrap_or_default()
+                                            key=|t| t.get_id()
                                             // Assuming 't' is type TournamentListItem
                                             children=move |t| {
-                                                let t_id = t.get_id().unwrap_or_default();
-                                                let row_id = t.get_id().unwrap_or_default();
+                                                let t_id = t.get_id();
+                                                let row_id = t.get_id();
                                                 let is_selected = move || {
                                                     selected_id.get() == Some(t_id.clone())
                                                 };

@@ -84,6 +84,7 @@ impl SportPortWebUi for DdcSportPlugin {
     }
     fn render_configuration(&self, props: RenderCfgProps) -> AnyView {
         let RenderCfgProps {
+            object_id,
             config,
             is_valid_json,
         } = props;
@@ -101,8 +102,9 @@ impl SportPortWebUi for DdcSportPlugin {
             }
         };
 
-        let validation_result =
-            Signal::derive(move || current_configuration().validate(ValidationErrors::new()));
+        let validation_result = Signal::derive(move || {
+            current_configuration().validate(object_id.get(), ValidationErrors::new())
+        });
 
         Effect::new(move || {
             is_valid_json.set(validation_result.get().is_ok());

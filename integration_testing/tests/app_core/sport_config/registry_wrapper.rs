@@ -1,5 +1,4 @@
 use app_core::{CoreError, CrError, CrMsg, DbError};
-use uuid::Uuid;
 
 use integration_testing::port_fakes::*;
 
@@ -23,7 +22,7 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
 
     match &notices[0] {
         CrMsg::SportConfigUpdated { id, version } => {
-            let persisted_id = saved.get_id().expect("id should exist after insert");
+            let persisted_id = saved.get_id();
             assert_eq!(*id, persisted_id, "published id must match saved id");
             assert_eq!(
                 Some(*version),
@@ -101,7 +100,7 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
     // DB part already succeeded → core state should now have an Existing id & version 0
     let after = core.get().clone();
     assert!(
-        after.get_id().is_some(),
+        after.get_version().is_some(),
         "id should be set after DB success even if publish failed"
     );
     assert_eq!(
@@ -121,10 +120,7 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
 async fn given_read_operations_when_invoked_then_never_publish_anything() {
     let (mut core, _db_fake, cr_fake) = make_core_sport_config_state_with_fakes();
 
-    let sport_id = core.sport_plugins.list()[0]
-        .get_id_version()
-        .get_id()
-        .unwrap();
+    let sport_id = core.sport_plugins.list()[0].get_id_version().get_id();
     // Seed two entries via normal saves (which *do* publish)...
     *core.get_mut() = make_sport_config("Seed0", &core);
     core.save().await.expect("seed 0");
@@ -135,7 +131,7 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     cr_fake.clear();
 
     // Act: load (existing id) and list
-    let any_id = core.get().get_id().unwrap_or_else(Uuid::new_v4);
+    let any_id = core.get().get_id();
     let _ = core.load(any_id).await.expect("load ok");
     let _ = core
         .list_sport_configs(sport_id, None, Some(10))
@@ -157,14 +153,14 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
     // First insert
     *core.get_mut() = make_sport_config("Delta", &core);
     let first = core.save().await.expect("first save").clone();
-    let id = first.get_id().expect("id assigned on first save");
+    let id = first.get_id();
     assert_eq!(first.get_version(), Some(0));
 
     // Update same config (simulate a small change)
     core.get_mut().set_name("Delta Renamed");
 
     let second = core.save().await.expect("second save (update)");
-    assert_eq!(second.get_id().unwrap(), id);
+    assert_eq!(second.get_id(), id);
     assert!(
         second.get_version() > first.get_version(),
         "update should bump version (monotonic)"
