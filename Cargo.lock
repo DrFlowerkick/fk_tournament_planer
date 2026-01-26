@@ -106,6 +106,7 @@ dependencies = [
  "async-trait",
  "chrono",
  "displaydoc",
+ "petgraph",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
@@ -2287,6 +2288,7 @@ dependencies = [
  "hashbrown 0.15.5",
  "indexmap",
  "serde",
+ "serde_derive",
 ]
 
 [[package]]

@@ -6,7 +6,7 @@ use crate::{
         id_version::IdVersion,
         normalize::normalize_ws,
         traits::ObjectIdVersion,
-        validation::{FieldError, ValidationErrors, ValidationResult},
+        validation::{FieldError, FieldResult, ValidationErrors, ValidationResult},
     },
 };
 use displaydoc::Display;
@@ -219,6 +219,13 @@ impl TournamentBase {
         self
     }
 
+    pub fn set_name_validated(&mut self, name: impl Into<String>) -> FieldResult<&mut Self> {
+        let name_str = name.into();
+        Self::validate_name(&name_str)?;
+        self.name = normalize_ws(name_str);
+        Ok(self)
+    }
+
     /// Set the sport ID associated with this configuration.
     pub fn set_sport_id(&mut self, sport_id: Uuid) -> &mut Self {
         self.sport_id = sport_id;
@@ -229,6 +236,12 @@ impl TournamentBase {
     pub fn set_num_entrants(&mut self, num_entrants: u32) -> &mut Self {
         self.num_entrants = num_entrants;
         self
+    }
+
+    pub fn set_num_entrants_validated(&mut self, num_entrants: u32) -> FieldResult<&mut Self> {
+        Self::validate_num_entrants(num_entrants)?;
+        self.num_entrants = num_entrants;
+        Ok(self)
     }
 
     /// Set the type of the tournament.
@@ -243,43 +256,73 @@ impl TournamentBase {
         self
     }
 
+    pub fn set_tournament_mode_validated(
+        &mut self,
+        mode: TournamentMode,
+    ) -> FieldResult<&mut Self> {
+        Self::validate_mode(mode)?;
+        self.mode = mode;
+        Ok(self)
+    }
+
     /// Set the current state of the tournament.
     pub fn set_tournament_state(&mut self, state: TournamentState) -> &mut Self {
         self.state = state;
         self
     }
 
+    // --- Validation ---
+
+    /// validate tournament name
+    fn validate_name(name: &str) -> FieldResult<&str> {
+        if name.trim().is_empty() {
+            return Err(FieldError::builder()
+                .set_field(String::from("name"))
+                .add_required()
+                .build());
+        }
+        Ok(name)
+    }
+
+    fn validate_num_entrants(num_entrants: u32) -> FieldResult<u32> {
+        if num_entrants < 2 {
+            return Err(FieldError::builder()
+                .set_field(String::from("num_entrants"))
+                .add_message("number of entrants must be at least 2")
+                .build());
+        }
+        Ok(num_entrants)
+    }
+
+    fn validate_mode(mode: TournamentMode) -> FieldResult<TournamentMode> {
+        match mode {
+            TournamentMode::SwissSystem { num_rounds } => {
+                if num_rounds == 0 {
+                    return Err(FieldError::builder()
+                        .set_field(String::from("mode.num_rounds"))
+                        .add_message("number of rounds must be > 0")
+                        .build());
+                }
+            }
+            _ => {}
+        }
+        Ok(mode)
+    }
+
     /// Validate the tournament configuration.
     pub fn validate(&self) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
-        if self.name.is_empty() {
-            errs.add(
-                FieldError::builder()
-                    .set_field(String::from("name"))
-                    .add_required()
-                    .build(),
-            );
+        if let Err(e) = Self::validate_name(&self.name) {
+            errs.add(e);
         }
-        if self.num_entrants < 2 {
-            errs.add(
-                FieldError::builder()
-                    .set_field(String::from("num_entrants"))
-                    .add_message("number of entrants must be at least 2")
-                    .build(),
-            );
+        if let Err(e) = Self::validate_num_entrants(self.num_entrants) {
+            errs.add(e);
+        }
+        if let Err(e) = Self::validate_mode(self.mode) {
+            errs.add(e);
         }
 
-        if let TournamentMode::SwissSystem { num_rounds } = self.mode {
-            if num_rounds == 0 {
-                errs.add(
-                    FieldError::builder()
-                        .set_field(String::from("mode.num_rounds"))
-                        .add_message("Number of rounds must be > 0. Recommended number of rounds is 'log_2(number of entrants) + 2' or more")
-                        .build(),
-                );
-            }
-        }
-
+        // ToDo: refine validation of active stage based on mode, when active stage is implemented
         let max_num_stages = match self.mode {
             // in Swiss System, each round is a stage
             TournamentMode::SwissSystem { num_rounds } => num_rounds,

@@ -6,7 +6,7 @@ use crate::{
     utils::{
         id_version::IdVersion,
         traits::{ObjectIdVersion, ObjectNumber},
-        validation::{FieldError, ValidationErrors, ValidationResult},
+        validation::{FieldError, FieldResult, ValidationErrors, ValidationResult},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -100,10 +100,86 @@ impl Stage {
         self
     }
 
+    pub fn set_number_validated(
+        &mut self,
+        number: u32,
+        tournament: &TournamentBase,
+    ) -> FieldResult<&mut Self> {
+        self.number = Stage::validate_stage_number(number, tournament)?;
+        Ok(self)
+    }
+
     /// Set the number of groups in stage.
     pub fn set_num_groups(&mut self, num_groups: u32) -> &mut Self {
         self.num_groups = num_groups;
         self
+    }
+
+    pub fn set_num_groups_validated(
+        &mut self,
+        num_groups: u32,
+        tournament: &TournamentBase,
+    ) -> FieldResult<&mut Self> {
+        self.num_groups = Stage::validate_num_groups(num_groups, tournament)?;
+        Ok(self)
+    }
+
+    // --- Validation ---
+
+    /// validate stage number
+    fn validate_stage_number(number: u32, tournament: &TournamentBase) -> FieldResult<u32> {
+        let max_stages = tournament.get_tournament_mode().get_num_of_stages();
+        if number >= max_stages {
+            return Err(FieldError::builder()
+                .set_field(String::from("number"))
+                .add_message(format!(
+                    "Stage number {} exceeds maximum allowed stages ({}) for mode {}",
+                    number,
+                    max_stages,
+                    tournament.get_tournament_mode()
+                ))
+                .build());
+        }
+        Ok(number)
+    }
+
+    fn validate_num_groups(num_groups: u32, tournament: &TournamentBase) -> FieldResult<u32> {
+        if num_groups == 0 {
+            return Err(FieldError::builder()
+                .set_field(String::from("num_groups"))
+                .add_message("Number of groups must be at least 1")
+                .build());
+        }
+        if num_groups > tournament.get_num_entrants() / 2 {
+            return Err(FieldError::builder()
+                .set_field(String::from("num_groups"))
+                .add_message("Number of groups cannot exceed half the number of entrants")
+                .build());
+        }
+
+        // Mode specific validation
+        let mode = tournament.get_tournament_mode();
+
+        // Validate number of groups against mode constraints
+        if matches!(mode, TournamentMode::SingleStage) {
+            if num_groups != 1 {
+                return Err(FieldError::builder()
+                    .set_field(String::from("num_groups"))
+                    .add_message("Single Stage mode must have exactly 1 group (the whole field)")
+                    .build());
+            }
+        }
+
+        // Specific constraint: Swiss System has 1 group in stage (the whole field)
+        if let TournamentMode::SwissSystem { .. } = mode {
+            if num_groups > 1 {
+                return Err(FieldError::builder()
+                    .set_field(String::from("num_groups"))
+                    .add_message("Swiss System has 1 group in stage (the whole field)")
+                    .build());
+            }
+        }
+        Ok(num_groups)
     }
 
     /// Validate the stage configuration based on the provided tournament settings.
@@ -123,64 +199,13 @@ impl Stage {
         }
 
         // Validate number of groups
-        if self.num_groups == 0 {
-            errs.add(
-                FieldError::builder()
-                    .set_field(String::from("num_groups"))
-                    .add_message("Number of groups must be at least 1")
-                    .build(),
-            );
+        if let Err(field_err) = Stage::validate_num_groups(self.num_groups, tournament) {
+            errs.add(field_err);
         }
-        if self.num_groups > tournament.get_num_entrants() / 2 {
-            errs.add(
-                FieldError::builder()
-                    .set_field(String::from("num_groups"))
-                    .add_message("Number of groups cannot exceed half the number of entrants")
-                    .build(),
-            );
-        }
-
-        // Mode specific validation
-        let mode = tournament.get_tournament_mode();
 
         // Validate stage number against max stages
-        let max_stages = mode.get_num_of_stages();
-        if self.number >= max_stages {
-            errs.add(
-                FieldError::builder()
-                    .set_field(String::from("number"))
-                    .add_message(format!(
-                        "Stage number {} exceeds maximum allowed stages ({}) for mode {}",
-                        self.number, max_stages, mode
-                    ))
-                    .build(),
-            );
-        }
-
-        // Validate number of groups against mode constraints
-        if matches!(mode, TournamentMode::SingleStage) {
-            if self.num_groups != 1 {
-                errs.add(
-                    FieldError::builder()
-                        .set_field(String::from("num_groups"))
-                        .add_message(
-                            "Single Stage mode must have exactly 1 group (the whole field)",
-                        )
-                        .build(),
-                );
-            }
-        }
-
-        // Specific constraint: Swiss System has 1 group in stage (the whole field)
-        if let TournamentMode::SwissSystem { .. } = mode {
-            if self.num_groups > 1 {
-                errs.add(
-                    FieldError::builder()
-                        .set_field(String::from("num_groups"))
-                        .add_message("Swiss System has 1 group in stage (the whole field)")
-                        .build(),
-                );
-            }
+        if let Err(field_err) = Stage::validate_stage_number(self.number, tournament) {
+            errs.add(field_err);
         }
 
         if !errs.is_empty() {
