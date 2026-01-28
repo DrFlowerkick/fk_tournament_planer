@@ -13,8 +13,12 @@ use serde::{Deserialize, Serialize};
 /// indicating that a new tournament is being created.
 #[derive(Clone, Deserialize, Serialize)]
 pub struct TournamentEditor {
-    pub local: Tournament,
-    pub origin: Tournament,
+    local: Tournament,
+    origin: Tournament,
+    active_stage_id: Option<Uuid>,
+    active_group_id: Option<Uuid>,
+    active_round_id: Option<Uuid>,
+    active_match_id: Option<Uuid>,
 }
 
 impl TournamentEditor {
@@ -22,6 +26,10 @@ impl TournamentEditor {
         Self {
             local: Tournament::new(),
             origin: Tournament::new(),
+            active_stage_id: None,
+            active_group_id: None,
+            active_round_id: None,
+            active_match_id: None,
         }
     }
 
@@ -29,19 +37,28 @@ impl TournamentEditor {
 
     /// Creates a new tournament base in the local state and clears the origin.
     /// Returns the old origin base if any.
-    pub fn new_base(&mut self) -> Option<TournamentBase> {
-        self.local.new_base();
+    pub fn new_base(&mut self, sport_id: Uuid) -> Option<TournamentBase> {
+        self.local.new_base(sport_id);
         self.origin.clear_base()
     }
 
     pub fn new_stage(&mut self, stage_number: u32) -> bool {
         if let Some(origin_stage) = self.origin.get_stage_by_number(stage_number) {
             // if origin has the stage, we clone it to local
-
             self.local.set_stage(origin_stage.clone());
+            self.active_stage_id = Some(origin_stage.get_id());
             return false;
         }
-        self.local.new_stage(stage_number)
+        // else we create a new stage in local
+        if self.local.new_stage(stage_number) {
+            return true;
+        }
+        // set active stage id
+        self.active_stage_id = self
+            .local
+            .get_stage_by_number(stage_number)
+            .map(|s| s.get_id());
+        false
     }
 
     // --- Setters for Tournament Objects after loading from database ---
@@ -65,25 +82,22 @@ impl TournamentEditor {
             // remove conflicting stage from local
             self.local.clear_stage(local_stage.get_id());
         }
+        self.active_stage_id = Some(stage.get_id());
         self.local.set_stage(stage)
     }
 
     // --- Getters for reading Tournament Parts ---
-    // ToDo: do we need getters for origin?
-    pub fn get_origin_base(&self) -> Option<&TournamentBase> {
-        self.origin.get_base()
+    pub fn get(&self) -> &Tournament {
+        &self.local
     }
 
-    pub fn get_local_base(&self) -> Option<&TournamentBase> {
+    pub fn get_base(&self) -> Option<&TournamentBase> {
         self.local.get_base()
     }
 
-    pub fn get_origin_stage_by_number(&self, stage_number: u32) -> Option<&Stage> {
-        self.origin.get_stage_by_number(stage_number)
-    }
-
-    pub fn get_local_stage_by_number(&self, stage_number: u32) -> Option<&Stage> {
-        self.local.get_stage_by_number(stage_number)
+    pub fn get_active_stage(&self) -> Option<&Stage> {
+        self.active_stage_id
+            .and_then(|id| self.local.get_stage_by_id(id))
     }
 
     // --- mut access of local for editing ---
@@ -95,10 +109,11 @@ impl TournamentEditor {
     }
 
     // --- Diff Collectors for Saving ---
-    pub fn collect_base_diff(&self) -> Option<&TournamentBase> {
+    pub fn collect_base_diff(&self) -> Option<TournamentBase> {
         self.local
             .get_base()
             .get_diff(&self.origin.get_base(), None)
+            .cloned()
     }
 
     pub fn collect_stages_diff(&self) -> Vec<Stage> {

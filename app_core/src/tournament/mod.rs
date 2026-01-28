@@ -230,8 +230,9 @@ impl Tournament {
 
     /// Creates a new tournament base with a new ID and adds it to the tournament.
     /// If a base is already present, it is replaced and old base is returned.
-    pub fn new_base(&mut self) -> Option<TournamentBase> {
-        let base = TournamentBase::new(IdVersion::new(Uuid::new_v4(), None));
+    pub fn new_base(&mut self, sport_id: Uuid) -> Option<TournamentBase> {
+        let mut base = TournamentBase::new(IdVersion::new(Uuid::new_v4(), None));
+        base.set_sport_id(sport_id);
         // unwrap is safe here, as we just created a valid base with ID
         self.set_base(base)
     }
@@ -327,6 +328,22 @@ impl Tournament {
         false
     }
 
+    pub fn set_base_num_rounds_swiss_system(&mut self, num_rounds_swiss: u32) -> bool {
+        let Some(base) = self.base.as_mut() else {
+            return true;
+        };
+        if !matches!(
+            base.get_tournament_mode(),
+            TournamentMode::SwissSystem { .. }
+        ) {
+            // not in swiss mode
+            return true;
+        }
+        base.set_num_rounds_swiss_system(num_rounds_swiss);
+
+        false
+    }
+
     /// Sets a stage to the state and links it to the tournament.
     /// If a stage with the same number but different ID already exists,
     /// it is not replaced and new stage is not added.
@@ -398,6 +415,10 @@ impl Tournament {
             }
         }
         None
+    }
+
+    pub fn get_stage_by_id(&self, stage_id: Uuid) -> Option<&Stage> {
+        self.stages.get(&stage_id)
     }
 
     // --- Diff Collectors for Saving ---

@@ -173,6 +173,15 @@ impl TournamentBase {
         self.mode
     }
 
+    /// Get the number of rounds for Swiss System, if mode is Swiss System.
+    pub fn get_num_rounds_swiss_system(&self) -> Option<u32> {
+        if let TournamentMode::SwissSystem { num_rounds } = self.mode {
+            Some(num_rounds)
+        } else {
+            None
+        }
+    }
+
     /// Get the current state of the tournament.
     pub fn get_tournament_state(&self) -> TournamentState {
         self.state
@@ -226,6 +235,14 @@ impl TournamentBase {
     /// Set the mode of the tournament.
     pub fn set_tournament_mode(&mut self, mode: TournamentMode) -> &mut Self {
         self.mode = mode;
+        self
+    }
+
+    /// Set the number of rounds for Swiss System, if mode is Swiss System.
+    pub fn set_num_rounds_swiss_system(&mut self, num_rounds_swiss: u32) -> &mut Self {
+        if let TournamentMode::SwissSystem { ref mut num_rounds } = self.mode {
+            *num_rounds = num_rounds_swiss;
+        }
         self
     }
 
