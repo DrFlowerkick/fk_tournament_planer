@@ -1,7 +1,6 @@
 //! editor module for tournament
 
 use super::*;
-use crate::CoreResult;
 use serde::{Deserialize, Serialize};
 
 /// TournamentEditor holds the local editable tournament and the origin tournament for change tracking.
@@ -26,28 +25,51 @@ impl TournamentEditor {
         }
     }
 
-    // --- New Tournament Setup ---
+    // --- Generators for new Tournament Objects ---
 
-    pub fn new_tournament(&mut self) {
-        self.origin.clear_base();
+    /// Creates a new tournament base in the local state and clears the origin.
+    /// Returns the old origin base if any.
+    pub fn new_base(&mut self) -> Option<TournamentBase> {
         self.local.new_base();
+        self.origin.clear_base()
     }
 
-    // --- Setters for Tournament Parts after loading from database ---
+    pub fn new_stage(&mut self, stage_number: u32) -> bool {
+        if let Some(origin_stage) = self.origin.get_stage_by_number(stage_number) {
+            // if origin has the stage, we clone it to local
 
-    pub fn set_base(&mut self, base: TournamentBase) -> CoreResult<()> {
-        self.origin.set_base(base.clone())?;
-        self.local.set_base(base)?;
-        Ok(())
+            self.local.set_stage(origin_stage.clone());
+            return false;
+        }
+        self.local.new_stage(stage_number)
     }
 
-    pub fn set_stage(&mut self, stage: Stage) -> CoreResult<()> {
-        self.origin.set_stage(stage.clone())?;
-        self.local.set_stage(stage)?;
-        Ok(())
+    // --- Setters for Tournament Objects after loading from database ---
+
+    /// Sets the tournament base for both origin and local.
+    /// Returns the old origin base if any.
+    pub fn set_base(&mut self, base: TournamentBase) -> Option<TournamentBase> {
+        self.local.set_base(base.clone())?;
+        self.origin.set_base(base)
+    }
+
+    pub fn set_stage(&mut self, stage: Stage) -> bool {
+        if self.origin.set_stage(stage.clone()) {
+            return true;
+        }
+        // since origin is master and successfully set, we force setting local
+        // in case of conflicting stage number and id
+        if let Some(local_stage) = self.local.get_stage_by_number(stage.get_number())
+            && local_stage.get_id() != stage.get_id()
+        {
+            // remove conflicting stage from local
+            self.local.clear_stage(local_stage.get_id());
+        }
+        self.local.set_stage(stage)
     }
 
     // --- Getters for reading Tournament Parts ---
+    // ToDo: do we need getters for origin?
     pub fn get_origin_base(&self) -> Option<&TournamentBase> {
         self.origin.get_base()
     }
@@ -67,7 +89,7 @@ impl TournamentEditor {
     // --- mut access of local for editing ---
     /// Provides mutable access to the local tournament for direct editing.
     /// Only use this for editing fields or adding new dependent objects.
-    /// For setting up a new tournament, use `new_tournament` instead.
+    /// For setting objects loaded from the database, use the provided setters.
     pub fn get_local_mut(&mut self) -> &mut Tournament {
         &mut self.local
     }
@@ -95,10 +117,10 @@ impl TournamentEditor {
 
     // --- Validation ---
 
-    pub fn is_valid(&self) -> bool {
+    pub fn validation(&self) -> ValidationResult<()> {
         // we only validate the local tournament, since origin stems
         // from the DB and is assumed valid
-        self.local.is_valid()
+        self.local.validation()
     }
 
     pub fn validate_object_numbers(
@@ -176,7 +198,7 @@ mod tests {
         state.set_base(original.clone()).unwrap();
 
         // Act: Simulate User Edit
-        state.get_local_mut().set_base_name("Changed Name").unwrap();
+        state.get_local_mut().set_base_name("Changed Name");
 
         // Assert
         assert!(
@@ -201,7 +223,7 @@ mod tests {
         state.set_base(original.clone()).unwrap();
 
         // Act 1: Modify
-        state.get_local_mut().set_base_name("Modified").unwrap();
+        state.get_local_mut().set_base_name("Modified");
         // Assert
         assert!(
             state.local.is_changed(&state.origin),
@@ -209,10 +231,7 @@ mod tests {
         );
 
         // Act 2: Revert (Set back to original values manually via UI logic)
-        state
-            .get_local_mut()
-            .set_base_name(original.get_name())
-            .unwrap();
+        state.get_local_mut().set_base_name(original.get_name());
         // Assert
         assert!(
             !state.local.is_changed(&state.origin),
@@ -229,10 +248,7 @@ mod tests {
         state.set_base(t_v1.clone()).unwrap();
 
         // Modify local state
-        state
-            .get_local_mut()
-            .set_base_name("Version 2 Draft")
-            .unwrap();
+        state.get_local_mut().set_base_name("Version 2 Draft");
 
         assert!(
             state.local.is_changed(&state.origin),

@@ -1,11 +1,13 @@
 //! Input components for the app
 
-use app_core::utils::validation::FieldResult;
+use crate::hooks::is_field_valid::is_object_field_valid;
+use app_core::utils::validation::{FieldResult, ValidationResult};
 use displaydoc::Display;
 use leptos::prelude::*;
 use std::fmt::Display;
 use std::str::FromStr;
 use std::time::Duration;
+use uuid::Uuid;
 
 #[component]
 pub fn ValidatedTextInput(
@@ -57,21 +59,34 @@ pub fn ValidatedTextInput(
 }
 
 // ToDo: replace all instances of ValidatedTextInput and TextInput with this more advanced component
-// ToDo: validation at write DOES NOT support indirect invalidation: field foo get's invalidated because
-// field bar changed. Therefore we cannot rely only on on_write validation results.
 #[component]
 pub fn TextInputWithValidation<T>(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
+    /// Label text for the input
+    #[prop(into)]
+    label: String,
+    /// Name attribute for the input (also used for test-id)
+    #[prop(into)]
+    name: String,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
     value: Signal<Option<T>>,
-    /// Callback to push changes to source of value and return a FieldResult.
-    /// Returns Err if validation fails.
+    /// Callback to push changes to source of value
+    /// Using Callback<String> allows passing closures and Callbacks.
     #[prop(into)]
-    on_write: Callback<String, FieldResult<()>>,
-    #[prop(into, default = false)] optional: bool,
+    on_write: Callback<String>,
+    /// Reactive read-access to validation results
+    /// Using Signal<ValidationResult<T>> allows passing ReadSignal, Memo, or derived closures.
+    validation_result: Signal<ValidationResult<()>>,
+    /// Object ID for field error lookup
+    #[prop(into)]
+    object_id: Signal<Option<Uuid>>,
+    /// Field name for field error lookup
+    #[prop(into)]
+    field: String,
+    /// Whether the field is optional (affects label and placeholder)
+    #[prop(into, default = false)]
+    optional: bool,
 ) -> impl IntoView
 where
     T: Display + Clone + Send + Sync + 'static,
@@ -79,8 +94,12 @@ where
     // Local buffer: Some(string) while typing, None when synced with Core
     let (draft, set_draft) = signal(None::<String>);
 
-    // Persistent error state from validation or parsing
-    let (error, set_error) = signal(None::<String>);
+    // Error state from validation of all objects
+    let error = Signal::derive(move || {
+        is_object_field_valid(validation_result, object_id, &field)
+            .err()
+            .map(|e| e.to_string())
+    });
 
     // Derived: What to actually show in the <input>
     let display_value = move || match draft.get() {
@@ -122,14 +141,7 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
-                    match on_write.run(new_val) {
-                        Ok(_) => {
-                            set_error.set(None);
-                        }
-                        Err(e) => {
-                            set_error.set(Some(e.to_string()));
-                        }
-                    }
+                    on_write.run(new_val);
                     set_draft.set(None);
                 }
             />

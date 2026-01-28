@@ -110,13 +110,18 @@ pub use editor::*;
 pub use stage::*;
 
 use crate::{
-    CoreError, CoreResult, Group,
+    Group,
     utils::{
         id_version::IdVersion,
         traits::{Diffable, ObjectIdVersion, ObjectNumber},
+        validation::{ValidationErrors, ValidationResult},
     },
 };
-use petgraph::{Direction, graphmap::DiGraphMap, visit::Bfs};
+use petgraph::{
+    Direction,
+    graphmap::DiGraphMap,
+    visit::{Bfs, Walker},
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet, VecDeque};
 use uuid::Uuid;
@@ -136,8 +141,8 @@ pub enum DependencyType {
 ///   structure must have an unique ID. This allows easy referencing between objects
 ///   and prevents duplication.
 /// - Heritage of objects is bottom up: each object knows its own ID and the ID of its
-///   parent object (e.g. group knows its stage ID). This allows easy traversal
-///   from child to parent, which is useful for validation and consistency checks.
+///   parent object (e.g. group knows its stage ID). This is in compliance with
+///   database design, where foreign keys point from child to parent object.
 /// - Each dependent object (stage, group, etc.) has besides its ID a number
 ///   (e.g. stage number, group number) that represents its position within its
 ///   parent object. Since heritage is bottom up, top down traversal (e.g. from tournament
@@ -161,13 +166,23 @@ pub enum DependencyType {
 ///   is updated to remove edges to now invalid objects. The objects node remains in
 ///   the graph unconnected to their former parent. The objects themselves remain in
 ///   the respective HashMaps, keeping them available for potential future use.
+/// - Since validation of objects and fields in objects may depend upon the entire
+///   tournament structure (e.g. stage validation depends upon tournament mode and
+///   number of entrants), validation is done by traversing the graph from root node
+///   downwards, validating each object in context of its parent objects. Validation is
+///   not done automatically when setting objects, but must be triggered explicitly.
+/// - Each object type has its own setter and getter in Tournament. Setters
+///   ensure that the object is valid before adding it to the structure. Getters
+///   allow retrieving objects by their ID or by their object number and parent ID.
+///   Furthermore, each object type provides getters and setters for their fields,
+///   enabling fine grained updates of object data.
 /// - HashMaps for object storage: actual objects are stored in HashMaps, keyed by
 ///   their UUIDs. This allows efficient retrieval and modification of objects.
 ///   The HashMaps are secondary storage, while the graph represents the structure.
 ///
 /// To create a new tournament, simply create a new Tournament instance and use
 /// the setters to add and update objects. The graph structure will be updated automatically.
-/// One side effect of this design is, that objects may exist in the HashMaps,
+/// One side effect of this design is, that objects may exist in graph and the HashMaps,
 /// but their nodes in structure are not reachable when traversing from the root node. This
 /// may happen, if either adding objects without their parents being part of the structure,
 /// or when invalidating objects due to changes in the tournament (see above). These
@@ -211,94 +226,126 @@ impl Tournament {
         }
     }
 
-    // --- Generators for empty objects ---
+    // --- Generators for new Tournament Objects ---
 
     /// Creates a new tournament base with a new ID and adds it to the tournament.
-    pub fn new_base(&mut self) -> &TournamentBase {
+    /// If a base is already present, it is replaced and old base is returned.
+    pub fn new_base(&mut self) -> Option<TournamentBase> {
         let base = TournamentBase::new(IdVersion::new(Uuid::new_v4(), None));
         // unwrap is safe here, as we just created a valid base with ID
-        self.set_base(base).unwrap()
+        self.set_base(base)
     }
 
     /// Creates a new stage with a new ID and adds it to the tournament.
-    pub fn new_stage(&mut self, stage_number: u32) -> CoreResult<&Stage> {
+    /// If a stage with the same number already exists, it is not added.
+    /// This  reduces the risk of having multiple stages with same number.
+    /// Returns false if stage was added, true otherwise.
+    pub fn new_stage(&mut self, stage_number: u32) -> bool {
         if self.get_stage_by_number(stage_number).is_some() {
-            // return existing stage
-            self.get_stage_by_number(stage_number)
-                .ok_or(CoreError::MissingId("Stage".into()))
-        } else {
-            let tournament = self.expect_base()?;
-            let tournament_id = self.expect_tournament_id()?;
-            let stage_id = Uuid::new_v4();
-            let mut stage = Stage::new(IdVersion::new(stage_id, None));
-            // only allow valid stage number
-            stage
-                .set_number(stage_number)
-                .set_tournament_id(tournament_id);
-            // validate stage before adding to validate stage_number
-            stage.validate(tournament)?;
-            self.set_stage(stage)
+            // stage with this number already exists
+            return true;
         }
+        let Some(tournament) = self.base.as_ref() else {
+            // cannot add stage without tournament base
+            return true;
+        };
+        let tournament_id = tournament.get_id();
+        let mut stage = Stage::new(IdVersion::new(Uuid::new_v4(), None));
+        // set required fields
+        stage
+            .set_number(stage_number)
+            .set_tournament_id(tournament_id);
+        self.set_stage(stage)
     }
 
-    // ---- Setters ----
+    // ---- Setters for Tournament Objects after loading from database ----
 
-    /// Setter for the tournament base. Expects a valid base with ID.
-    pub fn set_base(&mut self, base: TournamentBase) -> CoreResult<&TournamentBase> {
+    /// Setter for the tournament base.
+    /// If a base is already present, it is replaced and old base is returned.
+    pub fn set_base(&mut self, base: TournamentBase) -> Option<TournamentBase> {
         let new_id = base.get_id_version().get_id();
-
-        // only allow valid base
-        base.validate()?;
 
         // Ensure Graph Node exists
         self.structure.add_node(new_id);
 
         // Set base
+        let old_base = self.clear_base();
         self.base = Some(base);
 
         // Validation: Check if changes invalidate child objects (e.g. Mode change -> fewer stages)
-        self.cleanup_excess_stages(new_id);
-        self.expect_base()
+        self.unlink_excess_stages(new_id);
+        old_base
     }
 
-    pub fn set_base_name(&mut self, name: impl Into<String>) -> CoreResult<()> {
-        self.expect_base_mut()?.set_name(name);
-        Ok(())
+    /// Removes and returns the current tournament base, if any.
+    pub fn clear_base(&mut self) -> Option<TournamentBase> {
+        self.base.take()
     }
 
-    pub fn set_base_num_entrants(&mut self, num_entrants: u32) -> CoreResult<()> {
-        self.expect_base_mut()?.set_num_entrants(num_entrants);
-        Ok(())
+    /// Sets the name of the tournament base.
+    /// Returns true if no base is present.
+    pub fn set_base_name(&mut self, name: impl Into<String>) -> bool {
+        let Some(base) = self.base.as_mut() else {
+            return true;
+        };
+        base.set_name(name);
+        false
     }
 
-    pub fn set_base_mode(&mut self, mode: TournamentMode) -> CoreResult<()> {
-        self.expect_base_mut()?.set_tournament_mode(mode);
-        Ok(())
+    /// Sets the number of entrants of the tournament base.
+    /// Returns true if no base is present.
+    pub fn set_base_num_entrants(&mut self, num_entrants: u32) -> bool {
+        let Some(base) = self.base.as_mut() else {
+            return true;
+        };
+        base.set_num_entrants(num_entrants);
+        false
     }
 
-    pub fn clear_base(&mut self) {
-        self.base = None;
+    /// Sets the tournament mode of the tournament base.
+    /// Returns true if no base is present.
+    pub fn set_base_mode(&mut self, mode: TournamentMode) -> bool {
+        let Some(base) = self.base.as_mut() else {
+            return true;
+        };
+        base.set_tournament_mode(mode);
+        let base_id = base.get_id();
+
+        if matches!(
+            base.get_tournament_mode(),
+            TournamentMode::SingleStage | TournamentMode::SwissSystem { num_rounds: _ }
+        ) {
+            // Single stage tournament -> set number of groups as 0 for stage 0, if exists
+            if let Some(stage) = self.get_stage_by_number(0) {
+                self.set_stage_number_of_groups(stage.get_id(), 0);
+            }
+        }
+
+        // Validation: Check if changes invalidate child objects (e.g. Mode change -> fewer stages)
+        self.unlink_excess_stages(base_id);
+
+        false
     }
 
-    /// Adds a stage to the state and links it to the tournament.
-    pub fn set_stage(&mut self, stage: Stage) -> CoreResult<&Stage> {
-        let stage_id = stage.get_id_version().get_id();
-        // only allow valid stage
-        let tournament = self.expect_base()?;
-        stage.validate(tournament)?;
-
+    /// Sets a stage to the state and links it to the tournament.
+    /// If a stage with the same number but different ID already exists,
+    /// it is not replaced and new stage is not added.
+    /// Returns false if set was successful, true otherwise.
+    pub fn set_stage(&mut self, stage: Stage) -> bool {
+        let Some(tournament) = self.base.as_ref() else {
+            // cannot add stage without tournament base
+            return true;
+        };
         // check for existing stage with same number but different ID
-        let tournament_id = self.expect_tournament_id()?;
+        let stage_id = stage.get_id();
         if let Some(stage) = self.get_stage_by_number(stage.get_number())
             && stage.get_id() != stage_id
         {
-            // remove edge to existing stage with same number but different ID from structure
-            // If the existing stage is already persisted in database, this will result in an
-            // error during saving, since unique constraint on (tournament_id, stage_number) will be violated.
-            self.structure.remove_edge(tournament_id, stage.get_id());
+            return true;
         }
 
         // Link to tournament root, which although adds the node if missing
+        let tournament_id = tournament.get_id();
         self.structure
             .add_edge(tournament_id, stage_id, DependencyType::Stage);
 
@@ -306,23 +353,31 @@ impl Tournament {
         self.stages.insert(stage_id, stage);
 
         // Validation: Check if changes invalidate child objects (e.g. fewer groups)
-        self.cleanup_excess_groups(stage_id);
-        self.stages
-            .get(&stage_id)
-            .ok_or(CoreError::MissingId("Stage".into()))
+        self.unlink_excess_groups(stage_id);
+        false
     }
 
-    pub fn set_stage_number_of_groups(
-        &mut self,
-        stage_id: Uuid,
-        num_groups: u32,
-    ) -> CoreResult<()> {
+    /// Clears a stage from the state.
+    /// Returns the removed stage if it existed.
+    pub fn clear_stage(&mut self, stage_id: Uuid) -> Option<Stage> {
+        // Remove node of stage
+        self.structure.remove_node(stage_id);
+        // Remove stage from stages map
+        self.stages.remove(&stage_id)
+    }
+
+    /// Sets the number of groups for a stage.
+    /// Returns true if stage is not present.
+    pub fn set_stage_number_of_groups(&mut self, stage_id: Uuid, num_groups: u32) -> bool {
         let Some(stage) = self.stages.get_mut(&stage_id) else {
-            return Err(CoreError::MissingId("Stage".into()));
+            return true;
         };
         stage.set_num_groups(num_groups);
+        let stage_id = stage.get_id();
 
-        Ok(())
+        // Validation: Check if changes invalidate child objects (e.g. fewer groups)
+        self.unlink_excess_groups(stage_id);
+        false
     }
 
     // --- Getters for keeping state of new tournament & dependencies ---
@@ -362,7 +417,7 @@ impl Tournament {
     ) -> <HashMap<Uuid, Stage> as Diffable<Stage>>::Diff {
         // We collect ALL valid reachable IDs in local. The Diffable impl for HashMap will pick
         // only the ones that exist in the 'stages' map.
-        let valid_ids = self.get_valid_dependencies();
+        let valid_ids = self.collect_ids_in_structure();
 
         self.stages.get_diff(&origin.stages, Some(&valid_ids))
     }
@@ -373,7 +428,7 @@ impl Tournament {
     ) -> <HashMap<Uuid, Group> as Diffable<Group>>::Diff {
         // We collect ALL valid reachable IDs in local. The Diffable impl for HashMap will pick
         // only the ones that exist in the 'groups' map.
-        let valid_ids = self.get_valid_dependencies();
+        let valid_ids = self.collect_ids_in_structure();
 
         self.groups.get_diff(&origin.groups, Some(&valid_ids))
     }
@@ -420,43 +475,23 @@ impl Tournament {
 
     // --- Validation ---
 
-    /// Collects all valid IDs reachable from the root of structure.
-    pub fn get_valid_dependencies(&self) -> HashSet<Uuid> {
-        let mut valid = HashSet::new();
-        let Some(start) = self.get_root_id() else {
-            return valid;
-        };
-
-        // Use BFS to traverse the entire dependency graph starting from root
-        let mut bfs = Bfs::new(&self.structure, start);
-        while let Some(node) = bfs.next(&self.structure) {
-            // We include all reachable nodes.
-            // Since UUIDs are unique, we don't need to filter by type here.
-            // The specific HashMaps (stages, groups, etc.) will simply ignore
-            // IDs that belong to other types when we try to look them up later.
-            valid.insert(node);
-        }
-
-        valid
-    }
-
     /// Validates the entire tournament structure.
     /// Returns Ok(()) if the entire structure represents a valid state that could be saved/started.
     /// Else returns all validation errors found.
-    pub fn is_valid(&self) -> bool {
+    pub fn validation(&self) -> ValidationResult<()> {
         // 1. Root Tournament Check
         let Some(tournament) = self.get_base() else {
-            return false;
+            return Ok(());
         };
+
+        let mut errs = ValidationErrors::new();
 
         // Assuming TournamentBase has a validate() method returning Result
-        if tournament.validate().is_err() {
-            return false;
+        if let Err(err) = tournament.validate() {
+            errs.append(err);
         }
 
-        let Some(start) = self.get_root_id() else {
-            return false;
-        };
+        let start = tournament.get_id();
 
         // Traverse structure
         let mut bfs = Bfs::new(&self.structure, start);
@@ -468,9 +503,9 @@ impl Tournament {
                     DependencyType::Stage => {
                         // Stage needs Tournament context for validation (e.g. strict entrant limits)
                         if let Some(stage) = self.stages.get(&target)
-                            && stage.validate(tournament).is_err()
+                            && let Err(err) = stage.validate(tournament)
                         {
-                            return false;
+                            errs.append(err);
                         };
                     }
                     DependencyType::Group => {
@@ -483,7 +518,7 @@ impl Tournament {
             }
         }
 
-        true
+        if errs.is_empty() { Ok(()) } else { Err(errs) }
     }
 
     /// Validates if the provided object numbers exist in the current tournament structure.
@@ -556,27 +591,19 @@ impl Tournament {
         self.get_base().map(|t| t.get_id())
     }
 
-    /// Expects the base tournament, returning an error if not set.
-    fn expect_base(&self) -> CoreResult<&TournamentBase> {
-        self.get_base()
-            .ok_or(CoreError::MissingId("TournamentBase".into()))
-    }
+    /// Collects all valid IDs reachable from the root of structure.
+    fn collect_ids_in_structure(&self) -> HashSet<Uuid> {
+        let Some(start) = self.get_root_id() else {
+            return HashSet::new();
+        };
 
-    /// Expects the mutable base tournament, returning an error if not set.
-    fn expect_base_mut(&mut self) -> CoreResult<&mut TournamentBase> {
-        self.base
-            .as_mut()
-            .ok_or(CoreError::MissingId("TournamentBase".into()))
-    }
-
-    /// Expects the root tournament ID, returning an error if base is not set.
-    fn expect_tournament_id(&self) -> CoreResult<Uuid> {
-        self.get_root_id()
-            .ok_or(CoreError::MissingId("TournamentBase".into()))
+        // Use BFS to traverse the entire dependency graph starting from root
+        let bfs = Bfs::new(&self.structure, start);
+        bfs.iter(&self.structure).collect()
     }
 
     /// Checks if the new tournament configuration requires removing stages.
-    fn cleanup_excess_stages(&mut self, root_id: Uuid) {
+    fn unlink_excess_stages(&mut self, root_id: Uuid) {
         if let Some(tournament) = self.get_base() {
             let num_expected = tournament.get_tournament_mode().get_num_of_stages();
 
@@ -592,7 +619,7 @@ impl Tournament {
     }
 
     /// Checks if the new tournament configuration requires removing stages.
-    fn cleanup_excess_groups(&mut self, root_id: Uuid) {
+    fn unlink_excess_groups(&mut self, root_id: Uuid) {
         if let Some(stage) = self.stages.get(&root_id) {
             let num_expected = stage.get_num_groups();
 

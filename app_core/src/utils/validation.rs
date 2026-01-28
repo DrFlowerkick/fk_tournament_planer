@@ -44,6 +44,9 @@ impl std::error::Error for FieldError {}
 pub type FieldResult<T> = Result<T, FieldError>;
 
 impl FieldError {
+    pub fn get_object_id(&self) -> Uuid {
+        self.object_id
+    }
     pub fn get_field(&self) -> &str {
         &self.field
     }
@@ -90,6 +93,9 @@ impl ValidationErrors {
     }
     pub fn add(&mut self, err: FieldError) {
         self.errors.push(err);
+    }
+    pub fn append(&mut self, mut other: ValidationErrors) {
+        self.errors.append(&mut other.errors);
     }
     pub fn is_empty(&self) -> bool {
         self.errors.is_empty()
