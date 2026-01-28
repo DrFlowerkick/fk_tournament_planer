@@ -17,6 +17,7 @@ app_core = { path = "../app_core" }
 displaydoc.workspace = true
 gloo-timers.workspace = true
 http.workspace = true
+isocountry.workspace = true
 leptos.workspace = true
 leptos_router.workspace = true
 petgraph.workspace = true

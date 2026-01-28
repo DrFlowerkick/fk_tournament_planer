@@ -2,7 +2,7 @@ use app_core::{
     SportError, SportResult,
     utils::validation::{FieldError, ValidationErrors, ValidationResult},
 };
-use app_utils::components::inputs::SelectableOption;
+use app_utils::enum_utils::SelectableOption;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{fmt::Display, time::Duration};

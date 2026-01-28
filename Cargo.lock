@@ -122,6 +122,7 @@ dependencies = [
  "displaydoc",
  "gloo-timers",
  "http",
+ "isocountry",
  "leptos",
  "leptos_router",
  "petgraph",
