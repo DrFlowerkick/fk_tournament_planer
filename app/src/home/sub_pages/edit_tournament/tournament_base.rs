@@ -1,17 +1,15 @@
 //! create or edit a tournament
 
-use app_core::{
-    TournamentBase, TournamentMode, TournamentState, TournamentType,
-    utils::{id_version::IdVersion, traits::ObjectIdVersion},
-};
+use app_core::{TournamentEditorState, TournamentMode, TournamentState};
 use app_utils::{
-    components::inputs::{EnumSelect, ValidatedNumberInput, ValidatedTextInput},
+    components::inputs::{
+        EnumSelectWithValidation, NumberInputWithValidation, TextInputWithValidation,
+    },
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error, handle_write_error},
     },
     hooks::{
-        is_field_valid::is_field_valid,
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
@@ -23,7 +21,7 @@ use app_utils::{
     state::{
         error_state::PageErrorContext,
         toast_state::{ToastContext, ToastVariant},
-        tournament_editor::context::TournamentEditorContext,
+        tournament_editor::new_context::TournamentEditorContext,
     },
 };
 use leptos::prelude::*;
@@ -43,8 +41,6 @@ pub fn EditTournament() -> impl IntoView {
     let page_err_ctx = expect_context::<PageErrorContext>();
     let toast_ctx = expect_context::<ToastContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
-
-    let is_changed = move || tournament_editor_context.is_changed();
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
@@ -88,7 +84,7 @@ pub fn EditTournament() -> impl IntoView {
         let navigate = navigate.clone();
         move || {
             // Listen to the explicit trigger
-            tournament_editor_context.url_validation_trigger().track();
+            tournament_editor_context.track_url_validation.track();
 
             // Validate url against current params and navigate if invalid params detected
             if let Some(redirect_path) =
@@ -107,43 +103,36 @@ pub fn EditTournament() -> impl IntoView {
         }
     });
 
-    // --- Form Signals ---
-    let set_id_version = RwSignal::new(IdVersion::default());
-    let set_name = RwSignal::new("".to_string());
-    let set_entrants = RwSignal::new(0_u32);
-    let t_type = RwSignal::new(TournamentType::Scheduled);
-    let set_mode = RwSignal::new(TournamentMode::SingleStage);
-    let set_num_rounds_swiss = RwSignal::new(0_u32);
-    let state = RwSignal::new(TournamentState::Draft);
-
-    let set_signals_from_tournament = move |tournament: &TournamentBase| {
-        set_id_version.set(tournament.get_id_version());
-        set_name.set(tournament.get_name().to_string());
-        set_entrants.set(tournament.get_num_entrants());
-        t_type.set(tournament.get_tournament_type());
-        set_mode.set(tournament.get_tournament_mode());
-        if let TournamentMode::SwissSystem { num_rounds } = tournament.get_tournament_mode() {
-            set_num_rounds_swiss.set(num_rounds);
-        }
-        state.set(tournament.get_tournament_state());
-    };
+    // --- Setter Callbacks for Tournament Base Properties ---
+    let (object_id, set_object_id) = signal(None::<Uuid>);
+    let set_name = Callback::new(move |name| tournament_editor_context.set_base_name.set(name));
+    let set_num_entrants =
+        Callback::new(move |num| tournament_editor_context.set_base_num_entrants.set(num));
+    let set_mode = Callback::new(move |mode| {
+        tournament_editor_context.set_base_mode.set(mode);
+    });
+    let set_num_rounds_swiss = Callback::new(move |num| {
+        tournament_editor_context
+            .set_base_num_rounds_swiss_system
+            .set(num)
+    });
 
     // --- Server Resources & Actions  ---
     // load tournament base resource
     let tournament_res = Resource::new(
         move || (tournament_id(), sport_id()),
         move |(maybe_t_id, maybe_s_id)| async move {
-            // do we really need to check sport_id here?
-            if let Some(_s_id) = maybe_s_id {
-                if let Some(t_id) = maybe_t_id {
-                    return match load_tournament_base(t_id).await {
-                        Ok(None) => Err(AppError::ResourceNotFound(
-                            "Tournament Base".to_string(),
-                            t_id,
-                        )),
-                        load_result => load_result,
-                    };
-                }
+            // ToDo: do we really need to check sport_id here?
+            if let Some(_s_id) = maybe_s_id
+                && let Some(t_id) = maybe_t_id
+            {
+                return match load_tournament_base(t_id).await {
+                    Ok(None) => Err(AppError::ResourceNotFound(
+                        "Tournament Base".to_string(),
+                        t_id,
+                    )),
+                    load_result => load_result,
+                };
             }
             Ok(None)
         },
@@ -176,15 +165,23 @@ pub fn EditTournament() -> impl IntoView {
                     url_with_update_query("tournament_id", &tb.get_id().to_string(), None);
                 // set saved tb as origin in editor context before navigation to prevent
                 // load effect to reset the editor state
-                tournament_editor_context.set_tournament(tb, true);
-                navigate(
-                    &nav_url,
-                    NavigateOptions {
-                        replace: true,
-                        scroll: false,
-                        ..Default::default()
-                    },
-                );
+                // ToDo: is this still required? Uncomment if yes
+                //tournament_editor_context.set_base(tb);
+
+                if tournament_id().is_some() {
+                    // if it was a new tournament, trigger refetch to load the full data
+                    tournament_res.refetch();
+                } else {
+                    // else navigate directly
+                    navigate(
+                        &nav_url,
+                        NavigateOptions {
+                            replace: true,
+                            scroll: false,
+                            ..Default::default()
+                        },
+                    );
+                }
             }
             Some(Err(err)) => {
                 handle_write_error(
@@ -204,6 +201,8 @@ pub fn EditTournament() -> impl IntoView {
         Some(Ok(_stage)) => {
             save_stage.clear();
             toast_ctx.add("Stage saved successfully", ToastVariant::Success);
+            // trigger refetch of stage resource
+            tournament_editor_context.trigger_stage_refetch();
         }
         Some(Err(err)) => {
             handle_write_error(
@@ -223,14 +222,13 @@ pub fn EditTournament() -> impl IntoView {
     let on_save = move || {
         is_dispatching.set(true);
         // get diffs
-        let tournament_diff = tournament_editor_context.get_tournament_diff();
-        let stages_diff = tournament_editor_context.get_stages_diff();
-        let groups_diff = tournament_editor_context.get_groups_diff();
-        // clear state
-        tournament_editor_context.clear();
+        let base_diff = tournament_editor_context.collect_base_diff();
+        let stages_diff = tournament_editor_context.collect_stages_diff();
+        let groups_diff = tournament_editor_context.collect_groups_diff();
         // dispatch saves
-        if let Some(tournament) = tournament_diff {
-            save_tournament_base.dispatch(SaveTournamentBase { tournament });
+        if let Some(base) = base_diff {
+            // ToDo: rename later tournament to base in SaveTournamentBase
+            save_tournament_base.dispatch(SaveTournamentBase { tournament: base });
         }
         for changed_stage in stages_diff {
             save_stage.dispatch(SaveStage {
@@ -250,63 +248,6 @@ pub fn EditTournament() -> impl IntoView {
             || is_dispatching.get();
 
         tournament_editor_context.set_busy(busy);
-    });
-
-    // --- Validation Logic ---
-    let current_tournament_base = Memo::new(move |_| {
-        // Track set_id_version to trigger recomputation
-        set_id_version.track();
-
-        if let Some(s_id) = sport_id()
-            && let Some(mut tb) = tournament_editor_context.get_tournament_untracked()
-        {
-            // Construct the mode explicitly combining the variant selection and the specific input signal
-            let mode = match set_mode.get() {
-                TournamentMode::SwissSystem { .. } => TournamentMode::SwissSystem {
-                    num_rounds: set_num_rounds_swiss.get(),
-                },
-                other => other,
-            };
-
-            tb.set_id_version(set_id_version.get())
-                .set_name(set_name.get())
-                .set_sport_id(s_id)
-                .set_num_entrants(set_entrants.get())
-                .set_tournament_type(t_type.get())
-                .set_tournament_mode(mode)
-                .set_tournament_state(state.get());
-            Some(tb)
-        } else {
-            None
-        }
-    });
-
-    // Sync to editor state
-    Effect::new(move || {
-        if let Some(current_tournament) = current_tournament_base.get() {
-            tournament_editor_context.set_tournament(current_tournament.clone(), false);
-        }
-    });
-
-    // Validation runs against the constantly updated Memo
-    let validation_result = Signal::derive(move || {
-        if let Some(current) = current_tournament_base.get() {
-            current.validate()
-        } else {
-            Ok(())
-        }
-    });
-
-    // error messages for form fields
-    let name_error = Signal::derive(move || is_field_valid(validation_result, "name"));
-    let entrants_error = Signal::derive(move || is_field_valid(validation_result, "num_entrants"));
-    // Only show Swiss Round logic errors if Swiss Mode is active
-    let rounds_error = Signal::derive(move || {
-        if let TournamentMode::SwissSystem { .. } = set_mode.get() {
-            is_field_valid(validation_result, "mode.num_rounds")
-        } else {
-            Ok(())
-        }
     });
 
     view! {
@@ -368,31 +309,27 @@ pub fn EditTournament() -> impl IntoView {
                                 }
                             }>
                                 // check if we have new or existing tournament
+                                // In case of new tournament, initialize editor with new base if
+                                // -> no base is present yet
+                                // -> an already saved base is in context (meaning a click on New Tournament
+                                // while editing an existing one)
                                 {move || {
                                     tournament_res
                                         .and_then(|may_be_t| {
                                             match may_be_t {
                                                 Some(tournament) => {
-                                                    tournament_editor_context
-                                                        .set_tournament(tournament.clone(), true);
-                                                    set_signals_from_tournament(&tournament);
+                                                    tournament_editor_context.set_base(tournament.clone());
+                                                    set_object_id.set(Some(tournament.get_id()));
                                                 }
                                                 None => {
                                                     if let Some(s_id) = sport_id()
-                                                        && (tournament_editor_context
-                                                            .get_tournament_untracked()
-                                                            .is_none()
-                                                            || tournament_editor_context
-                                                                .get_origin_tournament_untracked()
-                                                                .is_some())
+                                                        && matches!(
+                                                            tournament_editor_context.state.get_untracked(),
+                                                            TournamentEditorState::None | TournamentEditorState::Edit
+                                                        )
                                                     {
-                                                        let mut tournament = TournamentBase::default();
-                                                        tournament
-                                                            .set_sport_id(s_id)
-                                                            .set_id_version(IdVersion::NewWithId(Uuid::new_v4()));
-                                                        tournament_editor_context
-                                                            .set_tournament(tournament.clone(), false);
-                                                        set_signals_from_tournament(&tournament);
+                                                        let new_id = tournament_editor_context.new_base(s_id);
+                                                        set_object_id.set(Some(new_id));
                                                     }
                                                 }
                                             }
@@ -400,11 +337,12 @@ pub fn EditTournament() -> impl IntoView {
                                 }}
                                 <fieldset
                                     disabled=move || {
-                                        tournament_editor_context.is_busy()
+                                        tournament_editor_context.is_busy.get()
                                             || page_err_ctx.has_errors()
                                             || matches!(
-                                                state.get(),
-                                                TournamentState::ActiveStage(_) | TournamentState::Finished
+                                                tournament_editor_context.base_state.get(),
+                                                Some(TournamentState::ActiveStage(_))
+                                                | Some(TournamentState::Finished)
                                             )
                                     }
                                     class="contents"
@@ -412,43 +350,55 @@ pub fn EditTournament() -> impl IntoView {
                                 >
                                     <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                                        <ValidatedTextInput
+                                        <TextInputWithValidation
                                             label="Tournament Name"
                                             name="tournament-name"
-                                            value=set_name
-                                            validation_error=name_error
-                                            is_new=is_new
-                                            on_blur=move || {
-                                                if let Some(current_tournament) = current_tournament_base
-                                                    .get()
-                                                {
-                                                    set_name.set(current_tournament.get_name().to_string());
-                                                }
-                                            }
+                                            value=tournament_editor_context.base_name
+                                            set_value=set_name
+                                            validation_result=tournament_editor_context
+                                                .validation_result
+                                            object_id=object_id
+                                            field="name"
                                         />
 
-                                        <ValidatedNumberInput
+                                        <NumberInputWithValidation
                                             label="Number of Entrants"
                                             name="tournament-entrants"
-                                            value=set_entrants
-                                            validation_error=entrants_error
+                                            value=tournament_editor_context.base_num_entrants
+                                            set_value=set_num_entrants
+                                            validation_result=tournament_editor_context
+                                                .validation_result
+                                            object_id=object_id
+                                            field="num_entrants"
                                             min="2".to_string()
                                         />
 
-                                        <EnumSelect
+                                        <EnumSelectWithValidation
                                             label="Mode"
                                             name="tournament-mode"
-                                            value=set_mode
+                                            value=tournament_editor_context.base_mode
+                                            set_value=set_mode
+                                            validation_result=tournament_editor_context
+                                                .validation_result
+                                            object_id=None
+                                            field="No Direct Validation"
                                         />
 
                                         <Show when=move || {
-                                            matches!(set_mode.get(), TournamentMode::SwissSystem { .. })
+                                            matches!(
+                                                tournament_editor_context.base_mode.get(),
+                                                Some(TournamentMode::SwissSystem { .. })
+                                            )
                                         }>
-                                            <ValidatedNumberInput
+                                            <NumberInputWithValidation
                                                 label="Rounds (Swiss System)"
                                                 name="tournament-swiss-num_rounds"
-                                                value=set_num_rounds_swiss
-                                                validation_error=rounds_error
+                                                value=tournament_editor_context.base_num_rounds_swiss_system
+                                                set_value=set_num_rounds_swiss
+                                                validation_result=tournament_editor_context
+                                                    .validation_result
+                                                object_id=object_id
+                                                field="mod.num_rounds"
                                                 min="1".to_string()
                                             />
                                         </Show>
@@ -456,8 +406,8 @@ pub fn EditTournament() -> impl IntoView {
                                     </div>
                                 // stages editor links
                                 </fieldset>
-                                {move || match set_mode.get() {
-                                    TournamentMode::SingleStage => {
+                                {move || match tournament_editor_context.base_mode.get() {
+                                    Some(TournamentMode::SingleStage) => {
                                         // set up single stage editor
                                         // with single stage we only have one group in stage
                                         // therefore we "skip" the stage editor and go directly to group editor
@@ -476,7 +426,7 @@ pub fn EditTournament() -> impl IntoView {
                                         }
                                             .into_any()
                                     }
-                                    TournamentMode::PoolAndFinalStage => {
+                                    Some(TournamentMode::PoolAndFinalStage) => {
                                         // set up pool and final stage editor
                                         // with pool and final stage we have two stages to configure
                                         view! {
@@ -503,7 +453,7 @@ pub fn EditTournament() -> impl IntoView {
                                         }
                                             .into_any()
                                     }
-                                    TournamentMode::TwoPoolStagesAndFinalStage => {
+                                    Some(TournamentMode::TwoPoolStagesAndFinalStage) => {
                                         // set up two pool stages and final stage editor
                                         // with pool and final stage we have three stages to configure
                                         view! {
@@ -539,7 +489,7 @@ pub fn EditTournament() -> impl IntoView {
                                         }
                                             .into_any()
                                     }
-                                    TournamentMode::SwissSystem { .. } => {
+                                    Some(TournamentMode::SwissSystem { .. }) => {
                                         // set up swiss system stage editor
                                         // with swiss system we only have one group in stage
                                         // therefore we "skip" the stage editor and go directly to group editor
@@ -558,6 +508,7 @@ pub fn EditTournament() -> impl IntoView {
                                         }
                                             .into_any()
                                     }
+                                    None => ().into_any(),
                                 }}
 
                             </ErrorBoundary>
@@ -579,7 +530,7 @@ pub fn EditTournament() -> impl IntoView {
                                 class="btn btn-ghost"
                                 data-testid="btn-tournament-cancel"
                                 on:click=move |_| on_cancel.run(())
-                                disabled=move || tournament_editor_context.is_busy()
+                                disabled=move || tournament_editor_context.is_busy.get()
                             >
                                 "Cancel"
                             </button>
@@ -589,12 +540,16 @@ pub fn EditTournament() -> impl IntoView {
                                 data-testid="btn-tournament-save"
                                 on:click=move |_| on_save()
                                 disabled=move || {
-                                    tournament_editor_context.is_busy() || page_err_ctx.has_errors()
-                                        || !tournament_editor_context.is_valid() || !is_changed()
+                                    tournament_editor_context.is_busy.get()
+                                        || page_err_ctx.has_errors()
+                                        || tournament_editor_context
+                                            .validation_result
+                                            .get()
+                                            .is_err() || !tournament_editor_context.is_changed.get()
                                 }
                             >
                                 {move || {
-                                    if tournament_editor_context.is_busy() {
+                                    if tournament_editor_context.is_busy.get() {
                                         view! {
                                             <span class="loading loading-spinner"></span>
                                             "Saving..."

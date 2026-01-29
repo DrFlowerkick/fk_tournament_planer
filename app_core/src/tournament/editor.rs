@@ -3,6 +3,18 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 
+/// State of the tournament editor, indicating whether a new tournament is being created
+/// or an existing tournament is being edited.
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TournamentEditorState {
+    /// Initial state with no tournament loaded.
+    None,
+    /// New tournament being created (no origin).
+    New,
+    /// Existing tournament being edited (has origin).
+    Edit,
+}
+
 /// TournamentEditor holds the local editable tournament and the origin tournament for change tracking.
 /// This allows tracking changes made to the tournament during editing.
 /// The `local` tournament is the one being edited, while the `origin` tournament serves as the reference point
@@ -33,13 +45,32 @@ impl TournamentEditor {
         }
     }
 
+    // --- State of Editor ---
+    /// Returns the current state of the editor: None, New, or Edit.
+    pub fn get_state(&self) -> TournamentEditorState {
+        if self.origin.get_base().is_none() {
+            if self.local.get_base().is_none() {
+                TournamentEditorState::None
+            } else {
+                TournamentEditorState::New
+            }
+        } else {
+            TournamentEditorState::Edit
+        }
+    }
+
     // --- Generators for new Tournament Objects ---
 
     /// Creates a new tournament base in the local state and clears the origin.
     /// Returns the old origin base if any.
     pub fn new_base(&mut self, sport_id: Uuid) -> Option<TournamentBase> {
+        // store old origin
+        let old_origin = self.origin.clear_base();
+        // reset self
+        *self = TournamentEditor::new();
+        // create new base in local
         self.local.new_base(sport_id);
-        self.origin.clear_base()
+        old_origin
     }
 
     pub fn new_stage(&mut self, stage_number: u32) -> bool {
@@ -66,7 +97,7 @@ impl TournamentEditor {
     /// Sets the tournament base for both origin and local.
     /// Returns the old origin base if any.
     pub fn set_base(&mut self, base: TournamentBase) -> Option<TournamentBase> {
-        self.local.set_base(base.clone())?;
+        self.local.set_base(base.clone());
         self.origin.set_base(base)
     }
 

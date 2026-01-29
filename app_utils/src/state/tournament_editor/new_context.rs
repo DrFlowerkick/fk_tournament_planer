@@ -4,8 +4,8 @@
 //! efficient state updates via `RwSignal` without unnecessary cloning.
 
 use app_core::{
-    Group, Stage, TournamentBase, TournamentEditor, TournamentMode,
-    utils::validation::ValidationResult,
+    Group, Stage, TournamentBase, TournamentEditor, TournamentEditorState, TournamentMode,
+    TournamentState, utils::validation::ValidationResult,
 };
 use leptos::prelude::*;
 use uuid::Uuid;
@@ -14,6 +14,8 @@ use uuid::Uuid;
 ///
 /// Uses an internal `RwSignal` to hold the state, encouraging the use of
 /// `.update()` for mutations and `.with()` for reading to minimize cloning of heavy structures.
+/// This context also provides various read/write slices for common properties
+/// to facilitate fine-grained reactivity in the UI.
 #[derive(Clone, Copy, Debug)]
 pub struct TournamentEditorContext {
     inner: RwSignal<TournamentEditor>,
@@ -22,8 +24,9 @@ pub struct TournamentEditorContext {
     busy: RwSignal<bool>,
     /// Simple counter to trigger URL validation checks manually
     url_validation_trigger: RwSignal<usize>,
-    /// Simple counter to trigger refetching resources of objects after save
-    resource_refetch_trigger: RwSignal<usize>,
+    /// Simple counter to trigger refetching stage resource after save
+    stage_refetch_trigger: RwSignal<usize>,
+    // ToDo: we may need refetch trigger for other objects later
 
     // --- Slices for Tournament Base ---
     /// Read slice for accessing the tournament base name, if any
@@ -49,11 +52,21 @@ pub struct TournamentEditorContext {
     /// Write slice for setting the current stage number of groups
     pub set_stage_num_groups: SignalSetter<u32>,
 
-    // --- Status Signals ---
+    // --- Status and trigger tracker Signals ---
+    /// Read slice for getting the state of tournament editor
+    pub state: Signal<TournamentEditorState>,
+    /// Read slice for accessing the tournament base state, if any
+    pub base_state: Signal<Option<TournamentState>>,
+    /// Read slice for checking if the editor is busy (saving/loading)
+    pub is_busy: Signal<bool>,
     /// Read slice for checking if there are unsaved changes
     pub is_changed: Signal<bool>,
     /// Read slice for accessing the validation result of the tournament
     pub validation_result: Signal<ValidationResult<()>>,
+    /// Read signal to track URL validation triggers
+    pub track_url_validation: Signal<usize>,
+    /// Read signal to track stage refetch triggers
+    pub track_stage_refetch: Signal<usize>,
 }
 
 impl Default for TournamentEditorContext {
@@ -69,9 +82,9 @@ impl TournamentEditorContext {
         let inner = RwSignal::new(TournamentEditor::new());
         let busy = RwSignal::new(false);
         let url_validation_trigger = RwSignal::new(0);
-        let resource_refetch_trigger = RwSignal::new(0);
+        let stage_refetch_trigger = RwSignal::new(0);
 
-        // Create slices for base
+        // Create slices and Callbacks for base
         let (base_name, set_base_name) = create_slice(
             inner,
             |inner| inner.get_base().map(|b| b.get_name().to_string()),
@@ -122,21 +135,19 @@ impl TournamentEditorContext {
         );
 
         // Create reading slices for status signals
-        let is_changed = create_read_slice(
-            inner,
-            |inner | inner.is_changed()
-        );
-        let validation_result = create_read_slice(
-            inner,
-            |inner| inner.validation()
-        );
+        let state = create_read_slice(inner, |inner| inner.get_state());
+        let base_state = create_read_slice(inner, |inner| {
+            inner.get_base().map(|b| b.get_tournament_state())
+        });
+        let is_changed = create_read_slice(inner, |inner| inner.is_changed());
+        let validation_result = create_read_slice(inner, |inner| inner.validation());
 
         Self {
             // core signals
             inner,
             busy,
             url_validation_trigger,
-            resource_refetch_trigger,
+            stage_refetch_trigger,
             // base slices
             base_name,
             set_base_name,
@@ -150,8 +161,13 @@ impl TournamentEditorContext {
             stage_num_groups,
             set_stage_num_groups,
             // status signals
+            state,
+            base_state,
+            is_busy: busy.read_only().into(),
             is_changed,
             validation_result,
+            track_url_validation: url_validation_trigger.read_only().into(),
+            track_stage_refetch: stage_refetch_trigger.read_only().into(),
         }
     }
 
@@ -162,23 +178,12 @@ impl TournamentEditorContext {
         self.busy.set(is_busy);
     }
 
-    /// Checks if the editor is currently busy (saving/loading).
-    pub fn is_busy(&self) -> bool {
-        self.busy.get()
-    }
-
     // --- URL Validation Trigger and Navigation ---
 
     /// Triggers a global check of the current navigation path validity.
     /// This should be called by components after modifying structural data (e.g. changing mode or group counts).
     pub fn trigger_url_validation(&self) {
         self.url_validation_trigger.update(|v| *v += 1);
-    }
-
-    /// Returns the trigger signal for effects to listen to.
-    /// Use signal with 'track()' to re-run validation when triggered.
-    pub fn url_validation_trigger(&self) -> ReadSignal<usize> {
-        self.url_validation_trigger.read_only()
     }
 
     /// Validates the current URL parameters against the editor state.
@@ -208,34 +213,21 @@ impl TournamentEditorContext {
     }
 
     // --- Resource Refetch Trigger ---
-    
-    /// Triggers a refetch of resources for all dependent objects after saving.
-    pub fn trigger_resource_refetch(&self) {
-        self.resource_refetch_trigger.update(|v| *v += 1);
-    }
 
-    /// Returns the trigger signal for effects to listen to.
-    /// Use signal with 'track()' to refetch resources when triggered.
-    pub fn resource_refetch_trigger(&self) -> ReadSignal<usize> {
-        self.resource_refetch_trigger.read_only()
+    /// Triggers a refetch of stage resources after saving.
+    pub fn trigger_stage_refetch(&self) {
+        self.stage_refetch_trigger.update(|v| *v += 1);
     }
 
     // --- Actions (Write / Update) ---
 
-    // ToDo: if we create a database port for saving, we may not need clear() anymore
-    /// Clears the entire editor state.
-    pub fn clear(&self) {
-        self.inner.update(|state| {
-            *state = TournamentEditor::new();
-        })
-    }
-
     // ToDo: we probably must add an input for tournament type here
     /// Creates a new tournament base with the given sport ID.
-    pub fn new_base(&self, sport_id: Uuid) {
+    pub fn new_base(&self, sport_id: Uuid) -> Uuid {
         self.inner.update(|state| {
             state.new_base(sport_id);
-        })
+        });
+        self.inner.with(|state| state.get_base().unwrap().get_id())
     }
 
     /// Sets tournament configuration based on user input.

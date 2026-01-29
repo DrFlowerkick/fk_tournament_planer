@@ -74,7 +74,6 @@ pub fn TextInputWithValidation<T>(
     value: Signal<Option<T>>,
     /// Callback to push changes to source of value
     /// Using Callback<T> allows passing closures and Callbacks.
-    #[prop(into)]
     set_value: Callback<T>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
@@ -307,8 +306,7 @@ pub fn EnumSelectWithValidation<E>(
     value: Signal<Option<E>>,
     /// Callback to push changes to source of value
     /// Using Callback<E> allows passing closures and Callbacks.
-    #[prop(into)]
-    on_write: Callback<E>,
+    set_value: Callback<E>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
     validation_result: Signal<ValidationResult<()>>,
@@ -376,7 +374,7 @@ where
                         .into_iter()
                         .find(|o| o.value() == new_val)
                     {
-                        on_write.run(selected_variant);
+                        set_value.run(selected_variant);
                     }
                     set_is_selecting.set(false);
                 }
@@ -564,8 +562,7 @@ pub fn NumberInputWithValidation<T>(
     value: Signal<Option<T>>,
     /// Callback to push changes to source of value
     /// Using Callback<T> allows passing closures and Callbacks.
-    #[prop(into)]
-    on_write: Callback<T>,
+    set_value: Callback<T>,
     /// Optional step attribute for the number input
     #[prop(into, optional)]
     step: String,
@@ -659,7 +656,7 @@ where
                     let new_val = ev.target().value();
                     match new_val.parse::<T>() {
                         Ok(val) => {
-                            on_write.run(val);
+                            set_value.run(val);
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
@@ -878,8 +875,7 @@ pub fn DurationInputWithValidation(
     value: Signal<Option<Duration>>,
     /// Callback to push changes to source of value
     /// Using Callback<T> allows passing closures and Callbacks.
-    #[prop(into)]
-    on_write: Callback<Duration>,
+    set_value: Callback<Duration>,
     /// Duration unit for input and display
     #[prop(into)]
     unit: DurationInputUnit,
@@ -972,7 +968,7 @@ where
                                 DurationInputUnit::Minutes => Duration::from_secs(val * 60),
                                 DurationInputUnit::Hours => Duration::from_secs(val * 3600),
                             };
-                            on_write.run(new_duration);
+                            set_value.run(new_duration);
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
