@@ -22,6 +22,8 @@ pub struct TournamentEditorContext {
     busy: RwSignal<bool>,
     /// Simple counter to trigger URL validation checks manually
     url_validation_trigger: RwSignal<usize>,
+    /// Simple counter to trigger refetching resources of objects after save
+    resource_refetch_trigger: RwSignal<usize>,
 
     // --- Slices for Tournament Base ---
     /// Read slice for accessing the tournament base name, if any
@@ -46,6 +48,12 @@ pub struct TournamentEditorContext {
     pub stage_num_groups: Signal<Option<u32>>,
     /// Write slice for setting the current stage number of groups
     pub set_stage_num_groups: SignalSetter<u32>,
+
+    // --- Status Signals ---
+    /// Read slice for checking if there are unsaved changes
+    pub is_changed: Signal<bool>,
+    /// Read slice for accessing the validation result of the tournament
+    pub validation_result: Signal<ValidationResult<()>>,
 }
 
 impl Default for TournamentEditorContext {
@@ -61,6 +69,7 @@ impl TournamentEditorContext {
         let inner = RwSignal::new(TournamentEditor::new());
         let busy = RwSignal::new(false);
         let url_validation_trigger = RwSignal::new(0);
+        let resource_refetch_trigger = RwSignal::new(0);
 
         // Create slices for base
         let (base_name, set_base_name) = create_slice(
@@ -112,11 +121,22 @@ impl TournamentEditorContext {
             },
         );
 
+        // Create reading slices for status signals
+        let is_changed = create_read_slice(
+            inner,
+            |inner | inner.is_changed()
+        );
+        let validation_result = create_read_slice(
+            inner,
+            |inner| inner.validation()
+        );
+
         Self {
             // core signals
             inner,
             busy,
             url_validation_trigger,
+            resource_refetch_trigger,
             // base slices
             base_name,
             set_base_name,
@@ -129,6 +149,9 @@ impl TournamentEditorContext {
             // stage slices
             stage_num_groups,
             set_stage_num_groups,
+            // status signals
+            is_changed,
+            validation_result,
         }
     }
 
@@ -184,15 +207,30 @@ impl TournamentEditorContext {
             })
     }
 
+    // --- Resource Refetch Trigger ---
+    
+    /// Triggers a refetch of resources for all dependent objects after saving.
+    pub fn trigger_resource_refetch(&self) {
+        self.resource_refetch_trigger.update(|v| *v += 1);
+    }
+
+    /// Returns the trigger signal for effects to listen to.
+    /// Use signal with 'track()' to refetch resources when triggered.
+    pub fn resource_refetch_trigger(&self) -> ReadSignal<usize> {
+        self.resource_refetch_trigger.read_only()
+    }
+
     // --- Actions (Write / Update) ---
 
-    /// Clear the entire editor state.
+    // ToDo: if we create a database port for saving, we may not need clear() anymore
+    /// Clears the entire editor state.
     pub fn clear(&self) {
         self.inner.update(|state| {
             *state = TournamentEditor::new();
         })
     }
 
+    // ToDo: we probably must add an input for tournament type here
     /// Creates a new tournament base with the given sport ID.
     pub fn new_base(&self, sport_id: Uuid) {
         self.inner.update(|state| {
@@ -221,33 +259,21 @@ impl TournamentEditorContext {
         })
     }
 
-    // --- Selectors (Read / With) ---
+    // --- diff collectors ---
 
-    /// Checks if there are unsaved changes.
-    pub fn is_changed(&self) -> bool {
-        self.inner.with(|state| state.is_changed())
-    }
-
-    /// Checks if the current state in the editor is valid according to business rules.
-    /// Returns all validation errors, if any.
-    /// This should typically be checked before enabling global "Save" or "Publish" actions.
-    pub fn validate(&self) -> ValidationResult<()> {
-        self.inner.with(|state| state.validation())
-    }
-
-    // ToDo: if we create a database port for saving, we do not need these getters anymore
-    /// Retrieves the diff of the tournament base for saving.
-    pub fn get_base_diff(&self) -> Option<TournamentBase> {
+    // ToDo: if we create a database port for saving, we may not need these getters anymore
+    /// Collects the diff of the tournament base for saving.
+    pub fn collect_base_diff(&self) -> Option<TournamentBase> {
         self.inner.with(|state| state.collect_base_diff())
     }
 
-    /// Retrieves the diff of the stages for saving.
-    pub fn get_stages_diff(&self) -> Vec<Stage> {
+    /// Collects the diff of the stages for saving.
+    pub fn collect_stages_diff(&self) -> Vec<Stage> {
         self.inner.with(|state| state.collect_stages_diff())
     }
 
-    /// Retrieves the diff of the groups for saving.
-    pub fn get_groups_diff(&self) -> Vec<Group> {
+    /// Collects the diff of the groups for saving.
+    pub fn collect_groups_diff(&self) -> Vec<Group> {
         self.inner.with(|state| state.collect_groups_diff())
     }
 }
