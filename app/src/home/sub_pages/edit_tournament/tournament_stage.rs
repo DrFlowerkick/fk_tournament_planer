@@ -1,21 +1,17 @@
 //! Edit tournament stage component
 
-use app_core::{
-    Stage, TournamentMode, TournamentState,
-    utils::{id_version::IdVersion, traits::ObjectIdVersion},
-};
+use app_core::{TournamentMode, TournamentState};
 use app_utils::{
-    components::inputs::ValidatedNumberInput,
+    components::inputs::NumberInputWithValidation,
     error::AppError,
     error::strategy::{handle_general_error, handle_read_error},
     hooks::{
-        is_field_valid::is_field_valid,
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
     params::{StageParams, TournamentBaseParams},
     server_fn::stage::load_stage_by_number,
-    state::{error_state::PageErrorContext, tournament_editor::context::TournamentEditorContext},
+    state::{error_state::PageErrorContext, tournament_editor::TournamentEditorContext},
 };
 use leptos::prelude::*;
 use leptos_router::{
@@ -45,9 +41,7 @@ pub fn EditTournamentStage() -> impl IntoView {
         {
             Some(t_id)
         } else {
-            tournament_editor_context
-                .get_tournament()
-                .map(|t| t.get_id())
+            tournament_editor_context.base_id.get()
         }
     };
 
@@ -55,8 +49,11 @@ pub fn EditTournamentStage() -> impl IntoView {
     let stage_number = move || {
         if let Ok(snp) = stage_number_params.get()
             && let Some(sn) = snp.stage_number
-            && let Some(tournament) = tournament_editor_context.get_tournament()
-            && tournament.get_tournament_mode().get_num_of_stages() > sn
+            && let Some(num_stages) = tournament_editor_context
+                .base_mode
+                .get()
+                .map(|m| m.get_num_of_stages())
+            && num_stages > sn
         {
             return Some(sn);
         }
@@ -64,8 +61,10 @@ pub fn EditTournamentStage() -> impl IntoView {
     };
     let editor_title = move || {
         if let Some(sn) = stage_number()
-            && let Some(tournament) = tournament_editor_context.get_tournament()
-            && let Some(title) = tournament.get_tournament_mode().get_stage_name(sn)
+            && let Some(title) = tournament_editor_context
+                .base_mode
+                .get()
+                .and_then(|m| m.get_stage_name(sn))
         {
             format!("Edit {}", title)
         } else {
@@ -77,8 +76,11 @@ pub fn EditTournamentStage() -> impl IntoView {
     Effect::new(move || {
         if let Ok(snp) = stage_number_params.get()
             && let Some(sn) = snp.stage_number
-            && let Some(tournament) = tournament_editor_context.get_tournament()
-            && tournament.get_tournament_mode().get_num_of_stages() <= sn
+            && let Some(num_stages) = tournament_editor_context
+                .base_mode
+                .get()
+                .map(|m| m.get_num_of_stages())
+            && num_stages <= sn
         {
             // invalid stage number -> signal url validation
             tournament_editor_context.trigger_url_validation();
@@ -87,22 +89,20 @@ pub fn EditTournamentStage() -> impl IntoView {
 
     // hide form if tournament mode has only one stage with one group OR if invalid stage number
     let hide_form = move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament() {
-            matches!(
-                tournament.get_tournament_mode(),
-                TournamentMode::SingleStage | TournamentMode::SwissSystem { num_rounds: _ }
-            ) || stage_number().is_none()
-        } else {
-            false
-        }
+        stage_number().is_none()
+            || matches!(
+                tournament_editor_context.base_mode.get(),
+                Some(TournamentMode::SingleStage)
+                    | Some(TournamentMode::SwissSystem { num_rounds: _ })
+            )
     };
 
     // check if stage is not editable
     let is_active_or_done = move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament()
-            && let Some(sn) = stage_number()
+        if let Some(sn) = stage_number()
+            && let Some(tournament_state) = tournament_editor_context.base_state.get()
         {
-            match tournament.get_tournament_state() {
+            match tournament_state {
                 TournamentState::ActiveStage(acs) => acs >= sn,
                 TournamentState::Finished => true,
                 _ => false,
@@ -112,9 +112,12 @@ pub fn EditTournamentStage() -> impl IntoView {
         }
     };
 
-    // Form Signals
-    let set_id_version = RwSignal::new(IdVersion::default());
-    let set_num_groups = RwSignal::new(1u32);
+    // --- Callback for number of groups input ---
+    let set_num_groups = Callback::new(move |num_groups: u32| {
+        tournament_editor_context
+            .set_stage_num_groups
+            .set(num_groups);
+    });
 
     // --- Server Resources & Actions  ---
     // load stage resource
@@ -138,39 +141,6 @@ pub fn EditTournamentStage() -> impl IntoView {
 
     // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
-
-    // --- Validation Logic ---
-    let current_stage = Memo::new(move |_| {
-        if let Some(sn) = stage_number()
-            && let Some(mut stage) = tournament_editor_context.get_stage_by_number_untracked(sn)
-        {
-            stage.set_num_groups(set_num_groups.get());
-            Some(stage)
-        } else {
-            None
-        }
-    });
-
-    // Sync to Global State
-    Effect::new(move || {
-        if let Some(stage) = current_stage.get() {
-            tournament_editor_context.set_stage(stage.clone(), false);
-        }
-    });
-
-    // Validation runs against the constantly updated Memo
-    let validation_result = Signal::derive(move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament()
-            && let Some(current_stage) = current_stage.get()
-        {
-            current_stage.validate(&tournament)
-        } else {
-            Ok(())
-        }
-    });
-
-    // error messages for form fields
-    let num_groups_error = Signal::derive(move || is_field_valid(validation_result, "num_groups"));
 
     view! {
         <Show when=move || !hide_form()>
@@ -222,29 +192,11 @@ pub fn EditTournamentStage() -> impl IntoView {
                                         .and_then(|may_be_s| {
                                             match may_be_s {
                                                 Some(stage) => {
-                                                    tournament_editor_context.set_stage(*stage, true);
-                                                    set_id_version.set(stage.get_id_version());
-                                                    set_num_groups.set(stage.get_num_groups());
+                                                    tournament_editor_context.set_stage(*stage);
                                                 }
                                                 None => {
-                                                    if let Some(t_id) = tournament_id()
-                                                        && let Some(sn) = stage_number()
-                                                    {
-                                                        if let Some(stage) = tournament_editor_context
-                                                            .get_stage_by_number(sn)
-                                                        {
-                                                            set_id_version.set(stage.get_id_version());
-                                                            set_num_groups.set(stage.get_num_groups());
-                                                        } else {
-                                                            let mut new_state = Stage::new(
-                                                                IdVersion::NewWithId(Uuid::new_v4()),
-                                                            );
-                                                            new_state.set_number(sn);
-                                                            new_state.set_tournament_id(t_id);
-                                                            tournament_editor_context.set_stage(new_state, false);
-                                                            set_id_version.set(new_state.get_id_version());
-                                                            set_num_groups.set(new_state.get_num_groups());
-                                                        }
+                                                    if let Some(sn) = stage_number() {
+                                                        tournament_editor_context.new_stage(sn);
                                                     }
                                                 }
                                             }
@@ -252,26 +204,35 @@ pub fn EditTournamentStage() -> impl IntoView {
                                 }}
                                 <fieldset
                                     disabled=move || {
-                                        tournament_editor_context.is_busy()
+                                        tournament_editor_context.is_busy.get()
                                             || page_err_ctx.has_errors() || is_active_or_done()
                                     }
                                     class="contents"
                                     data-testid="stage-editor-form"
                                 >
                                     <div class="w-full max-w-md grid grid-cols-1 gap-6">
-                                        <ValidatedNumberInput
+                                        <NumberInputWithValidation
                                             label="Number of Groups"
                                             name="stage-num-groups"
-                                            value=set_num_groups
-                                            validation_error=num_groups_error
+                                            value=tournament_editor_context.stage_num_groups
+                                            set_value=set_num_groups
+                                            validation_result=tournament_editor_context
+                                                .validation_result
                                             min="1".to_string()
+                                            object_id=tournament_editor_context.active_stage_id
+                                            field="num_groups"
                                         />
                                     </div>
                                 // group editor links
                                 </fieldset>
                                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
                                     <For
-                                        each=move || 0..set_num_groups.get()
+                                        each=move || {
+                                            0..tournament_editor_context
+                                                .stage_num_groups
+                                                .get()
+                                                .unwrap_or_default()
+                                        }
                                         key=|i| *i
                                         children=move |i| {
                                             view! {

@@ -21,7 +21,7 @@ use app_utils::{
     state::{
         error_state::PageErrorContext,
         toast_state::{ToastContext, ToastVariant},
-        tournament_editor::new_context::TournamentEditorContext,
+        tournament_editor::TournamentEditorContext,
     },
 };
 use leptos::prelude::*;
@@ -104,7 +104,6 @@ pub fn EditTournament() -> impl IntoView {
     });
 
     // --- Setter Callbacks for Tournament Base Properties ---
-    let (object_id, set_object_id) = signal(None::<Uuid>);
     let set_name = Callback::new(move |name| tournament_editor_context.set_base_name.set(name));
     let set_num_entrants =
         Callback::new(move |num| tournament_editor_context.set_base_num_entrants.set(num));
@@ -319,7 +318,6 @@ pub fn EditTournament() -> impl IntoView {
                                             match may_be_t {
                                                 Some(tournament) => {
                                                     tournament_editor_context.set_base(tournament.clone());
-                                                    set_object_id.set(Some(tournament.get_id()));
                                                 }
                                                 None => {
                                                     if let Some(s_id) = sport_id()
@@ -328,8 +326,7 @@ pub fn EditTournament() -> impl IntoView {
                                                             TournamentEditorState::None | TournamentEditorState::Edit
                                                         )
                                                     {
-                                                        let new_id = tournament_editor_context.new_base(s_id);
-                                                        set_object_id.set(Some(new_id));
+                                                        tournament_editor_context.new_base(s_id);
                                                     }
                                                 }
                                             }
@@ -357,7 +354,7 @@ pub fn EditTournament() -> impl IntoView {
                                             set_value=set_name
                                             validation_result=tournament_editor_context
                                                 .validation_result
-                                            object_id=object_id
+                                            object_id=tournament_editor_context.base_id
                                             field="name"
                                         />
 
@@ -368,7 +365,7 @@ pub fn EditTournament() -> impl IntoView {
                                             set_value=set_num_entrants
                                             validation_result=tournament_editor_context
                                                 .validation_result
-                                            object_id=object_id
+                                            object_id=tournament_editor_context.base_id
                                             field="num_entrants"
                                             min="2".to_string()
                                         />
@@ -397,7 +394,7 @@ pub fn EditTournament() -> impl IntoView {
                                                 set_value=set_num_rounds_swiss
                                                 validation_result=tournament_editor_context
                                                     .validation_result
-                                                object_id=object_id
+                                                object_id=tournament_editor_context.base_id
                                                 field="mod.num_rounds"
                                                 min="1".to_string()
                                             />

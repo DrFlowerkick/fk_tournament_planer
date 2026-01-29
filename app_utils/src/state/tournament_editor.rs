@@ -29,6 +29,8 @@ pub struct TournamentEditorContext {
     // ToDo: we may need refetch trigger for other objects later
 
     // --- Slices for Tournament Base ---
+    /// Read slice for accessing the tournament base ID, if any
+    pub base_id: Signal<Option<Uuid>>,
     /// Read slice for accessing the tournament base name, if any
     pub base_name: Signal<Option<String>>,
     /// Write slice for setting the tournament base name
@@ -47,6 +49,8 @@ pub struct TournamentEditorContext {
     pub set_base_num_rounds_swiss_system: SignalSetter<u32>,
 
     // --- Slices for Current Stage ---
+    /// Read slice for accessing the active stage ID, if any
+    pub active_stage_id: Signal<Option<Uuid>>,
     /// Read slice for accessing the current stage number of groups, if any
     pub stage_num_groups: Signal<Option<u32>>,
     /// Write slice for setting the current stage number of groups
@@ -85,6 +89,7 @@ impl TournamentEditorContext {
         let stage_refetch_trigger = RwSignal::new(0);
 
         // Create slices and Callbacks for base
+        let base_id = create_read_slice(inner, |inner| inner.get_base().map(|b| b.get_id()));
         let (base_name, set_base_name) = create_slice(
             inner,
             |inner| inner.get_base().map(|b| b.get_name().to_string()),
@@ -121,12 +126,13 @@ impl TournamentEditorContext {
         );
 
         // Create slices for stage
+        let active_stage_id = create_read_slice(inner, |inner| inner.get_active_stage_id());
+
         let (stage_num_groups, set_stage_num_groups) = create_slice(
             inner,
             |inner| inner.get_active_stage().map(|s| s.get_num_groups()),
             |inner, num_groups: u32| {
-                if let Some(stage) = inner.get_active_stage() {
-                    let stage_id = stage.get_id();
+                if let Some(stage_id) = inner.get_active_stage_id() {
                     inner
                         .get_local_mut()
                         .set_stage_number_of_groups(stage_id, num_groups);
@@ -149,6 +155,7 @@ impl TournamentEditorContext {
             url_validation_trigger,
             stage_refetch_trigger,
             // base slices
+            base_id,
             base_name,
             set_base_name,
             base_num_entrants,
@@ -158,6 +165,7 @@ impl TournamentEditorContext {
             base_num_rounds_swiss_system,
             set_base_num_rounds_swiss_system,
             // stage slices
+            active_stage_id,
             stage_num_groups,
             set_stage_num_groups,
             // status signals
@@ -223,11 +231,10 @@ impl TournamentEditorContext {
 
     // ToDo: we probably must add an input for tournament type here
     /// Creates a new tournament base with the given sport ID.
-    pub fn new_base(&self, sport_id: Uuid) -> Uuid {
+    pub fn new_base(&self, sport_id: Uuid) {
         self.inner.update(|state| {
             state.new_base(sport_id);
         });
-        self.inner.with(|state| state.get_base().unwrap().get_id())
     }
 
     /// Sets tournament configuration based on user input.

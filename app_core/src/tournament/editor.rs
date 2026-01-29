@@ -74,7 +74,13 @@ impl TournamentEditor {
     }
 
     pub fn new_stage(&mut self, stage_number: u32) -> bool {
-        if let Some(origin_stage) = self.origin.get_stage_by_number(stage_number) {
+        let Some(base_id) = self.local.get_base().map(|b| b.get_id()) else {
+            // cannot create stage without base
+            return false;
+        };
+        if let Some(origin_stage) = self.origin.get_stage_by_number(stage_number)
+            && origin_stage.get_tournament_id() == base_id
+        {
             // if origin has the stage, we clone it to local
             self.local.set_stage(origin_stage.clone());
             self.active_stage_id = Some(origin_stage.get_id());
@@ -124,6 +130,10 @@ impl TournamentEditor {
 
     pub fn get_base(&self) -> Option<&TournamentBase> {
         self.local.get_base()
+    }
+
+    pub fn get_active_stage_id(&self) -> Option<Uuid> {
+        self.active_stage_id
     }
 
     pub fn get_active_stage(&self) -> Option<&Stage> {
