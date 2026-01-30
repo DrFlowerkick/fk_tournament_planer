@@ -23,7 +23,7 @@ pub enum TournamentEditorState {
 /// Updating local base will not affect origin as long as the tournament ID remains the same.
 /// Updating local base of tournament with another ID than origin will reset origin internally to None,
 /// indicating that a new tournament is being created.
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct TournamentEditor {
     local: Tournament,
     origin: Tournament,
@@ -331,5 +331,55 @@ mod tests {
             state.local.get_base().unwrap().get_name(),
             "Version 2 Draft"
         );
+    }
+
+    #[test]
+    fn test_serde_tournament_editor() {
+        let mut tournament_editor = TournamentEditor::new();
+        let sport_id = Uuid::new_v4();
+        tournament_editor.new_base(sport_id);
+        tournament_editor
+            .get_local_mut()
+            .set_base_name("Test Tournament");
+        tournament_editor.get_local_mut().set_base_num_entrants(16);
+        tournament_editor
+            .get_local_mut()
+            .set_base_mode(TournamentMode::PoolAndFinalStage);
+
+        tournament_editor.new_stage(0);
+        let stage_0_id = tournament_editor.get_active_stage_id();
+        tournament_editor.new_stage(1);
+        let stage_1_id = tournament_editor.get_active_stage_id();
+
+        tournament_editor
+            .get_local_mut()
+            .set_stage_number_of_groups(stage_0_id.unwrap(), 4);
+        tournament_editor
+            .get_local_mut()
+            .set_stage_number_of_groups(stage_1_id.unwrap(), 2);
+
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&tournament_editor).unwrap()
+        );
+        let serialized = serde_json::to_string(&tournament_editor).unwrap();
+        let deserialized: TournamentEditor = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(tournament_editor.get_base(), deserialized.get_base());
+        assert_eq!(
+            tournament_editor.local.stages.len(),
+            deserialized.local.stages.len()
+        );
+        for (id, stage) in &tournament_editor.local.stages {
+            let deserialized_stage = deserialized.local.stages.get(id).unwrap();
+            assert_eq!(stage, deserialized_stage);
+        }
+    }
+
+    #[test]
+    fn test_debug_deserialization() {
+        let data = r#"{"local":{"base":{"id_version":{"Existing":{"id":"6ad2ec97-8899-4a4a-9ef1-36bd3097d174","version":1}},"name":"Test Name 03","sport_id":"f802dcb7-24e0-5f79-867c-ef4c477311f6","num_entrants":10,"t_type":"Scheduled","mode":"PoolAndFinalStage","state":"Draft"},"structure":{"nodes":["6ad2ec97-8899-4a4a-9ef1-36bd3097d174","ce3799c3-d978-444e-a9ae-5c91117d4350","fbf1aa08-cfd2-4409-85de-37b27bd5244d"],"node_holes":[],"edge_property":"directed","edges":[[0,1,"Stage"],[0,2,"Stage"]]},"stages":{"ce3799c3-d978-444e-a9ae-5c91117d4350":{"id_version":{"NewWithId":"ce3799c3-d978-444e-a9ae-5c91117d4350"},"tournament_id":"6ad2ec97-8899-4a4a-9ef1-36bd3097d174","number":0,"num_groups":4},"fbf1aa08-cfd2-4409-85de-37b27bd5244d":{"id_version":{"NewWithId":"fbf1aa08-cfd2-4409-85de-37b27bd5244d"},"tournament_id":"6ad2ec97-8899-4a4a-9ef1-36bd3097d174","number":1,"num_groups":2}},"groups":{}},"origin":{"base":{"id_version":{"Existing":{"id":"6ad2ec97-8899-4a4a-9ef1-36bd3097d174","version":1}},"name":"Test Name 03","sport_id":"f802dcb7-24e0-5f79-867c-ef4c477311f6","num_entrants":10,"t_type":"Scheduled","mode":"SingleStage","state":"Draft"},"structure":{"nodes":["6ad2ec97-8899-4a4a-9ef1-36bd3097d174"],"node_holes":[],"edge_property":"directed","edges":[]},"stages":{},"groups":{}},"active_stage_id":"fbf1aa08-cfd2-4409-85de-37b27bd5244d","active_group_id":null,"active_round_id":null,"active_match_id":null}"#;
+        let res: Result<TournamentEditor, _> = serde_json::from_str(data);
+        assert!(res.is_ok(), "Fehler: {:?}", res.err());
     }
 }

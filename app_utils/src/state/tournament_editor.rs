@@ -4,7 +4,7 @@
 //! efficient state updates via `RwSignal` without unnecessary cloning.
 
 use app_core::{
-    Group, Stage, TournamentBase, TournamentEditor, TournamentEditorState, TournamentMode,
+    Stage, TournamentBase, TournamentEditor, TournamentEditorState, TournamentMode,
     TournamentState, utils::validation::ValidationResult,
 };
 use leptos::prelude::*;
@@ -24,9 +24,8 @@ pub struct TournamentEditorContext {
     busy: RwSignal<bool>,
     /// Simple counter to trigger URL validation checks manually
     url_validation_trigger: RwSignal<usize>,
-    /// Simple counter to trigger refetching stage resource after save
-    stage_refetch_trigger: RwSignal<usize>,
-    // ToDo: we may need refetch trigger for other objects later
+    /// Simple counter to trigger refetching resources after save
+    resource_refetch_trigger: RwSignal<usize>,
 
     // --- Slices for Tournament Base ---
     /// Read slice for accessing the tournament base ID, if any
@@ -69,8 +68,8 @@ pub struct TournamentEditorContext {
     pub validation_result: Signal<ValidationResult<()>>,
     /// Read signal to track URL validation triggers
     pub track_url_validation: Signal<usize>,
-    /// Read signal to track stage refetch triggers
-    pub track_stage_refetch: Signal<usize>,
+    /// Read signal to track resource refetch triggers
+    pub track_resource_refetch: Signal<usize>,
 }
 
 impl Default for TournamentEditorContext {
@@ -86,7 +85,7 @@ impl TournamentEditorContext {
         let inner = RwSignal::new(TournamentEditor::new());
         let busy = RwSignal::new(false);
         let url_validation_trigger = RwSignal::new(0);
-        let stage_refetch_trigger = RwSignal::new(0);
+        let resource_refetch_trigger = RwSignal::new(0);
 
         // Create slices and Callbacks for base
         let base_id = create_read_slice(inner, |inner| inner.get_base().map(|b| b.get_id()));
@@ -153,7 +152,7 @@ impl TournamentEditorContext {
             inner,
             busy,
             url_validation_trigger,
-            stage_refetch_trigger,
+            resource_refetch_trigger,
             // base slices
             base_id,
             base_name,
@@ -175,7 +174,7 @@ impl TournamentEditorContext {
             is_changed,
             validation_result,
             track_url_validation: url_validation_trigger.read_only().into(),
-            track_stage_refetch: stage_refetch_trigger.read_only().into(),
+            track_resource_refetch: resource_refetch_trigger.read_only().into(),
         }
     }
 
@@ -220,11 +219,16 @@ impl TournamentEditorContext {
             })
     }
 
-    // --- Resource Refetch Trigger ---
+    // --- Save & Resource Refetch Trigger ---
 
-    /// Triggers a refetch of stage resources after saving.
-    pub fn trigger_stage_refetch(&self) {
-        self.stage_refetch_trigger.update(|v| *v += 1);
+    /// Retrieves the inner `TournamentEditor` state for saving
+    pub fn get_inner(&self) -> TournamentEditor {
+        self.inner.get()
+    }
+
+    /// Triggers a refetch of resource resources after saving.
+    pub fn trigger_resource_refetch(&self) {
+        self.resource_refetch_trigger.update(|v| *v += 1);
     }
 
     // --- Actions (Write / Update) ---
@@ -256,23 +260,5 @@ impl TournamentEditorContext {
         self.inner.update(|state| {
             state.set_stage(stage);
         })
-    }
-
-    // --- diff collectors ---
-
-    // ToDo: if we create a database port for saving, we may not need these getters anymore
-    /// Collects the diff of the tournament base for saving.
-    pub fn collect_base_diff(&self) -> Option<TournamentBase> {
-        self.inner.with(|state| state.collect_base_diff())
-    }
-
-    /// Collects the diff of the stages for saving.
-    pub fn collect_stages_diff(&self) -> Vec<Stage> {
-        self.inner.with(|state| state.collect_stages_diff())
-    }
-
-    /// Collects the diff of the groups for saving.
-    pub fn collect_groups_diff(&self) -> Vec<Group> {
-        self.inner.with(|state| state.collect_groups_diff())
     }
 }

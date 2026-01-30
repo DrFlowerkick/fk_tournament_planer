@@ -15,8 +15,7 @@ use app_utils::{
     },
     params::{SportParams, StageParams, TournamentBaseParams},
     server_fn::{
-        stage::SaveStage,
-        tournament_base::{SaveTournamentBase, load_tournament_base},
+        tournament_base::load_tournament_base, tournament_editor::SaveTournamentEditorDiff,
     },
     state::{
         error_state::PageErrorContext,
@@ -137,16 +136,12 @@ pub fn EditTournament() -> impl IntoView {
         },
     );
 
-    // save tournament base action
-    let save_tournament_base = ServerAction::<SaveTournamentBase>::new();
-
-    // save stage action
-    let save_stage = ServerAction::<SaveStage>::new();
+    // save tournament editor action
+    let save_tournament_editor = ServerAction::<SaveTournamentEditorDiff>::new();
 
     // retry function for error handling
     let refetch_and_reset = Callback::new(move |()| {
-        save_tournament_base.clear();
-        save_stage.clear();
+        save_tournament_editor.clear();
         tournament_res.refetch();
     });
 
@@ -156,20 +151,16 @@ pub fn EditTournament() -> impl IntoView {
     // handle save tournament base results
     Effect::new({
         let navigate = navigate.clone();
-        move || match save_tournament_base.value().get() {
-            Some(Ok(tb)) => {
-                save_tournament_base.clear();
+        move || match save_tournament_editor.value().get() {
+            Some(Ok(base_id)) => {
+                save_tournament_editor.clear();
                 toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
-                let nav_url =
-                    url_with_update_query("tournament_id", &tb.get_id().to_string(), None);
-                // set saved tb as origin in editor context before navigation to prevent
-                // load effect to reset the editor state
-                // ToDo: is this still required? Uncomment if yes
-                //tournament_editor_context.set_base(tb);
+                let nav_url = url_with_update_query("tournament_id", &base_id.to_string(), None);
 
                 if tournament_id().is_some() {
                     // if it was a new tournament, trigger refetch to load the full data
                     tournament_res.refetch();
+                    tournament_editor_context.trigger_resource_refetch();
                 } else {
                     // else navigate directly
                     navigate(
@@ -181,8 +172,12 @@ pub fn EditTournament() -> impl IntoView {
                         },
                     );
                 }
+                tournament_editor_context.set_busy(false);
             }
             Some(Err(err)) => {
+                tournament_editor_context.set_busy(false);
+                leptos::logging::error!("Error saving tournament editor: {:?}", err);
+                save_tournament_editor.clear();
                 handle_write_error(
                     &page_err_ctx,
                     &toast_ctx,
@@ -195,59 +190,23 @@ pub fn EditTournament() -> impl IntoView {
         }
     });
 
-    // handle save stage results
-    Effect::new(move || match save_stage.value().get() {
-        Some(Ok(_stage)) => {
-            save_stage.clear();
-            toast_ctx.add("Stage saved successfully", ToastVariant::Success);
-            // trigger refetch of stage resource
-            tournament_editor_context.trigger_stage_refetch();
-        }
-        Some(Err(err)) => {
-            handle_write_error(
-                &page_err_ctx,
-                &toast_ctx,
-                component_id.get_value(),
-                &err,
-                refetch_and_reset,
-            );
-        }
-        None => { /* saving state - do nothing */ }
-    });
-
     // --- Event Handlers ---
     // save function for save button
-    let is_dispatching = RwSignal::new(false);
     let on_save = move || {
-        is_dispatching.set(true);
-        // get diffs
-        let base_diff = tournament_editor_context.collect_base_diff();
-        let stages_diff = tournament_editor_context.collect_stages_diff();
-        let groups_diff = tournament_editor_context.collect_groups_diff();
-        // dispatch saves
-        if let Some(base) = base_diff {
-            // ToDo: rename later tournament to base in SaveTournamentBase
-            save_tournament_base.dispatch(SaveTournamentBase { tournament: base });
-        }
-        for changed_stage in stages_diff {
-            save_stage.dispatch(SaveStage {
-                stage: changed_stage,
+        if let Some(base_id) = tournament_editor_context.base_id.get() {
+            tournament_editor_context.set_busy(true);
+            let tournament_editor = tournament_editor_context.get_inner();
+            leptos::logging::log!(
+                "Saving tournament editor:\n{}",
+                serde_json::to_string(&tournament_editor).unwrap_or_default()
+            );
+            save_tournament_editor.dispatch(SaveTournamentEditorDiff {
+                base_id,
+                base_diff: tournament_editor.collect_base_diff(),
+                stages_diff: tournament_editor.collect_stages_diff(),
             });
         }
-        for _changed_group in groups_diff {
-            // ToDo: implement SaveGroup server action and dispatch here
-        }
-        is_dispatching.set(false);
     };
-
-    // Sync pending state to global context
-    Effect::new(move || {
-        let busy = save_tournament_base.pending().get()
-            || save_stage.pending().get()
-            || is_dispatching.get();
-
-        tournament_editor_context.set_busy(busy);
-    });
 
     view! {
         <div

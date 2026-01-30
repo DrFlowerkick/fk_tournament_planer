@@ -204,7 +204,7 @@ pub enum DependencyType {
 /// Conclusion: it is better to leave "orphaned" objects in structure and HashMaps, as long
 /// as you are not creating tournaments with hundreds of stages or groups, which would
 /// consume too much memory.
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tournament {
     /// base of tournament
     pub base: Option<TournamentBase>,
@@ -432,7 +432,7 @@ impl Tournament {
     }
 
     /// Returns modified or new stages that are currently linked in the graph structure.
-    pub fn get_stages_diff(
+    pub fn collect_stages_diff(
         &self,
         origin: &Tournament,
     ) -> <HashMap<Uuid, Stage> as Diffable<Stage>>::Diff {
@@ -443,7 +443,7 @@ impl Tournament {
         self.stages.get_diff(&origin.stages, Some(&valid_ids))
     }
 
-    pub fn get_groups_diff(
+    pub fn collect_groups_diff(
         &self,
         origin: &Tournament,
     ) -> <HashMap<Uuid, Group> as Diffable<Group>>::Diff {
@@ -673,5 +673,62 @@ impl Tournament {
             .filter(|(_, obj)| obj.get_object_number() >= limit)
             .map(|(id, _)| id)
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_serde_di_graph_map() {
+        let mut graph: DiGraphMap<Uuid, DependencyType> = DiGraphMap::new();
+        let node1 = Uuid::new_v4();
+        let node2 = Uuid::new_v4();
+        let node3 = Uuid::new_v4();
+        graph.add_edge(node1, node2, DependencyType::Stage);
+        graph.add_edge(node1, node3, DependencyType::Stage);
+
+        println!("{}", serde_json::to_string_pretty(&graph).unwrap());
+        let serialized = serde_json::to_string(&graph).unwrap();
+        let deserialized: DiGraphMap<Uuid, DependencyType> =
+            serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(graph.all_edges().count(), deserialized.all_edges().count());
+        for (source, target, edge) in graph.all_edges() {
+            let found = deserialized
+                .all_edges()
+                .find(|(s, t, e)| *s == source && *t == target && *e == edge);
+            assert!(found.is_some());
+        }
+    }
+
+    #[test]
+    fn test_serde_tournament() {
+        let mut tournament = Tournament::new();
+        let sport_id = Uuid::new_v4();
+        tournament.new_base(sport_id);
+        tournament.set_base_name("Test Tournament");
+        tournament.set_base_num_entrants(16);
+        tournament.set_base_mode(TournamentMode::PoolAndFinalStage);
+
+        tournament.new_stage(0);
+        tournament.new_stage(1);
+
+        tournament
+            .set_stage_number_of_groups(tournament.get_stage_by_number(0).unwrap().get_id(), 4);
+        tournament
+            .set_stage_number_of_groups(tournament.get_stage_by_number(1).unwrap().get_id(), 2);
+
+        println!("{}", serde_json::to_string_pretty(&tournament).unwrap());
+        let serialized = serde_json::to_string(&tournament).unwrap();
+        let deserialized: Tournament = serde_json::from_str(&serialized).unwrap();
+
+        assert_eq!(tournament.base, deserialized.base);
+        assert_eq!(tournament.stages.len(), deserialized.stages.len());
+        for (id, stage) in &tournament.stages {
+            let deserialized_stage = deserialized.stages.get(id).unwrap();
+            assert_eq!(stage, deserialized_stage);
+        }
     }
 }

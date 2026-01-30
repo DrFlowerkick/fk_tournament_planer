@@ -87,16 +87,6 @@ pub fn EditTournamentStage() -> impl IntoView {
         }
     });
 
-    // hide form if tournament mode has only one stage with one group OR if invalid stage number
-    let hide_form = move || {
-        stage_number().is_none()
-            || matches!(
-                tournament_editor_context.base_mode.get(),
-                Some(TournamentMode::SingleStage)
-                    | Some(TournamentMode::SwissSystem { num_rounds: _ })
-            )
-    };
-
     // check if stage is not editable
     let is_active_or_done = move || {
         if let Some(sn) = stage_number()
@@ -143,65 +133,70 @@ pub fn EditTournamentStage() -> impl IntoView {
     let on_cancel = use_on_cancel();
 
     view! {
-        <Show when=move || !hide_form()>
-            <div
-                class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-                data-testid="stage-editor-root"
-            >
-                <div class="w-full flex justify-between items-center pb-4">
-                    <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
-                        {move || editor_title()}
-                    </h2>
+        <Transition fallback=move || {
+            view! {
+                <div class="w-full flex justify-center py-8">
+                    <span class="loading loading-spinner loading-lg"></span>
                 </div>
-
-                // Card wrapping Form and Group Links
-                <div class="card w-full bg-base-100 shadow-xl">
-                    <div class="card-body">
-                        // --- Form Area ---
-                        <Transition fallback=move || {
-                            view! {
-                                <div class="w-full flex justify-center py-8">
-                                    <span class="loading loading-spinner loading-lg"></span>
-                                </div>
-                            }
-                        }>
-                            <ErrorBoundary fallback=move |errors| {
-                                for (_err_id, err) in errors.get().into_iter() {
-                                    let e = err.into_inner();
-                                    if let Some(app_err) = e.downcast_ref::<AppError>() {
-                                        handle_read_error(
-                                            &page_err_ctx,
-                                            component_id.get_value(),
-                                            app_err,
-                                            refetch_and_reset,
-                                            on_cancel,
-                                        );
-                                    } else {
-                                        handle_general_error(
-                                            &page_err_ctx,
-                                            component_id.get_value(),
-                                            "An unexpected error occurred.",
-                                            None,
-                                            on_cancel,
-                                        );
+            }
+        }>
+            <ErrorBoundary fallback=move |errors| {
+                for (_err_id, err) in errors.get().into_iter() {
+                    let e = err.into_inner();
+                    if let Some(app_err) = e.downcast_ref::<AppError>() {
+                        handle_read_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            app_err,
+                            refetch_and_reset,
+                            on_cancel,
+                        );
+                    } else {
+                        handle_general_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            "An unexpected error occurred.",
+                            None,
+                            on_cancel,
+                        );
+                    }
+                }
+            }>
+                {move || {
+                    stage_res
+                        .and_then(|may_be_s| {
+                            match may_be_s {
+                                Some(stage) => {
+                                    tournament_editor_context.set_stage(*stage);
+                                }
+                                None => {
+                                    if let Some(sn) = stage_number() {
+                                        tournament_editor_context.new_stage(sn);
                                     }
                                 }
-                            }>
-                                {move || {
-                                    stage_res
-                                        .and_then(|may_be_s| {
-                                            match may_be_s {
-                                                Some(stage) => {
-                                                    tournament_editor_context.set_stage(*stage);
-                                                }
-                                                None => {
-                                                    if let Some(sn) = stage_number() {
-                                                        tournament_editor_context.new_stage(sn);
-                                                    }
-                                                }
-                                            }
-                                        })
-                                }}
+                            }
+                        })
+                }}
+                <Show when=move || {
+                    matches!(
+                        tournament_editor_context.base_mode.get(),
+                        Some(TournamentMode::PoolAndFinalStage)
+                        | Some(TournamentMode::TwoPoolStagesAndFinalStage)
+                    )
+                }>
+                    // Card wrapping Form and Group Links
+                    <div class="card w-full bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            // --- Form Area ---
+                            <div
+                                class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
+                                data-testid="stage-editor-root"
+                            >
+                                <div class="w-full flex justify-between items-center pb-4">
+                                    <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
+                                        {move || editor_title()}
+                                    </h2>
+                                </div>
                                 <fieldset
                                     disabled=move || {
                                         tournament_editor_context.is_busy.get()
@@ -249,12 +244,12 @@ pub fn EditTournamentStage() -> impl IntoView {
                                         }
                                     />
                                 </div>
-                            </ErrorBoundary>
-                        </Transition>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </Show>
+                </Show>
+            </ErrorBoundary>
+        </Transition>
         <Outlet />
     }
 }
