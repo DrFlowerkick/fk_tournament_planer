@@ -1,5 +1,4 @@
 import { test, expect, Page } from "@playwright/test";
-import { selectors } from "../../helpers/selectors";
 import {
   openNewForm,
   fillFields,
@@ -10,8 +9,10 @@ import {
   expectSavesEnabled,
   openEditForm,
   waitForPostalAddressListUrl,
-} from "../../helpers/postal_address";
-import { typeThenBlur, waitForAppHydration } from "../../helpers/utils"; // ADDED IMPORT
+  typeThenBlur,
+  waitForAppHydration,
+  selectors
+} from "../../helpers";
 
 // --- Test data ---------------------------------------------------------------
 // Unique test data (avoid partial-unique collisions)

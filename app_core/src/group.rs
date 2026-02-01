@@ -60,6 +60,12 @@ impl ObjectNumber for Group {
     }
 }
 
+impl Group {
+    pub fn get_number(&self) -> u32 {
+        self.number
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Mode {
     RoundRobin,

@@ -1,10 +1,6 @@
 // e2e/tests/generic-error.spec.ts
 import { test, expect } from "@playwright/test";
-import {
-  openNewForm,
-  fillAllRequiredValid,
-} from "../../helpers/postal_address";
-import { selectors } from "../../helpers/selectors";
+import { openNewForm, fillAllRequiredValid, selectors } from "../../helpers/";
 
 test.describe("Generic error handling saving address", () => {
   test("shows a generic error banner on 500 server error", async ({ page }) => {
@@ -32,7 +28,7 @@ test.describe("Generic error handling saving address", () => {
     // -------------------- Assert: Generic error banner is shown --------------------
     await expect(BA.acknowledgmentNavigate.root).toBeVisible();
     await expect(BA.acknowledgmentNavigate.root).toContainText(
-      "An unexpected error occurred during saving:"
+      "An unexpected error occurred during saving:",
     );
     await expect(BA.acknowledgmentNavigate.btnAction).toBeVisible();
     await expect(BA.acknowledgmentNavigate.btnNavigate).toBeVisible();
@@ -67,7 +63,7 @@ test.describe("Generic error handling saving address", () => {
     // -------------------- Assert: Generic error banner is shown --------------------
     await expect(BA.acknowledgmentNavigate.root).toBeVisible();
     await expect(BA.acknowledgmentNavigate.root).toContainText(
-      "An unexpected error occurred during saving:"
+      "An unexpected error occurred during saving:",
     );
     await expect(BA.acknowledgmentNavigate.btnAction).toBeVisible();
     await expect(BA.acknowledgmentNavigate.btnNavigate).toBeVisible();

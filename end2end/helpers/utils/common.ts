@@ -1,6 +1,6 @@
 // shared utils for end2end tests
 import { expect, Page, Locator } from "@playwright/test";
-import { DropdownLocators } from "./selectors";
+import { DropdownLocators } from "../selectors";
 
 /**
  * Waits strictly until the Leptos/WASM app has signaled hydration complete.
@@ -34,6 +34,16 @@ export async function typeThenBlur(
   await expect(inputLocator).toBeVisible();
   await inputLocator.fill(value);
   await blurToLocator.focus();
+}
+
+/**
+ * Fills a value into an input field and immediately calls blur().
+ * This ensures on:change events are fired for components relying on blur/change for committing state.
+ */
+export async function fillAndBlur(locator: Locator, value: string) {
+  await expect(locator).toBeVisible();
+  await locator.fill(value);
+  await locator.blur();
 }
 
 /**

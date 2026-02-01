@@ -4,13 +4,13 @@
 use super::{stage::save_stage, tournament_base::save_tournament_base};
 use crate::error::AppResult;
 use app_core::{Stage, TournamentBase};
-use leptos::prelude::*;
+use leptos::{prelude::*, server_fn::codec::Json};
 #[cfg(feature = "ssr")]
 use tracing::info;
 use tracing::instrument;
 use uuid::Uuid;
 
-#[server]
+#[server(input = Json, output = Json)]
 #[instrument(name = "tournament_editor.save_diff", skip_all)]
 pub async fn save_tournament_editor_diff(
     base_id: Uuid,

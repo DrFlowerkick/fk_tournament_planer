@@ -1,20 +1,19 @@
 // end2end/global-setup.ts
 
 // setup for navigation of postal address list
-import { chromium, Page } from "@playwright/test";
+import { chromium, Page, expect } from "@playwright/test";
 import {
+  selectors,
+  openHomePage,
+  selectSportPluginByName,
+  goToNewTournament,
   expectSavesDisabled,
   expectSavesEnabled,
   fillFields,
   clickSave,
   waitForPostalAddressListUrl,
-} from "./helpers/postal_address";
-import {
-  openHomePage,
-  selectSportPluginByName,
-  goToNewTournament,
-} from "./helpers/home";
-import { selectors } from "./helpers/selectors";
+  fillAndBlur,
+} from "./helpers";
 
 const PLUGINS = {
   GENERIC: "Generic Sport",
@@ -39,9 +38,21 @@ async function seedTournaments(page: Page) {
     await goToNewTournament(page);
 
     // Fill form
-    await FORM.inputs.name.fill(t.name);
-    await FORM.inputs.entrants.fill(t.entrants);
+    console.log(`🌱 Seeding Tournament: ${t.name}`);
+    await expect(FORM.inputs.name).toHaveAttribute("aria-invalid", "true");
+    await expect(FORM.inputs.entrants).toHaveAttribute("aria-invalid", "true");
 
+    // Use the helper here
+    await fillAndBlur(FORM.inputs.name, t.name);
+    await fillAndBlur(FORM.inputs.entrants, t.entrants);
+
+    await expect(FORM.inputs.name).toHaveValue(t.name);
+    await expect(FORM.inputs.entrants).toHaveValue(t.entrants);
+    await expect(FORM.inputs.name).toHaveAttribute("aria-invalid", "false");
+    await expect(FORM.inputs.entrants).toHaveAttribute("aria-invalid", "false");
+
+    // Save
+    await expect(FORM.actions.save).toBeEnabled();
     await FORM.actions.save.click();
 
     // Wait for completion (URL update) to be ready for the next one
@@ -56,6 +67,7 @@ async function seedPostalAddresses(page: Page) {
   const names = ["Alpha", "Beta", "Gamma"];
 
   for (const name of names) {
+    console.log(`🌱 Seeding Postal Address: ${name}`);
     await expectSavesDisabled(page);
     await fillFields(page, {
       name: `E2E Nav ${name}`,

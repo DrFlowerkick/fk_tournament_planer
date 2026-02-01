@@ -150,19 +150,16 @@ impl TournamentEditor {
     }
 
     // --- Diff Collectors for Saving ---
-    pub fn collect_base_diff(&self) -> Option<TournamentBase> {
-        self.local
-            .get_base()
-            .get_diff(&self.origin.get_base(), None)
-            .cloned()
+    pub fn collect_base_diff(&self) -> Option<&TournamentBase> {
+        self.local.collect_base_diff(&self.origin)
     }
 
     pub fn collect_stages_diff(&self) -> Vec<Stage> {
-        self.local.stages.get_diff(&self.origin.stages, None)
+        self.local.collect_stages_diff(&self.origin)
     }
 
     pub fn collect_groups_diff(&self) -> Vec<Group> {
-        self.local.groups.get_diff(&self.origin.groups, None)
+        self.local.collect_groups_diff(&self.origin)
     }
 
     // --- Change Detection ---
@@ -223,7 +220,7 @@ mod tests {
         let t = create_test_tournament("My Tournament");
 
         // Act: Load as origin (like loading from DB)
-        state.set_base(t.clone()).unwrap();
+        state.set_base(t.clone());
 
         // Assert
         assert!(
@@ -251,7 +248,7 @@ mod tests {
         // Arrange
         let mut state = TournamentEditor::new();
         let original = create_test_tournament("Original Name");
-        state.set_base(original.clone()).unwrap();
+        state.set_base(original.clone());
 
         // Act: Simulate User Edit
         state.get_local_mut().set_base_name("Changed Name");
@@ -276,7 +273,7 @@ mod tests {
         // Arrange
         let mut state = TournamentEditor::new();
         let original = create_test_tournament("Base");
-        state.set_base(original.clone()).unwrap();
+        state.set_base(original.clone());
 
         // Act 1: Modify
         state.get_local_mut().set_base_name("Modified");
@@ -301,7 +298,7 @@ mod tests {
         // Arrange
         let mut state = TournamentEditor::new();
         let t_v1 = create_test_tournament("Version 1");
-        state.set_base(t_v1.clone()).unwrap();
+        state.set_base(t_v1.clone());
 
         // Modify local state
         state.get_local_mut().set_base_name("Version 2 Draft");
@@ -316,7 +313,7 @@ mod tests {
         let diff = state.collect_base_diff().unwrap().clone();
 
         // Ideally version number increments here in real DB logic
-        state.set_base(diff).unwrap();
+        state.set_base(diff);
 
         // Assert
         assert!(

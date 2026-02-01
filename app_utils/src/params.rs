@@ -28,3 +28,8 @@ pub struct TournamentBaseParams {
 pub struct StageParams {
     pub stage_number: Option<u32>,
 }
+
+#[derive(Params, Clone, PartialEq, Eq, Debug)]
+pub struct GroupParams {
+    pub group_number: Option<u32>,
+}

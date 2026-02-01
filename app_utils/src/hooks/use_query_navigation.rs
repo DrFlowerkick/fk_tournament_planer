@@ -20,6 +20,9 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
     let url_with_path = move |path: &str| format!("{}{}", path, query_string.get());
     let url_route_with_sub_path = move |sub_path: &str| {
         let mut mr = matched_route.get();
+        if sub_path.is_empty() {
+            return format!("{}{}", mr, query_string.get());
+        }
         if mr == "/" {
             mr = "".to_string();
         }

@@ -316,9 +316,9 @@ impl Tournament {
             base.get_tournament_mode(),
             TournamentMode::SingleStage | TournamentMode::SwissSystem { num_rounds: _ }
         ) {
-            // Single stage tournament -> set number of groups as 0 for stage 0, if exists
+            // Single stage tournament -> set number of groups as 1 for stage 0, if exists
             if let Some(stage) = self.get_stage_by_number(0) {
-                self.set_stage_number_of_groups(stage.get_id(), 0);
+                self.set_stage_number_of_groups(stage.get_id(), 1);
             }
         }
 
@@ -406,19 +406,42 @@ impl Tournament {
         let Some(start) = self.get_root_id() else {
             return None;
         };
-        for (_source, target, edge) in self.structure.edges_directed(start, Direction::Outgoing) {
-            if let DependencyType::Stage = *edge
-                && let Some(stage) = self.stages.get(&target)
-                && stage.get_number() == stage_number
-            {
-                return Some(stage);
-            }
-        }
-        None
+        self.structure
+            .edges_directed(start, Direction::Outgoing)
+            .find_map(|(_source, target, edge)| {
+                if let DependencyType::Stage = *edge
+                    && let Some(stage) = self.stages.get(&target)
+                    && stage.get_number() == stage_number
+                {
+                    Some(stage)
+                } else {
+                    None
+                }
+            })
     }
 
     pub fn get_stage_by_id(&self, stage_id: Uuid) -> Option<&Stage> {
         self.stages.get(&stage_id)
+    }
+
+    pub fn get_group_by_number(&self, stage_number: u32, group_number: u32) -> Option<&Group> {
+        let Some(stage) = self.get_stage_by_number(stage_number) else {
+            return None;
+        };
+        let stage_id = stage.get_id();
+
+        self.structure
+            .edges_directed(stage_id, Direction::Outgoing)
+            .find_map(|(_source, target, edge)| {
+                if let DependencyType::Group = *edge
+                    && let Some(group) = self.groups.get(&target)
+                    && group.get_number() == group_number
+                {
+                    Some(group)
+                } else {
+                    None
+                }
+            })
     }
 
     // --- Diff Collectors for Saving ---
@@ -554,14 +577,14 @@ impl Tournament {
         _round_number: Option<u32>,
         _match_number: Option<u32>,
     ) -> Option<Vec<u32>> {
-        let mut valid_numbers = Vec::new();
         let Some(tournament) = self.get_base() else {
-            return Some(valid_numbers);
+            return None;
         };
         let Some(start) = self.get_root_id() else {
-            return Some(valid_numbers);
+            return None;
         };
         let mut is_invalid = false;
+        let mut valid_numbers = Vec::new();
         let mut queue: VecDeque<(Uuid, DependencyType)> = VecDeque::new();
         queue.push_back((start, DependencyType::Stage));
 

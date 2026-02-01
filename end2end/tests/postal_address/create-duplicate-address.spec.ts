@@ -5,8 +5,8 @@ import {
   fillFields,
   clickSave,
   waitForPostalAddressListUrl,
-} from "../../helpers/postal_address";
-import { selectors } from "../../helpers/selectors";
+  selectors
+} from "../../helpers";
 
 test.describe("Uniqueness constraint violation", () => {
   test("shows error banner on duplicate name, postal code, and locality", async ({

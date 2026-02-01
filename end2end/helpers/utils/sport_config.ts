@@ -1,15 +1,12 @@
 // Shared helpers for sport config form flows
 import { expect, Page } from "@playwright/test";
-import { selectors } from "./selectors";
+import { selectors } from "../selectors";
 import {
-  typeThenBlur,
-  selectThenBlur,
-  extractQueryParamFromUrl,
   waitForAppHydration,
-} from "./utils";
+} from "./common";
 
-export const ROUTES = {
-  newAddress: "/sport/new_sc",
+export const SC_ROUTES = {
+  newConfig: "/sport/new_sc",
   list: "/sport",
 };
 
@@ -19,7 +16,7 @@ export const ROUTES = {
 export async function openSportSelectionAndConfigList(page: Page) {
   const SC = selectors(page).sportConfig;
   // Navigate to "list" route and assert elements exist
-  await page.goto(ROUTES.list);
+  await page.goto(SC_ROUTES.list);
 
   // REPLACED: domcontentloaded -> strict hydration check
   await waitForAppHydration(page);
@@ -30,7 +27,7 @@ export async function openSportSelectionAndConfigList(page: Page) {
 /**
  * Enter new mode from a detail page (if you have a dedicated edit button).
  */
-export async function clickNewToOpenEditForm(page: Page) {
+export async function clickNewSportConfig(page: Page) {
   const SC = selectors(page).sportConfig;
   await expect(SC.search.btnNew).toBeVisible();
   await SC.search.btnNew.click();
@@ -41,7 +38,7 @@ export async function clickNewToOpenEditForm(page: Page) {
 /**
  * Enter edit mode from a detail page.
  */
-export async function clickEditToOpenEditForm(page: Page) {
+export async function clickEditSportConfig(page: Page) {
   const SC = selectors(page).sportConfig;
   await expect(SC.search.btnEdit).toBeVisible();
   await SC.search.btnEdit.click();
@@ -72,7 +69,7 @@ export async function waitForSportConfigEditUrl(page: Page) {
   const SC = selectors(page).sportConfig;
   // Wait for URL like /sport/edit_sc?sport_id=UUID&sport_config_id=UUID
   await page.waitForURL(
-    /\/sport\/edit_sc\?sport_id=[0-9a-f-]{36}&sport_config_id=[0-9a-f-]{36}$/
+    /\/sport\/edit_sc\?sport_id=[0-9a-f-]{36}&sport_config_id=[0-9a-f-]{36}$/,
   );
 
   // REPLACED: domcontentloaded -> strict hydration check

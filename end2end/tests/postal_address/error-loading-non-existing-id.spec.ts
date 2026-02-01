@@ -1,8 +1,10 @@
 // e2e/tests/error-loading-non-existing-id.spec.ts
 import { test, expect } from "@playwright/test";
-import { openPostalAddressList } from "../../helpers/postal_address";
-import { selectors } from "../../helpers/selectors";
-import { waitForAppHydration } from "../../helpers/utils"; // ADDED IMPORT
+import {
+  openPostalAddressList,
+  selectors,
+  waitForAppHydration,
+} from "../../helpers";
 
 test.describe("Error loading non-existing postal address ID", () => {
   test("shows error message when navigating to non-existing ID", async ({
@@ -25,7 +27,7 @@ test.describe("Error loading non-existing postal address ID", () => {
     // Assert that the error message is displayed
     await expect(BA.acknowledgmentNavigate.root).toBeVisible();
     await expect(BA.acknowledgmentNavigate.root).toContainText(
-      "resource not found: Postal Address"
+      "resource not found: Postal Address",
     );
     await expect(BA.acknowledgmentNavigate.btnAction).toBeVisible();
     await expect(BA.acknowledgmentNavigate.btnNavigate).toBeVisible();

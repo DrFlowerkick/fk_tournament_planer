@@ -162,8 +162,10 @@ where
                 }
                 // USER LEAVES FIELD: Reset draft to sync with core
                 on:blur=move |_| {
-                    set_parse_err.set(None);
-                    set_draft.set(None);
+                    if parse_err.get().is_some() {
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                    }
                 }
             />
             // Display error only when not typing and an error exists
@@ -667,8 +669,10 @@ where
                 }
                 // USER LEAVES FIELD: Reset draft to sync with core
                 on:blur=move |_| {
-                    set_parse_err.set(None);
-                    set_draft.set(None);
+                    if parse_err.get().is_some() {
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                    }
                 }
             />
             // Display error only when not typing and an error exists
@@ -979,8 +983,10 @@ where
                 }
                 // USER LEAVES FIELD: Reset draft to sync with core
                 on:blur=move |_| {
-                    set_parse_err.set(None);
-                    set_draft.set(None);
+                    if parse_err.get().is_some() {
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                    }
                 }
             />
             // Display error only when not typing and an error exists

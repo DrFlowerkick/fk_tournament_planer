@@ -1,7 +1,6 @@
 import { expect, Page } from "@playwright/test";
 import { runSportConfigSharedTests, SportConfigTestAdapter } from "./shared";
-import { selectors } from "../../helpers/selectors";
-import { typeThenBlur } from "../../helpers/utils";
+import { typeThenBlur, selectors } from "../../helpers";
 
 const ddcSportAdapter: SportConfigTestAdapter = {
   sportName: "Double Disc Court (DDC)",

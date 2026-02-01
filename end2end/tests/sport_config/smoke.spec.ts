@@ -1,13 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { selectors } from "../../helpers/selectors";
 import {
   openSportSelectionAndConfigList,
-  clickNewToOpenEditForm,
-} from "../../helpers/sport_config";
-import {
+  clickNewSportConfig,
   searchAndOpenByNameOnCurrentPage,
   extractQueryParamFromUrl,
-} from "../../helpers/utils";
+  selectors
+} from "../../helpers";
 
 test("Smoke: Select Plugin -> Search Config -> New -> Cancel", async ({
   page,
@@ -27,7 +25,7 @@ test("Smoke: Select Plugin -> Search Config -> New -> Cancel", async ({
   await expect(SC.search.dropdown.input).toBeVisible();
 
   // 4. Navigate to New Form
-  await clickNewToOpenEditForm(page);
+  await clickNewSportConfig(page);
 
   // 5. Verify Sport-Specific Form is rendered
   await expect(SC.form.inputName).toBeVisible();

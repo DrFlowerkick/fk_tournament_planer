@@ -1,17 +1,18 @@
 import { test } from "@playwright/test";
-import { selectors } from "../../helpers/selectors";
 import {
   openNewForm,
   fillAllRequiredValid,
   expectSavesDisabled,
   expectSavesEnabled,
   clickSave,
-  clickEditToOpenEditForm,
+  clickEditPostalAddress,
   expectPreviewShows,
   waitForPostalAddressListUrl,
   extractUuidFromUrl,
-} from "../../helpers/postal_address";
-import { typeThenBlur, expectFieldValidity } from "../../helpers/utils";
+  typeThenBlur,
+  expectFieldValidity,
+  selectors,
+} from "../../helpers";
 
 /**
  * Flow:
@@ -46,7 +47,7 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
     });
 
     // Step 2: Enter edit mode
-    await clickEditToOpenEditForm(page);
+    await clickEditPostalAddress(page);
 
     // Step 3: Make a field invalid → save buttons must be disabled
     /**
@@ -62,12 +63,12 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
     await typeThenBlur(
       PA.form.inputStreet,
       "   Beispielstr.    3   ",
-      PA.form.inputLocality
+      PA.form.inputLocality,
     );
     await expectFieldValidity(
       PA.form.inputStreet,
       "Beispielstr. 3",
-      /*invalid*/ false
+      /*invalid*/ false,
     );
     await expectSavesEnabled(page);
     await clickSave(page);

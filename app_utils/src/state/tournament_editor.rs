@@ -3,11 +3,34 @@
 //! This module provides a context wrapper around `TournamentEditor` to ensure
 //! efficient state updates via `RwSignal` without unnecessary cloning.
 
+use crate::{
+    error::{
+        AppError,
+        strategy::{handle_read_error, handle_write_error},
+    },
+    hooks::{
+        use_on_cancel::use_on_cancel,
+        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    },
+    params::{GroupParams, SportParams, StageParams, TournamentBaseParams},
+    server_fn::{
+        stage::load_stage_by_number, tournament_base::load_tournament_base,
+        tournament_editor::SaveTournamentEditorDiff,
+    },
+    state::{
+        error_state::PageErrorContext,
+        toast_state::{ToastContext, ToastVariant},
+    },
+};
 use app_core::{
-    Stage, TournamentBase, TournamentEditor, TournamentEditorState, TournamentMode,
-    TournamentState, utils::validation::ValidationResult,
+    TournamentEditor, TournamentEditorState, TournamentMode, TournamentState,
+    utils::validation::ValidationResult,
 };
 use leptos::prelude::*;
+use leptos_router::{
+    NavigateOptions,
+    hooks::{use_navigate, use_params, use_query},
+};
 use uuid::Uuid;
 
 /// Context wrapper for `TournamentEditor`.
@@ -16,60 +39,79 @@ use uuid::Uuid;
 /// `.update()` for mutations and `.with()` for reading to minimize cloning of heavy structures.
 /// This context also provides various read/write slices for common properties
 /// to facilitate fine-grained reactivity in the UI.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct TournamentEditorContext {
+    // --- state & derived signals ---
+    /// Tournament editor core state
     inner: RwSignal<TournamentEditor>,
-    /// Indicates if a save or load operation is currently in progress.
-    /// Used to disable UI elements across all child components.
-    busy: RwSignal<bool>,
-    /// Simple counter to trigger URL validation checks manually
-    url_validation_trigger: RwSignal<usize>,
-    /// Simple counter to trigger refetching resources after save
-    resource_refetch_trigger: RwSignal<usize>,
-
-    // --- Slices for Tournament Base ---
-    /// Read slice for accessing the tournament base ID, if any
-    pub base_id: Signal<Option<Uuid>>,
-    /// Read slice for accessing the tournament base name, if any
-    pub base_name: Signal<Option<String>>,
-    /// Write slice for setting the tournament base name
-    pub set_base_name: SignalSetter<String>,
-    /// Read slice for accessing the tournament base number of entrants, if any
-    pub base_num_entrants: Signal<Option<u32>>,
-    /// Write slice for setting the tournament base number of entrants
-    pub set_base_num_entrants: SignalSetter<u32>,
-    /// Read slice for accessing the tournament base mode, if any
-    pub base_mode: Signal<Option<TournamentMode>>,
-    /// Write slice for setting the tournament base mode
-    pub set_base_mode: SignalSetter<TournamentMode>,
-    /// Read slice for accessing the tournament base number of rounds for Swiss System, if any
-    pub base_num_rounds_swiss_system: Signal<Option<u32>>,
-    /// Write slice for setting the tournament base number of rounds for Swiss System
-    pub set_base_num_rounds_swiss_system: SignalSetter<u32>,
-
-    // --- Slices for Current Stage ---
-    /// Read slice for accessing the active stage ID, if any
-    pub active_stage_id: Signal<Option<Uuid>>,
-    /// Read slice for accessing the current stage number of groups, if any
-    pub stage_num_groups: Signal<Option<u32>>,
-    /// Write slice for setting the current stage number of groups
-    pub set_stage_num_groups: SignalSetter<u32>,
-
-    // --- Status and trigger tracker Signals ---
+    // ToDo: probably not required anymore
     /// Read slice for getting the state of tournament editor
     pub state: Signal<TournamentEditorState>,
+    // ToDo: probably not required anymore
     /// Read slice for accessing the tournament base state, if any
     pub base_state: Signal<Option<TournamentState>>,
+    /// Read slice for checking if we are creating a new tournament
+    pub is_new_tournament: Signal<bool>,
     /// Read slice for checking if the editor is busy (saving/loading)
     pub is_busy: Signal<bool>,
     /// Read slice for checking if there are unsaved changes
     pub is_changed: Signal<bool>,
     /// Read slice for accessing the validation result of the tournament
     pub validation_result: Signal<ValidationResult<()>>,
-    /// Read signal to track URL validation triggers
-    pub track_url_validation: Signal<usize>,
-    /// Read signal to track resource refetch triggers
-    pub track_resource_refetch: Signal<usize>,
+
+    // --- URL Parameters & Queries ---
+    /// Tournament ID for loading existing tournament bases
+    pub tournament_id: Signal<Option<Uuid>>,
+    /// Currently active stage number from URL, if any
+    pub active_stage_number: Signal<Option<u32>>,
+
+    // --- Actions and Resources ---
+    /// Action for saving tournament editor diffs
+    save_diff: ServerAction<SaveTournamentEditorDiff>,
+
+    // --- Signals, Slices & Callbacks for Tournament Base ---
+    /// Read slice for checking if base is initialized
+    pub is_base_initialized: Signal<bool>,
+    /// Read slice for checking if base editing is disabled
+    pub is_disabled_base_editing: Signal<bool>,
+    /// Read slice for accessing the tournament base ID, if any
+    pub base_id: Signal<Option<Uuid>>,
+    /// Read slice for accessing the tournament base name, if any
+    pub base_name: Signal<Option<String>>,
+    /// Write slice for setting the tournament base name
+    pub set_base_name: Callback<String>,
+    /// Read slice for accessing the tournament base number of entrants, if any
+    pub base_num_entrants: Signal<Option<u32>>,
+    /// Write slice for setting the tournament base number of entrants
+    pub set_base_num_entrants: Callback<u32>,
+    /// Read slice for accessing the tournament base mode, if any
+    pub base_mode: Signal<Option<TournamentMode>>,
+    /// Write slice for setting the tournament base mode
+    pub set_base_mode: Callback<TournamentMode>,
+    /// Read slice for accessing the tournament base number of rounds for Swiss System, if any
+    pub base_num_rounds_swiss_system: Signal<Option<u32>>,
+    /// Write slice for setting the tournament base number of rounds for Swiss System
+    pub set_base_num_rounds_swiss_system: Callback<u32>,
+    /// Read slice for accessing the tournament  base state, if any
+    pub base_tournament_state: Signal<Option<TournamentState>>,
+
+    // --- Signals, Slices & Callbacks for Current Stage ---
+    /// Read slice for checking if stage is initialized
+    pub is_stage_initialized: Signal<bool>,
+    /// Read slice for checking if stage editor is hidden
+    pub is_hiding_stage_editor: Signal<bool>,
+    /// Read slice for checking if stage editing is disabled
+    pub is_disabled_stage_editing: Signal<bool>,
+    /// Read slice for accessing the active stage ID, if any
+    pub active_stage_id: Signal<Option<Uuid>>,
+    /// Read slice for accessing the current stage number of groups, if any
+    pub stage_num_groups: Signal<Option<u32>>,
+    /// Write slice for setting the current stage number of groups
+    pub set_stage_num_groups: Callback<u32>,
+
+    // --- Signals, Slices & Callbacks for Current Group ---
+    /// Read slice for checking if stage is initialized
+    pub is_group_initialized: Signal<bool>,
 }
 
 impl Default for TournamentEditorContext {
@@ -81,13 +123,264 @@ impl Default for TournamentEditorContext {
 impl TournamentEditorContext {
     /// Creates a new, empty context.
     pub fn new() -> Self {
-        // core signals
-        let inner = RwSignal::new(TournamentEditor::new());
-        let busy = RwSignal::new(false);
-        let url_validation_trigger = RwSignal::new(0);
-        let resource_refetch_trigger = RwSignal::new(0);
+        // --- navigation and globale state context ---
+        let navigate = use_navigate();
+        let UseQueryNavigationReturn {
+            url_with_update_query,
+            url_route_with_sub_path,
+            path,
+            ..
+        } = use_query_navigation();
+        let page_err_ctx = expect_context::<PageErrorContext>();
+        let toast_ctx = expect_context::<ToastContext>();
+        let component_id = StoredValue::new(Uuid::new_v4());
+        // remove errors on unmount
+        on_cleanup(move || {
+            page_err_ctx.clear_all_for_component(component_id.get_value());
+        });
 
-        // Create slices and Callbacks for base
+        // --- core signals ---
+        let inner = RwSignal::new(TournamentEditor::new());
+        let state = create_read_slice(inner, |inner| inner.get_state());
+        let base_state = create_read_slice(inner, |inner| {
+            inner.get_base().map(|b| b.get_tournament_state())
+        });
+        let is_changed = create_read_slice(inner, |inner| inner.is_changed());
+        let validation_result = create_read_slice(inner, |inner| inner.validation());
+
+        // --- url parameters & queries & validation ---
+        let sport_id_query = use_query::<SportParams>();
+        let sport_id = Signal::derive(move || {
+            sport_id_query.with(|q| q.as_ref().ok().and_then(|p| p.sport_id))
+        });
+        let tournament_id_query = use_query::<TournamentBaseParams>();
+        let tournament_id = Signal::derive(move || {
+            tournament_id_query.with(|q| q.as_ref().ok().and_then(|p| p.tournament_id))
+        });
+        let is_new_tournament = Signal::derive(move || {
+            tournament_id.get().is_none() && path.get().starts_with("/new-tournament")
+        });
+        let stage_params = use_params::<StageParams>();
+        let active_stage_number = Signal::derive(move || {
+            stage_params.with(|p| p.as_ref().ok().and_then(|params| params.stage_number))
+        });
+        let group_params = use_params::<GroupParams>();
+        let active_group_number = Signal::derive(move || {
+            group_params.with(|p| p.as_ref().ok().and_then(|params| params.group_number))
+        });
+
+        let valid_object_numbers = Memo::new(move |_| {
+            inner.with(|state| {
+                state.validate_object_numbers(
+                    active_stage_number.get(),
+                    active_group_number.get(),
+                    None,
+                    None,
+                )
+            })
+        });
+        // Effect to update URL if invalid object numbers are detected
+        Effect::new({
+            let navigate = navigate.clone();
+            move || {
+                // Validate url against current params and navigate if invalid params detected
+                if let Some(von) = valid_object_numbers.get() {
+                    // Build redirect path from valid object numbers
+                    let redirect_path = von
+                        .iter()
+                        .map(|n| n.to_string())
+                        .collect::<Vec<_>>()
+                        .join("/");
+                    // Navigate to the corrected path
+                    navigate(
+                        &url_route_with_sub_path(&redirect_path),
+                        NavigateOptions {
+                            replace: true, // Replace history to avoid dead ends
+                            scroll: false,
+                            ..Default::default()
+                        },
+                    );
+                }
+            }
+        });
+
+        // --- server actions and resources ---
+        let save_diff = ServerAction::<SaveTournamentEditorDiff>::new();
+        let base_res = LocalResource::new(move || {
+            let maybe_t_id = tournament_id.get();
+            let maybe_s_id = sport_id.get();
+            // create future for loading tournament base
+            async move {
+                if let Some(t_id) = maybe_t_id
+                    && maybe_s_id.is_some()
+                {
+                    match load_tournament_base(t_id).await {
+                        Ok(None) => Err(AppError::ResourceNotFound(
+                            "Tournament Base".to_string(),
+                            t_id,
+                        )),
+                        load_result => load_result,
+                    }
+                } else {
+                    Ok(None)
+                }
+            }
+        });
+        let stage_res = LocalResource::new(move || {
+            let maybe_t_id = tournament_id.get();
+            let maybe_s_num = active_stage_number.get();
+            // create future for loading stage
+            async move {
+                if let Some(t_id) = maybe_t_id
+                    && let Some(stage_number) = maybe_s_num
+                {
+                    load_stage_by_number(t_id, stage_number).await
+                } else {
+                    Ok(None)
+                }
+            }
+        });
+
+        // server action & resource activity tracking
+        let is_busy = Signal::derive(move || {
+            save_diff.pending().get() || base_res.get().is_none() || stage_res.get().is_none()
+        });
+
+        // --- effects for server action and resource results ---
+        // retry function for error handling
+        let refetch_and_reset = Callback::new(move |()| {
+            save_diff.clear();
+            base_res.refetch();
+            stage_res.refetch();
+        });
+
+        // cancel function for cancel button and error handling
+        let on_cancel = use_on_cancel();
+
+        // Effect to handle save action results
+        Effect::new({
+            let navigate = navigate.clone();
+            move || match save_diff.value().get() {
+                Some(Ok(base_id)) => {
+                    toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
+
+                    if tournament_id.get().is_some() {
+                        // if it was a new tournament, trigger refetch to load the full data
+                        refetch_and_reset.run(());
+                    } else {
+                        // clear save action state
+                        save_diff.clear();
+                        // else navigate directly
+                        let nav_url =
+                            url_with_update_query("tournament_id", &base_id.to_string(), None);
+                        navigate(
+                            &nav_url,
+                            NavigateOptions {
+                                replace: true,
+                                scroll: false,
+                                ..Default::default()
+                            },
+                        );
+                    }
+                }
+                Some(Err(err)) => {
+                    leptos::logging::error!("Error saving tournament editor: {:?}", err);
+                    save_diff.clear();
+                    handle_write_error(
+                        &page_err_ctx,
+                        &toast_ctx,
+                        component_id.get_value(),
+                        &err,
+                        refetch_and_reset,
+                    );
+                }
+                None => { /* saving state - do nothing */ }
+            }
+        });
+
+        // Effect to load tournament base when base resource changes
+        Effect::new(move || match base_res.get() {
+            Some(Ok(Some(base))) => {
+                inner.update(|te| {
+                    te.set_base(base);
+                });
+            }
+            Some(Ok(None)) => {
+                // initialize or reset base, if we have no tournament id in query and a sport id is given
+                // and we are in None or Edit state -> create new base
+                if let Some(s_id) = sport_id.get()
+                    && tournament_id.get().is_none()
+                    && matches!(
+                        inner.get_untracked().get_state(),
+                        TournamentEditorState::None | TournamentEditorState::Edit
+                    )
+                {
+                    inner.update(move |te| {
+                        te.new_base(s_id);
+                    });
+                }
+            }
+            Some(Err(err)) => {
+                handle_read_error(
+                    &page_err_ctx,
+                    component_id.get_value(),
+                    &err,
+                    refetch_and_reset,
+                    on_cancel,
+                );
+            }
+            None => { /* loading state - do nothing */ }
+        });
+
+        // Effect to load current stage when stage resource changes
+        Effect::new(move || match stage_res.get() {
+            Some(Ok(Some(stage))) => {
+                inner.update(|te| {
+                    te.set_stage(stage);
+                });
+            }
+            Some(Ok(None)) => {
+                // create new stage, if we have a valid stage number in params, but no such stage exists yet
+                if let Some(stage_number) = active_stage_number.get()
+                    && let Some(number_of_stages) = inner
+                        .get_untracked()
+                        .get_base()
+                        .map(|b| b.get_tournament_mode().get_num_of_stages())
+                    && stage_number < number_of_stages
+                    && inner
+                        .get_untracked()
+                        .get()
+                        .get_stage_by_number(stage_number)
+                        .is_none()
+                {
+                    inner.update(move |te| {
+                        te.new_stage(stage_number);
+                    });
+                }
+            }
+            Some(Err(err)) => {
+                handle_read_error(
+                    &page_err_ctx,
+                    component_id.get_value(),
+                    &err,
+                    refetch_and_reset,
+                    on_cancel,
+                );
+            }
+            None => { /* loading state - do nothing */ }
+        });
+
+        // --- Create slices for base ---
+        let is_base_initialized = create_read_slice(inner, |inner| inner.get_base().is_some());
+        let base_tournament_state = create_read_slice(inner, |inner| {
+            inner.get_base().map(|b| b.get_tournament_state())
+        });
+        let is_disabled_base_editing = Signal::derive(move || {
+            matches!(
+                base_tournament_state.get(),
+                Some(TournamentState::ActiveStage(_)) | Some(TournamentState::Finished)
+            )
+        });
         let base_id = create_read_slice(inner, |inner| inner.get_base().map(|b| b.get_id()));
         let (base_name, set_base_name) = create_slice(
             inner,
@@ -96,6 +389,9 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_name(name);
             },
         );
+        let set_base_name = Callback::new(move |name: String| {
+            set_base_name.set(name);
+        });
         let (base_num_entrants, set_base_num_entrants) = create_slice(
             inner,
             |inner| inner.get_base().map(|b| b.get_num_entrants()),
@@ -103,6 +399,9 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_num_entrants(num_entrants);
             },
         );
+        let set_base_num_entrants = Callback::new(move |num_entrants: u32| {
+            set_base_num_entrants.set(num_entrants);
+        });
         let (base_mode, set_base_mode) = create_slice(
             inner,
             |inner| inner.get_base().map(|b| b.get_tournament_mode()),
@@ -110,6 +409,9 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_mode(mode);
             },
         );
+        let set_base_mode = Callback::new(move |mode: TournamentMode| {
+            set_base_mode.set(mode);
+        });
         let (base_num_rounds_swiss_system, set_base_num_rounds_swiss_system) = create_slice(
             inner,
             |inner| {
@@ -123,10 +425,39 @@ impl TournamentEditorContext {
                     .set_base_num_rounds_swiss_system(num_rounds_swiss);
             },
         );
+        let set_base_num_rounds_swiss_system = Callback::new(move |num_rounds_swiss: u32| {
+            set_base_num_rounds_swiss_system.set(num_rounds_swiss);
+        });
 
-        // Create slices for stage
+        // --- Create slices for stage ---
+        let is_stage_initialized = create_read_slice(inner, move |inner| {
+            if let Some(sn) = active_stage_number.get() {
+                inner.get().get_stage_by_number(sn).is_some()
+            } else {
+                false
+            }
+        });
+        let is_hiding_stage_editor = Signal::derive(move || {
+            matches!(
+                base_mode.get(),
+                Some(TournamentMode::SingleStage)
+                    | Some(TournamentMode::SwissSystem { num_rounds: _ })
+            )
+        });
+        let is_disabled_stage_editing = Signal::derive(move || {
+            if let Some(sn) = active_stage_number.get()
+                && let Some(tournament_state) = base_state.get()
+            {
+                match tournament_state {
+                    TournamentState::ActiveStage(acs) => acs >= sn,
+                    TournamentState::Finished => true,
+                    _ => false,
+                }
+            } else {
+                false
+            }
+        });
         let active_stage_id = create_read_slice(inner, |inner| inner.get_active_stage_id());
-
         let (stage_num_groups, set_stage_num_groups) = create_slice(
             inner,
             |inner| inner.get_active_stage().map(|s| s.get_num_groups()),
@@ -138,22 +469,38 @@ impl TournamentEditorContext {
                 }
             },
         );
-
-        // Create reading slices for status signals
-        let state = create_read_slice(inner, |inner| inner.get_state());
-        let base_state = create_read_slice(inner, |inner| {
-            inner.get_base().map(|b| b.get_tournament_state())
+        let set_stage_num_groups = Callback::new(move |num_groups: u32| {
+            set_stage_num_groups.set(num_groups);
         });
-        let is_changed = create_read_slice(inner, |inner| inner.is_changed());
-        let validation_result = create_read_slice(inner, |inner| inner.validation());
+
+        // --- Create slices for group ---
+        let is_group_initialized = create_read_slice(inner, move |inner| {
+            if let Some(sn) = active_stage_number.get()
+                && let Some(gn) = active_group_number.get()
+            {
+                inner.get().get_group_by_number(sn, gn).is_some()
+            } else {
+                false
+            }
+        });
 
         Self {
             // core signals
             inner,
-            busy,
-            url_validation_trigger,
-            resource_refetch_trigger,
+            state,
+            base_state,
+            is_new_tournament,
+            is_busy,
+            is_changed,
+            validation_result,
+            // url parameters & queries
+            tournament_id,
+            active_stage_number,
+            // actions and resources
+            save_diff,
             // base slices
+            is_base_initialized,
+            is_disabled_base_editing,
             base_id,
             base_name,
             set_base_name,
@@ -163,102 +510,29 @@ impl TournamentEditorContext {
             set_base_mode,
             base_num_rounds_swiss_system,
             set_base_num_rounds_swiss_system,
+            base_tournament_state,
             // stage slices
+            is_stage_initialized,
+            is_hiding_stage_editor,
+            is_disabled_stage_editing,
             active_stage_id,
             stage_num_groups,
             set_stage_num_groups,
-            // status signals
-            state,
-            base_state,
-            is_busy: busy.read_only().into(),
-            is_changed,
-            validation_result,
-            track_url_validation: url_validation_trigger.read_only().into(),
-            track_resource_refetch: resource_refetch_trigger.read_only().into(),
+            // group slices
+            is_group_initialized,
         }
     }
 
-    // --- Busy State Management ---
-
-    /// Sets the global busy state of the editor (e.g. during saving).
-    pub fn set_busy(&self, is_busy: bool) {
-        self.busy.set(is_busy);
-    }
-
-    // --- URL Validation Trigger and Navigation ---
-
-    /// Triggers a global check of the current navigation path validity.
-    /// This should be called by components after modifying structural data (e.g. changing mode or group counts).
-    pub fn trigger_url_validation(&self) {
-        self.url_validation_trigger.update(|v| *v += 1);
-    }
-
-    /// Validates the current URL parameters against the editor state.
-    pub fn validate_url(
-        &self,
-        stage_number: Option<u32>,
-        group_number: Option<u32>,
-        round_number: Option<u32>,
-        match_number: Option<u32>,
-    ) -> Option<String> {
-        self.inner
-            .with_untracked(|state| {
-                state.validate_object_numbers(
-                    stage_number,
-                    group_number,
-                    round_number,
-                    match_number,
-                )
+    // Save diff
+    pub fn save_diff(&self) {
+        if let Some(base_id) = self.base_id.get() {
+            self.inner.with_untracked(|te| {
+                self.save_diff.dispatch(SaveTournamentEditorDiff {
+                    base_id,
+                    base_diff: te.collect_base_diff().cloned(),
+                    stages_diff: te.collect_stages_diff(),
+                });
             })
-            .map(|valid_numbers| {
-                valid_numbers
-                    .iter()
-                    .map(|n| n.to_string())
-                    .collect::<Vec<_>>()
-                    .join("/")
-            })
-    }
-
-    // --- Save & Resource Refetch Trigger ---
-
-    /// Retrieves the inner `TournamentEditor` state for saving
-    pub fn get_inner(&self) -> TournamentEditor {
-        self.inner.get()
-    }
-
-    /// Triggers a refetch of resource resources after saving.
-    pub fn trigger_resource_refetch(&self) {
-        self.resource_refetch_trigger.update(|v| *v += 1);
-    }
-
-    // --- Actions (Write / Update) ---
-
-    // ToDo: we probably must add an input for tournament type here
-    /// Creates a new tournament base with the given sport ID.
-    pub fn new_base(&self, sport_id: Uuid) {
-        self.inner.update(|state| {
-            state.new_base(sport_id);
-        });
-    }
-
-    /// Sets tournament configuration based on user input.
-    pub fn set_base(&self, base: TournamentBase) {
-        self.inner.update(|state| {
-            state.set_base(base);
-        })
-    }
-
-    /// Creates a new stage with the given stage number.
-    pub fn new_stage(&self, stage_number: u32) {
-        self.inner.update(|state| {
-            state.new_stage(stage_number);
-        })
-    }
-
-    /// Sets stage based on user input.
-    pub fn set_stage(&self, stage: Stage) {
-        self.inner.update(|state| {
-            state.set_stage(stage);
-        })
+        }
     }
 }

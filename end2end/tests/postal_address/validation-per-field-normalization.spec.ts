@@ -1,16 +1,14 @@
 import { test, expect, Page } from "@playwright/test";
-import { selectors } from "../../helpers/selectors";
 import {
   openNewForm,
   expectSavesDisabled,
   expectSavesEnabled,
   fillAllRequiredValid,
-} from "../../helpers/postal_address";
-import {
   typeThenBlur,
   selectThenBlur,
   expectFieldValidity,
-} from "../../helpers/utils";
+  selectors,
+} from "../../helpers";
 
 const NEW_ROUTE = "/postal-address/new";
 
@@ -49,14 +47,14 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await typeThenBlur(
       PA.form.inputName,
       "   Müller   GmbH   ",
-      PA.form.inputStreet
+      PA.form.inputStreet,
     );
 
     // expect normalized value & validation state (assume name becomes valid after normalization)
     await expectFieldValidity(
       PA.form.inputName,
       "Müller GmbH",
-      /*invalid*/ false
+      /*invalid*/ false,
     );
 
     // as long as other required fields are empty/invalid, saving must remain disabled
@@ -78,12 +76,12 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await typeThenBlur(
       PA.form.inputStreet,
       "   Main      \n      Street         42  ",
-      PA.form.inputLocality
+      PA.form.inputLocality,
     );
     await expectFieldValidity(
       PA.form.inputStreet,
       "Main Street 42",
-      /*invalid*/ false
+      /*invalid*/ false,
     );
 
     // as long as other required fields are empty/invalid, saving must remain disabled
@@ -105,12 +103,12 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await typeThenBlur(
       PA.form.inputLocality,
       "   Berlin   Mitte  ",
-      PA.form.inputCountry
+      PA.form.inputCountry,
     );
     await expectFieldValidity(
       PA.form.inputLocality,
       "Berlin Mitte",
-      /*invalid*/ false
+      /*invalid*/ false,
     );
 
     // as long as other required fields are empty/invalid, saving must remain disabled
@@ -162,36 +160,36 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await typeThenBlur(
       PA.form.inputPostalCode,
       "   10115    ",
-      PA.form.inputStreet
+      PA.form.inputStreet,
     );
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "10115",
-      /*valid*/ false
+      /*valid*/ false,
     );
 
     // Example 2: "  1234   " -> "1234" (invalid after normalization for DE: length != 5)
     await typeThenBlur(
       PA.form.inputPostalCode,
       "  1234   ",
-      PA.form.inputStreet
+      PA.form.inputStreet,
     );
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "1234",
-      /*invalid*/ true
+      /*invalid*/ true,
     );
 
     // Example 3: "  1234A   " -> "1234A" (invalid after normalization for DE: must be 5 digits)
     await typeThenBlur(
       PA.form.inputPostalCode,
       "  1234A   ",
-      PA.form.inputStreet
+      PA.form.inputStreet,
     );
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "1234A",
-      /*invalid*/ true
+      /*invalid*/ true,
     );
 
     // as long as other required fields are empty/invalid, saving must remain disabled
@@ -221,12 +219,12 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await typeThenBlur(
       PA.form.inputPostalCode,
       "   1011    ",
-      PA.form.inputStreet
+      PA.form.inputStreet,
     );
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "1011",
-      /*first valid*/ false
+      /*first valid*/ false,
     );
 
     // set DE
@@ -235,7 +233,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "1011",
-      /*now invalid*/ true
+      /*now invalid*/ true,
     );
 
     // as long as other required fields are empty/invalid, saving must remain disabled

@@ -3,8 +3,8 @@ import {
   openHomePage,
   selectSportPluginByName,
   goToNewTournament,
-} from "../../helpers/home";
-import { selectors } from "../../helpers/selectors";
+  selectors
+} from "../../helpers";
 
 const PLUGINS = {
   GENERIC: "Generic Sport",
