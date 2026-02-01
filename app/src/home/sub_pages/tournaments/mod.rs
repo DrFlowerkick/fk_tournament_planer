@@ -6,7 +6,7 @@ pub mod register_at_tournament;
 pub use list_tournaments::*;
 pub use register_at_tournament::*;
 
-use crate::{EditSubRoutes, EditTournament};
+use crate::{EditSubRoutes, LoadTournament};
 use leptos::prelude::*;
 #[allow(unused_imports)]
 use leptos_router::MatchNestedRoutes;
@@ -20,7 +20,7 @@ use leptos_router::{
 pub fn TournamentsRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
         <ParentRoute path=path!("tournaments") view=ListTournaments>
-            <ParentRoute path=path!("edit") view=EditTournament>
+            <ParentRoute path=path!("edit") view=LoadTournament>
                 <EditSubRoutes />
                 <Route
                     path=path!("")

@@ -1,23 +1,148 @@
 //! create or edit a tournament
 
-use app_core::TournamentMode;
+use app_core::{TournamentBase, TournamentEditor, TournamentMode};
 use app_utils::{
     components::inputs::{
         EnumSelectWithValidation, NumberInputWithValidation, TextInputWithValidation,
+    },
+    error::{
+        AppError,
+        strategy::{handle_general_error, handle_read_error},
     },
     hooks::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    state::{error_state::PageErrorContext, tournament_editor::TournamentEditorContext},
+    params::{SportParams, TournamentBaseParams},
+    server_fn::tournament_base::load_tournament_base,
+    state::{
+        error_state::PageErrorContext,
+        tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
+    },
 };
 use leptos::prelude::*;
-use leptos_router::{components::A, nested_router::Outlet};
+use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
+use uuid::Uuid;
 
 #[component]
-pub fn EditTournament() -> impl IntoView {
+pub fn LoadTournament() -> impl IntoView {
+    // --- global context ---
+    let page_err_ctx = expect_context::<PageErrorContext>();
+    let component_id = StoredValue::new(Uuid::new_v4());
+    // remove errors on unmount
+    on_cleanup(move || {
+        page_err_ctx.clear_all_for_component(component_id.get_value());
+    });
+    let refetch_trigger = TournamentRefetchContext::new();
+    provide_context(refetch_trigger);
+
+    // --- url queries ---
+    let sport_id_query = use_query::<SportParams>();
+    let sport_id =
+        Signal::derive(move || sport_id_query.with(|q| q.as_ref().ok().and_then(|p| p.sport_id)));
+    let tournament_id_query = use_query::<TournamentBaseParams>();
+    let tournament_id = Signal::derive(move || {
+        tournament_id_query.with(|q| q.as_ref().ok().and_then(|p| p.tournament_id))
+    });
+
+    // --- Resource to load tournament base ---
+    let base_res = Resource::new(
+        move || {
+            (
+                tournament_id.get(),
+                sport_id.get(),
+                refetch_trigger.track_fetch_trigger.get(),
+            )
+        },
+        move |(maybe_t_id, maybe_s_id, _track_refetch)| async move {
+            if let Some(t_id) = maybe_t_id
+                && maybe_s_id.is_some()
+            {
+                match load_tournament_base(t_id).await {
+                    Ok(None) => Err(AppError::ResourceNotFound(
+                        "Tournament Base".to_string(),
+                        t_id,
+                    )),
+                    load_result => load_result,
+                }
+            } else {
+                Ok(None)
+            }
+        },
+    );
+
+    // retry function for error handling
+    let refetch = Callback::new(move |()| {
+        refetch_trigger.trigger_refetch();
+        base_res.refetch();
+    });
+
+    // cancel function for cancel button and error handling
+    let on_cancel = use_on_cancel();
+
+    view! {
+        <Transition fallback=move || {
+            view! {
+                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                    <span class="loading loading-spinner w-24 h-24 mb-4"></span>
+                    <p class="text-2xl font-bold text-center">"Loading tournament data..."</p>
+                </div>
+            }
+        }>
+            <ErrorBoundary fallback=move |errors| {
+                for (_err_id, err) in errors.get().into_iter() {
+                    let e = err.into_inner();
+                    if let Some(app_err) = e.downcast_ref::<AppError>() {
+                        handle_read_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            app_err,
+                            refetch,
+                            on_cancel,
+                        );
+                    } else {
+                        handle_general_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            "An unexpected error occurred.",
+                            None,
+                            on_cancel,
+                        );
+                    }
+                }
+            }>
+                // check if we have new or existing tournament
+                // In case of new tournament, initialize editor with new base if
+                // -> no base is present yet
+                // -> an already saved base is in context (meaning a click on New Tournament
+                // while editing an existing one)
+                {move || {
+                    base_res
+                        .and_then(|may_be_t| {
+                            view! { <EditTournament base=may_be_t.clone() /> }
+                        })
+                }}
+            </ErrorBoundary>
+        </Transition>
+    }
+}
+
+#[component]
+pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
+    // --- prepare initial tournament editor state ---
+    let sport_id_query = use_query::<SportParams>();
+    let sport_id =
+        Signal::derive(move || sport_id_query.with(|q| q.as_ref().ok().and_then(|p| p.sport_id)));
+
+    let mut tournament_editor = TournamentEditor::new();
+    if let Some(b) = base {
+        tournament_editor.set_base(b);
+    } else if let Some(s_id) = sport_id.get_untracked() {
+        tournament_editor.new_base(s_id);
+    }
+
     // --- Initialize context for creating and editing tournaments ---
-    let tournament_editor_context = TournamentEditorContext::new();
+    let tournament_editor_context = TournamentEditorContext::new(tournament_editor);
     provide_context(tournament_editor_context);
     let page_err_ctx = expect_context::<PageErrorContext>();
 
@@ -66,12 +191,20 @@ pub fn EditTournament() -> impl IntoView {
                 <div class="card w-full bg-base-100 shadow-xl">
                     <div class="card-body">
                         // --- Form Area ---
+                        // we have to use try_get here to avoid runtime panics, because
+                        // page_err_ctx "lives" independent of tournament_editor_context
                         <fieldset
                             disabled=move || {
                                 page_err_ctx.has_errors()
-                                    || tournament_editor_context.is_disabled_base_editing.get()
-                                    || tournament_editor_context.is_busy.get()
-                                    || !tournament_editor_context.is_base_initialized.get()
+                                    || tournament_editor_context
+                                        .is_disabled_base_editing
+                                        .try_get()
+                                        .unwrap_or(false)
+                                    || tournament_editor_context.is_busy.try_get().unwrap_or(false)
+                                    || !tournament_editor_context
+                                        .is_base_initialized
+                                        .try_get()
+                                        .unwrap_or(false)
                             }
                             class="contents"
                             data-testid="tournament-editor-form"
@@ -257,14 +390,20 @@ pub fn EditTournament() -> impl IntoView {
                         "Cancel"
                     </button>
 
+                    // we have to use try_get here to avoid runtime panics, because
+                    // page_err_ctx "lives" independent of tournament_editor_context
                     <button
                         class="btn btn-primary"
                         data-testid="btn-tournament-save"
                         on:click=move |_| tournament_editor_context.save_diff()
                         disabled=move || {
-                            !tournament_editor_context.is_changed.get()
-                                || tournament_editor_context.validation_result.get().is_err()
-                                || tournament_editor_context.is_busy.get()
+                            !tournament_editor_context.is_changed.try_get().unwrap_or(false)
+                                || tournament_editor_context
+                                    .validation_result
+                                    .try_get()
+                                    .map(|res| res.is_err())
+                                    .unwrap_or(false)
+                                || tournament_editor_context.is_busy.try_get().unwrap_or(false)
                                 || page_err_ctx.has_errors()
                         }
                     >

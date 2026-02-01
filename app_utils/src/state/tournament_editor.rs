@@ -4,26 +4,17 @@
 //! efficient state updates via `RwSignal` without unnecessary cloning.
 
 use crate::{
-    error::{
-        AppError,
-        strategy::{handle_read_error, handle_write_error},
-    },
-    hooks::{
-        use_on_cancel::use_on_cancel,
-        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    },
-    params::{GroupParams, SportParams, StageParams, TournamentBaseParams},
-    server_fn::{
-        stage::load_stage_by_number, tournament_base::load_tournament_base,
-        tournament_editor::SaveTournamentEditorDiff,
-    },
+    error::strategy::handle_write_error,
+    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    params::{GroupParams, StageParams, TournamentBaseParams},
+    server_fn::tournament_editor::SaveTournamentEditorDiff,
     state::{
         error_state::PageErrorContext,
         toast_state::{ToastContext, ToastVariant},
     },
 };
 use app_core::{
-    TournamentEditor, TournamentEditorState, TournamentMode, TournamentState,
+    Stage, TournamentEditor, TournamentEditorState, TournamentMode, TournamentState,
     utils::validation::ValidationResult,
 };
 use leptos::prelude::*;
@@ -71,6 +62,14 @@ Comparing options:
 Decide by KISS principle: Option 1 seems simpler architecturally (single source of truth),
 despite the initial blocking load time. But Option requires less new code, therefore I start
 with Option 3 for now.
+
+
+Results so far:
+- Option 3 seems to work fine. Next steps are cleanup of Signals in TournamentEditorContext:
+    - Which of them are still required?
+    - If required, should they remain in Context or should they be moved to local component state?
+- E2E testing of the entire edit flow was successful.
+- If no more issues are found and cleanup is complete, merge branch and remove this TODO.
 *****************************************************************************************/
 
 /// Context wrapper for `TournamentEditor`.
@@ -154,15 +153,11 @@ pub struct TournamentEditorContext {
     pub is_group_initialized: Signal<bool>,
 }
 
-impl Default for TournamentEditorContext {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl TournamentEditorContext {
     /// Creates a new, empty context.
-    pub fn new() -> Self {
+    pub fn new(initialized_tournament_editor: TournamentEditor) -> Self {
+        let refetch_trigger = expect_context::<TournamentRefetchContext>();
+
         // --- navigation and globale state context ---
         let navigate = use_navigate();
         let UseQueryNavigationReturn {
@@ -180,7 +175,7 @@ impl TournamentEditorContext {
         });
 
         // --- core signals ---
-        let inner = RwSignal::new(TournamentEditor::new());
+        let inner = RwSignal::new(initialized_tournament_editor);
         let state = create_read_slice(inner, |inner| inner.get_state());
         let base_state = create_read_slice(inner, |inner| {
             inner.get_base().map(|b| b.get_tournament_state())
@@ -189,10 +184,6 @@ impl TournamentEditorContext {
         let validation_result = create_read_slice(inner, |inner| inner.validation());
 
         // --- url parameters & queries & validation ---
-        let sport_id_query = use_query::<SportParams>();
-        let sport_id = Signal::derive(move || {
-            sport_id_query.with(|q| q.as_ref().ok().and_then(|p| p.sport_id))
-        });
         let tournament_id_query = use_query::<TournamentBaseParams>();
         let tournament_id = Signal::derive(move || {
             tournament_id_query.with(|q| q.as_ref().ok().and_then(|p| p.tournament_id))
@@ -246,56 +237,16 @@ impl TournamentEditorContext {
 
         // --- server actions and resources ---
         let save_diff = ServerAction::<SaveTournamentEditorDiff>::new();
-        let base_res = LocalResource::new(move || {
-            let maybe_t_id = tournament_id.get();
-            let maybe_s_id = sport_id.get();
-            // create future for loading tournament base
-            async move {
-                if let Some(t_id) = maybe_t_id
-                    && maybe_s_id.is_some()
-                {
-                    match load_tournament_base(t_id).await {
-                        Ok(None) => Err(AppError::ResourceNotFound(
-                            "Tournament Base".to_string(),
-                            t_id,
-                        )),
-                        load_result => load_result,
-                    }
-                } else {
-                    Ok(None)
-                }
-            }
-        });
-        let stage_res = LocalResource::new(move || {
-            let maybe_t_id = tournament_id.get();
-            let maybe_s_num = active_stage_number.get();
-            // create future for loading stage
-            async move {
-                if let Some(t_id) = maybe_t_id
-                    && let Some(stage_number) = maybe_s_num
-                {
-                    load_stage_by_number(t_id, stage_number).await
-                } else {
-                    Ok(None)
-                }
-            }
-        });
 
         // server action & resource activity tracking
-        let is_busy = Signal::derive(move || {
-            save_diff.pending().get() || base_res.get().is_none() || stage_res.get().is_none()
-        });
+        let is_busy = Signal::derive(move || save_diff.pending().get());
 
         // --- effects for server action and resource results ---
         // retry function for error handling
         let refetch_and_reset = Callback::new(move |()| {
+            refetch_trigger.trigger_refetch();
             save_diff.clear();
-            base_res.refetch();
-            stage_res.refetch();
         });
-
-        // cancel function for cancel button and error handling
-        let on_cancel = use_on_cancel();
 
         // Effect to handle save action results
         Effect::new({
@@ -336,78 +287,6 @@ impl TournamentEditorContext {
                 }
                 None => { /* saving state - do nothing */ }
             }
-        });
-
-        // Effect to load tournament base when base resource changes
-        Effect::new(move || match base_res.get() {
-            Some(Ok(Some(base))) => {
-                inner.update(|te| {
-                    te.set_base(base);
-                });
-            }
-            Some(Ok(None)) => {
-                // initialize or reset base, if we have no tournament id in query and a sport id is given
-                // and we are in None or Edit state -> create new base
-                if let Some(s_id) = sport_id.get()
-                    && tournament_id.get().is_none()
-                    && matches!(
-                        inner.get_untracked().get_state(),
-                        TournamentEditorState::None | TournamentEditorState::Edit
-                    )
-                {
-                    inner.update(move |te| {
-                        te.new_base(s_id);
-                    });
-                }
-            }
-            Some(Err(err)) => {
-                handle_read_error(
-                    &page_err_ctx,
-                    component_id.get_value(),
-                    &err,
-                    refetch_and_reset,
-                    on_cancel,
-                );
-            }
-            None => { /* loading state - do nothing */ }
-        });
-
-        // Effect to load current stage when stage resource changes
-        Effect::new(move || match stage_res.get() {
-            Some(Ok(Some(stage))) => {
-                inner.update(|te| {
-                    te.set_stage(stage);
-                });
-            }
-            Some(Ok(None)) => {
-                // create new stage, if we have a valid stage number in params, but no such stage exists yet
-                if let Some(stage_number) = active_stage_number.get()
-                    && let Some(number_of_stages) = inner
-                        .get_untracked()
-                        .get_base()
-                        .map(|b| b.get_tournament_mode().get_num_of_stages())
-                    && stage_number < number_of_stages
-                    && inner
-                        .get_untracked()
-                        .get()
-                        .get_stage_by_number(stage_number)
-                        .is_none()
-                {
-                    inner.update(move |te| {
-                        te.new_stage(stage_number);
-                    });
-                }
-            }
-            Some(Err(err)) => {
-                handle_read_error(
-                    &page_err_ctx,
-                    component_id.get_value(),
-                    &err,
-                    refetch_and_reset,
-                    on_cancel,
-                );
-            }
-            None => { /* loading state - do nothing */ }
         });
 
         // --- Create slices for base ---
@@ -563,6 +442,18 @@ impl TournamentEditorContext {
         }
     }
 
+    pub fn new_stage(&self, stage_number: u32) {
+        self.inner.update(|te| {
+            te.new_stage(stage_number);
+        });
+    }
+
+    pub fn set_stage(&self, stage: Stage) {
+        self.inner.update(|te| {
+            te.set_stage(stage);
+        });
+    }
+
     // Save diff
     pub fn save_diff(&self) {
         if let Some(base_id) = self.base_id.get() {
@@ -574,5 +465,27 @@ impl TournamentEditorContext {
                 });
             })
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct TournamentRefetchContext {
+    /// Trigger to refetch data from server
+    refetch_trigger: RwSignal<u64>,
+    /// Read slice for getting the current state of the tournament editor
+    pub track_fetch_trigger: Signal<u64>,
+}
+
+impl TournamentRefetchContext {
+    pub fn new() -> Self {
+        let refetch_trigger = RwSignal::new(0);
+        Self {
+            refetch_trigger,
+            track_fetch_trigger: refetch_trigger.read_only().into(),
+        }
+    }
+
+    pub fn trigger_refetch(&self) {
+        self.refetch_trigger.update(|v| *v += 1);
     }
 }
