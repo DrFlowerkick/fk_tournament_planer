@@ -33,6 +33,46 @@ use leptos_router::{
 };
 use uuid::Uuid;
 
+/****************************************************************************************
+TODO: Refactoring TournamentEditorState
+Option 1: Enable SSR by loading the complete tournament data in one go and initializing
+          the TournamentEditor in one step. This would simplify state management
+          but may increase initial load time.
+          For this to work, we have to split EditTournament() into loading and editing
+          components. The loading component would fetch the FULL tournament data (base +
+          all stages/groups/etc., ideally via a single aggregated endpoint) and provide
+          it as a prop to the editing component.
+          The editing component then initializes the context with the provided data synchronously.
+          The Resource for loading would move to the loading component.
+
+Option 2: Keep current lazy loading approach but refactor TournamentEditorState
+          to preload the origin tournament data when entering edit mode.
+          The preload starts after fetching base. Using "spawn_local", we trigger
+          background loading of stages/groups based on the base configuration.
+          We have to handle race conditions: The user might start editing before preload
+          finishes. Therefore, preloaded data updates 'origin', but 'local' is only
+          updated if it hasn't been touched by the user yet.
+
+Option 3: Hybrid "Loader Pattern". Split page components into a Loader (handling the Resource/SSR)
+          and an Editor (presentation). The Loader passes fetched data via props to the Editor.
+          The Editor renders immediately based on props (enabling real SSR for the content)
+          and uses an Effect to sync these props into the global TournamentEditorContext.
+          This avoids hydration errors because the parent context starts "empty" on both
+          server and client, filling up only after hydration via the Effect.
+
+Comparing options:
+- Option 1 (Fetch-Then-Render): Best for consistency and SSR. No "partial" states logic needed.
+  Requires a backend endpoint that dumps the full tournament structure.
+- Option 2 (optimistic background loading): Faster initial render (TTFB) for large tournaments.
+  More complex state synchronization logic (handling race conditions).
+- Option 3 (Loader Pattern): Good balance. Allows granular SSR without massive initial payload.
+  Ensures content is visible immediately via props, while context syncs slightly later for global UI.
+
+Decide by KISS principle: Option 1 seems simpler architecturally (single source of truth),
+despite the initial blocking load time. But Option requires less new code, therefore I start
+with Option 3 for now.
+*****************************************************************************************/
+
 /// Context wrapper for `TournamentEditor`.
 ///
 /// Uses an internal `RwSignal` to hold the state, encouraging the use of
