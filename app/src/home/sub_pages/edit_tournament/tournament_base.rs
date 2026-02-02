@@ -227,7 +227,6 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                     name="tournament-mode"
                                     value=tournament_editor_context.base_mode
                                     set_value=tournament_editor_context.set_base_mode
-                                    validation_result=tournament_editor_context.validation_result
                                 />
 
                                 <Show when=move || {

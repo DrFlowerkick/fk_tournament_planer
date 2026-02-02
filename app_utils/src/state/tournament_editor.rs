@@ -63,7 +63,7 @@ pub struct TournamentEditorContext {
     /// Read slice for accessing the tournament base mode, if any
     pub base_mode: Signal<Option<TournamentMode>>,
     /// Write slice for setting the tournament base mode
-    pub set_base_mode: Callback<TournamentMode>,
+    pub set_base_mode: Callback<Option<TournamentMode>>,
     /// Read slice for accessing the tournament base number of rounds for Swiss System, if any
     pub base_num_rounds_swiss_system: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of rounds for Swiss System
@@ -249,8 +249,10 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_mode(mode);
             },
         );
-        let set_base_mode = Callback::new(move |mode: TournamentMode| {
-            set_base_mode.set(mode);
+        let set_base_mode = Callback::new(move |mode: Option<TournamentMode>| {
+            if let Some(mode) = mode {
+                set_base_mode.set(mode);
+            }
         });
         let (base_num_rounds_swiss_system, set_base_num_rounds_swiss_system) = create_slice(
             inner,

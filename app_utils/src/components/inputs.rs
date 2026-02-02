@@ -77,12 +77,13 @@ pub fn TextInputWithValidation<T>(
     set_value: Callback<T>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
@@ -228,6 +229,7 @@ pub fn TextInput(
     }
 }
 
+// ToDo: replace all instances of ValidatedSelect with this more advanced component
 #[component]
 pub fn SelectWithValidation<S>(
     /// Label text for the input
@@ -241,26 +243,34 @@ pub fn SelectWithValidation<S>(
     #[prop(into)]
     value: Signal<Option<S>>,
     /// Callback to push changes to source of value
-    /// Using Callback<S> allows passing closures and Callbacks.
-    set_value: Callback<S>,
+    /// Using Callback<Option<S>> allows passing closures and Callbacks and handling None (clearing).
+    set_value: Callback<Option<S>>,
     #[prop(into)] options: Signal<Vec<(String, S)>>,
-    /// Optional custom placeholder text (default: "Select [label]...")
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
     optional: bool,
+    /// Optional label for a "Clear selection" option.
+    /// If Some("Text"), an option to clear the selection (set to None) is displayed.
+    /// Note: Make sure that the "clear" option value does not conflict with any options value.
+    #[prop(into, optional)]
+    clear_label: Option<String>,
 ) -> impl IntoView
 where
     S: FromStr + Display + Clone + Send + Sync + PartialEq + Eq + 'static,
 {
+    // StoredValue helper for optional props
+    let clear_label = StoredValue::new(clear_label);
+
     // Local state: true while user is interacting with the select
     let (is_selecting, set_is_selecting) = signal(false);
 
@@ -279,10 +289,10 @@ where
     let (label, placeholder_text) = if optional {
         (
             format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
+            format!("Select {} (optional)...", label.to_lowercase()),
         )
     } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
+        (label.clone(), format!("Select {}...", label.to_lowercase()))
     };
 
     view! {
@@ -296,9 +306,8 @@ where
                 prop:value=move || {
                     value
                         .with(|maybe_v| {
-                            maybe_v
-                                .as_ref()
-                                .and_then(|v| {
+                            match maybe_v.as_ref() {
+                                Some(v) => {
                                     options
                                         .with(|opts| {
                                             opts.iter()
@@ -306,7 +315,9 @@ where
                                                     (opt_v == v).then(|| text.clone())
                                                 })
                                         })
-                                })
+                                }
+                                None => clear_label.get_value(),
+                            }
                         })
                         .unwrap_or_default()
                 }
@@ -325,24 +336,40 @@ where
                 on:change:target={
                     let options = options.clone();
                     move |ev| {
-                        let new_val = ev.target().value();
-                        if let Some(selected_variant) = options
+                        let new_val_str = ev.target().value();
+                        if new_val_str.is_empty()
+                            || clear_label.get_value().as_deref() == Some(&new_val_str)
+                        {
+                            set_value.run(None);
+                        } else if let Some(selected_variant) = options
                             .with(move |opts| {
                                 opts.iter()
                                     .find_map(move |(val_str, val)| {
-                                        (*val_str == new_val).then(|| val.clone())
+                                        (*val_str == new_val_str).then(|| val.clone())
                                     })
                             })
                         {
-                            set_value.run(selected_variant);
+                            set_value.run(Some(selected_variant));
                         }
                         set_is_selecting.set(false);
                     }
                 }
             >
+                // The disabled placeholder serves as the default empty state
                 <option disabled selected value="">
                     {placeholder_text}
                 </option>
+
+                // Optional "Clear" option if provided
+                {move || {
+                    clear_label
+                        .get_value()
+                        .map(|text| {
+                            let val = text.clone();
+                            view! { <option value=val>{text}</option> }
+                        })
+                }}
+
                 {options
                     .get()
                     .into_iter()
@@ -437,7 +464,7 @@ pub fn ValidatedSelect(
     }
 }
 
-// ToDo: replace all instances of ValidatedTextInput and TextInput with this more advanced component
+// ToDo: replace all instances of EnumSelect with this more advanced component
 #[component]
 pub fn EnumSelectWithValidation<E>(
     /// Label text for the input
@@ -451,10 +478,11 @@ pub fn EnumSelectWithValidation<E>(
     #[prop(into)]
     value: Signal<Option<E>>,
     /// Callback to push changes to source of value
-    /// Using Callback<E> allows passing closures and Callbacks.
-    set_value: Callback<E>,
+    /// Using Callback<Option<E>> allows passing closures and Callbacks and handling None (clearing).
+    set_value: Callback<Option<E>>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
     #[prop(into, default = None.into())]
@@ -465,10 +493,18 @@ pub fn EnumSelectWithValidation<E>(
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
     optional: bool,
+    /// Optional label for a "Clear selection" option.
+    /// If Some("Text"), an option to clear the selection (set to None) is displayed.
+    /// Note: Make sure that the "clear" option value does not conflict with any Enum option value.
+    #[prop(into, optional)]
+    clear_label: Option<String>,
 ) -> impl IntoView
 where
     E: SelectableOption,
 {
+    // StoredValue helper for optional props
+    let clear_label = StoredValue::new(clear_label);
+
     // Local state: true while user is interacting with the select
     let (is_selecting, set_is_selecting) = signal(false);
 
@@ -487,10 +523,10 @@ where
     let (label, placeholder_text) = if optional {
         (
             format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
+            format!("Select {} (optional)...", label.to_lowercase()),
         )
     } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
+        (label.clone(), format!("Select {}...", label.to_lowercase()))
     };
 
     view! {
@@ -501,7 +537,12 @@ where
             <select
                 class="select select-bordered w-full"
                 aria-invalid=move || show_error().to_string()
-                prop:value=move || value.get().as_ref().map(|v| v.value()).unwrap_or_default()
+                prop:value=move || {
+                    match value.get().as_ref() {
+                        Some(v) => v.value(),
+                        None => clear_label.get_value().unwrap_or_default(),
+                    }
+                }
                 name=name.clone()
                 // Auto-generate test-id
                 data-testid=format!("select-{}", name)
@@ -516,11 +557,13 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
-                    if let Some(selected_variant) = E::options()
+                    if new_val.is_empty() || clear_label.get_value().as_deref() == Some(&new_val) {
+                        set_value.run(None);
+                    } else if let Some(selected_variant) = E::options()
                         .into_iter()
                         .find(|o| o.value() == new_val)
                     {
-                        set_value.run(selected_variant);
+                        set_value.run(Some(selected_variant));
                     }
                     set_is_selecting.set(false);
                 }
@@ -528,6 +571,17 @@ where
                 <option disabled selected value="">
                     {placeholder_text}
                 </option>
+
+                // Optional "Clear" option if provided
+                {move || {
+                    clear_label
+                        .get_value()
+                        .map(|text| {
+                            let val = text.clone();
+                            view! { <option value=val>{text}</option> }
+                        })
+                }}
+
                 {E::options()
                     .into_iter()
                     .map(|opt| {
@@ -717,12 +771,13 @@ pub fn NumberInputWithValidation<T>(
     min: String,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
@@ -872,6 +927,7 @@ where
                 name=name.clone()
                 data-testid=format!("input-{}", name)
                 aria-invalid=move || validation_error.get().is_err().to_string()
+                // Convert Duration to unit for display
                 prop:value=move || {
                     match value.get() {
                         Some(v) => v.to_string(),
@@ -1008,7 +1064,7 @@ pub fn ValidatedDurationInput(
     }
 }
 
-// ToDo: replace all instances of ValidatedDurationInput and TextInput with this more advanced component
+// ToDo: replace all instances of ValidatedDurationInput with this more advanced component
 #[component]
 pub fn DurationInputWithValidation(
     /// Label text for the input
@@ -1029,12 +1085,13 @@ pub fn DurationInputWithValidation(
     unit: DurationInputUnit,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]

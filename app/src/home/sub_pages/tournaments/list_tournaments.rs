@@ -2,7 +2,7 @@
 
 use app_core::{TournamentBase, TournamentState, TournamentType};
 use app_utils::{
-    components::inputs::EnumSelect,
+    components::inputs::EnumSelectWithValidation,
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error},
@@ -38,7 +38,10 @@ pub fn ListTournaments() -> impl IntoView {
     });
 
     // Signals for Filters
-    let set_status = RwSignal::new(TournamentState::Draft);
+    let (status, set_status) = signal(Some(TournamentState::Draft));
+    let set_status = Callback::new(move |new_status: Option<TournamentState>| {
+        set_status.set(new_status);
+    });
     let (include_adhoc, set_include_adhoc) = signal(false);
     let (search_term, set_search_term) = signal("".to_string());
     let (limit, set_limit) = signal(10usize);
@@ -76,7 +79,7 @@ pub fn ListTournaments() -> impl IntoView {
                 sport_id.get(),
                 search_term.get(),
                 limit.get(),
-                set_status.get(),
+                status.get(),
                 include_adhoc.get(),
             )
         },
@@ -90,8 +93,9 @@ pub fn ListTournaments() -> impl IntoView {
                             .filter(|t| {
                                 // Filter by status
                                 (match status {
-                                    TournamentState::ActiveStage(_) => matches!(t.get_tournament_state(), TournamentState::ActiveStage(_)),
-                                    _ => t.get_tournament_state() == status,
+                                    Some(TournamentState::ActiveStage(_)) => matches!(t.get_tournament_state(), TournamentState::ActiveStage(_)),
+                                    Some(s) => Some(s) == Some(t.get_tournament_state()),
+                                    None => true,
                                 }) &&
                                 // Filter by adhoc
                                 (include_adhoc || !matches!(t.get_tournament_type(), TournamentType::Adhoc))
@@ -127,10 +131,12 @@ pub fn ListTournaments() -> impl IntoView {
                     <label class="label">
                         <span class="label-text">"Status"</span>
                     </label>
-                    <EnumSelect
+                    <EnumSelectWithValidation
                         label="Filter Tournament State"
                         name="filter-tournament-state"
-                        value=set_status
+                        value=status
+                        set_value=set_status
+                        clear_label="No Status Filter"
                     />
                 </div>
 
