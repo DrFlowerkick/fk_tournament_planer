@@ -228,7 +228,151 @@ pub fn TextInput(
     }
 }
 
-// ToDo: deprecated, replace with EnumSelectWithValidation
+#[component]
+pub fn SelectWithValidation<S>(
+    /// Label text for the input
+    #[prop(into)]
+    label: String,
+    /// Name attribute for the input (also used for test-id)
+    #[prop(into)]
+    name: String,
+    /// Reactive read-access to Option<T>.
+    /// Using Signal<Option<S>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into)]
+    value: Signal<Option<S>>,
+    /// Callback to push changes to source of value
+    /// Using Callback<S> allows passing closures and Callbacks.
+    set_value: Callback<S>,
+    #[prop(into)] options: Signal<Vec<(String, S)>>,
+    /// Optional custom placeholder text (default: "Select [label]...")
+    /// Reactive read-access to validation results
+    /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    validation_result: Signal<ValidationResult<()>>,
+    /// Object ID for field error lookup
+    #[prop(into)]
+    object_id: Signal<Option<Uuid>>,
+    /// Field name for field error lookup
+    #[prop(into)]
+    field: String,
+    /// Whether the field is optional (affects label and placeholder)
+    #[prop(into, default = false)]
+    optional: bool,
+) -> impl IntoView
+where
+    S: FromStr + Display + Clone + Send + Sync + PartialEq + Eq + 'static,
+{
+    // Local state: true while user is interacting with the select
+    let (is_selecting, set_is_selecting) = signal(false);
+
+    // Error state from validation of all objects
+    let error = Signal::derive(move || {
+        is_object_field_valid(validation_result, object_id, &field)
+            .err()
+            .map(|e| e.to_string())
+    });
+
+    // Derived: Error visibility logic
+    // We hide errors while the user is actively selecting (proactive reset)
+    let show_error = move || !is_selecting.get() && error.get().is_some();
+
+    // Auto-generate label and placeholder text based on label and optionality
+    let (label, placeholder_text) = if optional {
+        (
+            format!("{} (optional)", label.clone()),
+            format!("Enter {} (optional)...", label.to_lowercase()),
+        )
+    } else {
+        (label.clone(), format!("Enter {}...", label.to_lowercase()))
+    };
+
+    view! {
+        <div class="form-control w-full">
+            <label class="label">
+                <span class="label-text">{label}</span>
+            </label>
+            <select
+                class="select select-bordered w-full"
+                aria-invalid=move || show_error().to_string()
+                prop:value=move || {
+                    value
+                        .with(|maybe_v| {
+                            maybe_v
+                                .as_ref()
+                                .and_then(|v| {
+                                    options
+                                        .with(|opts| {
+                                            opts
+                                                .iter()
+                                                .find_map(|(text, opt_v)| (opt_v == v).then(|| text.clone()))
+                                        })
+                                })
+                        })
+                        .unwrap_or_default()
+                }
+                name=name.clone()
+                // Auto-generate test-id
+                data-testid=format!("select-{}", name)
+                // USER STARTED: Mark as selecting to hide errors
+                on:focus=move |_| {
+                    set_is_selecting.set(true);
+                }
+                // USER FINISHED: Release control and attempt to commit to core
+                on:blur=move |_| {
+                    set_is_selecting.set(false);
+                }
+                // USER FINISHED: Release control and attempt to commit to core
+                on:change:target={
+                    let options = options.clone();
+                    move |ev| {
+                        let new_val = ev.target().value();
+                        if let Some(selected_variant) = options
+                            .with(move |opts| {
+                                opts
+                                    .iter()
+                                    .find_map(move |(val_str, val)| {
+                                        (*val_str == new_val).then(|| val.clone())
+                                    })
+                            })
+                        {
+                            set_value.run(selected_variant);
+                        }
+                        set_is_selecting.set(false);
+                    }
+                }
+            >
+                <option disabled selected value="">
+                    {placeholder_text}
+                </option>
+                {options
+                    .get()
+                    .into_iter()
+                    .map(|(text, val)| {
+                        // We need to check equality for the "selected" attribute.
+                        // Since S implements PartialEq, we can compare the value directly
+                        view! {
+                            <option
+                                value=val.to_string()
+                                selected=move || value.with(|v| v.as_ref() == Some(&val))
+                            >
+                                {text}
+                            </option>
+                        }
+                    })
+                    .collect_view()}
+            </select>
+            // Display error only when not typing and an error exists
+            <Show when=show_error>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || error.get()}
+                    </span>
+                </label>
+            </Show>
+        </div>
+    }
+}
+
+// ToDo: deprecated, replace with SelectWithValidation
 #[component]
 pub fn ValidatedSelect(
     #[prop(into)] label: String,

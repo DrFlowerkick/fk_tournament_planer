@@ -84,23 +84,12 @@ pub fn ListTournaments() -> impl IntoView {
             .collect::<Vec<TournamentBase>>()
     };
 
-    Effect::new({
-        let navigate = navigate.clone();
-        move || {
-            if let Some(t_id) = selected_id.get()
-                && !filtered_tournaments().iter().any(|t| t.get_id() == t_id)
-            {
-                set_selected_id.set(None);
-                let nav_url = url_with_remove_query("tournament_id", None);
-                navigate(
-                    &nav_url,
-                    NavigateOptions {
-                        replace: true,
-                        scroll: false,
-                        ..Default::default()
-                    },
-                );
-            }
+    // reset selected_id if it is no longer in the filtered list
+    Effect::new(move || {
+        if let Some(t_id) = selected_id.get()
+            && !filtered_tournaments().iter().any(|t| t.get_id() == t_id)
+        {
+            set_selected_id.set(None);
         }
     });
 
@@ -181,13 +170,12 @@ pub fn ListTournaments() -> impl IntoView {
 
             // --- Table Area ---
             <div class="overflow-x-auto">
-                <Suspense fallback=move || {
+                <Transition fallback=move || {
                     view! { <span class="loading loading-spinner loading-lg"></span> }
                 }>
                     {move || {
                         let data = filtered_tournaments();
                         if data.is_empty() {
-
                             view! {
                                 <div
                                     class="text-center py-10 bg-base-100 border border-base-300 rounded-lg"
@@ -286,10 +274,10 @@ pub fn ListTournaments() -> impl IntoView {
                                                         class:bg-base-200=is_selected
                                                         data-testid=format!("tournaments-row-{}", row_id)
                                                         on:click=move |_| {
-                                                            if selected_id.get() == Some(row_id.clone()) {
+                                                            if selected_id.get() == Some(row_id) {
                                                                 set_selected_id.set(None);
                                                             } else {
-                                                                set_selected_id.set(Some(row_id.clone()));
+                                                                set_selected_id.set(Some(row_id));
                                                             }
                                                         }
                                                     >
@@ -318,7 +306,7 @@ pub fn ListTournaments() -> impl IntoView {
                                 .into_any()
                         }
                     }}
-                </Suspense>
+                </Transition>
             </div>
         </div>
         <Outlet />
