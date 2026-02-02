@@ -235,6 +235,6 @@ impl TestDb {
 
         let tb = make_new_tournament_base("For Stage Test", sport_id);
         let saved = self.db.save_tournament_base(&tb).await?;
-        Ok(saved.get_id().unwrap())
+        Ok(saved.get_id())
     }
 }

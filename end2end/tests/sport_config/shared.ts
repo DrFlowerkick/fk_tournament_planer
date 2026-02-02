@@ -1,15 +1,12 @@
 import { test, expect, Page } from "@playwright/test";
-import { selectors } from "../../helpers/selectors";
 import {
   openSportSelectionAndConfigList,
-  clickNewToOpenEditForm,
-  clickEditToOpenEditForm,
-} from "../../helpers/sport_config";
-import {
+  clickEditSportConfig,
   searchAndOpenByNameOnCurrentPage,
   extractQueryParamFromUrl,
   waitForAppHydration,
-} from "../../helpers/utils";
+  selectors
+} from "../../helpers";
 
 export interface SportConfigTestAdapter {
   sportName: string;
@@ -65,7 +62,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
           {
             clearFirst: true,
             expectUnique: true,
-          }
+          },
         );
 
         // Verify preview
@@ -75,7 +72,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       });
 
       await test.step("Edit Config", async () => {
-        await clickEditToOpenEditForm(page);
+        await clickEditSportConfig(page);
 
         // Update fields
         await SC.form.inputName.fill(updatedName);
@@ -92,7 +89,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
           {
             clearFirst: true,
             expectUnique: true,
-          }
+          },
         );
 
         await expect(SC.search.preview).toBeVisible();
@@ -150,7 +147,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         // --- User B edits the config ---
         await test.step("User B edits config", async () => {
           await pageB.goto(
-            `/sport/edit_sc?sport_id=${sportId}&sport_config_id=${configId}`
+            `/sport/edit_sc?sport_id=${sportId}&sport_config_id=${configId}`,
           );
 
           // Ensure explicit navigation waits for WASM hydration before interacting

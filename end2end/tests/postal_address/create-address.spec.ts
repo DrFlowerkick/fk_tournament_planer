@@ -1,15 +1,13 @@
 import { test, expect } from "@playwright/test";
-import { selectors } from "../../helpers/selectors";
 import {
   fillFields,
   clickSave,
   expectPreviewShows,
   openPostalAddressList,
-} from "../../helpers/postal_address";
-import {
   searchAndOpenByNameOnCurrentPage,
   waitForAppHydration,
-} from "../../helpers/utils";
+  selectors
+} from "../../helpers";
 
 test("Create Address (happy path): New → Fill → Save → Verify in search", async ({
   page,

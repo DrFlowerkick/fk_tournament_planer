@@ -89,7 +89,7 @@ async fn list_stages_of_tournament_inner(tournament_id: Uuid) -> AppResult<Vec<S
     name = "stage.save",
     skip_all,
     fields(
-        id = ?stage.get_id(),
+        id = %stage.get_id(),
         number = stage.get_number(),
     )
 )]
@@ -115,11 +115,8 @@ pub async fn save_stage_inner(stage: Stage) -> AppResult<Stage> {
     match core.save().await {
         Ok(saved) => {
             // After saving, log the ID (especially important for new entries with generated ID)
-            if let Some(id) = saved.get_id() {
-                info!(saved_id = %id, "save_ok");
-            } else {
-                info!("save_ok_no_id_read"); // should not happen
-            }
+            let id = saved.get_id();
+            info!(saved_id = %id, "save_ok");
             Ok(saved.clone())
         }
         Err(e) => {

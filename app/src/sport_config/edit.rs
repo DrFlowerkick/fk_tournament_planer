@@ -12,7 +12,7 @@ use app_utils::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::{SportConfigParams, SportParams},
+    params::{use_sport_config_id_query, use_sport_id_query},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
         error_state::PageErrorContext,
@@ -23,10 +23,7 @@ use app_utils::{
 use leptos::{logging::log, prelude::*};
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
-use leptos_router::{
-    NavigateOptions,
-    hooks::{use_navigate, use_query},
-};
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use reactive_stores::Store;
 use serde_json::Value;
 use shared::{RenderCfgProps, SportPortWebUi};
@@ -43,16 +40,9 @@ pub fn SportConfigForm() -> impl IntoView {
     } = use_query_navigation();
     let navigate = use_navigate();
 
-    let sport_query = use_query::<SportParams>();
-    let sport_id = Signal::derive(move || sport_query.get().map(|s| s.sport_id).unwrap_or(None));
+    let sport_id = use_sport_id_query();
 
-    let sport_config_query = use_query::<SportConfigParams>();
-    let sport_config_id = Signal::derive(move || {
-        sport_config_query
-            .get()
-            .ok()
-            .and_then(|sc| sc.sport_config_id)
-    });
+    let sport_config_id = use_sport_config_id_query();
 
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
@@ -70,9 +60,7 @@ pub fn SportConfigForm() -> impl IntoView {
         Callback::new(move |_: ()| url_with_path(&return_after_sport_config_edit.get()));
 
     let sport_plugin = move || {
-        if let Ok(sport_params) = sport_query.get()
-            && let Some(sport_id) = sport_params.sport_id
-        {
+        if let Some(sport_id) = sport_id.get() {
             sport_plugin_manager.get().get_web_ui(&sport_id)
         } else {
             log!("No valid sport_id in query params. Editing sport config is disabled.");
@@ -92,6 +80,7 @@ pub fn SportConfigForm() -> impl IntoView {
     let (is_new, set_is_new) = signal(false);
     let set_name = RwSignal::new(String::new());
     let set_sport_config = RwSignal::new(None::<Value>);
+    let (id, set_id) = signal(Uuid::nil());
     let set_version = RwSignal::new(0);
 
     // --- Server Actions & Resources ---
@@ -128,7 +117,7 @@ pub fn SportConfigForm() -> impl IntoView {
             );
             let nav_url = url_with_update_query(
                 "sport_config_id",
-                &sc.get_id().map(|id| id.to_string()).unwrap_or_default(),
+                &sc.get_id().to_string(),
                 Some(&return_after_sport_config_edit.get()),
             );
             navigate(&nav_url, NavigateOptions::default());
@@ -230,7 +219,7 @@ pub fn SportConfigForm() -> impl IntoView {
     let is_valid_name = Signal::derive(move || is_field_valid(validation_result, "name"));
 
     let props = FormFieldsProperties {
-        id: sport_config_id,
+        id: id.into(),
         sport_id,
         sport_plugin: Signal::derive(sport_plugin),
         cancel_target,
@@ -295,6 +284,7 @@ pub fn SportConfigForm() -> impl IntoView {
                                             set_name.set(sport_config.get_name().to_string());
                                             set_sport_config
                                                 .set(Some(sport_config.get_config().clone()));
+                                            set_id.set(sport_config.get_id());
                                             set_version
                                                 .set(sport_config.get_version().unwrap_or_default());
                                             set_is_new.set(false);
@@ -304,6 +294,7 @@ pub fn SportConfigForm() -> impl IntoView {
                                                 let plugin_config = plugin.get_default_config();
                                                 set_name.set("".into());
                                                 set_sport_config.set(Some(plugin_config));
+                                                set_id.set(Uuid::new_v4());
                                                 set_version.set(0);
                                                 set_is_new.set(true);
                                             }
@@ -364,7 +355,7 @@ pub fn SportConfigForm() -> impl IntoView {
 // Props for form fields component
 #[derive(Clone, Copy)]
 struct FormFieldsProperties {
-    id: Signal<Option<Uuid>>,
+    id: Signal<Uuid>,
     sport_id: Signal<Option<Uuid>>,
     sport_plugin: Signal<Option<Arc<dyn SportPortWebUi>>>,
     cancel_target: Callback<(), String>,
@@ -399,6 +390,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
     let navigate = use_navigate();
 
     let props = RenderCfgProps {
+        object_id: id,
         config: set_sport_config,
         is_valid_json,
     };
@@ -411,7 +403,7 @@ fn FormFields(props: FormFieldsProperties) -> impl IntoView {
                 type="hidden"
                 name="id"
                 data-testid="hidden-id"
-                prop:value=move || id.get().unwrap_or(Uuid::nil()).to_string()
+                prop:value=move || id.get().to_string()
             />
             <input
                 type="hidden"

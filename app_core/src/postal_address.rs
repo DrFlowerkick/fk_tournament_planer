@@ -7,7 +7,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct PostalAddress {
     /// id and optimistic locking version of address
     id_version: IdVersion,
@@ -25,20 +25,6 @@ pub struct PostalAddress {
     country: String,
 }
 
-impl Default for PostalAddress {
-    fn default() -> Self {
-        PostalAddress {
-            id_version: IdVersion::New,
-            name: "".into(),
-            street: "".into(),
-            postal_code: "".into(),
-            locality: "".into(),
-            region: None,
-            country: "".into(),
-        }
-    }
-}
-
 impl ObjectIdVersion for PostalAddress {
     fn get_id_version(&self) -> IdVersion {
         self.id_version
@@ -52,7 +38,7 @@ impl PostalAddress {
             ..Default::default()
         }
     }
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         self.id_version.get_id()
     }
     pub fn get_version(&self) -> Option<u32> {
@@ -216,6 +202,7 @@ impl PostalAddress {
 
     pub fn validate(&self) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
+        let object_id = self.get_id();
 
         // Required fields (syntax-level)
         if self.name.is_empty() {
@@ -223,6 +210,7 @@ impl PostalAddress {
                 FieldError::builder()
                     .set_field("Name")
                     .add_required()
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -231,6 +219,7 @@ impl PostalAddress {
                 FieldError::builder()
                     .set_field("Street")
                     .add_required()
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -239,6 +228,7 @@ impl PostalAddress {
                 FieldError::builder()
                     .set_field("PostalCode")
                     .add_required()
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -247,6 +237,7 @@ impl PostalAddress {
                 FieldError::builder()
                     .set_field("Locality")
                     .add_required()
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -255,6 +246,7 @@ impl PostalAddress {
                 FieldError::builder()
                     .set_field("Country")
                     .add_required()
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -269,6 +261,7 @@ impl PostalAddress {
                     .set_field("PostalCode")
                     .add_invalid_format()
                     .add_message("DE postal code must have 5 digits")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -317,10 +310,7 @@ impl Core<PostalAddressState> {
             .save_postal_address(&self.state.address)
             .await?;
         // publish change of address to client registry
-        let id =
-            self.state.address.get_id().expect(
-                "expecting save_postal_address to return always an existing id and version",
-            );
+        let id = self.state.address.get_id();
         let version =
             self.state.address.get_version().expect(
                 "expecting save_postal_address to return always an existing id and version",

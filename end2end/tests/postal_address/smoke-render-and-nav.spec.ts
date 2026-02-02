@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { selectors } from "../../helpers/selectors";
-import {
-  openPostalAddressList,
-  openNewForm,
-} from "../../helpers/postal_address";
+import { openPostalAddressList, openNewForm, selectors } from "../../helpers";
 
 test("Smoke: Search → New → Cancel", async ({ page }) => {
   const PA = selectors(page).postalAddress;

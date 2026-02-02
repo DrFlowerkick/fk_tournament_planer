@@ -19,7 +19,7 @@ async fn given_two_parallel_updates_from_v0_then_only_one_succeeds_and_version_i
         .save_sport_config(&make_new_sport_config("concurrency-u1", sport_id))
         .await?;
     assert_eq!(v0.get_version(), Some(0));
-    let id = v0.get_id().expect("id must be present");
+    let id = v0.get_id();
 
     // Prepare two competing updates from the SAME v0 snapshot.
     let candidate_a = mutate_sport_config_v2(v0.clone());
@@ -54,7 +54,7 @@ async fn given_two_parallel_updates_from_v0_then_only_one_succeeds_and_version_i
 
     // Winner must be version 1 on same ID
     if let Ok(winner) = r1.as_ref().or(r2.as_ref()) {
-        assert_eq!(winner.get_id(), Some(id));
+        assert_eq!(winner.get_id(), id);
         assert_eq!(winner.get_version(), Some(1));
     }
 

@@ -39,13 +39,10 @@ impl DbpTournamentBase for FakeDatabasePort {
                         return Err(DbError::OptimisticLockConflict);
                     }
 
-                    new.set_id_version(IdVersion::new(*inner.get_id(), Some(existing_v + 1)));
+                    new.set_id_version(IdVersion::new(inner.get_id(), Some(existing_v + 1)));
                 } else {
                     return Err(DbError::NotFound);
                 }
-            }
-            IdVersion::New => {
-                new.set_id_version(IdVersion::new(Uuid::new_v4(), Some(0)));
             }
             IdVersion::NewWithId(id) => {
                 if guard.contains_key(&id) {
@@ -58,7 +55,7 @@ impl DbpTournamentBase for FakeDatabasePort {
             }
         }
 
-        guard.insert(new.get_id().unwrap(), new.clone());
+        guard.insert(new.get_id(), new.clone());
         Ok(new)
     }
 

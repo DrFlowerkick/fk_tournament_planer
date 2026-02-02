@@ -139,7 +139,7 @@ impl DbpStage for PgDb {
         fields(
             id = ?stage.get_id(),
             version = stage.get_version(),
-            is_new = stage.get_id().is_none()
+            is_new = stage.get_id_version().is_new()
         )
     )]
     async fn save_stage(&self, stage: &Stage) -> DbResult<Stage> {
@@ -200,26 +200,6 @@ impl DbpStage for PgDb {
             IdVersion::NewWithId(new_id) => {
                 let row = diesel::insert_into(stages)
                     .values((id.eq(new_id), w))
-                    .returning((
-                        id,
-                        version,
-                        tournament_id,
-                        number,
-                        num_groups,
-                        created_at,
-                        updated_at,
-                    ))
-                    .get_result::<DbStage>(&mut conn)
-                    .await
-                    .map_err(map_db_err)?;
-
-                info!(saved_id = %row.id, "insert_ok");
-                Ok(row.try_into()?)
-            }
-            // Case 3: INSERT with DB-generated ID (Standard)
-            IdVersion::New => {
-                let row = diesel::insert_into(stages)
-                    .values(w)
                     .returning((
                         id,
                         version,

@@ -5,6 +5,7 @@ use app_core::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
+use uuid::Uuid;
 
 /// Configuration for the Generic Sport Plugin
 ///
@@ -81,7 +82,7 @@ impl GenericSportConfig {
             ))),
         }
     }
-    pub fn validate(&self, mut errs: ValidationErrors) -> ValidationResult<()> {
+    pub fn validate(&self, object_id: Uuid, mut errs: ValidationErrors) -> ValidationResult<()> {
         // Basic validation logic
         if self.sets_to_win == 0 {
             errs.add(
@@ -89,6 +90,7 @@ impl GenericSportConfig {
                     .set_field("sets_to_win")
                     .add_user_defined_code("invalid_value")
                     .add_message("sets_to_win must be at least 1")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -98,6 +100,7 @@ impl GenericSportConfig {
                     .set_field("score_to_win")
                     .add_user_defined_code("invalid_value")
                     .add_message("score_to_win must be set if sets_to_win > 1")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -107,6 +110,7 @@ impl GenericSportConfig {
                     .set_field("win_by_margin")
                     .add_user_defined_code("invalid_value")
                     .add_message("win_by_margin cannot be set if score_to_win is None")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -116,6 +120,7 @@ impl GenericSportConfig {
                     .set_field("hard_cap")
                     .add_user_defined_code("invalid_value")
                     .add_message("hard_cap cannot be set if score_to_win is None")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -125,6 +130,7 @@ impl GenericSportConfig {
                     .set_field("hard_cap")
                     .add_user_defined_code("invalid_value")
                     .add_message("hard_cap must be set if win_by_margin is set")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -134,6 +140,7 @@ impl GenericSportConfig {
                     .set_field("win_by_margin")
                     .add_user_defined_code("invalid_value")
                     .add_message("win_by_margin must be set if hard_cap is set")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -147,6 +154,7 @@ impl GenericSportConfig {
                     .set_field("hard_cap")
                     .add_user_defined_code("invalid_value")
                     .add_message("hard_cap must be greater than score_to_win + win_by_margin")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -156,6 +164,7 @@ impl GenericSportConfig {
                     .set_field("victory_points_win")
                     .add_user_defined_code("invalid_value")
                     .add_message("victory_points_win must be greater than 0")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -165,6 +174,7 @@ impl GenericSportConfig {
                     .set_field("victory_points_draw")
                     .add_user_defined_code("invalid_value")
                     .add_message("victory_points_draw must be greater than 0")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -174,6 +184,7 @@ impl GenericSportConfig {
                     .set_field("victory_points_draw")
                     .add_user_defined_code("invalid_value")
                     .add_message("victory_points_draw must be less than victory_points_win")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -183,6 +194,7 @@ impl GenericSportConfig {
                     .set_field("expected_match_duration_minutes")
                     .add_user_defined_code("invalid_value")
                     .add_message("expected_match_duration_minutes must be greater than 0")
+                    .set_object_id(object_id)
                     .build(),
             );
         }

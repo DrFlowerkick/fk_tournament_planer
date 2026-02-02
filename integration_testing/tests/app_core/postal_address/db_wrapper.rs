@@ -16,8 +16,7 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
         .save()
         .await
         .expect("initial save should succeed")
-        .get_id()
-        .unwrap();
+        .get_id();
 
     // Act
     let res = core.load(id).await.expect("db ok");
@@ -25,7 +24,7 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
 
     // Assert state was replaced by the record from DB (version set to 0 by fake)
     let got = core.get().clone();
-    assert_eq!(got.get_id(), Some(id));
+    assert_eq!(got.get_id(), id);
     assert_eq!(got.get_name(), "Alpha");
     assert_eq!(got.get_version(), Some(0), "initial insert sets version 0");
 }

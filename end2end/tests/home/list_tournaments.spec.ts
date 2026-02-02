@@ -3,8 +3,9 @@ import {
   openHomePage,
   selectSportPluginByName,
   goToListTournaments,
-} from "../../helpers/home";
-import { selectors } from "../../helpers/selectors";
+  fillAndBlur,
+  selectors,
+} from "../../helpers";
 
 const PLUGINS = {
   GENERIC: "Generic Sport",
@@ -41,13 +42,13 @@ test.describe("Tournaments List Page", () => {
     const targetName = SEED_DATA.DRAFT;
 
     // Execute search
-    await LIST.filters.search.fill(targetName);
+    await fillAndBlur(LIST.filters.search, targetName);
 
     // Wait/Check
     // We expect exactly this entry in the table
     // Using a more specific selector to ensure we hit the table cell
     await expect(
-      page.getByRole("cell", { name: targetName }).first()
+      page.getByRole("cell", { name: targetName }).first(),
     ).toBeVisible({
       timeout: 10000,
     });
@@ -57,13 +58,13 @@ test.describe("Tournaments List Page", () => {
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
     // Search for something impossible
-    await LIST.filters.search.fill("X9Z9 NonExistent Tournament");
+    await fillAndBlur(LIST.filters.search, "X9Z9 NonExistent Tournament");
 
     // Expect empty message
     // Rust: data-testid="tournaments-list-empty"
     await expect(page.getByTestId("tournaments-list-empty")).toBeVisible();
     await expect(page.getByTestId("tournaments-list-empty")).toContainText(
-      "No tournaments found"
+      "No tournaments found",
     );
   });
 
@@ -73,7 +74,7 @@ test.describe("Tournaments List Page", () => {
     const LIST = selectors(page).home.dashboard.tournamentsList;
     const targetName = SEED_DATA.DRAFT;
 
-    await LIST.filters.search.fill(targetName);
+    await fillAndBlur(LIST.filters.search, targetName);
 
     // Find the row
     const cell = page.getByRole("cell", { name: targetName }).first();
@@ -97,7 +98,7 @@ test.describe("Tournaments List Page", () => {
     const targetName = SEED_DATA.DRAFT;
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
-    await LIST.filters.search.fill(targetName);
+    await fillAndBlur(LIST.filters.search, targetName);
     const cell = page.getByRole("cell", { name: targetName }).first();
     await cell.click();
 
@@ -107,13 +108,13 @@ test.describe("Tournaments List Page", () => {
     // Check we are on the Edit Page
     // Rust: data-testid="tournament-editor-title" -> "Edit Tournament"
     await expect(page.getByTestId("tournament-editor-title")).toHaveText(
-      "Edit Tournament"
+      "Edit Tournament",
     );
 
     // Check pre-filled data
     // Rust: ValidatedTextInput name="tournament-name"
     await expect(page.locator('input[name="tournament-name"]')).toHaveValue(
-      targetName
+      targetName,
     );
   });
 });

@@ -14,7 +14,7 @@ async fn given_two_parallel_updates_from_v0_then_only_one_succeeds_and_version_i
 
     let t_id = tdb.setup_tournament().await?;
     let v0 = db.save_stage(&make_new_stage(t_id, 0)).await?;
-    let id = v0.get_id().unwrap();
+    let id = v0.get_id();
 
     // Prepare competitors
     let candidate_a = mutate_stage_v2(v0.clone());

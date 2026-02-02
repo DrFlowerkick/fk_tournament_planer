@@ -8,7 +8,7 @@ use app_utils::{
             SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
         },
     },
-    params::SportParams,
+    params::{SportIdQuery, use_sport_id_query},
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
@@ -25,7 +25,8 @@ pub fn SelectSportPlugin() -> impl IntoView {
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
 
-    let sport_id_query = use_query::<SportParams>();
+    let sport_id_query = use_query::<SportIdQuery>();
+    let sport_id = use_sport_id_query();
 
     let is_sport_id_error = move || {
         if let Ok(sport_params) = sport_id_query.get() {
@@ -72,13 +73,11 @@ pub fn SelectSportPlugin() -> impl IntoView {
     });
 
     Effect::new(move || {
-        if let Ok(sport_params) = sport_id_query.get()
-            && let Some(sport_id) = sport_params.sport_id
-        {
+        if let Some(sport_id) = sport_id.get() {
             let sport_name = sport_list
                 .get_untracked()
                 .iter()
-                .find(|spi| spi.get_id_version().get_id() == Some(sport_id))
+                .find(|spi| spi.get_id_version().get_id() == sport_id)
                 .map(|spi| spi.name())
                 .unwrap_or_default();
             name.set(sport_name.to_string());

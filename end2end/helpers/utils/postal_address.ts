@@ -1,14 +1,14 @@
 // Shared helpers for address form flows
 import { expect, Page } from "@playwright/test";
-import { selectors } from "./selectors";
+import { selectors } from "../selectors";
 import {
   typeThenBlur,
   selectThenBlur,
   extractQueryParamFromUrl,
   waitForAppHydration,
-} from "./utils"; // Added waitForAppHydration
+} from "./common"; // Added waitForAppHydration
 
-export const ROUTES = {
+export const PA_ROUTES = {
   newAddress: "/postal-address/new_pa",
   list: "/postal-address",
 };
@@ -19,7 +19,7 @@ export const ROUTES = {
 export async function openPostalAddressList(page: Page) {
   const PA = selectors(page).postalAddress;
   // Navigate to "list" route and assert elements exist
-  await page.goto(ROUTES.list);
+  await page.goto(PA_ROUTES.list);
 
   // strict hydration check
   await waitForAppHydration(page);
@@ -60,7 +60,7 @@ export function extractUuidFromUrl(url: string): string {
 export async function openNewForm(page: Page) {
   const PA = selectors(page).postalAddress;
   // Navigate to "new_pa" route and assert the form exists
-  await page.goto(ROUTES.newAddress);
+  await page.goto(PA_ROUTES.newAddress);
 
   // strict hydration check
   await waitForAppHydration(page);
@@ -73,7 +73,7 @@ export async function openNewForm(page: Page) {
 /**
  * Enter edit mode from a detail page (if you have a dedicated edit button).
  */
-export async function clickEditToOpenEditForm(page: Page) {
+export async function clickEditPostalAddress(page: Page) {
   const PA = selectors(page).postalAddress;
   await expect(PA.search.btnEdit).toBeVisible();
   await PA.search.btnEdit.click();
@@ -144,7 +144,7 @@ export async function fillFields(
     locality?: string;
     region?: string;
     country?: string;
-  }
+  },
 ) {
   const PA = selectors(page).postalAddress;
   // Name
@@ -157,7 +157,7 @@ export async function fillFields(
     await typeThenBlur(
       PA.form.inputStreet,
       fields.street,
-      PA.form.inputCountry
+      PA.form.inputCountry,
     );
   }
 
@@ -166,7 +166,7 @@ export async function fillFields(
     await selectThenBlur(
       PA.form.inputCountry,
       fields.country,
-      PA.form.inputPostalCode
+      PA.form.inputPostalCode,
     );
   }
 
@@ -175,7 +175,7 @@ export async function fillFields(
     await typeThenBlur(
       PA.form.inputPostalCode,
       fields.postal_code,
-      PA.form.inputLocality
+      PA.form.inputLocality,
     );
   }
 
@@ -184,7 +184,7 @@ export async function fillFields(
     await typeThenBlur(
       PA.form.inputLocality,
       fields.locality,
-      PA.form.inputRegion
+      PA.form.inputRegion,
     );
   }
 
@@ -240,7 +240,7 @@ const COUNTRY_CODE_TO_NAME: Record<string, string> = {
  */
 function resolveExpectedPreviewText(
   field: "country" | "other",
-  value: string
+  value: string,
 ): string {
   if (field === "country") {
     return COUNTRY_CODE_TO_NAME[value] || value; // Fallback auf Code, falls nicht im Mapping
@@ -260,7 +260,7 @@ export async function expectPreviewShows(
     locality?: string;
     region?: string;
     country?: string;
-  }
+  },
 ) {
   const PA = selectors(page).postalAddress;
   // check preview fields
@@ -276,7 +276,7 @@ export async function expectPreviewShows(
 
   if (expected.postal_code !== undefined) {
     await expect(PA.search.preview.postalCode).toHaveText(
-      expected.postal_code!
+      expected.postal_code!,
     );
   }
 
@@ -291,7 +291,7 @@ export async function expectPreviewShows(
   if (expected.country !== undefined) {
     const expectedText = resolveExpectedPreviewText(
       "country",
-      expected.country
+      expected.country,
     );
     await expect(PA.search.preview.country).toHaveText(expectedText);
   }

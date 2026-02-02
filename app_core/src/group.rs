@@ -4,12 +4,13 @@ use crate::utils::{
     id_version::IdVersion,
     traits::{ObjectIdVersion, ObjectNumber},
 };
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// group of a stage
 // ToDo: remove allow(dead_code) flag
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Group {
     /// id of group in tournament
     id_version: IdVersion,
@@ -59,7 +60,13 @@ impl ObjectNumber for Group {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl Group {
+    pub fn get_number(&self) -> u32 {
+        self.number
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum Mode {
     RoundRobin,
     KOFullPlayOut,
@@ -68,7 +75,7 @@ pub enum Mode {
 }
 
 /// scheduled entrant for a match
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum ScheduledEntrant {
     /// Entrant referenced by id; used for first stage and stages, which previous stages are done
     /// Uuid: id of entrant

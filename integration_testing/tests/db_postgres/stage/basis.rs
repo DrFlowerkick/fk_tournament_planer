@@ -21,11 +21,10 @@ async fn given_new_when_save_then_get_roundtrip_version_is_0() -> Result<()> {
     info!(id=?saved.get_id(), v=?saved.get_version(), "saved_v0");
 
     // Assert basics
-    assert!(saved.get_id().is_some());
     assert_eq!(saved.get_version(), Some(0));
 
     // Read-back by ID
-    let fetched = db.get_stage_by_id(saved.get_id().unwrap()).await?;
+    let fetched = db.get_stage_by_id(saved.get_id()).await?;
     assert!(fetched.is_some());
     let fetched = fetched.unwrap();
 

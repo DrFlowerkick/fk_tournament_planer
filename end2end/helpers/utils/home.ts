@@ -1,8 +1,8 @@
 import { expect, Page } from "@playwright/test";
-import { selectors } from "./selectors";
-import { extractQueryParamFromUrl, waitForAppHydration } from "./utils";
+import { selectors } from "../selectors";
+import { extractQueryParamFromUrl, waitForAppHydration } from "./common";
 
-export const ROUTES = {
+export const HOME_ROUTES = {
   home: "/",
 };
 
@@ -10,7 +10,7 @@ export const ROUTES = {
  * Open the Home Page without any query parameters.
  */
 export async function openHomePage(page: Page) {
-  await page.goto(ROUTES.home);
+  await page.goto(HOME_ROUTES.home);
   // Ensure app is ready/hydrated before interacting
   await waitForAppHydration(page);
 
@@ -156,6 +156,13 @@ export async function goToNewTournament(page: Page) {
   // Perform SPA Navigation
   await DASH.nav.planNew.click();
 
+  // Expect URL to update accordingly:
+  // start with /new-tournament and ensure no tournament_id param is present
+  await page.waitForURL(/^.*\/new-tournament(?!.*tournament_id=).*$/, {
+    timeout: 10000,
+  });
+
   // Expect Start Page Root to be visible
   await expect(DASH.editTournament.root).toBeVisible({ timeout: 10000 });
+  await expect(DASH.editTournament.form).toBeEnabled();
 }

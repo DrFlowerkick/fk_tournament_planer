@@ -38,7 +38,7 @@ impl DdcSportPlugin {
             return Err(SportError::InvalidSportId(config.get_sport_id(), self.id()));
         }
         let generic_config = DdcSportConfig::parse_config(config.get_config().clone())?;
-        generic_config.validate(errs)?;
+        generic_config.validate(config.get_id(), errs)?;
         Ok(generic_config)
     }
     fn validate_final_score_internal(

@@ -111,7 +111,7 @@ impl DbpSportConfig for PgDb {
         fields(
             id = ?sport_config.get_id(),
             version = sport_config.get_version(),
-            is_new = sport_config.get_id().is_none()
+            is_new = sport_config.get_id_version().is_new()
         )
     )]
     async fn save_sport_config(&self, sport_config: &SportConfig) -> DbResult<SportConfig> {

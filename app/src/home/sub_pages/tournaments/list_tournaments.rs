@@ -4,16 +4,11 @@ use app_core::{TournamentBase, TournamentState, TournamentType};
 use app_utils::{
     components::inputs::EnumSelect,
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    params::SportParams,
+    params::use_sport_id_query,
     server_fn::tournament_base::list_tournament_bases,
 };
 use leptos::prelude::*;
-use leptos_router::{
-    NavigateOptions,
-    components::A,
-    hooks::{use_navigate, use_query},
-    nested_router::Outlet,
-};
+use leptos_router::{NavigateOptions, components::A, hooks::use_navigate, nested_router::Outlet};
 use uuid::Uuid;
 
 #[component]
@@ -57,12 +52,11 @@ pub fn ListTournaments() -> impl IntoView {
     });
 
     // Derived Query Params
-    let sport_id_query = use_query::<SportParams>();
-    let sport_id = move || sport_id_query.get().ok().and_then(|p| p.sport_id);
+    let sport_id = use_sport_id_query();
 
     // Resource that fetches data when filters change
     let tournaments_data = Resource::new(
-        move || (sport_id(), search_term.get(), limit.get()),
+        move || (sport_id.get(), search_term.get(), limit.get()),
         move |(maybe_sport_id, term, lim)| async move {
             if let Some(s_id) = maybe_sport_id {
                 list_tournament_bases(s_id, term, Some(lim)).await
@@ -94,9 +88,7 @@ pub fn ListTournaments() -> impl IntoView {
         let navigate = navigate.clone();
         move || {
             if let Some(t_id) = selected_id.get()
-                && !filtered_tournaments()
-                    .iter()
-                    .any(|t| t.get_id() == Some(t_id))
+                && !filtered_tournaments().iter().any(|t| t.get_id() == t_id)
             {
                 set_selected_id.set(None);
                 let nav_url = url_with_remove_query("tournament_id", None);
@@ -221,11 +213,11 @@ pub fn ListTournaments() -> impl IntoView {
                                     <tbody>
                                         <For
                                             each=move || data.clone()
-                                            key=|t| t.get_id().unwrap_or_default()
+                                            key=|t| t.get_id()
                                             // Assuming 't' is type TournamentListItem
                                             children=move |t| {
-                                                let t_id = t.get_id().unwrap_or_default();
-                                                let row_id = t.get_id().unwrap_or_default();
+                                                let t_id = t.get_id();
+                                                let row_id = t.get_id();
                                                 let is_selected = move || {
                                                     selected_id.get() == Some(t_id.clone())
                                                 };

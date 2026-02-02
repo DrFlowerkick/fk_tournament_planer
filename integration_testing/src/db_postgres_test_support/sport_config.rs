@@ -1,10 +1,10 @@
-use app_core::{SportConfig, utils::id_version::IdVersion};
+use app_core::SportConfig;
 use serde_json::json;
 use uuid::Uuid;
 
 /// Build a valid "new" SportConfig with deterministic fields.
 pub fn make_new_sport_config(label: &str, sport_id: Uuid) -> SportConfig {
-    let mut sc = SportConfig::new(IdVersion::New);
+    let mut sc = SportConfig::default();
     sc.set_sport_id(sport_id)
         .set_name(format!("SportConfig {label}"))
         .set_config(json!({ "rules": "default", "players": 11, "label": label }));

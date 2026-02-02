@@ -105,7 +105,7 @@ impl From<String> for TournamentState {
 }
 
 /// base parameters of a tournament
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct TournamentBase {
     /// Unique identifier for the tournament
     id_version: IdVersion,
@@ -121,20 +121,6 @@ pub struct TournamentBase {
     mode: TournamentMode,
     /// state of tournament
     state: TournamentState,
-}
-
-impl Default for TournamentBase {
-    fn default() -> Self {
-        TournamentBase {
-            id_version: IdVersion::New,
-            name: "".into(),
-            sport_id: Uuid::nil(),
-            num_entrants: 0,
-            t_type: TournamentType::default(),
-            mode: TournamentMode::default(),
-            state: TournamentState::default(),
-        }
-    }
 }
 
 impl ObjectIdVersion for TournamentBase {
@@ -153,7 +139,7 @@ impl TournamentBase {
     }
 
     /// Get the unique identifier of the sport configuration.
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         self.id_version.get_id()
     }
 
@@ -185,6 +171,15 @@ impl TournamentBase {
     /// Get the mode of the tournament.
     pub fn get_tournament_mode(&self) -> TournamentMode {
         self.mode
+    }
+
+    /// Get the number of rounds for Swiss System, if mode is Swiss System.
+    pub fn get_num_rounds_swiss_system(&self) -> Option<u32> {
+        if let TournamentMode::SwissSystem { num_rounds } = self.mode {
+            Some(num_rounds)
+        } else {
+            None
+        }
     }
 
     /// Get the current state of the tournament.
@@ -243,6 +238,14 @@ impl TournamentBase {
         self
     }
 
+    /// Set the number of rounds for Swiss System, if mode is Swiss System.
+    pub fn set_num_rounds_swiss_system(&mut self, num_rounds_swiss: u32) -> &mut Self {
+        if let TournamentMode::SwissSystem { ref mut num_rounds } = self.mode {
+            *num_rounds = num_rounds_swiss;
+        }
+        self
+    }
+
     /// Set the current state of the tournament.
     pub fn set_tournament_state(&mut self, state: TournamentState) -> &mut Self {
         self.state = state;
@@ -252,34 +255,44 @@ impl TournamentBase {
     /// Validate the tournament configuration.
     pub fn validate(&self) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
-        if self.name.is_empty() {
+        let object_id = self.get_id();
+
+        if self.name.trim().is_empty() {
             errs.add(
                 FieldError::builder()
                     .set_field(String::from("name"))
                     .add_required()
+                    .set_object_id(object_id)
                     .build(),
             );
         }
+
         if self.num_entrants < 2 {
             errs.add(
                 FieldError::builder()
                     .set_field(String::from("num_entrants"))
                     .add_message("number of entrants must be at least 2")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
 
-        if let TournamentMode::SwissSystem { num_rounds } = self.mode {
-            if num_rounds == 0 {
-                errs.add(
-                    FieldError::builder()
-                        .set_field(String::from("mode.num_rounds"))
-                        .add_message("Number of rounds must be > 0. Recommended number of rounds is 'log_2(number of entrants) + 2' or more")
-                        .build(),
-                );
+        match self.mode {
+            TournamentMode::SwissSystem { num_rounds } => {
+                if num_rounds == 0 {
+                    errs.add(
+                        FieldError::builder()
+                            .set_field(String::from("mode.num_rounds"))
+                            .add_message("number of rounds must be > 0")
+                            .set_object_id(object_id)
+                            .build(),
+                    );
+                }
             }
+            _ => {}
         }
 
+        // ToDo: refine validation of active stage based on mode, when active stage is implemented
         let max_num_stages = match self.mode {
             // in Swiss System, each round is a stage
             TournamentMode::SwissSystem { num_rounds } => num_rounds,
@@ -297,6 +310,7 @@ impl TournamentBase {
                         .add_message(
                             "active stage exceeds maximum number of stages for the tournament mode",
                         )
+                        .set_object_id(object_id)
                         .build(),
                 );
             }
@@ -356,10 +370,7 @@ impl Core<TournamentBaseState> {
             .await?;
 
         // publish change of tournament base to client registry
-        let id =
-            self.state.tournament.get_id().expect(
-                "expecting save_tournament_base to return always an existing id and version",
-            );
+        let id = self.state.tournament.get_id();
         let version =
             self.state.tournament.get_version().expect(
                 "expecting save_tournament_base to return always an existing id and version",

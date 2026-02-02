@@ -1,3 +1,4 @@
+#![recursion_limit = "512"]
 // web app ui
 
 pub mod home;

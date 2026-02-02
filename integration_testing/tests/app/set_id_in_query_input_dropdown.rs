@@ -66,7 +66,7 @@ fn WasmTestWrapper(#[prop(into)] items: Vec<TestItem>) -> impl IntoView {
             let item_name = list_items
                 .get_untracked()
                 .iter()
-                .find(|item| item.get_id_version().get_id() == Some(item_id))
+                .find(|item| item.get_id_version().get_id() == item_id)
                 .map(|item| item.name.clone())
                 .unwrap_or_default();
             name.set(item_name);
@@ -173,7 +173,7 @@ async fn test_set_id_in_query_input_dropdown() {
         let key = if index < 0 { "ArrowUp" } else { "ArrowDown" };
         let num_key_down = if index < 0 { index.abs() } else { index + 1 };
         let index = index.rem_euclid(items.len() as i32) as usize;
-        let id = items[index].id_version.get_id().unwrap();
+        let id = items[index].id_version.get_id();
         let init_down = KeyboardEventInit::new();
         init_down.set_key(key);
         init_down.set_code(key);

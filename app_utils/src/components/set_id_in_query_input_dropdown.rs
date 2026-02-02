@@ -61,21 +61,14 @@ where
             // 2) check if id has changed
             let item_id = item.get_id_version().get_id();
             let current_id = get_query(key).and_then(|v| Uuid::parse_str(&v).ok());
-            if item_id == current_id {
+            if Some(item_id) == current_id {
                 // no change -> just reset name
                 name.notify();
                 return;
             }
             // 3) update URL query parameter with new id
-            let nav_url = url_with_update_query(
-                key,
-                &item
-                    .get_id_version()
-                    .get_id()
-                    .unwrap_or_default()
-                    .to_string(),
-                None,
-            );
+            let nav_url =
+                url_with_update_query(key, &item.get_id_version().get_id().to_string(), None);
             navigate(
                 &nav_url,
                 NavigateOptions {

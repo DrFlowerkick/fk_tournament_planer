@@ -1,130 +1,57 @@
 //! Edit tournament stage component
 
-use app_core::{
-    Stage, TournamentMode, TournamentState,
-    utils::{id_version::IdVersion, traits::ObjectIdVersion},
-};
+use app_core::Stage;
 use app_utils::{
-    components::inputs::ValidatedNumberInput,
-    error::AppError,
-    error::strategy::{handle_general_error, handle_read_error},
+    components::inputs::NumberInputWithValidation,
+    error::{
+        AppError,
+        strategy::{handle_general_error, handle_read_error},
+    },
     hooks::{
-        is_field_valid::is_field_valid,
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::{StageParams, TournamentBaseParams},
+    params::{use_stage_number_params, use_tournament_base_id_query},
     server_fn::stage::load_stage_by_number,
-    state::{error_state::PageErrorContext, tournament_editor::context::TournamentEditorContext},
+    state::{
+        error_state::PageErrorContext,
+        tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
+    },
 };
 use leptos::prelude::*;
-use leptos_router::{
-    components::A,
-    hooks::{use_params, use_query},
-    nested_router::Outlet,
-};
+use leptos_router::{components::A, nested_router::Outlet};
 use uuid::Uuid;
 
 #[component]
-pub fn EditTournamentStage() -> impl IntoView {
-    // --- Get context for creating and editing tournaments ---
-    let tournament_editor_context = expect_context::<TournamentEditorContext>();
+pub fn LoadTournamentStage() -> impl IntoView {
+    // --- global context ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
-
-    // --- Hooks & Navigation ---
-    let UseQueryNavigationReturn {
-        url_route_with_sub_path,
-        ..
-    } = use_query_navigation();
-
-    let tournament_id_query = use_query::<TournamentBaseParams>();
-    let tournament_id = move || {
-        if let Ok(t_id_params) = tournament_id_query.get()
-            && let Some(t_id) = t_id_params.tournament_id
-        {
-            Some(t_id)
-        } else {
-            tournament_editor_context
-                .get_tournament()
-                .and_then(|t| t.get_id())
-        }
-    };
-
-    let stage_number_params = use_params::<StageParams>();
-    let stage_number = move || {
-        if let Ok(snp) = stage_number_params.get()
-            && let Some(sn) = snp.stage_number
-            && let Some(tournament) = tournament_editor_context.get_tournament()
-            && tournament.get_tournament_mode().get_num_of_stages() > sn
-        {
-            return Some(sn);
-        }
-        None
-    };
-    let editor_title = move || {
-        if let Some(sn) = stage_number()
-            && let Some(tournament) = tournament_editor_context.get_tournament()
-            && let Some(title) = tournament.get_tournament_mode().get_stage_name(sn)
-        {
-            format!("Edit {}", title)
-        } else {
-            "Edit Tournament Stage".to_string()
-        }
-    };
-
-    // check invalid stage_number in params
-    Effect::new(move || {
-        if let Ok(snp) = stage_number_params.get()
-            && let Some(sn) = snp.stage_number
-            && let Some(tournament) = tournament_editor_context.get_tournament()
-            && tournament.get_tournament_mode().get_num_of_stages() <= sn
-        {
-            // invalid stage number -> signal url validation
-            tournament_editor_context.trigger_url_validation();
-        }
+    // remove errors on unmount
+    on_cleanup(move || {
+        page_err_ctx.clear_all_for_component(component_id.get_value());
     });
 
-    // hide form if tournament mode has only one stage with one group OR if invalid stage number
-    let hide_form = move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament() {
-            matches!(
-                tournament.get_tournament_mode(),
-                TournamentMode::SingleStage | TournamentMode::SwissSystem { num_rounds: _ }
-            ) || stage_number().is_none()
-        } else {
-            false
-        }
-    };
+    let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
-    // check if stage is not editable
-    let is_active_or_done = move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament()
-            && let Some(sn) = stage_number()
-        {
-            match tournament.get_tournament_state() {
-                TournamentState::ActiveStage(acs) => acs >= sn,
-                TournamentState::Finished => true,
-                _ => false,
-            }
-        } else {
-            false
-        }
-    };
+    // --- url parameters & queries ---
+    let tournament_id = use_tournament_base_id_query();
+    let active_stage_number = use_stage_number_params();
 
-    // Form Signals
-    let set_id_version = RwSignal::new(IdVersion::New);
-    let set_num_groups = RwSignal::new(1u32);
-
-    // --- Server Resources & Actions  ---
-    // load stage resource
+    // --- Resource to load tournament stage ---
     let stage_res = Resource::new(
-        move || (tournament_id(), stage_number()),
-        move |(maybe_t_id, maybe_sn)| async move {
+        move || {
+            (
+                tournament_id.get(),
+                active_stage_number.get(),
+                refetch_trigger.track_fetch_trigger.get(),
+            )
+        },
+        move |(maybe_t_id, maybe_s_num, _track_refetch)| async move {
             if let Some(t_id) = maybe_t_id
-                && let Some(sn) = maybe_sn
+                && let Some(stage_number) = maybe_s_num
             {
-                load_stage_by_number(t_id, sn).await
+                load_stage_by_number(t_id, stage_number).await
             } else {
                 Ok(None)
             }
@@ -132,164 +59,162 @@ pub fn EditTournamentStage() -> impl IntoView {
     );
 
     // retry function for error handling
-    let refetch_and_reset = Callback::new(move |()| {
+    let refetch = Callback::new(move |()| {
+        refetch_trigger.trigger_refetch();
         stage_res.refetch();
     });
 
     // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
 
-    // --- Validation Logic ---
-    let current_stage = Memo::new(move |_| {
-        if let Some(sn) = stage_number()
-            && let Some(mut stage) = tournament_editor_context.get_stage_by_number_untracked(sn)
-        {
-            stage.set_num_groups(set_num_groups.get());
-            Some(stage)
-        } else {
-            None
-        }
-    });
+    view! {
+        <Transition fallback=move || {
+            view! {
+                <div class="w-full flex justify-center py-8">
+                    <span class="loading loading-spinner loading-lg"></span>
+                </div>
+            }
+        }>
+            <ErrorBoundary fallback=move |errors| {
+                for (_err_id, err) in errors.get().into_iter() {
+                    let e = err.into_inner();
+                    if let Some(app_err) = e.downcast_ref::<AppError>() {
+                        handle_read_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            app_err,
+                            refetch,
+                            on_cancel,
+                        );
+                    } else {
+                        handle_general_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            "An unexpected error occurred.",
+                            None,
+                            on_cancel,
+                        );
+                    }
+                }
+            }>
+                {move || {
+                    stage_res
+                        .and_then(|may_be_s| {
+                            view! { <EditTournamentStage stage=*may_be_s /> }
+                        })
+                }}
+            </ErrorBoundary>
+        </Transition>
+    }
+}
 
-    // Sync to Global State
+#[component]
+pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
+    // --- Get context for creating and editing tournaments ---
+    let active_stage_number = use_stage_number_params();
+
+    let tournament_editor_context = expect_context::<TournamentEditorContext>();
+    let page_err_ctx = expect_context::<PageErrorContext>();
+
     Effect::new(move || {
-        if let Some(stage) = current_stage.get() {
-            tournament_editor_context.set_stage(stage.clone(), false);
+        if let Some(s) = stage {
+            tournament_editor_context.set_stage(s);
+        } else if let Some(stage_number) = active_stage_number.get() {
+            tournament_editor_context.new_stage(stage_number);
         }
     });
 
-    // Validation runs against the constantly updated Memo
-    let validation_result = Signal::derive(move || {
-        if let Some(tournament) = tournament_editor_context.get_tournament()
-            && let Some(current_stage) = current_stage.get()
+    // --- Hooks & Navigation ---
+    let UseQueryNavigationReturn {
+        url_route_with_sub_path,
+        ..
+    } = use_query_navigation();
+
+    let editor_title = move || {
+        if let Some(sn) = tournament_editor_context.active_stage_number.get()
+            && let Some(title) = tournament_editor_context
+                .base_mode
+                .get()
+                .and_then(|m| m.get_stage_name(sn))
         {
-            current_stage.validate(&tournament)
+            format!("Edit {}", title)
         } else {
-            Ok(())
+            "Edit Tournament Stage".to_string()
         }
-    });
-
-    // error messages for form fields
-    let num_groups_error = Signal::derive(move || is_field_valid(validation_result, "num_groups"));
+    };
 
     view! {
-        <Show when=move || !hide_form()>
-            <div
-                class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-                data-testid="stage-editor-root"
-            >
-                <div class="w-full flex justify-between items-center pb-4">
-                    <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
-                        {move || editor_title()}
-                    </h2>
-                </div>
-
-                // Card wrapping Form and Group Links
-                <div class="card w-full bg-base-100 shadow-xl">
-                    <div class="card-body">
-                        // --- Form Area ---
-                        <Transition fallback=move || {
-                            view! {
-                                <div class="w-full flex justify-center py-8">
-                                    <span class="loading loading-spinner loading-lg"></span>
-                                </div>
+        // hide stage editor for single stage and swiss system tournaments
+        <Show when=move || !tournament_editor_context.is_hiding_stage_editor.get()>
+            // Card wrapping Form and Group Links
+            <div class="card w-full bg-base-100 shadow-xl">
+                <div class="card-body">
+                    // --- Form Area ---
+                    <div
+                        class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
+                        data-testid="stage-editor-root"
+                    >
+                        <div class="w-full flex justify-between items-center pb-4">
+                            <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
+                                {move || editor_title()}
+                            </h2>
+                        </div>
+                        // we have to use try_get here to avoid runtime panics, because
+                        // page_err_ctx "lives" independent of tournament_editor_context
+                        <fieldset
+                            disabled=move || {
+                                page_err_ctx.has_errors()
+                                    || tournament_editor_context
+                                        .is_disabled_stage_editing
+                                        .try_get()
+                                        .unwrap_or(false)
+                                    || tournament_editor_context.is_busy.try_get().unwrap_or(false)
+                                    || !tournament_editor_context
+                                        .is_stage_initialized
+                                        .try_get()
+                                        .unwrap_or(false)
                             }
-                        }>
-                            <ErrorBoundary fallback=move |errors| {
-                                for (_err_id, err) in errors.get().into_iter() {
-                                    let e = err.into_inner();
-                                    if let Some(app_err) = e.downcast_ref::<AppError>() {
-                                        handle_read_error(
-                                            &page_err_ctx,
-                                            component_id.get_value(),
-                                            app_err,
-                                            refetch_and_reset,
-                                            on_cancel,
-                                        );
-                                    } else {
-                                        handle_general_error(
-                                            &page_err_ctx,
-                                            component_id.get_value(),
-                                            "An unexpected error occurred.",
-                                            None,
-                                            on_cancel,
-                                        );
+                            class="contents"
+                            data-testid="stage-editor-form"
+                        >
+                            <div class="w-full max-w-md grid grid-cols-1 gap-6">
+                                <NumberInputWithValidation
+                                    label="Number of Groups"
+                                    name="stage-num-groups"
+                                    value=tournament_editor_context.stage_num_groups
+                                    set_value=tournament_editor_context.set_stage_num_groups
+                                    validation_result=tournament_editor_context.validation_result
+                                    min="1".to_string()
+                                    object_id=tournament_editor_context.active_stage_id
+                                    field="num_groups"
+                                />
+                            </div>
+                        // group editor links
+                        </fieldset>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
+                            <For
+                                each=move || {
+                                    0..tournament_editor_context
+                                        .stage_num_groups
+                                        .get()
+                                        .unwrap_or_default()
+                                }
+                                key=|i| *i
+                                children=move |i| {
+                                    view! {
+                                        <A
+                                            href=move || url_route_with_sub_path(&i.to_string())
+                                            attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
+                                            attr:data-testid=format!("link-configure-group-{}", i)
+                                            scroll=false
+                                        >
+                                            <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
+                                            {format!("Edit Group {}", i + 1)}
+                                        </A>
                                     }
                                 }
-                            }>
-                                {move || {
-                                    stage_res
-                                        .and_then(|may_be_s| {
-                                            match may_be_s {
-                                                Some(stage) => {
-                                                    tournament_editor_context.set_stage(*stage, true);
-                                                    set_id_version.set(stage.get_id_version());
-                                                    set_num_groups.set(stage.get_num_groups());
-                                                }
-                                                None => {
-                                                    if let Some(t_id) = tournament_id()
-                                                        && let Some(sn) = stage_number()
-                                                    {
-                                                        if let Some(stage) = tournament_editor_context
-                                                            .get_stage_by_number(sn)
-                                                        {
-                                                            set_id_version.set(stage.get_id_version());
-                                                            set_num_groups.set(stage.get_num_groups());
-                                                        } else {
-                                                            let mut new_state = Stage::new(
-                                                                IdVersion::NewWithId(Uuid::new_v4()),
-                                                            );
-                                                            new_state.set_number(sn);
-                                                            new_state.set_tournament_id(t_id);
-                                                            tournament_editor_context.set_stage(new_state, false);
-                                                            set_id_version.set(new_state.get_id_version());
-                                                            set_num_groups.set(new_state.get_num_groups());
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        })
-                                }}
-                                <fieldset
-                                    disabled=move || {
-                                        tournament_editor_context.is_busy()
-                                            || page_err_ctx.has_errors() || is_active_or_done()
-                                    }
-                                    class="contents"
-                                    data-testid="stage-editor-form"
-                                >
-                                    <div class="w-full max-w-md grid grid-cols-1 gap-6">
-                                        <ValidatedNumberInput
-                                            label="Number of Groups"
-                                            name="stage-num-groups"
-                                            value=set_num_groups
-                                            validation_error=num_groups_error
-                                            min="1".to_string()
-                                        />
-                                    </div>
-                                // group editor links
-                                </fieldset>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
-                                    <For
-                                        each=move || 0..set_num_groups.get()
-                                        key=|i| *i
-                                        children=move |i| {
-                                            view! {
-                                                <A
-                                                    href=move || url_route_with_sub_path(&i.to_string())
-                                                    attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
-                                                    attr:data-testid=format!("link-configure-group-{}", i)
-                                                    scroll=false
-                                                >
-                                                    <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                    {format!("Edit Group {}", i + 1)}
-                                                </A>
-                                            }
-                                        }
-                                    />
-                                </div>
-                            </ErrorBoundary>
-                        </Transition>
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

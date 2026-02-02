@@ -4,8 +4,8 @@ import {
   selectSportPluginByName,
   expectSportViewActive,
   expectSportDashboardContent,
-} from "../../helpers/home";
-import { selectors } from "../../helpers/selectors";
+  selectors,
+} from "../../helpers";
 
 // We use names instead of hardcoded UUIDs
 const PLUGINS = {

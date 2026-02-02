@@ -11,7 +11,7 @@ use serde_json::Value;
 use uuid::Uuid;
 
 /// `SportConfig` represents the configuration for a specific sport.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct SportConfig {
     /// Unique identifier for the sport configuration.
     id_version: IdVersion,
@@ -22,17 +22,6 @@ pub struct SportConfig {
     name: String,
     /// JSON value containing sport-specific configuration details.
     config: Value,
-}
-
-impl Default for SportConfig {
-    fn default() -> Self {
-        SportConfig {
-            id_version: IdVersion::New,
-            sport_id: Uuid::nil(),
-            name: "".into(),
-            config: Value::Null,
-        }
-    }
 }
 
 impl ObjectIdVersion for SportConfig {
@@ -51,7 +40,7 @@ impl SportConfig {
     }
 
     /// Get the unique identifier of the sport configuration.
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         self.id_version.get_id()
     }
 
@@ -119,11 +108,14 @@ impl SportConfig {
     /// Sport-specific validation must be done in the SportPort implementation.
     pub fn validate(&self) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
+        let object_id = self.get_id();
+
         if self.name.is_empty() {
             errs.add(
                 FieldError::builder()
                     .set_field(String::from("name"))
                     .add_required()
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -183,11 +175,7 @@ impl Core<SportConfigState> {
         // persist config
         self.state.config = self.database.save_sport_config(&self.state.config).await?;
         // publish change of sport config to client registry
-        let id = self
-            .state
-            .config
-            .get_id()
-            .expect("expecting save_sport_config to return always an existing id and version");
+        let id = self.state.config.get_id();
         let version = self
             .state
             .config

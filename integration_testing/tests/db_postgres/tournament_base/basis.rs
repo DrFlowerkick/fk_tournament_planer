@@ -21,11 +21,10 @@ async fn given_new_when_save_then_get_roundtrip_version_is_0() -> Result<()> {
     info!(id=?saved.get_id(), v=?saved.get_version(), "saved_v0");
 
     // Assert basic invariants
-    assert!(saved.get_id().is_some(), "id must be assigned by DB");
     assert_eq!(saved.get_version(), Some(0), "new rows start at version=0");
 
     // Read-back
-    let fetched = db.get_tournament_base(saved.get_id().unwrap()).await?;
+    let fetched = db.get_tournament_base(saved.get_id()).await?;
     assert!(fetched.is_some(), "row must exist");
     let fetched = fetched.unwrap();
 
@@ -53,12 +52,12 @@ async fn given_existing_v0_when_update_then_version_increments_to_1() -> Result<
     assert_eq!(v0.get_version(), Some(0));
 
     // Prepare update using Existing(id,version=0)
-    let v0_id = v0.get_id().unwrap();
+    let v0_id = v0.get_id();
     let v1_candidate = mutate_tournament_base_v2(v0.clone());
 
     // Act
     let v1 = db.save_tournament_base(&v1_candidate).await?;
-    assert_eq!(v1.get_id(), Some(v0_id));
+    assert_eq!(v1.get_id(), v0_id);
     assert_eq!(v1.get_version(), Some(1), "update must bump version to 1");
 
     // Verify persisted content
@@ -84,7 +83,7 @@ async fn given_stale_version_when_update_then_conflict_error() -> Result<()> {
     let v0 = db
         .save_tournament_base(&make_new_tournament_base("C", sport_id))
         .await?;
-    let id = v0.get_id().unwrap();
+    let id = v0.get_id();
     assert_eq!(v0.get_version(), Some(0));
 
     // First update to v1

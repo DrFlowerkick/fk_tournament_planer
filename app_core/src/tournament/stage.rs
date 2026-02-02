@@ -28,7 +28,7 @@ pub struct Stage {
 impl Default for Stage {
     fn default() -> Self {
         Stage {
-            id_version: IdVersion::New,
+            id_version: IdVersion::default(),
             tournament_id: Uuid::nil(),
             number: 0,
             num_groups: 1,
@@ -58,7 +58,7 @@ impl Stage {
     }
 
     /// Get the unique identifier of the stage.
-    pub fn get_id(&self) -> Option<Uuid> {
+    pub fn get_id(&self) -> Uuid {
         self.id_version.get_id()
     }
 
@@ -109,17 +109,34 @@ impl Stage {
     /// Validate the stage configuration based on the provided tournament settings.
     pub fn validate(&self, tournament: &TournamentBase) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
+        let object_id = self.get_id();
 
         // Check if stage belongs to the correct tournament
-        if let Some(t_id) = tournament.get_id() {
-            if self.tournament_id != t_id {
-                errs.add(
-                    FieldError::builder()
-                        .set_field(String::from("tournament_id"))
-                        .add_message("Stage tournament ID does not match the provided tournament")
-                        .build(),
-                );
-            }
+        if tournament.get_id() != self.tournament_id {
+            errs.add(
+                FieldError::builder()
+                    .set_field(String::from("tournament_id"))
+                    .add_message("Stage tournament ID does not match the provided tournament")
+                    .set_object_id(object_id)
+                    .build(),
+            );
+        }
+
+        // Validate stage number against max stages
+        let max_stages = tournament.get_tournament_mode().get_num_of_stages();
+        if self.number >= max_stages {
+            errs.add(
+                FieldError::builder()
+                    .set_field(String::from("number"))
+                    .add_message(format!(
+                        "Stage number {} exceeds maximum allowed stages ({}) for mode {}",
+                        self.number,
+                        max_stages,
+                        tournament.get_tournament_mode()
+                    ))
+                    .set_object_id(object_id)
+                    .build(),
+            );
         }
 
         // Validate number of groups
@@ -128,6 +145,7 @@ impl Stage {
                 FieldError::builder()
                     .set_field(String::from("num_groups"))
                     .add_message("Number of groups must be at least 1")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
@@ -136,26 +154,13 @@ impl Stage {
                 FieldError::builder()
                     .set_field(String::from("num_groups"))
                     .add_message("Number of groups cannot exceed half the number of entrants")
+                    .set_object_id(object_id)
                     .build(),
             );
         }
 
         // Mode specific validation
         let mode = tournament.get_tournament_mode();
-
-        // Validate stage number against max stages
-        let max_stages = mode.get_num_of_stages();
-        if self.number >= max_stages {
-            errs.add(
-                FieldError::builder()
-                    .set_field(String::from("number"))
-                    .add_message(format!(
-                        "Stage number {} exceeds maximum allowed stages ({}) for mode {}",
-                        self.number, max_stages, mode
-                    ))
-                    .build(),
-            );
-        }
 
         // Validate number of groups against mode constraints
         if matches!(mode, TournamentMode::SingleStage) {
@@ -166,6 +171,7 @@ impl Stage {
                         .add_message(
                             "Single Stage mode must have exactly 1 group (the whole field)",
                         )
+                        .set_object_id(object_id)
                         .build(),
                 );
             }
@@ -178,6 +184,7 @@ impl Stage {
                     FieldError::builder()
                         .set_field(String::from("num_groups"))
                         .add_message("Swiss System has 1 group in stage (the whole field)")
+                        .set_object_id(object_id)
                         .build(),
                 );
             }
@@ -272,11 +279,7 @@ impl Core<StageState> {
         self.state.stage = self.database.save_stage(&self.state.stage).await?;
 
         // publish change of stage to client registry
-        let id = self
-            .state
-            .stage
-            .get_id()
-            .expect("expecting save_stage to return always an existing id and version");
+        let id = self.state.stage.get_id();
         let version = self
             .state
             .stage

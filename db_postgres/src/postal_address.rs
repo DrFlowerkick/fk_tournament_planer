@@ -125,7 +125,7 @@ impl DbpPostalAddress for PgDb {
         fields(
             id = ?address.get_id(),
             version = address.get_version(),
-            is_new = address.get_id().is_none()
+            is_new = address.get_id_version().is_new()
         )
     )]
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress> {

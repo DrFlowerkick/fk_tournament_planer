@@ -138,7 +138,7 @@ impl DbpTournamentBase for PgDb {
         fields(
             id = ?tournament.get_id(),
             version = tournament.get_version(),
-            is_new = tournament.get_id().is_none()
+            is_new = tournament.get_id_version().is_new()
         )
     )]
     async fn save_tournament_base(&self, tournament: &TournamentBase) -> DbResult<TournamentBase> {
@@ -201,29 +201,6 @@ impl DbpTournamentBase for PgDb {
             IdVersion::NewWithId(new_id) => {
                 let row = diesel::insert_into(tournament_bases)
                     .values((id.eq(new_id), w))
-                    .returning((
-                        id,
-                        version,
-                        name,
-                        sport_id,
-                        num_entrants,
-                        t_type,
-                        mode,
-                        state,
-                        created_at,
-                        updated_at,
-                    ))
-                    .get_result::<DbTournamentBase>(&mut conn)
-                    .await
-                    .map_err(map_db_err)?;
-
-                info!(saved_id = %row.id, "insert_ok");
-                Ok(row.try_into()?)
-            }
-            // Case 3: INSERT with DB-generated ID (Standard)
-            IdVersion::New => {
-                let row = diesel::insert_into(tournament_bases)
-                    .values(w)
                     .returning((
                         id,
                         version,

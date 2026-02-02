@@ -4,10 +4,11 @@ import {
   selectSportPluginByName,
   goToNewTournament,
   goToListTournaments,
-} from "../../helpers/home";
-import { selectors } from "../../helpers/selectors";
+  fillAndBlur,
+  makeUniqueName,
+  selectors,
+} from "../../helpers";
 import { getToastSelectors } from "../../helpers/selectors/common";
-import { makeUniqueName } from "../../helpers/utils";
 
 const PLUGINS = {
   GENERIC: "Generic Sport",
@@ -43,7 +44,7 @@ test.describe("Create New Tournament", () => {
     const DASH = selectors(page).home.dashboard;
 
     await expect(FORM.inputs.name).toBeEditable();
-    await FORM.inputs.name.fill("To Be Cancelled");
+    await fillAndBlur(FORM.inputs.name, "To Be Cancelled");
 
     await FORM.actions.cancel.click();
 
@@ -60,8 +61,8 @@ test.describe("Create New Tournament", () => {
 
     const tourneyName = makeUniqueName("E2E Create Success");
 
-    await FORM.inputs.name.fill(tourneyName);
-    await FORM.inputs.entrants.fill("32");
+    await fillAndBlur(FORM.inputs.name, tourneyName);
+    await fillAndBlur(FORM.inputs.entrants, "32");
 
     await expect(FORM.actions.save).toBeEnabled();
     await FORM.actions.save.click();
@@ -80,7 +81,7 @@ test.describe("Create New Tournament", () => {
     await expect(LIST.root).toBeVisible({ timeout: 10000 });
     await expect(LIST.filters.search).toBeEditable();
 
-    await LIST.filters.search.fill(tourneyName);
+    await fillAndBlur(LIST.filters.search, tourneyName);
 
     await expect(page.getByRole("cell", { name: tourneyName })).toBeVisible({
       timeout: 10000,
@@ -96,8 +97,8 @@ test.describe("Create New Tournament", () => {
 
     // --- Step 1: Create initial tournament ---
     const initialName = makeUniqueName("Flow Initial");
-    await FORM.inputs.name.fill(initialName);
-    await FORM.inputs.entrants.fill("16");
+    await fillAndBlur(FORM.inputs.name, initialName);
+    await fillAndBlur(FORM.inputs.entrants, "16");
     await FORM.actions.save.click();
 
     // Wait for creation to finish (Toast & URL)
@@ -106,7 +107,7 @@ test.describe("Create New Tournament", () => {
 
     // --- Step 2: Go to List and Find it ---
     await goToListTournaments(page);
-    await LIST.filters.search.fill(initialName);
+    await fillAndBlur(LIST.filters.search, initialName);
 
     const rowCell = page.getByRole("cell", { name: initialName }).first();
     await expect(rowCell).toBeVisible();
@@ -123,7 +124,7 @@ test.describe("Create New Tournament", () => {
 
     // --- Step 4: Modify Data ---
     const updatedName = makeUniqueName("Flow Updated");
-    await FORM.inputs.name.fill(updatedName);
+    await fillAndBlur(FORM.inputs.name, updatedName);
     // Optional: Change another field if needed
     // await FORM.inputs.entrants.fill("20");
 
@@ -139,7 +140,7 @@ test.describe("Create New Tournament", () => {
 
     // Verify update in List
     await goToListTournaments(page);
-    await LIST.filters.search.fill(updatedName);
+    await fillAndBlur(LIST.filters.search, updatedName);
     await expect(page.getByRole("cell", { name: updatedName })).toBeVisible();
     await expect(
       page.getByRole("cell", { name: initialName }),
@@ -152,14 +153,12 @@ test.describe("Create New Tournament", () => {
     }) => {
       const FORM = selectors(page).home.dashboard.editTournament;
 
-      await FORM.inputs.entrants.fill("16");
-      await FORM.inputs.name.fill("");
-      await FORM.inputs.name.blur();
+      await fillAndBlur(FORM.inputs.entrants, "16");
+      await fillAndBlur(FORM.inputs.name, "");
 
       await expect(FORM.actions.save).toBeDisabled();
 
-      await FORM.inputs.name.fill(makeUniqueName("Valid Name Check"));
-      await FORM.inputs.name.blur();
+      await fillAndBlur(FORM.inputs.name, makeUniqueName("Valid Name Check"));
 
       await expect(FORM.actions.save).toBeEnabled();
     });
@@ -169,15 +168,16 @@ test.describe("Create New Tournament", () => {
     }) => {
       const FORM = selectors(page).home.dashboard.editTournament;
 
-      await FORM.inputs.name.fill(makeUniqueName("Entrant Valid Check"));
+      await fillAndBlur(
+        FORM.inputs.name,
+        makeUniqueName("Entrant Valid Check"),
+      );
 
-      await FORM.inputs.entrants.fill("1");
-      await FORM.inputs.entrants.blur();
+      await fillAndBlur(FORM.inputs.entrants, "1");
 
       await expect(FORM.actions.save).toBeDisabled();
 
-      await FORM.inputs.entrants.fill("2");
-      await FORM.inputs.entrants.blur();
+      await fillAndBlur(FORM.inputs.entrants, "2");
 
       await expect(FORM.actions.save).toBeEnabled();
     });
@@ -190,8 +190,8 @@ test.describe("Create New Tournament", () => {
       const dirtyName = `  Chaos   ${uniqueSuffix}  `;
       const cleanName = `Chaos ${uniqueSuffix}`;
 
-      await FORM.inputs.name.fill(dirtyName);
-      await FORM.inputs.entrants.fill("8");
+      await fillAndBlur(FORM.inputs.name, dirtyName);
+      await fillAndBlur(FORM.inputs.entrants, "8");
 
       await expect(FORM.actions.save).toBeEnabled();
       await FORM.actions.save.click();

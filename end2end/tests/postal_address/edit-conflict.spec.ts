@@ -8,9 +8,9 @@ import {
   expectSavesDisabled,
   openEditForm,
   waitForPostalAddressListUrl,
-} from "../../helpers/postal_address";
-import { selectors } from "../../helpers/selectors";
-import { typeThenBlur } from "../../helpers/utils";
+  typeThenBlur,
+  selectors,
+} from "../../helpers";
 
 test.describe("Edit conflict shows proper fallback reaction", () => {
   test("A on stale version gets conflict banner and disabled save", async ({
@@ -71,7 +71,7 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
 
       // The banner should contain a warning message.
       await expect(BA_A.acknowledgment.root).toContainText(
-        "A newer version of this address exists. Reloading will discard your changes."
+        "A newer version of this address exists. Reloading will discard your changes.",
       );
 
       // Save must be disabled while the conflict is unresolved.
@@ -81,9 +81,7 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       await BA_A.acknowledgment.btnAction.click();
 
       // After reload, the banner should be gone and the form-version should bump to "1".
-      await expect(
-        BA_A.acknowledgment.root
-      ).toBeHidden();
+      await expect(BA_A.acknowledgment.root).toBeHidden();
       await expect(PA_A.form.hiddenVersion).toHaveValue("1");
 
       // The name input should now reflect B's saved value.

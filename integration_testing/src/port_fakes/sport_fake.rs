@@ -104,7 +104,7 @@ mod tests {
 
         let found = manager.get(&sport_id);
         assert!(found.is_some());
-        assert_eq!(found.unwrap().get_id_version().get_id(), Some(sport_id));
+        assert_eq!(found.unwrap().get_id_version().get_id(), sport_id);
     }
 
     #[test]
@@ -136,11 +136,11 @@ mod tests {
         assert_eq!(list.len(), 2);
         assert!(
             list.iter()
-                .any(|p| p.get_id_version().get_id() == Some(sport_id1))
+                .any(|p| p.get_id_version().get_id() == sport_id1)
         );
         assert!(
             list.iter()
-                .any(|p| p.get_id_version().get_id() == Some(sport_id2))
+                .any(|p| p.get_id_version().get_id() == sport_id2)
         );
     }
 

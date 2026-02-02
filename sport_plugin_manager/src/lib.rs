@@ -1,6 +1,6 @@
 //! Implementation of sport plugin manager port
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use app_core::{SportPluginManagerPort, SportPort};
 use shared::SportPortWebUi;
 use std::{collections::HashMap, sync::Arc};
@@ -90,10 +90,7 @@ impl SportPluginManagerMap {
     /// assert!(manager.get(&sport_id).is_some());
     /// ```
     pub fn register(&mut self, plugin: Arc<dyn SportPortWebUi>) -> Result<()> {
-        let plugin_id = plugin
-            .get_id_version()
-            .get_id()
-            .context("Sport Plugin must provide id.")?;
+        let plugin_id = plugin.get_id_version().get_id();
         if self.plugins.contains_key(&plugin_id) {
             bail!("A plugin with ID {} is already registered", plugin_id);
         }
@@ -166,7 +163,7 @@ impl SportPluginManagerMap {
     /// // Get an existing plugin
     /// let found_plugin = manager.get_web_ui(&sport_id);
     /// assert!(found_plugin.is_some());
-    /// assert_eq!(found_plugin.unwrap().get_id_version().get_id().unwrap(), sport_id);
+    /// assert_eq!(found_plugin.unwrap().get_id_version().get_id(), sport_id);
     ///
     /// // Try to get a non-existent plugin
     /// let not_found_plugin = manager.get_web_ui(&Uuid::new_v4());
@@ -238,7 +235,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// // Get an existing plugin
     /// let found_plugin = manager.get(&sport_id);
     /// assert!(found_plugin.is_some());
-    /// assert_eq!(found_plugin.unwrap().get_id_version().get_id().unwrap(), sport_id);
+    /// assert_eq!(found_plugin.unwrap().get_id_version().get_id(), sport_id);
     ///
     /// // Try to get a non-existent plugin
     /// let not_found_plugin = manager.get(&Uuid::new_v4());
