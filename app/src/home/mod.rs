@@ -10,7 +10,7 @@ use crate::home::dashboard::SportDashboard;
 use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
     components::{banner::GlobalErrorBanner, toast::ToastContainer},
-    params::SportParams,
+    params::{SportIdQuery, use_sport_id_query},
     state::{
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
@@ -41,12 +41,12 @@ pub fn HomePage() -> impl IntoView {
     let url = use_url();
 
     // get query params
-    let sport_id_query = use_query::<SportParams>();
+    let sport_id_query = use_query::<SportIdQuery>();
+    let sport_id = use_sport_id_query();
 
     // check if a sport is active
     let is_sport_active = move || {
-        if let Ok(sport_params) = sport_id_query.get()
-            && let Some(sport_id) = sport_params.sport_id
+        if let Some(sport_id) = sport_id.get()
             && sport_plugin_manager.get().get_web_ui(&sport_id).is_some()
         {
             true
@@ -55,25 +55,17 @@ pub fn HomePage() -> impl IntoView {
         }
     };
 
-    let is_sport_id_given = move || {
-        if let Ok(sport_params) = sport_id_query.get()
-            && sport_params.sport_id.is_some()
-        {
-            true
-        } else {
-            false
-        }
-    };
+    let is_sport_id_given = move || sport_id.get().is_some();
 
-    let is_sport_id_invalid = move || {
-        if let Ok(sport_params) = sport_id_query.get()
-            && let Some(sport_id) = sport_params.sport_id
-            && sport_plugin_manager.get().get_web_ui(&sport_id).is_none()
-        {
-            true
-        } else {
-            false
+    let is_sport_id_invalid = move || match sport_id_query.get() {
+        Ok(sport_params) => {
+            if let Some(sport_id) = sport_params.sport_id {
+                sport_plugin_manager.get().get_web_ui(&sport_id).is_none()
+            } else {
+                false
+            }
         }
+        Err(_) => true,
     };
 
     Effect::new(move || {

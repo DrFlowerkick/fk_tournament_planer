@@ -3,18 +3,6 @@
 use super::*;
 use serde::{Deserialize, Serialize};
 
-/// State of the tournament editor, indicating whether a new tournament is being created
-/// or an existing tournament is being edited.
-#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TournamentEditorState {
-    /// Initial state with no tournament loaded.
-    None,
-    /// New tournament being created (no origin).
-    New,
-    /// Existing tournament being edited (has origin).
-    Edit,
-}
-
 /// TournamentEditor holds the local editable tournament and the origin tournament for change tracking.
 /// This allows tracking changes made to the tournament during editing.
 /// The `local` tournament is the one being edited, while the `origin` tournament serves as the reference point
@@ -42,20 +30,6 @@ impl TournamentEditor {
             active_group_id: None,
             active_round_id: None,
             active_match_id: None,
-        }
-    }
-
-    // --- State of Editor ---
-    /// Returns the current state of the editor: None, New, or Edit.
-    pub fn get_state(&self) -> TournamentEditorState {
-        if self.origin.get_base().is_none() {
-            if self.local.get_base().is_none() {
-                TournamentEditorState::None
-            } else {
-                TournamentEditorState::New
-            }
-        } else {
-            TournamentEditorState::Edit
         }
     }
 

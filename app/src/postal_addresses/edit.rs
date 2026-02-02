@@ -11,7 +11,7 @@ use app_utils::{
         is_field_valid::is_field_valid,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::AddressParams,
+    params::use_address_id_query,
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
@@ -20,10 +20,7 @@ use isocountry::CountryCode;
 use leptos::prelude::*;
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
-use leptos_router::{
-    NavigateOptions,
-    hooks::{use_navigate, use_query},
-};
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use reactive_stores::Store;
 use uuid::Uuid;
 
@@ -46,8 +43,7 @@ pub fn PostalAddressForm() -> impl IntoView {
     } = use_query_navigation();
     let navigate = use_navigate();
 
-    let query = use_query::<AddressParams>();
-    let id = Signal::derive(move || query.get().ok().and_then(|ap| ap.address_id));
+    let id = use_address_id_query();
     let is_new = move || id.get().is_none();
 
     let state = expect_context::<Store<GlobalState>>();

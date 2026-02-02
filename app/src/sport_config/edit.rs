@@ -12,7 +12,7 @@ use app_utils::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::{SportConfigParams, SportParams},
+    params::{use_sport_config_id_query, use_sport_id_query},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
         error_state::PageErrorContext,
@@ -23,10 +23,7 @@ use app_utils::{
 use leptos::{logging::log, prelude::*};
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
-use leptos_router::{
-    NavigateOptions,
-    hooks::{use_navigate, use_query},
-};
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use reactive_stores::Store;
 use serde_json::Value;
 use shared::{RenderCfgProps, SportPortWebUi};
@@ -43,16 +40,9 @@ pub fn SportConfigForm() -> impl IntoView {
     } = use_query_navigation();
     let navigate = use_navigate();
 
-    let sport_query = use_query::<SportParams>();
-    let sport_id = Signal::derive(move || sport_query.get().map(|s| s.sport_id).unwrap_or(None));
+    let sport_id = use_sport_id_query();
 
-    let sport_config_query = use_query::<SportConfigParams>();
-    let sport_config_id = Signal::derive(move || {
-        sport_config_query
-            .get()
-            .ok()
-            .and_then(|sc| sc.sport_config_id)
-    });
+    let sport_config_id = use_sport_config_id_query();
 
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
@@ -70,9 +60,7 @@ pub fn SportConfigForm() -> impl IntoView {
         Callback::new(move |_: ()| url_with_path(&return_after_sport_config_edit.get()));
 
     let sport_plugin = move || {
-        if let Ok(sport_params) = sport_query.get()
-            && let Some(sport_id) = sport_params.sport_id
-        {
+        if let Some(sport_id) = sport_id.get() {
             sport_plugin_manager.get().get_web_ui(&sport_id)
         } else {
             log!("No valid sport_id in query params. Editing sport config is disabled.");

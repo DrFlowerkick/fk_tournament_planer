@@ -20,7 +20,7 @@ use leptos_router::{
 #[component(transparent)]
 pub fn NewTournamentRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
-        <ParentRoute path=path!("new-tournament") view=EditTournament>
+        <ParentRoute path=path!("new-tournament") view=LoadTournament>
             <EditSubRoutes />
             <Route
                 path=path!("")
@@ -37,7 +37,7 @@ pub fn NewTournamentRoutes() -> impl MatchNestedRoutes + Clone {
 #[component(transparent)]
 pub fn EditSubRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
-        <ParentRoute path=path!(":stage_number") view=EditTournamentStage>
+        <ParentRoute path=path!(":stage_number") view=LoadTournamentStage>
             <Route
                 path=path!("")
                 view={
