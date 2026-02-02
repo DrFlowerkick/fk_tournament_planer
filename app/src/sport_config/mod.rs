@@ -6,12 +6,11 @@ mod select_sport;
 
 use app_utils::{
     components::{banner::GlobalErrorBanner, toast::ToastContainer},
-    params::SportParams,
+    params::use_sport_id_query,
     state::{error_state::PageErrorContext, toast_state::ToastContext},
 };
 pub use edit::SportConfigForm;
 use leptos::prelude::*;
-use leptos_router::hooks::use_query;
 use leptos_router::nested_router::Outlet;
 pub use search::SearchSportConfig;
 pub use select_sport::SelectSportPlugin;
@@ -25,7 +24,7 @@ pub fn SportConfigPage() -> impl IntoView {
     let toast_context = ToastContext::new();
     provide_context(toast_context);
 
-    let sport_id_query = use_query::<SportParams>();
+    let sport_id = use_sport_id_query();
 
     view! {
         <GlobalErrorBanner />
@@ -36,7 +35,7 @@ pub fn SportConfigPage() -> impl IntoView {
         <div class="my-4"></div>
         <div>
             {move || {
-                if let Ok(sport_params) = sport_id_query.get() && sport_params.sport_id.is_some() {
+                if sport_id.get().is_some() {
                     view! { <SearchSportConfig /> }.into_any()
                 } else {
                     ().into_any()

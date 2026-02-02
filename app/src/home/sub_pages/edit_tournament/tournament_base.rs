@@ -13,7 +13,7 @@ use app_utils::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::{SportParams, TournamentBaseParams},
+    params::{use_sport_id_query, use_tournament_base_id_query},
     server_fn::tournament_base::load_tournament_base,
     state::{
         error_state::PageErrorContext,
@@ -21,7 +21,7 @@ use app_utils::{
     },
 };
 use leptos::prelude::*;
-use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
+use leptos_router::{components::A, hooks::use_url, nested_router::Outlet};
 use uuid::Uuid;
 
 #[component]
@@ -37,13 +37,8 @@ pub fn LoadTournament() -> impl IntoView {
     provide_context(refetch_trigger);
 
     // --- url queries ---
-    let sport_id_query = use_query::<SportParams>();
-    let sport_id =
-        Signal::derive(move || sport_id_query.with(|q| q.as_ref().ok().and_then(|p| p.sport_id)));
-    let tournament_id_query = use_query::<TournamentBaseParams>();
-    let tournament_id = Signal::derive(move || {
-        tournament_id_query.with(|q| q.as_ref().ok().and_then(|p| p.tournament_id))
-    });
+    let sport_id = use_sport_id_query();
+    let tournament_id = use_tournament_base_id_query();
 
     // --- Resource to load tournament base ---
     let base_res = Resource::new(
@@ -130,16 +125,20 @@ pub fn LoadTournament() -> impl IntoView {
 #[component]
 pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     // --- prepare initial tournament editor state ---
-    let sport_id_query = use_query::<SportParams>();
-    let sport_id =
-        Signal::derive(move || sport_id_query.with(|q| q.as_ref().ok().and_then(|p| p.sport_id)));
+    let sport_id = use_sport_id_query();
+    let url = use_url();
 
     let mut tournament_editor = TournamentEditor::new();
-    if let Some(b) = base {
+    let (show_form, is_new) = if let Some(b) = base {
         tournament_editor.set_base(b);
+        (true, false)
     } else if let Some(s_id) = sport_id.get_untracked() {
         tournament_editor.new_base(s_id);
-    }
+        let is_new = url.get_untracked().path().starts_with("/new-tournament");
+        (is_new, is_new)
+    } else {
+        (false, false)
+    };
 
     // --- Initialize context for creating and editing tournaments ---
     let tournament_editor_context = TournamentEditorContext::new(tournament_editor);
@@ -162,20 +161,11 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
         >
             <div class="w-full flex justify-between items-center pb-4">
                 <h2 class="text-3xl font-bold" data-testid="tournament-editor-title">
-                    {move || {
-                        if tournament_editor_context.is_new_tournament.get() {
-                            "Plan New Tournament"
-                        } else {
-                            "Edit Tournament"
-                        }
-                    }}
+                    {move || { if is_new { "Plan New Tournament" } else { "Edit Tournament" } }}
                 </h2>
             </div>
             <Show
-                when=move || {
-                    tournament_editor_context.is_new_tournament.get()
-                        || tournament_editor_context.tournament_id.get().is_some()
-                }
+                when=move || show_form
                 fallback=|| {
                     view! {
                         <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
@@ -375,10 +365,7 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
 
             <Outlet />
 
-            <Show when=move || {
-                tournament_editor_context.is_new_tournament.get()
-                    || tournament_editor_context.tournament_id.get().is_some()
-            }>
+            <Show when=move || show_form>
                 // --- Action Buttons ---
                 <div class="w-full flex justify-end gap-4 pt-6">
                     <button

@@ -10,7 +10,7 @@ use app_utils::{
     },
     error::AppError,
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    params::AddressParams,
+    params::AddressIdQuery,
     server_fn::postal_address::{list_postal_addresses, load_postal_address},
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
@@ -32,7 +32,7 @@ fn display_country(code: &str) -> String {
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url query parameters & navigation helpers
-    let query = use_query::<AddressParams>();
+    let query = use_query::<AddressIdQuery>();
     let UseQueryNavigationReturn {
         url_with_path,
         url_with_remove_query,
@@ -80,14 +80,14 @@ pub fn SearchPostalAddress() -> impl IntoView {
         move || query.get(),
         move |maybe_id| async move {
             match maybe_id {
-                Ok(AddressParams {
+                Ok(AddressIdQuery {
                     address_id: Some(id),
                 }) => match load_postal_address(id).await {
                     Ok(Some(pa)) => Ok(pa),
                     Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
                     Err(e) => Err(e),
                 },
-                Ok(AddressParams { address_id: None }) => {
+                Ok(AddressIdQuery { address_id: None }) => {
                     // no address id: no loading delay
                     Ok(Default::default())
                 }

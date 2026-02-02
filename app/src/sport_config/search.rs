@@ -10,7 +10,7 @@ use app_utils::{
     },
     error::AppError,
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    params::{SportConfigParams, SportParams},
+    params::{SportConfigIdQuery, use_sport_id_query},
     server_fn::sport_config::{list_sport_configs, load_sport_config},
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
@@ -25,8 +25,8 @@ use uuid::Uuid;
 #[component]
 pub fn SearchSportConfig() -> impl IntoView {
     // get id's from query params
-    let sport_query = use_query::<SportParams>();
-    let sport_config_query = use_query::<SportConfigParams>();
+    let sport_id = use_sport_id_query();
+    let sport_config_query = use_query::<SportConfigIdQuery>();
     let UseQueryNavigationReturn {
         url_with_path,
         url_with_remove_query,
@@ -40,9 +40,7 @@ pub fn SearchSportConfig() -> impl IntoView {
     let return_after_sport_config_edit = state.return_after_sport_config_edit();
 
     let sport_plugin = move || {
-        if let Ok(sport_params) = sport_query.get()
-            && let Some(sport_id) = sport_params.sport_id
-        {
+        if let Some(sport_id) = sport_id.get() {
             sport_plugin_manager.get().get_web_ui(&sport_id)
         } else {
             log!("No valid sport_id in query params. Searching sport config is disabled.");
@@ -95,14 +93,14 @@ pub fn SearchSportConfig() -> impl IntoView {
         move || sport_config_query.get(),
         move |maybe_id| async move {
             match maybe_id {
-                Ok(SportConfigParams {
+                Ok(SportConfigIdQuery {
                     sport_config_id: Some(id),
                 }) => match load_sport_config(id).await {
                     Ok(Some(sc)) => Ok(sc),
                     Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
                     Err(e) => Err(e),
                 },
-                Ok(SportConfigParams {
+                Ok(SportConfigIdQuery {
                     sport_config_id: None,
                 }) => {
                     // no sport config id: no loading delay
@@ -123,11 +121,10 @@ pub fn SearchSportConfig() -> impl IntoView {
 
     // load possible sport configs from search_text
     let sport_config_list = Resource::new(
-        move || (sport_query.get(), search_text.get()),
-        |(sport_params, name)| async move {
+        move || (sport_id.get(), search_text.get()),
+        |(maybe_sport_id, name)| async move {
             if name.len() > 0
-                && let Ok(sport_params) = sport_params
-                && let Some(sport_id) = sport_params.sport_id
+                && let Some(sport_id) = maybe_sport_id
             {
                 return list_sport_configs(sport_id, name).await;
             }

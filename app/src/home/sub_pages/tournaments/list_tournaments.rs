@@ -4,16 +4,11 @@ use app_core::{TournamentBase, TournamentState, TournamentType};
 use app_utils::{
     components::inputs::EnumSelect,
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    params::SportParams,
+    params::use_sport_id_query,
     server_fn::tournament_base::list_tournament_bases,
 };
 use leptos::prelude::*;
-use leptos_router::{
-    NavigateOptions,
-    components::A,
-    hooks::{use_navigate, use_query},
-    nested_router::Outlet,
-};
+use leptos_router::{NavigateOptions, components::A, hooks::use_navigate, nested_router::Outlet};
 use uuid::Uuid;
 
 #[component]
@@ -57,12 +52,11 @@ pub fn ListTournaments() -> impl IntoView {
     });
 
     // Derived Query Params
-    let sport_id_query = use_query::<SportParams>();
-    let sport_id = move || sport_id_query.get().ok().and_then(|p| p.sport_id);
+    let sport_id = use_sport_id_query();
 
     // Resource that fetches data when filters change
     let tournaments_data = Resource::new(
-        move || (sport_id(), search_term.get(), limit.get()),
+        move || (sport_id.get(), search_term.get(), limit.get()),
         move |(maybe_sport_id, term, lim)| async move {
             if let Some(s_id) = maybe_sport_id {
                 list_tournament_bases(s_id, term, Some(lim)).await

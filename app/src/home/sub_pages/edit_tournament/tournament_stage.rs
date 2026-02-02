@@ -11,7 +11,7 @@ use app_utils::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::{StageParams, TournamentBaseParams},
+    params::{use_stage_number_params, use_tournament_base_id_query},
     server_fn::stage::load_stage_by_number,
     state::{
         error_state::PageErrorContext,
@@ -19,11 +19,7 @@ use app_utils::{
     },
 };
 use leptos::prelude::*;
-use leptos_router::{
-    components::A,
-    hooks::{use_params, use_query},
-    nested_router::Outlet,
-};
+use leptos_router::{components::A, nested_router::Outlet};
 use uuid::Uuid;
 
 #[component]
@@ -39,14 +35,8 @@ pub fn LoadTournamentStage() -> impl IntoView {
     let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
     // --- url parameters & queries ---
-    let tournament_id_query = use_query::<TournamentBaseParams>();
-    let tournament_id = Signal::derive(move || {
-        tournament_id_query.with(|q| q.as_ref().ok().and_then(|p| p.tournament_id))
-    });
-    let stage_params = use_params::<StageParams>();
-    let active_stage_number = Signal::derive(move || {
-        stage_params.with(|p| p.as_ref().ok().and_then(|params| params.stage_number))
-    });
+    let tournament_id = use_tournament_base_id_query();
+    let active_stage_number = use_stage_number_params();
 
     // --- Resource to load tournament stage ---
     let stage_res = Resource::new(
@@ -121,10 +111,7 @@ pub fn LoadTournamentStage() -> impl IntoView {
 #[component]
 pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
     // --- Get context for creating and editing tournaments ---
-    let stage_params = use_params::<StageParams>();
-    let active_stage_number = Signal::derive(move || {
-        stage_params.with(|p| p.as_ref().ok().and_then(|params| params.stage_number))
-    });
+    let active_stage_number = use_stage_number_params();
 
     let tournament_editor_context = expect_context::<TournamentEditorContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();

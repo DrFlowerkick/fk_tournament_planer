@@ -6,7 +6,7 @@
 use crate::{
     error::strategy::handle_write_error,
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    params::{GroupParams, StageParams, TournamentBaseParams},
+    params::{use_group_number_params, use_stage_number_params, use_tournament_base_id_query},
     server_fn::tournament_editor::SaveTournamentEditorDiff,
     state::{
         error_state::PageErrorContext,
@@ -14,93 +14,30 @@ use crate::{
     },
 };
 use app_core::{
-    Stage, TournamentEditor, TournamentEditorState, TournamentMode, TournamentState,
-    utils::validation::ValidationResult,
+    Stage, TournamentEditor, TournamentMode, TournamentState, utils::validation::ValidationResult,
 };
 use leptos::prelude::*;
-use leptos_router::{
-    NavigateOptions,
-    hooks::{use_navigate, use_params, use_query},
-};
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
-
-/****************************************************************************************
-TODO: Refactoring TournamentEditorState
-Option 1: Enable SSR by loading the complete tournament data in one go and initializing
-          the TournamentEditor in one step. This would simplify state management
-          but may increase initial load time.
-          For this to work, we have to split EditTournament() into loading and editing
-          components. The loading component would fetch the FULL tournament data (base +
-          all stages/groups/etc., ideally via a single aggregated endpoint) and provide
-          it as a prop to the editing component.
-          The editing component then initializes the context with the provided data synchronously.
-          The Resource for loading would move to the loading component.
-
-Option 2: Keep current lazy loading approach but refactor TournamentEditorState
-          to preload the origin tournament data when entering edit mode.
-          The preload starts after fetching base. Using "spawn_local", we trigger
-          background loading of stages/groups based on the base configuration.
-          We have to handle race conditions: The user might start editing before preload
-          finishes. Therefore, preloaded data updates 'origin', but 'local' is only
-          updated if it hasn't been touched by the user yet.
-
-Option 3: Hybrid "Loader Pattern". Split page components into a Loader (handling the Resource/SSR)
-          and an Editor (presentation). The Loader passes fetched data via props to the Editor.
-          The Editor renders immediately based on props (enabling real SSR for the content)
-          and uses an Effect to sync these props into the global TournamentEditorContext.
-          This avoids hydration errors because the parent context starts "empty" on both
-          server and client, filling up only after hydration via the Effect.
-
-Comparing options:
-- Option 1 (Fetch-Then-Render): Best for consistency and SSR. No "partial" states logic needed.
-  Requires a backend endpoint that dumps the full tournament structure.
-- Option 2 (optimistic background loading): Faster initial render (TTFB) for large tournaments.
-  More complex state synchronization logic (handling race conditions).
-- Option 3 (Loader Pattern): Good balance. Allows granular SSR without massive initial payload.
-  Ensures content is visible immediately via props, while context syncs slightly later for global UI.
-
-Decide by KISS principle: Option 1 seems simpler architecturally (single source of truth),
-despite the initial blocking load time. But Option requires less new code, therefore I start
-with Option 3 for now.
-
-
-Results so far:
-- Option 3 seems to work fine. Next steps are cleanup of Signals in TournamentEditorContext:
-    - Which of them are still required?
-    - If required, should they remain in Context or should they be moved to local component state?
-- E2E testing of the entire edit flow was successful.
-- If no more issues are found and cleanup is complete, merge branch and remove this TODO.
-*****************************************************************************************/
 
 /// Context wrapper for `TournamentEditor`.
 ///
-/// Uses an internal `RwSignal` to hold the state, encouraging the use of
-/// `.update()` for mutations and `.with()` for reading to minimize cloning of heavy structures.
-/// This context also provides various read/write slices for common properties
-/// to facilitate fine-grained reactivity in the UI.
+/// This context provides efficient access to the tournament editor state
+/// via `RwSignal`, along with various read slices and callbacks for
+/// interacting with the editor.
+/// It also manages server actions for saving changes and handles
+/// navigation and error handling.
 #[derive(Clone, Copy)]
 pub struct TournamentEditorContext {
     // --- state & derived signals ---
     /// Tournament editor core state
     inner: RwSignal<TournamentEditor>,
-    // ToDo: probably not required anymore
-    /// Read slice for getting the state of tournament editor
-    pub state: Signal<TournamentEditorState>,
-    // ToDo: probably not required anymore
-    /// Read slice for accessing the tournament base state, if any
-    pub base_state: Signal<Option<TournamentState>>,
-    /// Read slice for checking if we are creating a new tournament
-    pub is_new_tournament: Signal<bool>,
     /// Read slice for checking if the editor is busy (saving/loading)
     pub is_busy: Signal<bool>,
     /// Read slice for checking if there are unsaved changes
     pub is_changed: Signal<bool>,
     /// Read slice for accessing the validation result of the tournament
     pub validation_result: Signal<ValidationResult<()>>,
-
-    // --- URL Parameters & Queries ---
-    /// Tournament ID for loading existing tournament bases
-    pub tournament_id: Signal<Option<Uuid>>,
     /// Currently active stage number from URL, if any
     pub active_stage_number: Signal<Option<u32>>,
 
@@ -131,8 +68,6 @@ pub struct TournamentEditorContext {
     pub base_num_rounds_swiss_system: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of rounds for Swiss System
     pub set_base_num_rounds_swiss_system: Callback<u32>,
-    /// Read slice for accessing the tournament  base state, if any
-    pub base_tournament_state: Signal<Option<TournamentState>>,
 
     // --- Signals, Slices & Callbacks for Current Stage ---
     /// Read slice for checking if stage is initialized
@@ -163,7 +98,6 @@ impl TournamentEditorContext {
         let UseQueryNavigationReturn {
             url_with_update_query,
             url_route_with_sub_path,
-            path,
             ..
         } = use_query_navigation();
         let page_err_ctx = expect_context::<PageErrorContext>();
@@ -176,7 +110,6 @@ impl TournamentEditorContext {
 
         // --- core signals ---
         let inner = RwSignal::new(initialized_tournament_editor);
-        let state = create_read_slice(inner, |inner| inner.get_state());
         let base_state = create_read_slice(inner, |inner| {
             inner.get_base().map(|b| b.get_tournament_state())
         });
@@ -184,21 +117,9 @@ impl TournamentEditorContext {
         let validation_result = create_read_slice(inner, |inner| inner.validation());
 
         // --- url parameters & queries & validation ---
-        let tournament_id_query = use_query::<TournamentBaseParams>();
-        let tournament_id = Signal::derive(move || {
-            tournament_id_query.with(|q| q.as_ref().ok().and_then(|p| p.tournament_id))
-        });
-        let is_new_tournament = Signal::derive(move || {
-            tournament_id.get().is_none() && path.get().starts_with("/new-tournament")
-        });
-        let stage_params = use_params::<StageParams>();
-        let active_stage_number = Signal::derive(move || {
-            stage_params.with(|p| p.as_ref().ok().and_then(|params| params.stage_number))
-        });
-        let group_params = use_params::<GroupParams>();
-        let active_group_number = Signal::derive(move || {
-            group_params.with(|p| p.as_ref().ok().and_then(|params| params.group_number))
-        });
+        let tournament_id = use_tournament_base_id_query();
+        let active_stage_number = use_stage_number_params();
+        let active_group_number = use_group_number_params();
 
         let valid_object_numbers = Memo::new(move |_| {
             inner.with(|state| {
@@ -256,7 +177,7 @@ impl TournamentEditorContext {
                     toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
 
                     if tournament_id.get().is_some() {
-                        // if it was a new tournament, trigger refetch to load the full data
+                        // if it was an existing tournament, trigger refetch to load the full data
                         refetch_and_reset.run(());
                     } else {
                         // clear save action state
@@ -406,14 +327,10 @@ impl TournamentEditorContext {
         Self {
             // core signals
             inner,
-            state,
-            base_state,
-            is_new_tournament,
             is_busy,
             is_changed,
             validation_result,
             // url parameters & queries
-            tournament_id,
             active_stage_number,
             // actions and resources
             save_diff,
@@ -429,7 +346,6 @@ impl TournamentEditorContext {
             set_base_mode,
             base_num_rounds_swiss_system,
             set_base_num_rounds_swiss_system,
-            base_tournament_state,
             // stage slices
             is_stage_initialized,
             is_hiding_stage_editor,
