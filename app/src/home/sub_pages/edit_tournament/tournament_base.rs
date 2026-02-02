@@ -228,8 +228,6 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                     value=tournament_editor_context.base_mode
                                     set_value=tournament_editor_context.set_base_mode
                                     validation_result=tournament_editor_context.validation_result
-                                    object_id=None
-                                    field="No Direct Validation"
                                 />
 
                                 <Show when=move || {

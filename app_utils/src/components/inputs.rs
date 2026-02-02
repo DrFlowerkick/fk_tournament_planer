@@ -301,9 +301,10 @@ where
                                 .and_then(|v| {
                                     options
                                         .with(|opts| {
-                                            opts
-                                                .iter()
-                                                .find_map(|(text, opt_v)| (opt_v == v).then(|| text.clone()))
+                                            opts.iter()
+                                                .find_map(|(text, opt_v)| {
+                                                    (opt_v == v).then(|| text.clone())
+                                                })
                                         })
                                 })
                         })
@@ -327,8 +328,7 @@ where
                         let new_val = ev.target().value();
                         if let Some(selected_variant) = options
                             .with(move |opts| {
-                                opts
-                                    .iter()
+                                opts.iter()
                                     .find_map(move |(val_str, val)| {
                                         (*val_str == new_val).then(|| val.clone())
                                     })
@@ -457,10 +457,10 @@ pub fn EnumSelectWithValidation<E>(
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]

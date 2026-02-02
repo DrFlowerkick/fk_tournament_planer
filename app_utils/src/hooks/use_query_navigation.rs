@@ -17,7 +17,7 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
     let path = Signal::derive(move || url.get().path().to_string());
     let query_string = Signal::derive(move || url.get().search_params().to_query_string());
     let nav_url = Signal::derive(move || format!("{}{}", path.get(), query_string.get()));
-    let url_with_path = move |path: &str| format!("{}{}", path, query_string.get());
+    let url_with_path = move |path: &str| format!("{}{}", path, query_string.get_untracked());
     let url_route_with_sub_path = move |sub_path: &str| {
         let mut mr = matched_route.get();
         if sub_path.is_empty() {
