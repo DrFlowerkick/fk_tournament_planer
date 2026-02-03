@@ -1,7 +1,5 @@
 //! Sport Config Server Functions Module
 
-#[cfg(feature = "test-mock")]
-pub mod test_support;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use crate::error::AppError;
 use crate::error::AppResult;
@@ -9,7 +7,8 @@ use app_core::SportConfig;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
-#[cfg(not(feature = "test-mock"))]
+//#[cfg(feature = "test-mock")]
+//use leptos::{wasm_bindgen::JsCast, web_sys};
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -68,7 +67,6 @@ async fn list_sport_configs_inner(
     Ok(configs)
 }
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "sport_config.save",
@@ -97,11 +95,8 @@ pub async fn save_sport_config(
     save_sport_config_inner(id, version, sport_id, name, config, intent).await
 }
 
-#[cfg(feature = "test-mock")]
-pub use test_support::SaveSportConfig;
-
-#[cfg(feature = "test-mock")]
-pub async fn save_sport_config(
+/*#[cfg(feature = "test-mock")]
+pub fn save_sport_config_mock_submit(
     id: Uuid,
     version: u32,
     sport_id: Uuid,
@@ -110,7 +105,7 @@ pub async fn save_sport_config(
     intent: Option<String>,
 ) -> AppResult<SportConfig> {
     save_sport_config_inner(id, version, sport_id, name, config, intent).await
-}
+}*/
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 #[allow(clippy::too_many_arguments)]

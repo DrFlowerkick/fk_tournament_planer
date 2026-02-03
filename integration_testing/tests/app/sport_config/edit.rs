@@ -1,7 +1,7 @@
 use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value, set_url,
 };
-use app::{provide_global_state, sport_config::SportConfigForm};
+use app::{provide_global_state, sport_config::LoadSportConfig};
 use app_core::DbpSportConfig;
 use app_utils::state::{error_state::PageErrorContext, toast_state::ToastContext};
 use generic_sport_plugin::config::GenericSportConfig;
@@ -37,7 +37,7 @@ async fn test_new_sport_config() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/sport/new_sc") view=SportConfigForm />
+                    <Route path=path!("/sport/new_sc") view=LoadSportConfig />
                 </Routes>
             </Router>
         }
@@ -89,7 +89,7 @@ async fn test_edit_sport_config() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/sport/edit_sc") view=SportConfigForm />
+                    <Route path=path!("/sport/edit_sc") view=LoadSportConfig />
                 </Routes>
             </Router>
         }
@@ -148,7 +148,7 @@ async fn test_save_as_new_sport_config() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/sport/edit_sc") view=SportConfigForm />
+                    <Route path=path!("/sport/edit_sc") view=LoadSportConfig />
                 </Routes>
             </Router>
         }

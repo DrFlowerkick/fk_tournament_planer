@@ -9,7 +9,9 @@ use app_utils::{
     },
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+        use_query_navigation::{
+            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+        },
     },
     params::use_sport_id_query,
     server_fn::tournament_base::list_tournament_bases,
@@ -23,8 +25,8 @@ use uuid::Uuid;
 pub fn ListTournaments() -> impl IntoView {
     // navigation and query handling Hook
     let UseQueryNavigationReturn {
-        url_with_update_query,
-        url_with_remove_query,
+        url_matched_route_update_query,
+        url_matched_route_remove_query,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -54,9 +56,13 @@ pub fn ListTournaments() -> impl IntoView {
         let navigate = navigate.clone();
         move || {
             let nav_url = if let Some(t_id) = selected_id.get() {
-                url_with_update_query("tournament_id", &t_id.to_string(), None)
+                url_matched_route_update_query(
+                    "tournament_id",
+                    &t_id.to_string(),
+                    MatchedRouteHandler::Keep,
+                )
             } else {
-                url_with_remove_query("tournament_id", None)
+                url_matched_route_remove_query("tournament_id", MatchedRouteHandler::Keep)
             };
             navigate(
                 &nav_url,
@@ -312,7 +318,9 @@ pub fn ListTournaments() -> impl IntoView {
 #[component]
 pub fn SelectedTournamentActions(tournament_state: TournamentState) -> impl IntoView {
     // navigation and query handling Hook
-    let UseQueryNavigationReturn { url_with_path, .. } = use_query_navigation();
+    let UseQueryNavigationReturn {
+        url_matched_route, ..
+    } = use_query_navigation();
 
     view! {
         <div class="flex gap-2 justify-end p-2 bg-base-200" data-testid="row-actions">
@@ -321,7 +329,7 @@ pub fn SelectedTournamentActions(tournament_state: TournamentState) -> impl Into
                 TournamentState::Draft | TournamentState::Published => {
                     view! {
                         <A
-                            href=url_with_path("register")
+                            href=move || url_matched_route(MatchedRouteHandler::Extend("register"))
                             attr:class="btn btn-sm btn-primary"
                             attr:data-testid="action-btn-register"
                             scroll=false
@@ -329,7 +337,12 @@ pub fn SelectedTournamentActions(tournament_state: TournamentState) -> impl Into
                             "Register"
                         </A>
                         <A
-                            href=url_with_path("edit")
+                            href=move || {
+                                let url =
+                                url_matched_route(MatchedRouteHandler::Extend("edit"));
+                                leptos::logging::log!("Edit Tournament URL: {}", url);
+                                url
+                            }
                             attr:class="btn btn-sm btn-ghost"
                             attr:data-testid="action-btn-edit"
                             scroll=false

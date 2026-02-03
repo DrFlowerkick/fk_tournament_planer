@@ -9,17 +9,17 @@ use app_utils::{
         },
     },
     error::AppError,
-    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    hooks::use_query_navigation::{
+        MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+    },
     params::AddressIdQuery,
     server_fn::postal_address::{list_postal_addresses, load_postal_address},
-    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
 use isocountry::CountryCode;
 use leptos::prelude::*;
 use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
-use reactive_stores::Store;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -34,37 +34,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
     // get id from url query parameters & navigation helpers
     let query = use_query::<AddressIdQuery>();
     let UseQueryNavigationReturn {
-        url_with_path,
-        url_with_remove_query,
-        path,
+        url_matched_route,
+        url_matched_route_remove_query,
         ..
     } = use_query_navigation();
-
-    // get global state and set return_after_address_edit
-    let state = expect_context::<Store<GlobalState>>();
-    let return_after_address_edit = state.return_after_address_edit();
-    Effect::watch(
-        move || path.get(),
-        move |path, prev_path, _| {
-            if path.ends_with("new_pa") || path.ends_with("edit_pa") {
-                if let Some(prev) = prev_path {
-                    if prev.ends_with("new_pa") || prev.ends_with("edit_pa") {
-                        // do not update return_after_address_edit when navigating between new/edit forms
-                        return;
-                    }
-                    return_after_address_edit.set(prev.clone());
-                } else {
-                    let super_path = path
-                        .rsplit_once('/')
-                        .map(|(p, _)| p)
-                        .unwrap_or("/")
-                        .to_string();
-                    return_after_address_edit.set(super_path);
-                }
-            }
-        },
-        true,
-    );
 
     // signals for dropdown
     let name = RwSignal::new(String::new());
@@ -130,7 +103,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
     });
 
     // reset url when unexpectedly no address found
-    let reset_url = move || url_with_remove_query("address_id", None);
+    let reset_url = move || url_matched_route_remove_query("address_id", MatchedRouteHandler::Keep);
 
     let props = SetIdInQueryInputDropdownProperties {
         key: "address_id",
@@ -254,7 +227,10 @@ pub fn SearchPostalAddress() -> impl IntoView {
                         }
                     }} <div class="card-actions justify-end mt-4">
                         <A
-                            href=move || url_with_remove_query("address_id", Some("new_pa"))
+                            href=move || url_matched_route_remove_query(
+                                "address_id",
+                                MatchedRouteHandler::Extend("new_pa"),
+                            )
                             attr:class="btn btn-primary"
                             attr:data-testid="btn-new-address"
                             attr:disabled=is_disabled
@@ -262,7 +238,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                             "New"
                         </A>
                         <A
-                            href=move || url_with_path("edit_pa")
+                            href=move || url_matched_route(MatchedRouteHandler::Extend("edit_pa"))
                             attr:class="btn btn-secondary"
                             attr:data-testid="btn-edit-address"
                             attr:disabled=move || is_disabled() || id.get().is_none()

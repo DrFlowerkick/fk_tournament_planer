@@ -131,8 +131,8 @@ pub fn App() -> impl IntoView {
                                     view! {}
                                 }
                             />
-                            <Route path=path!("new_sc") view=SportConfigForm />
-                            <Route path=path!("edit_sc") view=SportConfigForm />
+                            <Route path=path!("new_sc") view=LoadSportConfig />
+                            <Route path=path!("edit_sc") view=LoadSportConfig />
                         </ParentRoute>
                     </Routes>
                 </main>

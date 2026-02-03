@@ -761,8 +761,9 @@ pub fn NumberInputWithValidation<T>(
     #[prop(into)]
     value: Signal<Option<T>>,
     /// Callback to push changes to source of value
-    /// Using Callback<T> allows passing closures and Callbacks.
-    set_value: Callback<T>,
+    /// Using Callback<Option<T>> allows passing closures and Callbacks and to clear value
+    /// for optional inputs.
+    set_value: Callback<Option<T>>,
     /// Optional step attribute for the number input
     #[prop(into, optional)]
     step: String,
@@ -855,9 +856,15 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
+                    if new_val.is_empty() {
+                        set_value.run(None);
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                        return;
+                    }
                     match new_val.parse::<T>() {
                         Ok(val) => {
-                            set_value.run(val);
+                            set_value.run(Some(val));
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
@@ -927,7 +934,6 @@ where
                 name=name.clone()
                 data-testid=format!("input-{}", name)
                 aria-invalid=move || validation_error.get().is_err().to_string()
-                // Convert Duration to unit for display
                 prop:value=move || {
                     match value.get() {
                         Some(v) => v.to_string(),

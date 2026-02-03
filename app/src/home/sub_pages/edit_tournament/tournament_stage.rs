@@ -9,7 +9,9 @@ use app_utils::{
     },
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+        use_query_navigation::{
+            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+        },
     },
     params::{use_stage_number_params, use_tournament_base_id_query},
     server_fn::stage::load_stage_by_number,
@@ -126,8 +128,7 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        url_route_with_sub_path,
-        ..
+        url_matched_route, ..
     } = use_query_navigation();
 
     let editor_title = move || {
@@ -203,7 +204,9 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                                 children=move |i| {
                                     view! {
                                         <A
-                                            href=move || url_route_with_sub_path(&i.to_string())
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend(&i.to_string()),
+                                            )
                                             attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid=format!("link-configure-group-{}", i)
                                             scroll=false

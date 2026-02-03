@@ -9,11 +9,12 @@ use app_utils::{
     error::AppError,
     hooks::{
         is_field_valid::is_field_valid,
-        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+        use_query_navigation::{
+            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+        },
     },
     params::use_address_id_query,
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
-    state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 // ToDo: implement trait SelectableOption for CountryCode and use that here
 use isocountry::CountryCode;
@@ -21,7 +22,6 @@ use leptos::prelude::*;
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
-use reactive_stores::Store;
 use uuid::Uuid;
 
 fn get_sorted_countries() -> Vec<(String, String)> {
@@ -37,8 +37,8 @@ fn get_sorted_countries() -> Vec<(String, String)> {
 pub fn PostalAddressForm() -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
-        url_with_path,
-        url_with_update_query,
+        url_matched_route,
+        url_matched_route_update_query,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -46,9 +46,8 @@ pub fn PostalAddressForm() -> impl IntoView {
     let id = use_address_id_query();
     let is_new = move || id.get().is_none();
 
-    let state = expect_context::<Store<GlobalState>>();
-    let return_after_address_edit = state.return_after_address_edit();
-    let cancel_target = Callback::new(move |_: ()| url_with_path(&return_after_address_edit.get()));
+    let cancel_target =
+        Callback::new(move |_: ()| url_matched_route(MatchedRouteHandler::RemoveSegment(1)));
 
     // --- Signals for form fields ---
     let set_name = RwSignal::new(String::new());
@@ -76,10 +75,10 @@ pub fn PostalAddressForm() -> impl IntoView {
     Effect::new(move || {
         if let Some(Ok(pa)) = save_postal_address.value().get() {
             save_postal_address.clear();
-            let nav_url = url_with_update_query(
+            let nav_url = url_matched_route_update_query(
                 "address_id",
                 &pa.get_id().to_string(),
-                Some(&return_after_address_edit.get()),
+                MatchedRouteHandler::RemoveSegment(1),
             );
             navigate(&nav_url, NavigateOptions::default());
         }

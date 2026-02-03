@@ -9,7 +9,7 @@ use app_utils::{
     params::use_sport_id_query,
     state::{error_state::PageErrorContext, toast_state::ToastContext},
 };
-pub use edit::SportConfigForm;
+pub use edit::LoadSportConfig;
 use leptos::prelude::*;
 use leptos_router::nested_router::Outlet;
 pub use search::SearchSportConfig;

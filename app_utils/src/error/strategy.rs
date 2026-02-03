@@ -96,7 +96,7 @@ pub fn handle_write_error(
             page_ctx.report_error(builder.build());
         }
 
-        // 6. Everything else -> TOAST (NEU!)
+        // 6. Everything else -> TOAST
         _ => {
             // "Fire & Forget" Toast
             // AppError implements Display via thiserror, so error.to_string() works fine.
