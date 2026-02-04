@@ -27,13 +27,13 @@ test.describe("Generic error handling saving address", () => {
     await page.waitForLoadState("domcontentloaded");
 
     // -------------------- Assert: toast error is shown --------------------
-    await expect(TO.toasts.error).toBeVisible();
-    await expect(TO.toasts.error).toContainText(
+    await expect(TO.error).toBeVisible();
+    await expect(TO.error).toContainText(
       "A simulated unexpected error occurred.",
     );
 
     // -------------------- Assert: toast error is gone after a few seconds --------------------
     // Increase timeout to 10 seconds to allow enough time for the toast to auto-dismiss
-    await expect(TO.toasts.error).toBeHidden({ timeout: 10000 });
+    await expect(TO.error).toBeHidden({ timeout: 10000 });
   });
 });

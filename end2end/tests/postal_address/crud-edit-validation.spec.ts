@@ -9,7 +9,7 @@ import {
   expectPreviewShows,
   waitForPostalAddressListUrl,
   extractUuidFromUrl,
-  typeThenBlur,
+  fillAndBlur,
   expectFieldValidity,
   selectors,
 } from "../../helpers";
@@ -55,16 +55,12 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
      * The next assertion uses a German postal code rule
      * (exactly 5 digits after normalization). This is not generic for all countries.
      */
-    await typeThenBlur(PA.form.inputStreet, "", PA.form.inputLocality);
+    await fillAndBlur(PA.form.inputStreet, "");
     await expectFieldValidity(PA.form.inputStreet, "", /*invalid*/ true);
     await expectSavesDisabled(page);
 
     // Step 4: Fix invalid field, then save
-    await typeThenBlur(
-      PA.form.inputStreet,
-      "   Beispielstr.    3   ",
-      PA.form.inputLocality,
-    );
+    await fillAndBlur(PA.form.inputStreet, "   Beispielstr.    3   ");
     await expectFieldValidity(
       PA.form.inputStreet,
       "Beispielstr. 3",

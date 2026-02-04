@@ -9,9 +9,9 @@ import {
   expectSavesEnabled,
   openEditForm,
   waitForPostalAddressListUrl,
-  typeThenBlur,
+  fillAndBlur,
   waitForAppHydration,
-  selectors
+  selectors,
 } from "../../helpers";
 
 // --- Test data ---------------------------------------------------------------
@@ -76,11 +76,7 @@ test.describe("postal address live update (Preview-only UI)", () => {
       await expectSavesEnabled(pageB);
 
       // Change just the name; other fields remain as-is.
-      await typeThenBlur(
-        PA_B.form.inputName,
-        edited.name,
-        PA_B.form.inputStreet
-      );
+      await fillAndBlur(PA_B.form.inputName, edited.name);
 
       await clickSave(pageB);
 

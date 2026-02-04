@@ -56,11 +56,9 @@ export const TOAST_IDS = {
 
 export function getToastSelectors(page: Page) {
   return {
-    toasts: {
-      success: page.getByTestId(TOAST_IDS.success),
-      error: page.getByTestId(TOAST_IDS.error),
-      info: page.getByTestId(TOAST_IDS.info),
-      warning: page.getByTestId(TOAST_IDS.warning),
-    },
+    success: page.getByTestId(TOAST_IDS.success),
+    error: page.getByTestId(TOAST_IDS.error),
+    info: page.getByTestId(TOAST_IDS.info),
+    warning: page.getByTestId(TOAST_IDS.warning),
   };
 }

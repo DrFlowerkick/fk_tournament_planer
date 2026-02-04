@@ -8,7 +8,6 @@ import {
   makeUniqueName,
   selectors,
 } from "../../helpers";
-import { getToastSelectors } from "../../helpers/selectors/common";
 
 const PLUGINS = {
   GENERIC: "Generic Sport",
@@ -57,7 +56,7 @@ test.describe("Create New Tournament", () => {
   }) => {
     const FORM = selectors(page).home.dashboard.editTournament;
     const LIST = selectors(page).home.dashboard.tournamentsList;
-    const TOASTS = getToastSelectors(page);
+    const TOASTS = selectors(page).toasts;
 
     const tourneyName = makeUniqueName("E2E Create Success");
 
@@ -93,7 +92,7 @@ test.describe("Create New Tournament", () => {
   }) => {
     const FORM = selectors(page).home.dashboard.editTournament;
     const LIST = selectors(page).home.dashboard.tournamentsList;
-    const TOASTS = getToastSelectors(page);
+    const TOASTS = selectors(page).toasts;
 
     // --- Step 1: Create initial tournament ---
     const initialName = makeUniqueName("Flow Initial");

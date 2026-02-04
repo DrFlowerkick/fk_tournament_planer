@@ -1,15 +1,11 @@
 //! server functions for tournament base entities
 
-#[cfg(feature = "test-mock")]
-pub mod test_support;
-//#[cfg(any(feature = "ssr", feature = "test-mock"))]
 use crate::error::AppResult;
 // IdVersion Import wird hier nicht mehr explizit benötigt, da der Client das Objekt fertig liefert
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::CoreState;
 use app_core::TournamentBase;
 use leptos::prelude::*;
-#[cfg(not(feature = "test-mock"))]
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -71,7 +67,6 @@ async fn list_tournament_bases_inner(
     Ok(configs)
 }
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "tournament_base.save",
@@ -82,13 +77,6 @@ async fn list_tournament_bases_inner(
         name_len = tournament.get_name().len(),
     )
 )]
-pub async fn save_tournament_base(tournament: TournamentBase) -> AppResult<TournamentBase> {
-    save_tournament_base_inner(tournament).await
-}
-
-#[cfg(feature = "test-mock")]
-pub use test_support::SaveTournamentBase;
-#[cfg(feature = "test-mock")]
 pub async fn save_tournament_base(tournament: TournamentBase) -> AppResult<TournamentBase> {
     save_tournament_base_inner(tournament).await
 }

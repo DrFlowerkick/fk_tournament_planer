@@ -8,7 +8,7 @@ import {
   expectSavesDisabled,
   openEditForm,
   waitForPostalAddressListUrl,
-  typeThenBlur,
+  fillAndBlur,
   selectors,
 } from "../../helpers";
 
@@ -56,12 +56,12 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       await expect(pageB.locator('input[name="version"]')).toHaveValue("0");
 
       const editedByB = `${initial.name} (B)`;
-      await typeThenBlur(PA_B.form.inputName, editedByB, PA_B.form.inputStreet);
+      await fillAndBlur(PA_B.form.inputName, editedByB);
       await clickSave(pageB); // server -> version 1
 
       // -------------------- A edits stale & tries to save ---------
       const editedByA = `${initial.name} (A)`;
-      await typeThenBlur(PA_A.form.inputName, editedByA, PA_A.form.inputStreet);
+      await fillAndBlur(PA_A.form.inputName, editedByA);
       await PA_A.form.btnSave.click(); // expect 409 and conflict UI
 
       // -------------------- Assert minimal conflict UI ------------
