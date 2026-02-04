@@ -23,6 +23,9 @@ export const BANNER_IDS = {
   ackNavigate: "acknowledgment-navigate-banner",
   btnAckNavAction: "btn-acknowledgment-navigate-action",
   btnAckNav: "btn-acknowledgment-navigate",
+  globalErrorBanner: "global-error-banner",
+  btnRetry: "btn-retry-action",
+  btnCancel: "btn-cancel-action",
 } as const;
 
 export function getBannerSelectors(page: Page) {
@@ -36,6 +39,11 @@ export function getBannerSelectors(page: Page) {
       btnAction: page.getByTestId(BANNER_IDS.btnAckNavAction),
       btnNavigate: page.getByTestId(BANNER_IDS.btnAckNav),
     },
+    globalErrorBanner: {
+      root: page.getByTestId(BANNER_IDS.globalErrorBanner),
+      btnRetry: page.getByTestId(BANNER_IDS.btnRetry),
+      btnCancel: page.getByTestId(BANNER_IDS.btnCancel),
+    },
   };
 }
 
@@ -48,9 +56,11 @@ export const TOAST_IDS = {
 
 export function getToastSelectors(page: Page) {
   return {
-    success: page.getByTestId(TOAST_IDS.success),
-    error: page.getByTestId(TOAST_IDS.error),
-    info: page.getByTestId(TOAST_IDS.info),
-    warning: page.getByTestId(TOAST_IDS.warning),
+    toasts: {
+      success: page.getByTestId(TOAST_IDS.success),
+      error: page.getByTestId(TOAST_IDS.error),
+      info: page.getByTestId(TOAST_IDS.info),
+      warning: page.getByTestId(TOAST_IDS.warning),
+    },
   };
 }

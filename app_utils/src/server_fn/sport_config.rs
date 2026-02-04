@@ -95,7 +95,10 @@ pub async fn save_sport_config(
     save_sport_config_inner(id, version, sport_id, name, config, intent).await
 }
 
-/*#[cfg(feature = "test-mock")]
+/*
+Replace by on:submit handler for test mock, which is at the moment defined at EditSportConfig
+
+#[cfg(feature = "test-mock")]
 pub fn save_sport_config_mock_submit(
     id: Uuid,
     version: u32,
@@ -123,6 +126,9 @@ pub async fn save_sport_config_inner(
     let mut_sc_core = core.get_mut();
 
     // Interpret intent
+    // ToDo: we have to refactor this when switching to auto save.
+    // AND: we changed logic to ALWAYS provide a valid id. This is circumvented here
+    // (database creates new id). This is for now no problem, but should be changed.
     let is_update = matches!(intent.as_deref(), Some("update"));
     if is_update {
         // set id and version previously loaded

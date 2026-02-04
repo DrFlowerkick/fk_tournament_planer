@@ -11,6 +11,7 @@ anyhow.workspace = true
 async-trait.workspace = true
 chrono.workspace = true
 displaydoc.workspace = true
+isocountry.workspace = true
 petgraph.workspace = true
 serde.workspace = true
 serde_json = { workspace = true, features = ["std"] }

@@ -96,7 +96,11 @@ pub fn GlobalErrorBanner() -> impl IntoView {
             {move || {
                 if let Some(first_error) = ctx.get_first_error() {
                     view! {
-                        <div class="alert alert-error">
+                        <div
+                            class="alert alert-error"
+                            data-testid="global-error-banner"
+                            role="alert"
+                        >
                             // The SVG is a "X" icon for visual error indication
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -115,23 +119,23 @@ pub fn GlobalErrorBanner() -> impl IntoView {
                             <span>{first_error.message.clone()}</span>
 
                             <div class="flex gap-2">
-                                {match &first_error.retry_action {
-                                    Some(action) => {
+                                {first_error
+                                    .retry_action
+                                    .map(|action| {
                                         let label = action.label.clone();
                                         view! {
                                             <button
                                                 class="btn btn-sm btn-ghost"
+                                                data-testid="btn-retry-action"
                                                 on:click=move |_| ctx.retry_all()
                                             >
                                                 {label}
                                             </button>
                                         }
-                                            .into_any()
-                                    }
-                                    None => ().into_any(),
-                                }}
+                                    })}
                                 <button
                                     class="btn btn-sm"
+                                    data-testid="btn-cancel-action"
                                     on:click=move |_| first_error.cancel_action.on_click.run(())
                                 >
                                     {first_error.cancel_action.label.clone()}

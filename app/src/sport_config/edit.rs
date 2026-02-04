@@ -96,15 +96,11 @@ pub fn LoadSportConfig() -> impl IntoView {
                 {move || {
                     sc_res
                         .and_then(|may_be_sc| {
-                            match may_be_sc {
-                                Some(sport_config) => {
-                                    view! {
-                                        <EditSportConfig sport_config=Some(sport_config.clone()) />
-                                    }
-                                }
-                                None => {
-                                    view! { <EditSportConfig sport_config=None /> }
-                                }
+                            view! {
+                                <EditSportConfig
+                                    sport_config=may_be_sc.clone()
+                                    refetch=refetch.clone()
+                                />
                             }
                         })
                 }}
@@ -114,7 +110,7 @@ pub fn LoadSportConfig() -> impl IntoView {
 }
 
 #[component]
-pub fn EditSportConfig(sport_config: Option<SportConfig>) -> impl IntoView {
+pub fn EditSportConfig(sport_config: Option<SportConfig>, refetch: Callback<()>) -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
         url_matched_route_update_query,
@@ -176,11 +172,6 @@ pub fn EditSportConfig(sport_config: Option<SportConfig>) -> impl IntoView {
     // --- Server Actions ---
     let save_sport_config = ServerAction::<SaveSportConfig>::new();
 
-    // ToDo: MUST BE REFACTORED
-    let refetch_and_reset = Callback::new(move |()| {
-        save_sport_config.clear();
-    });
-
     // handle save result
     Effect::new(move || match save_sport_config.value().get() {
         Some(Ok(sc)) => {
@@ -197,27 +188,36 @@ pub fn EditSportConfig(sport_config: Option<SportConfig>) -> impl IntoView {
             navigate(&nav_url, NavigateOptions::default());
         }
         Some(Err(err)) => {
+            save_sport_config.clear();
             handle_write_error(
                 &page_err_ctx,
                 &toast_ctx,
                 component_id.get_value(),
                 &err,
-                refetch_and_reset,
+                refetch,
             );
         }
         None => { /* saving state - do nothing */ }
     });
 
+    let save_sport_config_pending = save_sport_config.pending();
+
     // --- Signals for UI state & errors ---
+    // use try, because these signals are use in conjunction with page_err_ctx,
+    // which has another "lifetime" in the reactive system, which may cause panics
+    // for the other signals when the component is unmounted.
     let is_disabled = move || {
         sport_plugin().is_none()
-            || save_sport_config.pending().try_get().unwrap_or(false)
+            || save_sport_config_pending.try_get().unwrap_or(false)
             || page_err_ctx.has_errors()
     };
 
     let is_valid_config = move || {
-        sport_config_editor.is_valid_json.get()
-            && sport_config_editor.validation_result.with(|vr| vr.is_ok())
+        sport_config_editor.is_valid_json.try_get().unwrap_or(false)
+            && sport_config_editor
+                .validation_result
+                .try_with(|vr| vr.is_ok())
+                .unwrap_or(false)
     };
 
     view! {

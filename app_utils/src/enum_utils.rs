@@ -79,6 +79,6 @@ impl SelectableOption for CountryCode {
     }
 
     fn options() -> Vec<Self> {
-        CountryCode::iter().cloned().collect()
+        CountryCode::as_array().into()
     }
 }

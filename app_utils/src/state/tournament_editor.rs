@@ -168,9 +168,8 @@ impl TournamentEditorContext {
 
         // --- effects for server action and resource results ---
         // retry function for error handling
-        let refetch_and_reset = Callback::new(move |()| {
+        let refetch = Callback::new(move |()| {
             refetch_trigger.trigger_refetch();
-            save_diff.clear();
         });
 
         // Effect to handle save action results
@@ -183,7 +182,7 @@ impl TournamentEditorContext {
                     save_diff.clear();
                     if tournament_id.get().is_some() {
                         // if it was an existing tournament, trigger refetch to load the full data
-                        refetch_and_reset.run(());
+                        refetch.run(());
                     } else {
                         // else navigate directly
                         let nav_url = url_update_query("tournament_id", &base_id.to_string());
@@ -205,7 +204,7 @@ impl TournamentEditorContext {
                         &toast_ctx,
                         component_id.get_value(),
                         &err,
-                        refetch_and_reset,
+                        refetch,
                     );
                 }
                 None => { /* saving state - do nothing */ }

@@ -71,7 +71,6 @@ pub fn LoadTournament() -> impl IntoView {
     // retry function for error handling
     let refetch = Callback::new(move |()| {
         refetch_trigger.trigger_refetch();
-        base_res.refetch();
     });
 
     // cancel function for cancel button and error handling

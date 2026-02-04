@@ -1,10 +1,5 @@
 //! Postal Address Server Functions Module
 
-#[cfg(feature = "test-mock")]
-pub mod test_support;
-
-// server function for postal address
-
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use crate::error::AppError;
 use crate::error::AppResult;
@@ -12,7 +7,6 @@ use app_core::PostalAddress;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
-#[cfg(not(feature = "test-mock"))]
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -73,7 +67,6 @@ pub async fn list_postal_addresses_inner(name: String) -> AppResult<Vec<PostalAd
     }
 }
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "postal_address.save",
@@ -118,8 +111,8 @@ pub async fn save_postal_address(
     .await
 }
 
-#[cfg(feature = "test-mock")]
-pub use test_support::SavePostalAddress;
+/*
+Replace by on:submit handler for test mock, which is at the moment defined at EditPostalAddress
 
 #[cfg(feature = "test-mock")]
 #[allow(clippy::too_many_arguments)]
@@ -146,7 +139,7 @@ pub async fn save_postal_address(
         intent,
     )
     .await
-}
+}*/
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 #[allow(clippy::too_many_arguments)]
@@ -167,6 +160,9 @@ pub async fn save_postal_address_inner(
     let mut_pa_core = core.get_mut();
 
     // Interpret intent
+    // ToDo: we have to refactor this when switching to auto save.
+    // AND: we changed logic to ALWAYS provide a valid id. This is circumvented here
+    // (database creates new id). This is for now no problem, but should be changed.
     let is_update = matches!(intent.as_deref(), Some("update"));
     if is_update {
         // set id and version previously loaded

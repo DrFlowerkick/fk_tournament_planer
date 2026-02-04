@@ -17,6 +17,11 @@ pub use select_sport::SelectSportPlugin;
 
 #[component]
 pub fn SportConfigPage() -> impl IntoView {
+    /****************************************************************************
+     *
+     * !!!!!!!!!!!! WARNING !!!!!!!!!!!! REMOVE THIS WHEN MIGRATING TO HOME !!!!!!
+     *
+     ****************************************************************************/
     // ToDo: when we will migrate sport config into Home, this will not be required
     // set context for error reporting
     let page_error_context = PageErrorContext::new();
@@ -27,6 +32,8 @@ pub fn SportConfigPage() -> impl IntoView {
     let sport_id = use_sport_id_query();
 
     view! {
+        // ToDo: when we will migrate sport config into Home, this will not be required
+        // set context for error reporting
         <GlobalErrorBanner />
         <ToastContainer />
         <div>

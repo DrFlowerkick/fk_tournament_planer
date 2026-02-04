@@ -14,7 +14,7 @@ use uuid::Uuid;
 /// - Transient/Technical errors -> ToastContext (Popup)
 pub fn handle_write_error(
     page_ctx: &PageErrorContext,
-    toast_ctx: &ToastContext, // NEU: Parameter
+    toast_ctx: &ToastContext,
     component_id: Uuid,
     error: &AppError,
     retry_fn: Callback<()>,
@@ -23,10 +23,11 @@ pub fn handle_write_error(
 
     match error {
         // 1. Optimistic Lock Conflict -> Banner
+        // The local data is stale compared to the server. A reload is mandatory to sync state.
         AppError::Core(CoreError::Db(DbError::OptimisticLockConflict)) => {
             let builder = ActiveError::builder(
                 component_id,
-                "The record has been modified in the meantime. Please reload.",
+                "The record has been modified in the meantime. Please reload. Any unsaved changes will be lost.",
             )
             .with_key(key.clone())
             .with_retry("Reload & Overwrite", retry_fn)
@@ -35,47 +36,10 @@ pub fn handle_write_error(
             page_ctx.report_error(builder.build());
         }
 
-        // 2a. Resource Not Found -> Banner
-        AppError::ResourceNotFound(entity, _) => {
-            let msg = format!("'{entity}' does not exist anymore.");
-
-            let builder = ActiveError::builder(component_id, msg)
-                .with_key(key.clone())
-                .with_retry("Reload to fix", retry_fn)
-                .with_clear_error_on_cancel("Cancel");
-
-            page_ctx.report_error(builder.build());
-        }
-
-        // 2b. Db Generic Not Found -> Banner
-        AppError::Core(CoreError::Db(DbError::NotFound)) => {
-            let msg = "The requested record was not found.";
-
-            let builder = ActiveError::builder(component_id, msg)
-                .with_key(key.clone())
-                .with_retry("Reload to fix", retry_fn)
-                .with_clear_error_on_cancel("Cancel");
-
-            page_ctx.report_error(builder.build());
-        }
-
-        // 3. Unique Violation -> Banner (Dismissible)
-        AppError::Core(CoreError::Db(DbError::UniqueViolation(field_opt))) => {
-            let msg = field_opt
-                .as_ref()
-                .map(|f| format!("The value for '{f}' is already in use."))
-                .unwrap_or_else(|| "A unique value is already in use.".to_string());
-
-            let builder = ActiveError::builder(component_id, msg)
-                .with_key(key.clone())
-                .with_clear_error_on_cancel("OK");
-
-            page_ctx.report_error(builder.build());
-        }
-
-        // 4. FK / Check Violation -> Banner
-        AppError::Core(CoreError::Db(DbError::ForeignKeyViolation(_)))
-        | AppError::Core(CoreError::Db(DbError::CheckViolation(_))) => {
+        // 2. ForeignKey Violation -> Banner
+        // Usually implies referencing data that was deleted/changed elsewhere (Stale State).
+        // This is a system consistency issue requiring data refresh.
+        AppError::Core(CoreError::Db(DbError::ForeignKeyViolation(_))) => {
             let builder = ActiveError::builder(component_id, "Inconsistent data operation.")
                 .with_key(key.clone())
                 .with_retry("Refresh Data", retry_fn)
@@ -84,19 +48,30 @@ pub fn handle_write_error(
             page_ctx.report_error(builder.build());
         }
 
-        // 5. Config Errors -> Banner
-        AppError::Core(CoreError::Sport(app_core::SportError::InvalidJsonConfig(_))) => {
-            let builder = ActiveError::builder(
-                component_id,
-                "System Data Error: Invalid Configuration. Please contact support.",
-            )
-            .with_key(key.clone())
-            .with_clear_error_on_cancel("Close");
+        // 3. Unique Violation -> Toast
+        // Validation error: Input needs correction (e.g. "Name already taken").
+        AppError::Core(CoreError::Db(DbError::UniqueViolation(field_opt))) => {
+            let msg = field_opt
+                .as_ref()
+                .map(|f| format!("A unique value is already in use: '{f}'."))
+                .unwrap_or_else(|| "A unique value is already in use.".to_string());
 
-            page_ctx.report_error(builder.build());
+            toast_ctx.error(msg);
         }
 
-        // 6. Everything else -> TOAST
+        // 4. Check Violation -> Toast
+        // Validation error: Database constraint failed (e.g. "age >= 0").
+        // Treated like UniqueViolation: The user must correct the input.
+        AppError::Core(CoreError::Db(DbError::CheckViolation(constraint_opt))) => {
+            let msg = constraint_opt
+                .as_ref()
+                .map(|c| format!("Data validation failed (Constraint: {}).", c))
+                .unwrap_or_else(|| "Data validation failed.".to_string());
+
+            toast_ctx.error(msg);
+        }
+
+        // 5. Everything else -> TOAST
         _ => {
             // "Fire & Forget" Toast
             // AppError implements Display via thiserror, so error.to_string() works fine.
@@ -113,8 +88,8 @@ pub fn handle_read_error(
     component_id: Uuid,
     error: &AppError,
     retry_fn: Callback<()>,
-    // Renamed to clarify intent: This must navigate to a safe place (Dashboard)
-    go_home_fn: Callback<()>,
+    // This must navigate "back" to a safe place (e.g. Dashboard)
+    back_fn: Callback<()>,
 ) {
     let key = ErrorKey::Read;
 
@@ -126,19 +101,19 @@ pub fn handle_read_error(
             let builder = ActiveError::builder(component_id, msg)
                 .with_key(key.clone())
                 .with_retry("Retry", retry_fn)
-                .with_cancel("To Dashboard", go_home_fn);
+                .with_cancel("Back", back_fn);
 
             ctx.report_error(builder.build());
         }
 
         // Case 2: Generic Database Not Found
         AppError::Core(CoreError::Db(DbError::NotFound)) => {
-            let msg = "The requested data could not be found.".to_string();
+            let msg = "The requested data could not be found in database.".to_string();
 
             let builder = ActiveError::builder(component_id, msg)
                 .with_key(key.clone())
                 .with_retry("Retry", retry_fn)
-                .with_cancel("To Dashboard", go_home_fn);
+                .with_cancel("Back", back_fn);
 
             ctx.report_error(builder.build());
         }
@@ -147,8 +122,8 @@ pub fn handle_read_error(
         _ => {
             let builder = ActiveError::builder(component_id, "Data could not be loaded.")
                 .with_key(key.clone())
-                .with_retry("Try again", retry_fn)
-                .with_cancel("To Dashboard", go_home_fn);
+                .with_retry("Retry", retry_fn)
+                .with_cancel("Back", back_fn);
             ctx.report_error(builder.build());
         }
     }
@@ -160,7 +135,7 @@ pub fn handle_general_error(
     component_id: Uuid,
     error_msg: impl Into<String>,
     retry_fn: Option<Callback<()>>,
-    go_home_fn: Callback<()>,
+    back_fn: Callback<()>,
 ) {
     let key = ErrorKey::General;
 
@@ -172,7 +147,7 @@ pub fn handle_general_error(
         builder = builder.with_retry("Retry", retry);
     }
 
-    let builder = builder.with_cancel("To Dashboard", go_home_fn);
+    let builder = builder.with_cancel("Back", back_fn);
 
     ctx.report_error(builder.build());
 }

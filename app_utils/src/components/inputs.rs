@@ -1005,7 +1005,7 @@ pub fn ValidatedDurationInput(
                 // Convert Duration to unit for display
                 prop:value=move || {
                     match unit {
-                        DurationInputUnit::Seconds => value.get()   .as_secs().to_string(),
+                        DurationInputUnit::Seconds => value.get().as_secs().to_string(),
                         DurationInputUnit::Minutes => (value.get().as_secs() / 60).to_string(),
                         DurationInputUnit::Hours => (value.get().as_secs() / 3600).to_string(),
                     }
@@ -1210,7 +1210,13 @@ fn generate_testid_label_placeholder(
     let data_testid: String = name
         .as_ref()
         .map(|n| format!("{}-{}", form_control_type, n))
-        .unwrap_or_else(|| format!("{}-{}", form_control_type, label.to_lowercase().replace(' ', "-")));
+        .unwrap_or_else(|| {
+            format!(
+                "{}-{}",
+                form_control_type,
+                label.to_lowercase().replace(' ', "-")
+            )
+        });
     let (label, placeholder_text) = if optional {
         (
             format!("{} (optional)", label.clone()),

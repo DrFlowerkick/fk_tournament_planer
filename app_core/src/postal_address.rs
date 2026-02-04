@@ -4,6 +4,8 @@ use crate::{
     Core, CoreResult, CrMsg, CrTopic,
     utils::{id_version::IdVersion, normalize::*, traits::ObjectIdVersion, validation::*},
 };
+// ToDo: should we us isocountry::CountryCode here for country field?
+use isocountry::CountryCode;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -246,6 +248,16 @@ impl PostalAddress {
                 FieldError::builder()
                     .set_field("Country")
                     .add_required()
+                    .set_object_id(object_id)
+                    .build(),
+            );
+        }
+        if CountryCode::for_alpha2(&self.country).is_err() {
+            errs.add(
+                FieldError::builder()
+                    .set_field("Country")
+                    .add_invalid_format()
+                    .add_message(format!("invalid ISO country code: {}", self.country))
                     .set_object_id(object_id)
                     .build(),
             );

@@ -2,8 +2,9 @@ use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value,
     set_select_value, set_url,
 };
-use app::{postal_addresses::PostalAddressForm, provide_global_state};
+use app::{postal_addresses::LoadPostalAddress, provide_global_state};
 use app_core::DbpPostalAddress;
+use app_utils::state::{error_state::PageErrorContext, toast_state::ToastContext};
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
 use leptos_axum_socket::provide_socket_context;
@@ -29,10 +30,14 @@ async fn test_new_postal_address() {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();
+        let page_error_context = PageErrorContext::new();
+        provide_context(page_error_context);
+        let toast_context = ToastContext::new();
+        provide_context(toast_context);
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/new_pa") view=PostalAddressForm />
+                    <Route path=path!("/postal-address/new_pa") view=LoadPostalAddress />
                 </Routes>
             </Router>
         }
@@ -82,10 +87,14 @@ async fn test_edit_postal_address() {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();
+        let page_error_context = PageErrorContext::new();
+        provide_context(page_error_context);
+        let toast_context = ToastContext::new();
+        provide_context(toast_context);
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit_pa") view=PostalAddressForm />
+                    <Route path=path!("/postal-address/edit_pa") view=LoadPostalAddress />
                 </Routes>
             </Router>
         }
@@ -138,10 +147,14 @@ async fn test_save_as_new_postal_address() {
         provide_socket_context();
         provide_context(core.clone());
         provide_global_state();
+        let page_error_context = PageErrorContext::new();
+        provide_context(page_error_context);
+        let toast_context = ToastContext::new();
+        provide_context(toast_context);
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit_pa") view=PostalAddressForm />
+                    <Route path=path!("/postal-address/edit_pa") view=LoadPostalAddress />
                 </Routes>
             </Router>
         }
@@ -163,6 +176,7 @@ async fn test_save_as_new_postal_address() {
     sleep(Duration::from_millis(10)).await;
 
     let save_as_new_button = get_element_by_test_id("btn-save-as-new");
+
     save_as_new_button.click();
     sleep(Duration::from_millis(10)).await;
     let cloned_addresses = ts
