@@ -211,14 +211,16 @@ impl SportPortWebUi for GenericSportPlugin {
         let expected_match_duration_minutes = Signal::derive(move || {
             current_config.with(|cfg| cfg.as_ref().map(|c| c.expected_match_duration_minutes))
         });
-        let set_expected_match_duration_minutes = Callback::new(move |duration: Duration| {
-            if let Some(mut cfg) = current_config.get() {
-                cfg.expected_match_duration_minutes = duration;
-                sport_config_editor
-                    .set_config
-                    .set(serde_json::to_value(cfg).unwrap());
-            }
-        });
+        let set_expected_match_duration_minutes =
+            Callback::new(move |duration: Option<Duration>| {
+                if let Some(mut cfg) = current_config.get() {
+                    cfg.expected_match_duration_minutes =
+                        duration.unwrap_or(Duration::from_secs(0));
+                    sport_config_editor
+                        .set_config
+                        .set(serde_json::to_value(cfg).unwrap());
+                }
+            });
 
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">

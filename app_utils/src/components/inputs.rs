@@ -66,15 +66,16 @@ pub fn TextInputWithValidation<T>(
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
     value: Signal<Option<T>>,
     /// Callback to push changes to source of value
-    /// Using Callback<T> allows passing closures and Callbacks.
-    set_value: Callback<T>,
+    /// Using Callback<Option<T>> allows passing closures and Callbacks.
+    set_value: Callback<Option<T>>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into, default = Ok(()).into())]
@@ -119,15 +120,9 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
 
     view! {
         <div class="form-control w-full">
@@ -139,9 +134,9 @@ where
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
-                name=name.clone()
+                name=name
                 // Auto-generate test-id
-                data-testid=format!("input-{}", name)
+                data-testid=data_testid
                 placeholder=placeholder_text
                 // USER TYPING: Update draft to take control from the core
                 on:input:target=move |ev| {
@@ -150,9 +145,15 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
+                    if new_val.is_empty() {
+                        set_value.run(None);
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                        return;
+                    }
                     match new_val.parse::<T>() {
                         Ok(val) => {
-                            set_value.run(val);
+                            set_value.run(Some(val));
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
@@ -236,8 +237,9 @@ pub fn SelectWithValidation<S>(
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<S>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -285,15 +287,9 @@ where
     // We hide errors while the user is actively selecting (proactive reset)
     let show_error = move || !is_selecting.get() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Select {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Select {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Select);
 
     view! {
         <div class="form-control w-full">
@@ -321,9 +317,8 @@ where
                         })
                         .unwrap_or_default()
                 }
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("select-{}", name)
+                name=name
+                data-testid=data_testid
                 // USER STARTED: Mark as selecting to hide errors
                 on:focus=move |_| {
                     set_is_selecting.set(true);
@@ -471,8 +466,9 @@ pub fn EnumSelectWithValidation<E>(
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<E>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -519,15 +515,9 @@ where
     // We hide errors while the user is actively selecting (proactive reset)
     let show_error = move || !is_selecting.get() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Select {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Select {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Select);
 
     view! {
         <div class="form-control w-full">
@@ -543,9 +533,8 @@ where
                         None => clear_label.get_value().unwrap_or_default(),
                     }
                 }
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("select-{}", name)
+                name=name
+                data-testid=data_testid
                 // USER STARTED: Mark as selecting to hide errors
                 on:focus=move |_| {
                     set_is_selecting.set(true);
@@ -754,8 +743,9 @@ pub fn NumberInputWithValidation<T>(
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -815,15 +805,10 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
+
     // Default step to "1" if not provided
     let step_val = if step.is_empty() {
         "1".to_string()
@@ -845,9 +830,8 @@ where
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("input-{}", name)
+                name=name
+                data-testid=data_testid
                 placeholder=placeholder_text
                 // USER TYPING: Update draft to take control from the core
                 on:input:target=move |ev| {
@@ -1021,7 +1005,7 @@ pub fn ValidatedDurationInput(
                 // Convert Duration to unit for display
                 prop:value=move || {
                     match unit {
-                        DurationInputUnit::Seconds => value.get().as_secs().to_string(),
+                        DurationInputUnit::Seconds => value.get()   .as_secs().to_string(),
                         DurationInputUnit::Minutes => (value.get().as_secs() / 60).to_string(),
                         DurationInputUnit::Hours => (value.get().as_secs() / 3600).to_string(),
                     }
@@ -1029,14 +1013,14 @@ pub fn ValidatedDurationInput(
                 on:input=move |ev| {
                     let val_str = event_target_value(&ev);
                     match val_str.parse::<u64>() {
-                        Ok(input) => {
+                        Ok(num) => {
                             match unit {
-                                DurationInputUnit::Seconds => value.set(Duration::from_secs(input)),
+                                DurationInputUnit::Seconds => value.set(Duration::from_secs(num)),
                                 DurationInputUnit::Minutes => {
-                                    value.set(Duration::from_secs(input * 60))
+                                    value.set(Duration::from_secs(num * 60))
                                 }
                                 DurationInputUnit::Hours => {
-                                    value.set(Duration::from_secs(input * 3600))
+                                    value.set(Duration::from_secs(num * 3600))
                                 }
                             }
                             set_parse_err.set(None);
@@ -1077,15 +1061,16 @@ pub fn DurationInputWithValidation(
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
     value: Signal<Option<Duration>>,
     /// Callback to push changes to source of value
-    /// Using Callback<T> allows passing closures and Callbacks.
-    set_value: Callback<Duration>,
+    /// Using Callback<Option<Duration>> allows passing closures and Callbacks.
+    set_value: Callback<Option<Duration>>,
     /// Duration unit for input and display
     #[prop(into)]
     unit: DurationInputUnit,
@@ -1139,15 +1124,9 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
 
     view! {
         <div class="form-control w-full">
@@ -1161,9 +1140,8 @@ where
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("input-{}", name)
+                name=name
+                data-testid=data_testid
                 placeholder=placeholder_text
                 // USER TYPING: Update draft to take control from the core
                 on:input:target=move |ev| {
@@ -1172,6 +1150,12 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
+                    if new_val.is_empty() {
+                        set_value.run(None);
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                        return;
+                    }
                     match new_val.parse::<u64>() {
                         Ok(val) => {
                             let new_duration = match unit {
@@ -1179,7 +1163,7 @@ where
                                 DurationInputUnit::Minutes => Duration::from_secs(val * 60),
                                 DurationInputUnit::Hours => Duration::from_secs(val * 3600),
                             };
-                            set_value.run(new_duration);
+                            set_value.run(Some(new_duration));
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
@@ -1206,4 +1190,34 @@ where
             </Show>
         </div>
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
+enum FormControlType {
+    /// input
+    Input,
+    /// select
+    Select,
+}
+
+/// Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+fn generate_testid_label_placeholder(
+    name: &Option<String>,
+    label: String,
+    optional: bool,
+    form_control_type: FormControlType,
+) -> (String, String, String) {
+    let data_testid: String = name
+        .as_ref()
+        .map(|n| format!("{}-{}", form_control_type, n))
+        .unwrap_or_else(|| format!("{}-{}", form_control_type, label.to_lowercase().replace(' ', "-")));
+    let (label, placeholder_text) = if optional {
+        (
+            format!("{} (optional)", label.clone()),
+            format!("Enter {} (optional)...", label.to_lowercase()),
+        )
+    } else {
+        (label.clone(), format!("Enter {}...", label.to_lowercase()))
+    };
+    (data_testid, label, placeholder_text)
 }

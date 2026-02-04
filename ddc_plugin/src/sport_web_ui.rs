@@ -325,14 +325,16 @@ impl SportPortWebUi for DdcSportPlugin {
         let expected_rally_duration_seconds = Signal::derive(move || {
             current_config.with(|cfg| cfg.as_ref().map(|c| c.expected_rally_duration_seconds))
         });
-        let set_expected_rally_duration_seconds = Callback::new(move |duration: Duration| {
-            if let Some(mut cfg) = current_config.get() {
-                cfg.expected_rally_duration_seconds = duration;
-                sport_config_editor
-                    .set_config
-                    .set(serde_json::to_value(cfg).unwrap());
-            }
-        });
+        let set_expected_rally_duration_seconds =
+            Callback::new(move |duration: Option<Duration>| {
+                if let Some(mut cfg) = current_config.get() {
+                    cfg.expected_rally_duration_seconds =
+                        duration.unwrap_or(Duration::from_secs(0));
+                    sport_config_editor
+                        .set_config
+                        .set(serde_json::to_value(cfg).unwrap());
+                }
+            });
 
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">

@@ -57,7 +57,7 @@ pub struct TournamentEditorContext {
     /// Read slice for accessing the tournament base name, if any
     pub base_name: Signal<Option<String>>,
     /// Write slice for setting the tournament base name
-    pub set_base_name: Callback<String>,
+    pub set_base_name: Callback<Option<String>>,
     /// Read slice for accessing the tournament base number of entrants, if any
     pub base_num_entrants: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of entrants
@@ -231,8 +231,8 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_name(name);
             },
         );
-        let set_base_name = Callback::new(move |name: String| {
-            set_base_name.set(name);
+        let set_base_name = Callback::new(move |name: Option<String>| {
+            set_base_name.set(name.unwrap_or_default());
         });
         let (base_num_entrants, set_base_num_entrants) = create_slice(
             inner,

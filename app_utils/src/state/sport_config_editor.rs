@@ -28,7 +28,7 @@ pub struct SportConfigEditorContext {
     /// Signal slice for the name field
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
-    pub set_name: Callback<String>,
+    pub set_name: Callback<Option<String>>,
     /// Signal slice for the config field
     pub config: Signal<Option<Value>>,
     /// SignalSetter for updating the config field
@@ -68,8 +68,8 @@ impl SportConfigEditorContext {
                 }
             },
         );
-        let set_name = Callback::new(move |name: String| {
-            set_name.set(name);
+        let set_name = Callback::new(move |name: Option<String>| {
+            set_name.set(name.unwrap_or_default());
         });
         let (config, set_config) = create_slice(
             local,
