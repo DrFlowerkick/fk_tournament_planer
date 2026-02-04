@@ -118,9 +118,41 @@ impl SportPortWebUi for DdcSportPlugin {
 
         // --- Signals for form fields ---
         // configuration of sets
-        let (num_sets, set_num_sets) = signal(None::<u16>);
+        let num_sets = Signal::derive(move || {
+            current_config.with(|cfg| {
+                if let Some(cfg) = cfg {
+                    match cfg.sets_cfg {
+                        DdcSetCfg::CustomSetsToWin { sets_to_win } => Some(sets_to_win),
+                        DdcSetCfg::CustomTotalSets { total_sets } => Some(total_sets),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+        });
         let set_num_sets = Callback::new(move |num_sets: Option<u16>| {
-            set_num_sets.set(num_sets);
+            if let Some(mut cfg) = current_config.get() {
+                if let Some(num_sets) = num_sets {
+                    let mut changed = false;
+                    match &mut cfg.sets_cfg {
+                        DdcSetCfg::CustomSetsToWin { sets_to_win } => {
+                            *sets_to_win = num_sets;
+                            changed = true;
+                        }
+                        DdcSetCfg::CustomTotalSets { total_sets } => {
+                            *total_sets = num_sets;
+                            changed = true;
+                        }
+                        _ => {}
+                    }
+                    if changed {
+                        sport_config_editor
+                            .set_config
+                            .set(serde_json::to_value(cfg).unwrap());
+                    }
+                }
+            }
         });
         let sets_cfg =
             Signal::derive(move || current_config.with(|cfg| cfg.as_ref().map(|c| c.sets_cfg)));
@@ -148,17 +180,98 @@ impl SportPortWebUi for DdcSportPlugin {
             }
         });
         // configuration of winning a set
-        let (score_to_win, set_score_to_win) = signal(None::<u16>);
+        let score_to_win = Signal::derive(move || {
+            current_config.with(|cfg| {
+                if let Some(cfg) = cfg {
+                    match cfg.set_winning_cfg {
+                        DdcSetWinningCfg::Custom { score_to_win, .. } => Some(score_to_win),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+        });
         let set_score_to_win = Callback::new(move |score: Option<u16>| {
-            set_score_to_win.set(score);
+            if let Some(mut cfg) = current_config.get() {
+                if let Some(score) = score {
+                    let mut changed = false;
+                    match &mut cfg.set_winning_cfg {
+                        DdcSetWinningCfg::Custom { score_to_win, .. } => {
+                            *score_to_win = score;
+                            changed = true;
+                        }
+                        _ => {}
+                    }
+                    if changed {
+                        sport_config_editor
+                            .set_config
+                            .set(serde_json::to_value(cfg).unwrap());
+                    }
+                }
+            }
         });
-        let (win_by_margin, set_win_by_margin) = signal(None::<u16>);
+        let win_by_margin = Signal::derive(move || {
+            current_config.with(|cfg| {
+                if let Some(cfg) = cfg {
+                    match cfg.set_winning_cfg {
+                        DdcSetWinningCfg::Custom { win_by_margin, .. } => Some(win_by_margin),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+        });
         let set_win_by_margin = Callback::new(move |margin: Option<u16>| {
-            set_win_by_margin.set(margin);
+            if let Some(mut cfg) = current_config.get() {
+                if let Some(margin) = margin {
+                    let mut changed = false;
+                    match &mut cfg.set_winning_cfg {
+                        DdcSetWinningCfg::Custom { win_by_margin, .. } => {
+                            *win_by_margin = margin;
+                            changed = true;
+                        }
+                        _ => {}
+                    }
+                    if changed {
+                        sport_config_editor
+                            .set_config
+                            .set(serde_json::to_value(cfg).unwrap());
+                    }
+                }
+            }
         });
-        let (hard_cap, set_hard_cap) = signal(None::<u16>);
+        let hard_cap = Signal::derive(move || {
+            current_config.with(|cfg| {
+                if let Some(cfg) = cfg {
+                    match cfg.set_winning_cfg {
+                        DdcSetWinningCfg::Custom { hard_cap, .. } => Some(hard_cap),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+        });
         let set_hard_cap = Callback::new(move |cap: Option<u16>| {
-            set_hard_cap.set(cap);
+            if let Some(mut cfg) = current_config.get() {
+                if let Some(cap) = cap {
+                    let mut changed = false;
+                    match &mut cfg.set_winning_cfg {
+                        DdcSetWinningCfg::Custom { hard_cap, .. } => {
+                            *hard_cap = cap;
+                            changed = true;
+                        }
+                        _ => {}
+                    }
+                    if changed {
+                        sport_config_editor
+                            .set_config
+                            .set(serde_json::to_value(cfg).unwrap());
+                    }
+                }
+            }
         });
         let winning_cfg = Signal::derive(move || {
             current_config.with(|cfg| cfg.as_ref().map(|c| c.set_winning_cfg))

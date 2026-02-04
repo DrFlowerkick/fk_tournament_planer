@@ -93,15 +93,13 @@ pub struct TournamentEditorContext {
 impl TournamentEditorContext {
     /// Creates a new, empty context.
     pub fn new(initialized_tournament_editor: TournamentEditor) -> Self {
-        leptos::logging::log!(
-            "Initializing TournamentEditorContext for tournament editor"
-        );
+        // --- refetch context ---
         let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
         // --- navigation and globale state context ---
         let navigate = use_navigate();
         let UseQueryNavigationReturn {
-            url_matched_route_update_query,
+            url_update_query,
             url_matched_route,
             ..
         } = use_query_navigation();
@@ -188,11 +186,7 @@ impl TournamentEditorContext {
                         refetch_and_reset.run(());
                     } else {
                         // else navigate directly
-                        let nav_url = url_matched_route_update_query(
-                            "tournament_id",
-                            &base_id.to_string(),
-                            MatchedRouteHandler::Keep,
-                        );
+                        let nav_url = url_update_query("tournament_id", &base_id.to_string());
                         navigate(
                             &nav_url,
                             NavigateOptions {

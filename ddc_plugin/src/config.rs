@@ -113,7 +113,9 @@ impl DdcSetCfg {
             DdcSetCfg::BestOf1 => (1, 1),
             DdcSetCfg::BestOf3 => (2, 3),
             DdcSetCfg::BestOf5 => (3, 5),
-            DdcSetCfg::CustomSetsToWin { sets_to_win } => (*sets_to_win, *sets_to_win * 2 - 1),
+            DdcSetCfg::CustomSetsToWin { sets_to_win } => {
+                (*sets_to_win, (*sets_to_win * 2).saturating_sub(1))
+            }
             DdcSetCfg::CustomTotalSets { total_sets } => (*total_sets, *total_sets),
         }
     }

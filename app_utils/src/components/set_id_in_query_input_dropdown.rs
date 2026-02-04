@@ -1,8 +1,6 @@
 //! General input dropdown component to set an ID in the query string.
 
-use crate::hooks::use_query_navigation::{
-    MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
-};
+use crate::hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation};
 use app_core::utils::traits::ObjectIdVersion;
 use leptos::{prelude::*, task::spawn_local, web_sys};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
@@ -44,7 +42,7 @@ where
     // ---- initialize query navigation ----
     let UseQueryNavigationReturn {
         get_query,
-        url_matched_route_update_query,
+        url_update_query,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -69,11 +67,7 @@ where
                 return;
             }
             // 3) update URL query parameter with new id
-            let nav_url = url_matched_route_update_query(
-                key,
-                &item.get_id_version().get_id().to_string(),
-                MatchedRouteHandler::Keep,
-            );
+            let nav_url = url_update_query(key, &item.get_id_version().get_id().to_string());
             navigate(
                 &nav_url,
                 NavigateOptions {

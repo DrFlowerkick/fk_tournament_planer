@@ -1,6 +1,6 @@
 import { expect, Page } from "@playwright/test";
 import { runSportConfigSharedTests, SportConfigTestAdapter } from "./shared";
-import { typeThenBlur, selectors } from "../../helpers";
+import { fillAndBlur, selectors } from "../../helpers";
 
 const ddcSportAdapter: SportConfigTestAdapter = {
   sportName: "Double Disc Court (DDC)",
@@ -22,44 +22,35 @@ const ddcSportAdapter: SportConfigTestAdapter = {
 
     // Select Custom Sets to Win
     await page.getByTestId("select-sets_cfg").selectOption("Custom: Sets to Win");
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-num_sets"),
       data.sets_to_win.toString(),
-      blurTarget
     );
-
     // Select Custom Set Winning Configuration
     await page.getByTestId("select-set_winning_cfg").selectOption("Custom Set Winning Configuration");
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-score_to_win"),
       data.score_to_win.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-win_by_margin"),
       data.win_by_margin.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-hard_cap"),
       data.hard_cap.toString(),
-      blurTarget
     );
-
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-victory_points_win"),
       data.victory_points_win.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-victory_points_draw"),
       data.victory_points_draw.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-expected_rally_duration_seconds"),
       data.expected_rally_duration_seconds.toString(),
-      blurTarget
     );
   },
   assertSpecificFields: async (page: Page, data: any) => {

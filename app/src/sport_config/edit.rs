@@ -33,16 +33,7 @@ use uuid::Uuid;
 
 #[component]
 pub fn LoadSportConfig() -> impl IntoView {
-    // --- Hooks, Navigation & global state ---
-    let UseQueryNavigationReturn {
-        url_matched_route_update_query,
-        ..
-    } = use_query_navigation();
-    let navigate = use_navigate();
-
-    let sport_config_id = use_sport_config_id_query();
-
-    let toast_ctx = expect_context::<ToastContext>();
+    // --- global state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
     // remove errors on unmount
@@ -50,9 +41,8 @@ pub fn LoadSportConfig() -> impl IntoView {
         page_err_ctx.clear_all_for_component(component_id.get_value());
     });
 
-    // --- Server Actions & Resources ---
-    let save_sport_config = ServerAction::<SaveSportConfig>::new();
-
+    // --- Server Resources ---
+    let sport_config_id = use_sport_config_id_query();
     let sc_res = Resource::new(
         move || sport_config_id.get(),
         move |maybe_id| async move {
@@ -66,40 +56,11 @@ pub fn LoadSportConfig() -> impl IntoView {
         },
     );
 
-    let refetch_and_reset = Callback::new(move |()| {
-        save_sport_config.clear();
+    let refetch = Callback::new(move |()| {
         sc_res.refetch();
     });
 
-    // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
-
-    // handle save result
-    Effect::new(move || match save_sport_config.value().get() {
-        Some(Ok(sc)) => {
-            save_sport_config.clear();
-            toast_ctx.add(
-                "Sport Configuration saved successfully",
-                ToastVariant::Success,
-            );
-            let nav_url = url_matched_route_update_query(
-                "sport_config_id",
-                &sc.get_id().to_string(),
-                MatchedRouteHandler::RemoveSegment(1),
-            );
-            navigate(&nav_url, NavigateOptions::default());
-        }
-        Some(Err(err)) => {
-            handle_write_error(
-                &page_err_ctx,
-                &toast_ctx,
-                component_id.get_value(),
-                &err,
-                refetch_and_reset,
-            );
-        }
-        None => { /* saving state - do nothing */ }
-    });
 
     view! {
         <Transition fallback=move || {
@@ -117,7 +78,7 @@ pub fn LoadSportConfig() -> impl IntoView {
                             &page_err_ctx,
                             component_id.get_value(),
                             app_err,
-                            refetch_and_reset,
+                            refetch,
                             on_cancel,
                         );
                     } else {
@@ -175,11 +136,13 @@ pub fn EditSportConfig(sport_config: Option<SportConfig>) -> impl IntoView {
     let sport_plugin_manager = state.sport_plugin_manager();
 
     let sport_plugin = move || {
-        sport_id.try_with(|maybe_sport_id| {
-            maybe_sport_id
-                .as_ref()
-                .and_then(|s_id| sport_plugin_manager.get().get_web_ui(s_id))
-        }).flatten()
+        sport_id
+            .try_with(|maybe_sport_id| {
+                maybe_sport_id
+                    .as_ref()
+                    .and_then(|s_id| sport_plugin_manager.get().get_web_ui(s_id))
+            })
+            .flatten()
     };
 
     let sport_name = move || {

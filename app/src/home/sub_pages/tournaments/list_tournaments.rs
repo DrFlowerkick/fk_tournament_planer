@@ -25,8 +25,8 @@ use uuid::Uuid;
 pub fn ListTournaments() -> impl IntoView {
     // navigation and query handling Hook
     let UseQueryNavigationReturn {
-        url_matched_route_update_query,
-        url_matched_route_remove_query,
+        url_update_query,
+        url_remove_query,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -52,17 +52,15 @@ pub fn ListTournaments() -> impl IntoView {
     let (selected_id, set_selected_id) = signal::<Option<Uuid>>(None);
 
     // update tournament_id query param when selected_id changes
-    Effect::new({
+    let handle_selection_change = Callback::new({
         let navigate = navigate.clone();
-        move || {
-            let nav_url = if let Some(t_id) = selected_id.get() {
-                url_matched_route_update_query(
-                    "tournament_id",
-                    &t_id.to_string(),
-                    MatchedRouteHandler::Keep,
-                )
+        move |new_id: Option<Uuid>| {
+            set_selected_id.set(new_id);
+
+            let nav_url = if let Some(t_id) = new_id {
+                url_update_query("tournament_id", &t_id.to_string())
             } else {
-                url_matched_route_remove_query("tournament_id", MatchedRouteHandler::Keep)
+                url_remove_query("tournament_id")
             };
             navigate(
                 &nav_url,
@@ -230,7 +228,7 @@ pub fn ListTournaments() -> impl IntoView {
                                     if let Some(selected_id) = selected_id.get_untracked()
                                         && !data.iter().any(|t| t.get_id() == selected_id)
                                     {
-                                        set_selected_id.set(None);
+                                        handle_selection_change.run(None);
                                     }
                                     let data = StoredValue::new(data.clone());
                                     view! {
@@ -275,9 +273,9 @@ pub fn ListTournaments() -> impl IntoView {
                                                                     data-testid=format!("tournaments-row-{}", t_id)
                                                                     on:click=move |_| {
                                                                         if selected_id.get() == Some(t_id) {
-                                                                            set_selected_id.set(None);
+                                                                            handle_selection_change.run(None);
                                                                         } else {
-                                                                            set_selected_id.set(Some(t_id));
+                                                                            handle_selection_change.run(Some(t_id));
                                                                         }
                                                                     }
                                                                 >
@@ -337,12 +335,7 @@ pub fn SelectedTournamentActions(tournament_state: TournamentState) -> impl Into
                             "Register"
                         </A>
                         <A
-                            href=move || {
-                                let url =
-                                url_matched_route(MatchedRouteHandler::Extend("edit"));
-                                leptos::logging::log!("Edit Tournament URL: {}", url);
-                                url
-                            }
+                            href=move || url_matched_route(MatchedRouteHandler::Extend("edit"))
                             attr:class="btn btn-sm btn-ghost"
                             attr:data-testid="action-btn-edit"
                             scroll=false

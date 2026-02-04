@@ -1,6 +1,6 @@
 import { expect, Page } from "@playwright/test";
 import { runSportConfigSharedTests, SportConfigTestAdapter } from "./shared";
-import { typeThenBlur, selectors } from "../../helpers";
+import { fillAndBlur, selectors } from "../../helpers";
 
 const genericSportAdapter: SportConfigTestAdapter = {
   sportName: "Generic Sport",
@@ -22,40 +22,33 @@ const genericSportAdapter: SportConfigTestAdapter = {
     // We use the save button as a blur target to trigger validation/normalization
     const blurTarget = SC.form.btnSave;
 
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-sets_to_win"),
       data.sets_to_win.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-score_to_win"),
       data.score_to_win.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-win_by_margin"),
       data.win_by_margin.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-hard_cap"),
       data.hard_cap.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-victory_points_win"),
       data.victory_points_win.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-victory_points_draw"),
       data.victory_points_draw.toString(),
-      blurTarget
     );
-    await typeThenBlur(
+    await fillAndBlur(
       page.getByTestId("input-expected_match_duration_minutes"),
       data.expected_match_duration_minutes.toString(),
-      blurTarget
     );
   },
   assertSpecificFields: async (page: Page, data: any) => {
