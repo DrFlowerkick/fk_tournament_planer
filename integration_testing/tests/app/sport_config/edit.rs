@@ -1,13 +1,11 @@
 use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value, set_url,
 };
-use app::{provide_global_state, sport_config::LoadSportConfig};
+use app::{provide_global_context, sport_config::LoadSportConfig};
 use app_core::DbpSportConfig;
-use app_utils::state::{error_state::PageErrorContext, toast_state::ToastContext};
 use generic_sport_plugin::config::GenericSportConfig;
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
-use leptos_axum_socket::provide_socket_context;
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -27,13 +25,8 @@ async fn test_new_sport_config() {
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
-        let page_error_context = PageErrorContext::new();
-        provide_context(page_error_context);
-        let toast_context = ToastContext::new();
-        provide_context(toast_context);
+        provide_global_context();
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
@@ -79,13 +72,8 @@ async fn test_edit_sport_config() {
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
-        let page_error_context = PageErrorContext::new();
-        provide_context(page_error_context);
-        let toast_context = ToastContext::new();
-        provide_context(toast_context);
+        provide_global_context();
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
@@ -138,13 +126,8 @@ async fn test_save_as_new_sport_config() {
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
-        let page_error_context = PageErrorContext::new();
-        provide_context(page_error_context);
-        let toast_context = ToastContext::new();
-        provide_context(toast_context);
+        provide_global_context();
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>

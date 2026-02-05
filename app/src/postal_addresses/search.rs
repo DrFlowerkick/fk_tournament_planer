@@ -3,11 +3,10 @@
 use app_core::{CrTopic, PostalAddress};
 use app_utils::{
     components::{
-        banner::{AcknowledgmentAndNavigateBanner, GlobalErrorBanner},
+        banner::AcknowledgmentAndNavigateBanner,
         set_id_in_query_input_dropdown::{
             SetIdInQueryInputDropdown, SetIdInQueryInputDropdownProperties,
         },
-        toast::ToastContainer,
     },
     error::AppError,
     hooks::use_query_navigation::{
@@ -15,7 +14,6 @@ use app_utils::{
     },
     params::AddressIdQuery,
     server_fn::postal_address::{list_postal_addresses, load_postal_address},
-    state::{error_state::PageErrorContext, toast_state::ToastContext},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
@@ -33,18 +31,6 @@ fn display_country(code: &str) -> String {
 
 #[component]
 pub fn SearchPostalAddress() -> impl IntoView {
-    /****************************************************************************
-     *
-     * !!!!!!!!!!!! WARNING !!!!!!!!!!!! REMOVE THIS WHEN MIGRATING TO HOME !!!!!!
-     *
-     ****************************************************************************/
-    // ToDo: when we will migrate PostalAddress into Home, this will not be required
-    // set context for error reporting
-    let page_error_context = PageErrorContext::new();
-    provide_context(page_error_context);
-    let toast_context = ToastContext::new();
-    provide_context(toast_context);
-
     // get id from url query parameters & navigation helpers
     let query = use_query::<AddressIdQuery>();
     let UseQueryNavigationReturn {
@@ -154,10 +140,6 @@ pub fn SearchPostalAddress() -> impl IntoView {
     };
 
     view! {
-        // ToDo: when we will migrate sport config into Home, this will not be required
-        // set context for error reporting
-        <GlobalErrorBanner />
-        <ToastContainer />
         <div class="card w-full bg-base-100 shadow-xl" data-testid="search-address">
             <div class="card-body">
                 <h2 class="card-title">"Search Postal Address"</h2>

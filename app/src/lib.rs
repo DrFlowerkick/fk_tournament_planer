@@ -5,7 +5,10 @@ pub mod home;
 pub mod postal_addresses;
 pub mod sport_config;
 
-use app_utils::state::global_state::GlobalState;
+use app_utils::{
+    components::{banner::GlobalErrorBanner, toast::ToastContainer},
+    state::{error_state::PageErrorContext, global_state::GlobalState, toast_state::ToastContext},
+};
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
 use home::*;
@@ -21,7 +24,17 @@ use reactive_stores::Store;
 use sport_config::*;
 use std::sync::Arc;
 
-pub fn provide_global_state() {
+pub fn provide_global_context() {
+    // Provides context that manages stylesheets, titles, meta tags, etc.
+    provide_meta_context();
+    // Provides the WebSocket socket context for client registry communication
+    provide_socket_context();
+    // set context for error reporting
+    let page_error_context = PageErrorContext::new();
+    provide_context(page_error_context);
+    let toast_context = ToastContext::new();
+    provide_context(toast_context);
+
     let mut global_state = GlobalState::new();
     global_state
         .sport_plugin_manager
@@ -54,12 +67,8 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
 
 #[component]
 pub fn App() -> impl IntoView {
-    // Provides context that manages stylesheets, titles, meta tags, etc.
-    provide_meta_context();
-    // Provides the WebSocket socket context for client registry communication
-    provide_socket_context();
-    // provide global state context
-    provide_global_state();
+    // provide global context elements
+    provide_global_context();
 
     // HYDRATION MARKER for E2E TESTS:
     // This effect runs only on the client once the WASM is active and hydration is complete.
@@ -78,6 +87,9 @@ pub fn App() -> impl IntoView {
 
         // routing
         <Router>
+            // global error banner and toast container are placed here so they are available on all pages
+            <GlobalErrorBanner />
+            <ToastContainer />
             <div class="flex flex-col min-h-screen">
                 // navigation
                 <header class="navbar bg-base-300">

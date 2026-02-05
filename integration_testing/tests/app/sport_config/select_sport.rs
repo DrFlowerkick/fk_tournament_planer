@@ -1,5 +1,5 @@
 use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
-use app::{provide_global_state, sport_config::SelectSportPlugin};
+use app::{provide_global_context, sport_config::SelectSportPlugin};
 use gloo_timers::future::sleep;
 use leptos::{
     mount::mount_to,
@@ -7,7 +7,6 @@ use leptos::{
     wasm_bindgen::JsCast,
     web_sys::{Event, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
-use leptos_axum_socket::provide_socket_context;
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -27,9 +26,8 @@ async fn test_plugin_selection_renders() {
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
+        provide_global_context();
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>

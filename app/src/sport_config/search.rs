@@ -35,7 +35,7 @@ pub fn SearchSportConfig() -> impl IntoView {
         ..
     } = use_query_navigation();
 
-    // get global state and sport plugin manager, set return_after_sport_config_edit
+    // get global state and sport plugin manager
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
 

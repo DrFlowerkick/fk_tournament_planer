@@ -233,7 +233,7 @@ pub fn ListTournaments() -> impl IntoView {
                                     let data = StoredValue::new(data.clone());
                                     view! {
                                         <Show
-                                            when=move || !data.read_value().is_empty()
+                                            when=move || data.with_value(|val| !val.is_empty())
                                             fallback=|| {
                                                 view! {
                                                     <div
