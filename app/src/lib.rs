@@ -21,7 +21,6 @@ use leptos_router::{
 };
 use postal_addresses::*;
 use reactive_stores::Store;
-use sport_config::*;
 use std::sync::Arc;
 
 pub fn provide_global_context() {
@@ -103,9 +102,6 @@ pub fn App() -> impl IntoView {
                             <li>
                                 <A href="/postal-address">"Postal Addresses"</A>
                             </li>
-                            <li>
-                                <A href="/sport">"Sports"</A>
-                            </li>
                         </ul>
                     </div>
                 </header>
@@ -122,7 +118,7 @@ pub fn App() -> impl IntoView {
                             <TournamentsRoutes />
                             <NewTournamentRoutes />
                             <Route path=path!("adhoc-tournament") view=AdhocTournament />
-                            <Route path=path!("sport-configurations") view=SportConfigurations />
+                            <SportConfigRoutes />
                             <Route path=path!("about-sport") view=AboutSport />
 
                         </ParentRoute>
@@ -135,16 +131,6 @@ pub fn App() -> impl IntoView {
                             />
                             <Route path=path!("new_pa") view=LoadPostalAddress />
                             <Route path=path!("edit_pa") view=LoadPostalAddress />
-                        </ParentRoute>
-                        <ParentRoute path=path!("/sport") view=SportConfigPage>
-                            <Route
-                                path=path!("")
-                                view={
-                                    view! {}
-                                }
-                            />
-                            <Route path=path!("new_sc") view=LoadSportConfig />
-                            <Route path=path!("edit_sc") view=LoadSportConfig />
                         </ParentRoute>
                     </Routes>
                 </main>

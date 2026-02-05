@@ -22,7 +22,7 @@ use uuid::Uuid;
 use leptos::prelude::*;
 
 #[component]
-pub fn SportConfigurations() -> impl IntoView {
+pub fn ListSportConfigurations() -> impl IntoView {
     /*
     // navigation and query handling Hook
     let UseQueryNavigationReturn {
