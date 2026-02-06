@@ -43,26 +43,29 @@ pub async fn load_sport_config_inner(id: Uuid) -> AppResult<Option<SportConfig>>
 pub async fn list_sport_configs(
     sport_id: Uuid,
     name: String,
+    limit: Option<usize>,
 ) -> AppResult<Vec<app_core::SportConfig>> {
-    list_sport_configs_inner(sport_id, name).await
+    list_sport_configs_inner(sport_id, name, limit).await
 }
 
 #[cfg(feature = "test-mock")]
 pub async fn list_sport_configs(
     sport_id: Uuid,
     name: String,
+    limit: Option<usize>,
 ) -> AppResult<Vec<app_core::SportConfig>> {
-    list_sport_configs_inner(sport_id, name).await
+    list_sport_configs_inner(sport_id, name, limit).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 async fn list_sport_configs_inner(
     sport_id: Uuid,
     name: String,
+    limit: Option<usize>,
 ) -> AppResult<Vec<app_core::SportConfig>> {
     let core = expect_context::<CoreState>().as_sport_config_state();
     let configs = core
-        .list_sport_configs(sport_id, Some(&name), Some(10))
+        .list_sport_configs(sport_id, Some(&name), limit)
         .await?;
     Ok(configs)
 }

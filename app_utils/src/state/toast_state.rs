@@ -30,7 +30,7 @@ impl ToastContext {
         self.0.into()
     }
 
-    pub fn add(&self, message: impl Into<String>, variant: ToastVariant) {
+    fn add(&self, message: impl Into<String>, variant: ToastVariant) {
         let msg_string = message.into();
 
         // 1. Deduplication: Check if exactly this message is already displayed.
@@ -74,15 +74,19 @@ impl ToastContext {
     }
 
     // Helper Methods for convenience
+    pub fn info(&self, msg: impl Into<String>) {
+        self.add(msg, ToastVariant::Info);
+    }
+
     pub fn success(&self, msg: impl Into<String>) {
         self.add(msg, ToastVariant::Success);
     }
 
-    pub fn error(&self, msg: impl Into<String>) {
-        self.add(msg, ToastVariant::Error);
+    pub fn warning(&self, msg: impl Into<String>) {
+        self.add(msg, ToastVariant::Warning);
     }
 
-    pub fn info(&self, msg: impl Into<String>) {
-        self.add(msg, ToastVariant::Info);
+    pub fn error(&self, msg: impl Into<String>) {
+        self.add(msg, ToastVariant::Error);
     }
 }

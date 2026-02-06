@@ -17,7 +17,6 @@ use leptos_axum_socket::{SocketMsg, expect_socket_context};
 use serde::{Deserialize, Serialize};
 #[cfg(feature = "ssr")]
 use shared::AppState;
-use std::sync::Arc;
 #[cfg(feature = "ssr")]
 use tracing::instrument;
 
@@ -62,20 +61,20 @@ pub async fn connect_to_websocket(
 
 // client registry subscription hook for leptos components
 pub fn use_client_registry_socket(
-    topic: ReadSignal<Option<CrTopic>>,
-    version: ReadSignal<u32>,
-    refetch: Arc<dyn Fn() + Send + Sync + 'static>,
+    topic: Signal<Option<CrTopic>>,
+    version: Signal<u32>,
+    refetch: Callback<()>,
 ) {
     let socket = expect_socket_context();
 
     let prev_topic = StoredValue::new(None::<CrTopic>);
 
     let subscribe = {
-        move |topic: CrTopic, refetch: Arc<dyn Fn() + Send + Sync + 'static>| {
+        move |topic: CrTopic, refetch: Callback<()>| {
             let version = version.get_untracked();
             let socket_handler = move |msg: &CrSocketMsg| {
                 if msg.msg.version() > version {
-                    refetch();
+                    refetch.run(());
                 }
             };
             socket.subscribe(topic, socket_handler);
@@ -90,10 +89,10 @@ pub fn use_client_registry_socket(
                     && prev_tp != *topic
                 {
                     socket.unsubscribe(prev_tp);
-                    subscribe(*topic, refetch.clone());
+                    subscribe(*topic, refetch);
                     prev_topic.set_value(Some(*topic));
                 } else if prev_topic.get_value().is_none() {
-                    subscribe(*topic, refetch.clone());
+                    subscribe(*topic, refetch);
                     prev_topic.set_value(Some(*topic));
                 }
             }

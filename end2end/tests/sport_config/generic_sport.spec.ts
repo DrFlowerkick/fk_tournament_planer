@@ -1,4 +1,4 @@
-import { expect, Page } from "@playwright/test";
+import { expect, Page, Locator } from "@playwright/test";
 import { runSportConfigSharedTests, SportConfigTestAdapter } from "./shared";
 import { fillAndBlur, selectors } from "../../helpers";
 
@@ -51,24 +51,24 @@ const genericSportAdapter: SportConfigTestAdapter = {
       data.expected_match_duration_minutes.toString(),
     );
   },
-  assertSpecificFields: async (page: Page, data: any) => {
+  assertSpecificFields: async (row: Locator, data: any) => {
     // Check preview
-    await expect(page.getByTestId("preview-sets-to-win")).toContainText(
+    await expect(row.getByTestId("preview-sets-to-win")).toContainText(
       `Sets to win: ${data.sets_to_win}`
     );
-    await expect(page.getByTestId("preview-score-to-win")).toContainText(
+    await expect(row.getByTestId("preview-score-to-win")).toContainText(
       `Score to win a set: ${data.score_to_win}`
     );
-    await expect(page.getByTestId("preview-win-by-margin")).toContainText(
+    await expect(row.getByTestId("preview-win-by-margin")).toContainText(
       `(win by ${data.win_by_margin})`
     );
-    await expect(page.getByTestId("preview-hard-cap")).toContainText(
+    await expect(row.getByTestId("preview-hard-cap")).toContainText(
       `(hard cap ${data.hard_cap})`
     );
-    await expect(page.getByTestId("preview-victory-points")).toContainText(
+    await expect(row.getByTestId("preview-victory-points")).toContainText(
       `Victory Points - Win: ${data.victory_points_win}, Draw: ${data.victory_points_draw}`
     );
-    await expect(page.getByTestId("preview-expected-duration")).toContainText(
+    await expect(row.getByTestId("preview-expected-duration")).toContainText(
       `Expected Match Duration: ${data.expected_match_duration_minutes} minutes`
     );
   },

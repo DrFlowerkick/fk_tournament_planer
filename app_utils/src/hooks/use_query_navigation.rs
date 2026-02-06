@@ -134,7 +134,8 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
                 new_url.search_params().to_query_string()
             )
         };
-
+    let matched_path = use_matched();
+    let url_is_matched_route = Signal::derive(move || url.get().path() == matched_path.get());
     UseQueryNavigationReturn {
         get_query,
         url_update_query,
@@ -142,6 +143,7 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
         url_matched_route,
         url_matched_route_update_query,
         url_matched_route_remove_query,
+        url_is_matched_route,
     }
 }
 
@@ -179,4 +181,7 @@ pub struct UseQueryNavigationReturn<
 
     /// Same as `url_matched_route`, but removes a specific query parameter.
     pub url_matched_route_remove_query: UrlMatchedRouteRemoveQueryFn,
+
+    /// Signal to check if the current URL matches the route of the router.
+    pub url_is_matched_route: Signal<bool>,
 }

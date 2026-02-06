@@ -20,8 +20,8 @@ use app_utils::{
     state::{
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
-        sport_config_editor::SportConfigEditorContext,
-        toast_state::{ToastContext, ToastVariant},
+        sport_config::SportConfigEditorContext,
+        toast_state::ToastContext,
     },
 };
 use leptos::prelude::*;
@@ -176,10 +176,7 @@ pub fn EditSportConfig(sport_config: Option<SportConfig>, refetch: Callback<()>)
     Effect::new(move || match save_sport_config.value().get() {
         Some(Ok(sc)) => {
             save_sport_config.clear();
-            toast_ctx.add(
-                "Sport Configuration saved successfully",
-                ToastVariant::Success,
-            );
+            toast_ctx.success("Sport Configuration saved successfully");
             let nav_url = url_matched_route_update_query(
                 "sport_config_id",
                 &sc.get_id().to_string(),

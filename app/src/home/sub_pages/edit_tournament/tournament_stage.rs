@@ -12,6 +12,7 @@ use app_utils::{
         use_query_navigation::{
             MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
         },
+        use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{use_stage_number_params, use_tournament_base_id_query},
     server_fn::stage::load_stage_by_number,
@@ -20,7 +21,7 @@ use app_utils::{
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
     },
 };
-use leptos::prelude::*;
+use leptos::{html::H2, prelude::*};
 use leptos_router::{components::A, nested_router::Outlet};
 use uuid::Uuid;
 
@@ -127,7 +128,9 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        url_matched_route, ..
+        url_matched_route,
+        url_is_matched_route,
+        ..
     } = use_query_navigation();
 
     let editor_title = move || {
@@ -143,6 +146,10 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
         }
     };
 
+    // scroll into view handling
+    let scroll_ref = NodeRef::<H2>::new();
+    use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
+
     view! {
         // hide stage editor for single stage and swiss system tournaments
         <Show when=move || !tournament_editor_context.is_hiding_stage_editor.get()>
@@ -155,7 +162,11 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                         data-testid="stage-editor-root"
                     >
                         <div class="w-full flex justify-between items-center pb-4">
-                            <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
+                            <h2
+                                class="text-3xl font-bold"
+                                data-testid="stage-editor-title"
+                                node_ref=scroll_ref
+                            >
                                 {move || editor_title()}
                             </h2>
                         </div>

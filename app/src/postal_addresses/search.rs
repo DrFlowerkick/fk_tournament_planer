@@ -20,7 +20,6 @@ use cr_leptos_axum_socket::use_client_registry_socket;
 use isocountry::CountryCode;
 use leptos::prelude::*;
 use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
-use std::sync::Arc;
 use uuid::Uuid;
 
 fn display_country(code: &str) -> String {
@@ -71,9 +70,9 @@ pub fn SearchPostalAddress() -> impl IntoView {
 
     let is_addr_res_error = move || matches!(addr_res.get(), Some(Err(_)));
 
-    let refetch = Arc::new(move || addr_res.refetch());
+    let refetch = Callback::new(move |()| addr_res.refetch());
     // update address via socket
-    use_client_registry_socket(topic, version, refetch);
+    use_client_registry_socket(topic.into(), version.into(), refetch);
     // update address via sse
     //use_client_registry_sse(topic, version, refetch);
 

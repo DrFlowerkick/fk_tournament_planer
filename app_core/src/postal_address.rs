@@ -490,8 +490,8 @@ mod test_validate {
         let errs = res.unwrap_err();
         assert_eq!(
             errs.errors.len(),
-            4,
-            "should report all four missing fields"
+            5,
+            "should report all four missing fields plus invalid country code"
         );
         assert!(
             errs.errors

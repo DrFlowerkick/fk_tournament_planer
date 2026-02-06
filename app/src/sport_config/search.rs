@@ -21,7 +21,6 @@ use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{logging::log, prelude::*};
 use leptos_router::{components::A, hooks::use_query};
 use reactive_stores::Store;
-use std::sync::Arc;
 use uuid::Uuid;
 
 #[component]
@@ -90,9 +89,9 @@ pub fn SearchSportConfig() -> impl IntoView {
 
     let is_sport_config_res_error = move || matches!(sport_config_res.get(), Some(Err(_)));
 
-    let refetch = Arc::new(move || sport_config_res.refetch());
+    let refetch = Callback::new(move |()| sport_config_res.refetch());
     // update sport config via socket
-    use_client_registry_socket(topic, version, refetch);
+    use_client_registry_socket(topic.into(), version.into(), refetch);
     // update sport config via sse
     //use_client_registry_sse(topic, version, refetch);
 
@@ -103,7 +102,7 @@ pub fn SearchSportConfig() -> impl IntoView {
             if name.len() > 0
                 && let Some(sport_id) = maybe_sport_id
             {
-                return list_sport_configs(sport_id, name).await;
+                return list_sport_configs(sport_id, name, None).await;
             }
             Ok(vec![])
         },

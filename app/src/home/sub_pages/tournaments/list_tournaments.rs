@@ -12,12 +12,13 @@ use app_utils::{
         use_query_navigation::{
             MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
         },
+        use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::use_sport_id_query,
     server_fn::tournament_base::list_tournament_bases,
     state::error_state::PageErrorContext,
 };
-use leptos::prelude::*;
+use leptos::{html::H2, prelude::*};
 use leptos_router::{NavigateOptions, components::A, hooks::use_navigate, nested_router::Outlet};
 use uuid::Uuid;
 
@@ -27,6 +28,7 @@ pub fn ListTournaments() -> impl IntoView {
     let UseQueryNavigationReturn {
         url_update_query,
         url_remove_query,
+        url_is_matched_route,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -40,6 +42,9 @@ pub fn ListTournaments() -> impl IntoView {
     });
 
     // Signals for Filters
+    // ToDo: consider using query search params as described in
+    // https://book.leptos.dev/router/20_form.html
+    // This would allow users to share filtered views via URL and preserve filter state on page reloads.
     let (status, set_status) = signal(Some(TournamentState::Draft));
     let set_status = Callback::new(move |new_status: Option<TournamentState>| {
         set_status.set(new_status);
@@ -118,13 +123,19 @@ pub fn ListTournaments() -> impl IntoView {
     // on_cancel handler
     let on_cancel = use_on_cancel();
 
+    // scroll into view handling
+    let scroll_ref = NodeRef::<H2>::new();
+    use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
+
     view! {
         <div
             class="flex flex-col w-full max-w-6xl mx-auto py-8 space-y-6 px-4"
             data-testid="tournaments-list-root"
         >
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 class="text-3xl font-bold">"List Tournaments"</h2>
+                <h2 class="text-3xl font-bold" node_ref=scroll_ref>
+                    "List Tournaments"
+                </h2>
             </div>
 
             // --- Filter Bar ---

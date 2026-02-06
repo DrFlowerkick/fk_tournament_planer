@@ -14,6 +14,7 @@ use app_utils::{
         use_query_navigation::{
             MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
         },
+        use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{use_sport_id_query, use_tournament_base_id_query},
     server_fn::tournament_base::load_tournament_base,
@@ -22,7 +23,7 @@ use app_utils::{
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
     },
 };
-use leptos::prelude::*;
+use leptos::{html::H2, prelude::*};
 use leptos_router::{components::A, hooks::use_url, nested_router::Outlet};
 use uuid::Uuid;
 
@@ -148,11 +149,17 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        url_matched_route, ..
+        url_matched_route,
+        url_is_matched_route,
+        ..
     } = use_query_navigation();
 
     // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
+
+    // scroll into view handling
+    let scroll_ref = NodeRef::<H2>::new();
+    use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
         <div
@@ -160,7 +167,11 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
             data-testid="tournament-editor-root"
         >
             <div class="w-full flex justify-between items-center pb-4">
-                <h2 class="text-3xl font-bold" data-testid="tournament-editor-title">
+                <h2
+                    class="text-3xl font-bold"
+                    data-testid="tournament-editor-title"
+                    node_ref=scroll_ref
+                >
                     {move || { if is_new { "Plan New Tournament" } else { "Edit Tournament" } }}
                 </h2>
             </div>

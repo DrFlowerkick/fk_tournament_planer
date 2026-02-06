@@ -11,7 +11,7 @@ use app_utils::{
         DurationInputUnit, DurationInputWithValidation, EnumSelectWithValidation,
         NumberInputWithValidation,
     },
-    state::sport_config_editor::SportConfigEditorContext,
+    state::sport_config::SportConfigEditorContext,
 };
 use leptos::prelude::*;
 use shared::SportPortWebUi;

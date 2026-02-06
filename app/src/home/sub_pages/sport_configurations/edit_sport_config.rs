@@ -14,17 +14,18 @@ use app_utils::{
         use_query_navigation::{
             MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
         },
+        use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{use_sport_config_id_query, use_sport_id_query},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
-        sport_config_editor::SportConfigEditorContext,
-        toast_state::{ToastContext, ToastVariant},
+        sport_config::{SportConfigEditorContext, SportConfigListContext},
+        toast_state::ToastContext,
     },
 };
-use leptos::prelude::*;
+use leptos::{html::H2, prelude::*};
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
@@ -114,9 +115,10 @@ pub fn EditSportConfiguration(
     sport_config: Option<SportConfig>,
     refetch: Callback<()>,
 ) -> impl IntoView {
-    // --- Hooks, Navigation & global state ---
+    // --- Hooks, Navigation & local and global state ---
     let UseQueryNavigationReturn {
         url_matched_route_update_query,
+        url_is_matched_route,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -126,6 +128,9 @@ pub fn EditSportConfiguration(
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+
+    let sport_config_list_ctx = expect_context::<SportConfigListContext>();
+
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
@@ -179,16 +184,23 @@ pub fn EditSportConfiguration(
     Effect::new(move || match save_sport_config.value().get() {
         Some(Ok(sc)) => {
             save_sport_config.clear();
-            toast_ctx.add(
-                "Sport Configuration saved successfully",
-                ToastVariant::Success,
-            );
+            toast_ctx.success("Sport Configuration saved successfully");
+            if is_new {
+                sport_config_list_ctx.trigger_refetch();
+            }
             let nav_url = url_matched_route_update_query(
                 "sport_config_id",
                 &sc.get_id().to_string(),
                 MatchedRouteHandler::RemoveSegment(1),
             );
-            navigate(&nav_url, NavigateOptions::default());
+            navigate(
+                &nav_url,
+                NavigateOptions {
+                    replace: true,
+                    scroll: false,
+                    ..Default::default()
+                },
+            );
         }
         Some(Err(err)) => {
             save_sport_config.clear();
@@ -223,11 +235,15 @@ pub fn EditSportConfiguration(
                 .unwrap_or(false)
     };
 
+    // scroll into view handling
+    let scroll_ref = NodeRef::<H2>::new();
+    use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
+
     view! {
         <div class="card w-full bg-base-100 shadow-xl">
             <div class="card-body">
                 // ToDo: header as part of card?
-                <h2 class="card-title">
+                <h2 class="card-title" node_ref=scroll_ref>
                     {move || {
                         format!(
                             "{} {} Configuration",

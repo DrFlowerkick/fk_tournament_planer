@@ -1,4 +1,4 @@
-import { expect, Page } from "@playwright/test";
+import { expect, Page, Locator } from "@playwright/test";
 import { runSportConfigSharedTests, SportConfigTestAdapter } from "./shared";
 import { fillAndBlur, selectors } from "../../helpers";
 
@@ -53,15 +53,15 @@ const ddcSportAdapter: SportConfigTestAdapter = {
       data.expected_rally_duration_seconds.toString(),
     );
   },
-  assertSpecificFields: async (page: Page, data: any) => {
+  assertSpecificFields: async (row: Locator, data: any) => {
     // Check preview
-    await expect(page.getByTestId("preview-set-config")).toContainText(
+    await expect(row.getByTestId("preview-set-config")).toContainText(
       `Sets to Win: ${data.sets_to_win}`
     );
-    await expect(page.getByTestId("preview-set-winning-config")).toContainText(
+    await expect(row.getByTestId("preview-set-winning-config")).toContainText(
       `Score to Win: ${data.score_to_win}, Hard Cap: ${data.hard_cap}, Win by Margin: ${data.win_by_margin}`
     );
-    await expect(page.getByTestId("preview-victory-points")).toContainText(
+    await expect(row.getByTestId("preview-victory-points")).toContainText(
       `Victory Points - Win: ${data.victory_points_win}, Draw: ${data.victory_points_draw}`
     );
 
@@ -75,7 +75,7 @@ const ddcSportAdapter: SportConfigTestAdapter = {
       data.expected_rally_duration_seconds * max_sets * max_rallies_per_set;
     const expected_minutes = Math.floor(total_seconds / 60);
 
-    await expect(page.getByTestId("preview-expected-duration")).toContainText(
+    await expect(row.getByTestId("preview-expected-duration")).toContainText(
       `Expected Match Duration: ${expected_minutes} minutes`
     );
   },

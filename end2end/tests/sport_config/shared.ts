@@ -1,8 +1,7 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect, Page, Locator } from "@playwright/test";
 import {
-  openSportSelectionAndConfigList,
+  openSportConfigurationList,
   clickEditSportConfig,
-  searchAndOpenByNameOnCurrentPage,
   extractQueryParamFromUrl,
   waitForAppHydration,
   selectors
@@ -12,7 +11,7 @@ export interface SportConfigTestAdapter {
   sportName: string;
   generateData: () => any;
   fillSpecificFields: (page: Page, data: any) => Promise<void>;
-  assertSpecificFields: (page: Page, data: any) => Promise<void>;
+  assertSpecificFields: (row: Locator, data: any) => Promise<void>;
 }
 
 export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
@@ -27,19 +26,11 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       const SC = selectors(page).sportConfig;
 
       await test.step("Navigate to New Sport Config", async () => {
-        await openSportSelectionAndConfigList(page);
-
-        // Select the sport plugin
-        await SC.pluginSelector.input.click();
-        await SC.pluginSelector.input.fill(adapter.sportName);
-
-        // Wait for suggestions and click the first one
-        await expect(SC.pluginSelector.items.first()).toBeVisible();
-        await SC.pluginSelector.items.first().click();
+        await openSportConfigurationList(page, adapter.sportName);
 
         // Wait for the "New" button to be enabled/visible if it depends on selection
-        await expect(SC.search.btnNew).toBeVisible();
-        await SC.search.btnNew.click();
+        await expect(SC.list.btnNew).toBeVisible();
+        await SC.list.btnNew.click();
         await expect(SC.form.root).toBeVisible();
       });
 
@@ -50,28 +41,19 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         await SC.form.btnSave.click();
 
         // Wait for save to complete
-        await expect(SC.search.dropdown.input).toHaveValue(initialName);
+        await expect(SC.list.previewByName(initialName)).toBeVisible();
         // Expect edit inputs are not visible anymore
         await expect(SC.form.root).toBeHidden();
-      });
-
-      await test.step("Verify Created Config in List", async () => {
-        await searchAndOpenByNameOnCurrentPage(
-          SC.search.dropdown,
-          initialName,
-          {
-            clearFirst: true,
-            expectUnique: true,
-          },
-        );
 
         // Verify preview
-        await expect(SC.search.preview).toBeVisible();
-        await expect(SC.search.preview).toContainText(initialName);
-        await adapter.assertSpecificFields(page, initialData);
+        await expect(SC.list.previewByName(initialName)).toContainText(initialName);
+        await adapter.assertSpecificFields(SC.list.previewByName(initialName), initialData);
       });
 
       await test.step("Edit Config", async () => {
+        const row = SC.list.previewByName(initialName);
+        row.click();
+        await expect(SC.list.btnEdit).toBeVisible();
         await clickEditSportConfig(page);
 
         // Update fields
@@ -79,22 +61,11 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         await adapter.fillSpecificFields(page, updatedData);
 
         await SC.form.btnSave.click();
-        await expect(SC.search.dropdown.input).toBeVisible();
-      });
+        await expect(SC.list.previewByName(updatedName)).toBeVisible();
 
-      await test.step("Verify Updated Config", async () => {
-        await searchAndOpenByNameOnCurrentPage(
-          SC.search.dropdown,
-          updatedName,
-          {
-            clearFirst: true,
-            expectUnique: true,
-          },
-        );
-
-        await expect(SC.search.preview).toBeVisible();
-        await expect(SC.search.preview).toContainText(updatedName);
-        await adapter.assertSpecificFields(page, updatedData);
+        // Verify preview
+        await expect(SC.list.previewByName(updatedName)).toContainText(updatedName);
+        await adapter.assertSpecificFields(SC.list.previewByName(updatedName), updatedData);
       });
     });
 
@@ -116,25 +87,17 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       try {
         // --- User A creates the config ---
         await test.step("User A creates config", async () => {
-          await openSportSelectionAndConfigList(pageA);
+          await openSportConfigurationList(pageA, adapter.sportName);
 
-          // Select the sport plugin
-          await SC_A.pluginSelector.input.click();
-          await SC_A.pluginSelector.input.fill(adapter.sportName);
-
-          // Wait for suggestions and click the first one
-          await expect(SC_A.pluginSelector.items.first()).toBeVisible();
-          await SC_A.pluginSelector.items.first().click();
-
-          await expect(SC_A.search.btnNew).toBeVisible();
-          await SC_A.search.btnNew.click();
+          await expect(SC_A.list.btnNew).toBeVisible();
+          await SC_A.list.btnNew.click();
 
           await SC_A.form.inputName.fill(initialName);
           await adapter.fillSpecificFields(pageA, initialData);
 
           await SC_A.form.btnSave.click();
           // Wait for save to complete
-          await expect(SC_A.search.dropdown.input).toHaveValue(initialName);
+          await expect(SC_A.list.previewByName(initialName)).toBeVisible();
           // Expect edit inputs are not visible anymore
           await expect(SC_A.form.root).toBeHidden();
         });
@@ -147,7 +110,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         // --- User B edits the config ---
         await test.step("User B edits config", async () => {
           await pageB.goto(
-            `/sport/edit_sc?sport_id=${sportId}&sport_config_id=${configId}`,
+            `/sport-configurations/edit?sport_id=${sportId}&sport_config_id=${configId}`,
           );
 
           // Ensure explicit navigation waits for WASM hydration before interacting
@@ -162,13 +125,13 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
 
           await SC_B.form.btnSave.click();
           // Wait for save to complete
-          await expect(SC_B.search.dropdown.input).toBeVisible();
+          await expect(SC_B.list.previewByName(updatedName)).toBeVisible();
         });
 
         // --- User A sees updates live ---
         await test.step("User A sees updates live", async () => {
-          await expect(SC_A.search.preview).toContainText(updatedName);
-          await adapter.assertSpecificFields(pageA, updatedData);
+          await expect(SC_A.list.previewByName(updatedName)).toContainText(updatedName);
+          await adapter.assertSpecificFields(SC_A.list.previewByName(updatedName), updatedData);
         });
       } finally {
         await ctxA.close();

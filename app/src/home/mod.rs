@@ -12,7 +12,7 @@ use app_utils::{
     params::{SportIdQuery, use_sport_id_query},
     state::{
         global_state::{GlobalState, GlobalStateStoreFields},
-        toast_state::{ToastContext, ToastVariant},
+        toast_state::ToastContext,
     },
 };
 use leptos::prelude::*;
@@ -65,7 +65,7 @@ pub fn HomePage() -> impl IntoView {
 
     Effect::new(move || {
         if is_sport_id_invalid() {
-            toast_context.add("Invalid sport id", ToastVariant::Error);
+            toast_context.error("Invalid sport id");
             navigate(
                 "/",
                 NavigateOptions {
@@ -74,7 +74,7 @@ pub fn HomePage() -> impl IntoView {
                 },
             );
         } else if url.get().path() != "/" && !is_sport_id_given() {
-            toast_context.add("Missing sport id", ToastVariant::Error);
+            toast_context.error("Missing sport id");
             navigate(
                 "/",
                 NavigateOptions {

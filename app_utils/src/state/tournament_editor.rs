@@ -10,10 +10,7 @@ use crate::{
     },
     params::{use_group_number_params, use_stage_number_params, use_tournament_base_id_query},
     server_fn::tournament_editor::SaveTournamentEditorDiff,
-    state::{
-        error_state::PageErrorContext,
-        toast_state::{ToastContext, ToastVariant},
-    },
+    state::{error_state::PageErrorContext, toast_state::ToastContext},
 };
 use app_core::{
     Stage, TournamentEditor, TournamentMode, TournamentState, utils::validation::ValidationResult,
@@ -177,7 +174,7 @@ impl TournamentEditorContext {
             let navigate = navigate.clone();
             move || match save_diff.value().get() {
                 Some(Ok(base_id)) => {
-                    toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
+                    toast_ctx.success("Tournament saved successfully");
                     // clear save action state
                     save_diff.clear();
                     if tournament_id.get().is_some() {

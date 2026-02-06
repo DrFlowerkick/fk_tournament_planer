@@ -18,9 +18,8 @@ use app_utils::{
     params::use_address_id_query,
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::{
-        error_state::PageErrorContext,
-        postal_address_editor::PostalAddressEditorContext,
-        toast_state::{ToastContext, ToastVariant},
+        error_state::PageErrorContext, postal_address_editor::PostalAddressEditorContext,
+        toast_state::ToastContext,
     },
 };
 use leptos::prelude::*;
@@ -147,7 +146,7 @@ pub fn EditPostalAddress(
         match save_postal_address.value().get() {
             Some(Ok(pa)) => {
                 save_postal_address.clear();
-                toast_ctx.add("Postal Address saved successfully", ToastVariant::Success);
+                toast_ctx.success("Postal Address saved successfully");
                 let nav_url = url_matched_route_update_query(
                     "address_id",
                     &pa.get_id().to_string(),

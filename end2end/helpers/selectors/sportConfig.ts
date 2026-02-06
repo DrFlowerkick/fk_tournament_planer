@@ -2,18 +2,14 @@ import type { Page } from "@playwright/test";
 import { getDropdown } from "./common";
 
 export const SPORT_IDS = {
-  pluginSelect: {
-    input: "sport_id-search-input",
-    suggestList: "sport_id-search-suggest",
-    suggestItem: "sport_id-search-suggest-item",
-  },
-  search: {
-    input: "sport_config_id-search-input",
-    suggestList: "sport_config_id-search-suggest",
-    suggestItem: "sport_config_id-search-suggest-item",
-    btnNew: "btn-new-sport-config",
-    btnEdit: "btn-edit-sport-config",
-    preview: "sport-config-preview",
+  list: {
+    filterName: "filter-name-search",
+    emptyList: "sport-configs-list-empty",
+    table: "sport-configs-table",
+    btnNew: "action-btn-new",
+    btnEdit: "action-btn-edit",
+    previewPrefix: "sport-configs-preview-",
+    rowPrefix: "sport-configs-row-",
   },
   form: {
     root: "form-sport-config",
@@ -28,12 +24,31 @@ export const SPORT_IDS = {
 
 export function getSportSelectors(page: Page) {
   return {
-    pluginSelector: getDropdown(page, SPORT_IDS.pluginSelect),
-    search: {
-      dropdown: getDropdown(page, SPORT_IDS.search),
-      preview: page.getByTestId(SPORT_IDS.search.preview),
-      btnNew: page.getByTestId(SPORT_IDS.search.btnNew),
-      btnEdit: page.getByTestId(SPORT_IDS.search.btnEdit),
+    list: {
+      // 1. If you know the ID (e.g. from extracts)
+      previewById: (id: string) =>
+        page.getByTestId(`${SPORT_IDS.list.previewPrefix}${id}`),
+
+      // 2. If you know the name (Robust E2E approach)
+      // Finds the row containing the name, then finds the preview inside that row
+      previewByName: (name: string) =>
+        page
+          .getByRole("row")
+          .filter({ hasText: name })
+          .getByTestId(new RegExp(`^${SPORT_IDS.list.previewPrefix}`)),
+
+      // 3. Just get the first visible one (useful if list is filtered to 1 result)
+      anyPreview: page
+        .locator(`[data-testid^="${SPORT_IDS.list.previewPrefix}"]`)
+        .first(),
+      anyRow: page
+        .locator(`[data-testid^="${SPORT_IDS.list.rowPrefix}"]`)
+        .first(),
+      filterName: page.getByTestId(SPORT_IDS.list.filterName),
+      emptyList: page.getByTestId(SPORT_IDS.list.emptyList),
+      table: page.getByTestId(SPORT_IDS.list.table),
+      btnNew: page.getByTestId(SPORT_IDS.list.btnNew),
+      btnEdit: page.getByTestId(SPORT_IDS.list.btnEdit),
     },
     form: {
       root: page.getByTestId(SPORT_IDS.form.root),
