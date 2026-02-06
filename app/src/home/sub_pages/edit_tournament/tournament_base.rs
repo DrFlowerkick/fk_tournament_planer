@@ -11,7 +11,10 @@ use app_utils::{
     },
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+        use_query_navigation::{
+            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+        },
+        use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{use_sport_id_query, use_tournament_base_id_query},
     server_fn::tournament_base::load_tournament_base,
@@ -20,7 +23,7 @@ use app_utils::{
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
     },
 };
-use leptos::prelude::*;
+use leptos::{html::H2, prelude::*};
 use leptos_router::{components::A, hooks::use_url, nested_router::Outlet};
 use uuid::Uuid;
 
@@ -69,7 +72,6 @@ pub fn LoadTournament() -> impl IntoView {
     // retry function for error handling
     let refetch = Callback::new(move |()| {
         refetch_trigger.trigger_refetch();
-        base_res.refetch();
     });
 
     // cancel function for cancel button and error handling
@@ -147,12 +149,17 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        url_route_with_sub_path,
+        url_matched_route,
+        url_is_matched_route,
         ..
     } = use_query_navigation();
 
     // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
+
+    // scroll into view handling
+    let scroll_ref = NodeRef::<H2>::new();
+    use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
         <div
@@ -160,7 +167,11 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
             data-testid="tournament-editor-root"
         >
             <div class="w-full flex justify-between items-center pb-4">
-                <h2 class="text-3xl font-bold" data-testid="tournament-editor-title">
+                <h2
+                    class="text-3xl font-bold"
+                    data-testid="tournament-editor-title"
+                    node_ref=scroll_ref
+                >
                     {move || { if is_new { "Plan New Tournament" } else { "Edit Tournament" } }}
                 </h2>
             </div>
@@ -227,9 +238,6 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                     name="tournament-mode"
                                     value=tournament_editor_context.base_mode
                                     set_value=tournament_editor_context.set_base_mode
-                                    validation_result=tournament_editor_context.validation_result
-                                    object_id=None
-                                    field="No Direct Validation"
                                 />
 
                                 <Show when=move || {
@@ -263,7 +271,9 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 view! {
                                     <div class="w-full mt-6">
                                         <A
-                                            href=move || url_route_with_sub_path("0/0")
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend("0/0"),
+                                            )
                                             attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid="link-configure-single-stage"
                                             scroll=false
@@ -281,7 +291,9 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 view! {
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
                                         <A
-                                            href=move || url_route_with_sub_path("0")
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend("0"),
+                                            )
                                             attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid="link-configure-pool-stage"
                                             scroll=false
@@ -290,7 +302,9 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                             "Edit Pool Stage"
                                         </A>
                                         <A
-                                            href=move || url_route_with_sub_path("1")
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend("1"),
+                                            )
                                             attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid="link-configure-final-stage"
                                             scroll=false
@@ -308,7 +322,9 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 view! {
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
                                         <A
-                                            href=move || url_route_with_sub_path("0")
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend("0"),
+                                            )
                                             attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid="link-configure-first-pool-stage"
                                             scroll=false
@@ -317,7 +333,9 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                             "Edit First Pool Stage"
                                         </A>
                                         <A
-                                            href=move || url_route_with_sub_path("1")
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend("1"),
+                                            )
                                             attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid="link-configure-second-pool-stage"
                                             scroll=false
@@ -326,7 +344,9 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                             "Edit Second Pool Stage"
                                         </A>
                                         <A
-                                            href=move || url_route_with_sub_path("2")
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend("2"),
+                                            )
                                             attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid="link-configure-final-stage"
                                             scroll=false
@@ -345,7 +365,9 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 view! {
                                     <div class="w-full mt-6">
                                         <A
-                                            href=move || url_route_with_sub_path("0/0")
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend("0/0"),
+                                            )
                                             attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid="link-configure-swiss-system"
                                             scroll=false

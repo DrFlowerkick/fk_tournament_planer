@@ -8,7 +8,7 @@ import {
   expectSavesDisabled,
   openEditForm,
   waitForPostalAddressListUrl,
-  typeThenBlur,
+  fillAndBlur,
   selectors,
 } from "../../helpers";
 
@@ -56,32 +56,33 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       await expect(pageB.locator('input[name="version"]')).toHaveValue("0");
 
       const editedByB = `${initial.name} (B)`;
-      await typeThenBlur(PA_B.form.inputName, editedByB, PA_B.form.inputStreet);
+      await fillAndBlur(PA_B.form.inputName, editedByB);
       await clickSave(pageB); // server -> version 1
 
       // -------------------- A edits stale & tries to save ---------
       const editedByA = `${initial.name} (A)`;
-      await typeThenBlur(PA_A.form.inputName, editedByA, PA_A.form.inputStreet);
+      await fillAndBlur(PA_A.form.inputName, editedByA);
       await PA_A.form.btnSave.click(); // expect 409 and conflict UI
 
       // -------------------- Assert minimal conflict UI ------------
       // A banner should appear, and the reload button should be visible.
-      await expect(BA_A.acknowledgment.root).toBeVisible();
-      await expect(BA_A.acknowledgment.btnAction).toBeVisible();
+      await expect(BA_A.globalErrorBanner.root).toBeVisible();
+      await expect(BA_A.globalErrorBanner.btnRetry).toBeVisible();
+      await expect(BA_A.globalErrorBanner.btnCancel).toBeVisible();
 
       // The banner should contain a warning message.
-      await expect(BA_A.acknowledgment.root).toContainText(
-        "A newer version of this address exists. Reloading will discard your changes.",
+      await expect(BA_A.globalErrorBanner.root).toContainText(
+        "The record has been modified in the meantime. Please reload. Any unsaved changes will be lost.",
       );
 
       // Save must be disabled while the conflict is unresolved.
       await expect(PA_A.form.btnSave).toBeDisabled();
 
       // -------------------- Resolve via reload --------------------
-      await BA_A.acknowledgment.btnAction.click();
+      await BA_A.globalErrorBanner.btnRetry.click();
 
       // After reload, the banner should be gone and the form-version should bump to "1".
-      await expect(BA_A.acknowledgment.root).toBeHidden();
+      await expect(BA_A.globalErrorBanner.root).toBeHidden();
       await expect(PA_A.form.hiddenVersion).toHaveValue("1");
 
       // The name input should now reflect B's saved value.

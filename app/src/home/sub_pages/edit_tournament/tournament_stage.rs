@@ -9,7 +9,10 @@ use app_utils::{
     },
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+        use_query_navigation::{
+            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+        },
+        use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{use_stage_number_params, use_tournament_base_id_query},
     server_fn::stage::load_stage_by_number,
@@ -18,7 +21,7 @@ use app_utils::{
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
     },
 };
-use leptos::prelude::*;
+use leptos::{html::H2, prelude::*};
 use leptos_router::{components::A, nested_router::Outlet};
 use uuid::Uuid;
 
@@ -61,7 +64,6 @@ pub fn LoadTournamentStage() -> impl IntoView {
     // retry function for error handling
     let refetch = Callback::new(move |()| {
         refetch_trigger.trigger_refetch();
-        stage_res.refetch();
     });
 
     // cancel function for cancel button and error handling
@@ -126,7 +128,8 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        url_route_with_sub_path,
+        url_matched_route,
+        url_is_matched_route,
         ..
     } = use_query_navigation();
 
@@ -143,6 +146,10 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
         }
     };
 
+    // scroll into view handling
+    let scroll_ref = NodeRef::<H2>::new();
+    use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
+
     view! {
         // hide stage editor for single stage and swiss system tournaments
         <Show when=move || !tournament_editor_context.is_hiding_stage_editor.get()>
@@ -155,7 +162,11 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                         data-testid="stage-editor-root"
                     >
                         <div class="w-full flex justify-between items-center pb-4">
-                            <h2 class="text-3xl font-bold" data-testid="stage-editor-title">
+                            <h2
+                                class="text-3xl font-bold"
+                                data-testid="stage-editor-title"
+                                node_ref=scroll_ref
+                            >
                                 {move || editor_title()}
                             </h2>
                         </div>
@@ -203,7 +214,9 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                                 children=move |i| {
                                     view! {
                                         <A
-                                            href=move || url_route_with_sub_path(&i.to_string())
+                                            href=move || url_matched_route(
+                                                MatchedRouteHandler::Extend(&i.to_string()),
+                                            )
                                             attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                             attr:data-testid=format!("link-configure-group-{}", i)
                                             scroll=false

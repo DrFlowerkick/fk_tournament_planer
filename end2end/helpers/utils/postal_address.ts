@@ -2,7 +2,7 @@
 import { expect, Page } from "@playwright/test";
 import { selectors } from "../selectors";
 import {
-  typeThenBlur,
+  fillAndBlur,
   selectThenBlur,
   extractQueryParamFromUrl,
   waitForAppHydration,
@@ -149,48 +149,32 @@ export async function fillFields(
   const PA = selectors(page).postalAddress;
   // Name
   if (fields.name !== undefined) {
-    await typeThenBlur(PA.form.inputName, fields.name, PA.form.inputStreet);
+    await fillAndBlur(PA.form.inputName, fields.name);
   }
 
   // Street
   if (fields.street !== undefined) {
-    await typeThenBlur(
-      PA.form.inputStreet,
-      fields.street,
-      PA.form.inputCountry,
-    );
+    await fillAndBlur(PA.form.inputStreet, fields.street);
   }
 
   // Country before postal code (for postal code validation)
   if (fields.country !== undefined) {
-    await selectThenBlur(
-      PA.form.inputCountry,
-      fields.country,
-      PA.form.inputPostalCode,
-    );
+    await selectThenBlur(PA.form.inputCountry, fields.country);
   }
 
   // Postal code
   if (fields.postal_code !== undefined) {
-    await typeThenBlur(
-      PA.form.inputPostalCode,
-      fields.postal_code,
-      PA.form.inputLocality,
-    );
+    await fillAndBlur(PA.form.inputPostalCode, fields.postal_code);
   }
 
   // Locality
   if (fields.locality !== undefined) {
-    await typeThenBlur(
-      PA.form.inputLocality,
-      fields.locality,
-      PA.form.inputRegion,
-    );
+    await fillAndBlur(PA.form.inputLocality, fields.locality);
   }
 
   // region
   if (fields.region !== undefined) {
-    await typeThenBlur(PA.form.inputRegion, fields.region, PA.form.inputName);
+    await fillAndBlur(PA.form.inputRegion, fields.region);
   }
 }
 

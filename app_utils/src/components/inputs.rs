@@ -1,7 +1,7 @@
 //! Input components for the app
 
 use crate::{enum_utils::SelectableOption, hooks::is_field_valid::is_object_field_valid};
-use app_core::utils::validation::{FieldResult, ValidationResult};
+use app_core::utils::validation::ValidationResult;
 use displaydoc::Display;
 use leptos::prelude::*;
 use std::fmt::Display;
@@ -9,80 +9,31 @@ use std::str::FromStr;
 use std::time::Duration;
 use uuid::Uuid;
 
-// ToDo: deprecated, replace with ValidatedTextInput
-#[component]
-pub fn ValidatedTextInput(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
-    value: RwSignal<String>,
-    #[prop(into)] validation_error: Signal<FieldResult<()>>,
-    // Context signals to handle placeholder logic internally
-    #[prop(into)] is_new: Signal<bool>,
-    // Optional on blur callback, e.g. for normalization
-    #[prop(into, optional)] on_blur: Option<Callback<()>>,
-) -> impl IntoView {
-    // Auto-generate placeholder text based on label
-    let placeholder_text = format!("Enter {}...", label.to_lowercase());
-
-    view! {
-        <div class="form-control w-full">
-            <label class="label">
-                <span class="label-text">{label}</span>
-            </label>
-            <input
-                type="text"
-                class="input input-bordered w-full"
-                class:input-error=move || validation_error.get().is_err()
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("input-{}", name)
-                aria-invalid=move || validation_error.get().is_err().to_string()
-                prop:value=value
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
-                }
-                on:input:target=move |ev| value.set(ev.target().value())
-                on:blur=move |_| {
-                    if let Some(cb) = on_blur {
-                        cb.run(());
-                    }
-                }
-            />
-            <Show when=move || validation_error.get().is_err()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
-                    </span>
-                </label>
-            </Show>
-        </div>
-    }
-}
-
-// ToDo: replace all instances of ValidatedTextInput and TextInput with this more advanced component
 #[component]
 pub fn TextInputWithValidation<T>(
     /// Label text for the input
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
     value: Signal<Option<T>>,
     /// Callback to push changes to source of value
-    /// Using Callback<T> allows passing closures and Callbacks.
-    set_value: Callback<T>,
+    /// Using Callback<Option<T>> allows passing closures and Callbacks.
+    set_value: Callback<Option<T>>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
@@ -118,15 +69,9 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
 
     view! {
         <div class="form-control w-full">
@@ -138,9 +83,9 @@ where
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
-                name=name.clone()
+                name=name
                 // Auto-generate test-id
-                data-testid=format!("input-{}", name)
+                data-testid=data_testid
                 placeholder=placeholder_text
                 // USER TYPING: Update draft to take control from the core
                 on:input:target=move |ev| {
@@ -149,9 +94,15 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
+                    if new_val.is_empty() {
+                        set_value.run(None);
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                        return;
+                    }
                     match new_val.parse::<T>() {
                         Ok(val) => {
-                            set_value.run(val);
+                            set_value.run(Some(val));
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
@@ -180,151 +131,48 @@ where
     }
 }
 
-// ToDo: deprecated, replace with ValidatedTextInput
 #[component]
-pub fn TextInput(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
-    value: RwSignal<String>,
-    #[prop(into)] optional: bool,
-    // Context signals to handle placeholder logic internally
-    #[prop(into)] is_new: Signal<bool>,
-    // Optional on blur callback, e.g. for normalization
-    #[prop(into, optional)] on_blur: Option<Callback<()>>,
-) -> impl IntoView {
-    // Auto-generate placeholder text based on label
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
-
-    view! {
-        <div class="form-control w-full">
-            <label class="label">
-                <span class="label-text">{label.clone()}</span>
-            </label>
-            <input
-                type="text"
-                class="input input-bordered w-full"
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("input-{}", name)
-                prop:value=value
-                placeholder=move || {
-                    if is_new.get() { placeholder_text.clone() } else { String::new() }
-                }
-                on:input=move |ev| value.set(event_target_value(&ev))
-                on:blur=move |_| {
-                    if let Some(cb) = on_blur {
-                        cb.run(());
-                    }
-                }
-            />
-        </div>
-    }
-}
-
-// ToDo: deprecated, replace with EnumSelectWithValidation
-#[component]
-pub fn ValidatedSelect(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
-    value: RwSignal<String>,
-    #[prop(into)] validation_error: Signal<FieldResult<()>>,
-    /// List of (value, label) tuples for the options
-    #[prop(into)]
-    options: Vec<(String, String)>,
-    /// Optional custom placeholder text (default: "Select [label]...")
-    #[prop(into, optional)]
-    placeholder: Option<String>,
-    // Optional callback
-    #[prop(into, optional)] on_blur: Option<Callback<()>>,
-) -> impl IntoView {
-    // Generate default placeholder if none provided
-    let placeholder_text =
-        placeholder.unwrap_or_else(|| format!("Select {}...", label.to_lowercase()));
-
-    view! {
-        <div class="form-control w-full">
-            <label class="label">
-                <span class="label-text">{label.clone()}</span>
-            </label>
-            <select
-                class="select select-bordered w-full"
-                class:select-error=move || validation_error.get().is_err()
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("select-{}", name)
-                aria-invalid=move || validation_error.get().is_err().to_string()
-                on:change=move |ev| value.set(event_target_value(&ev))
-                on:blur=move |_| {
-                    if let Some(cb) = on_blur {
-                        cb.run(());
-                    }
-                }
-                prop:value=value
-            >
-                <option disabled selected value="">
-                    {placeholder_text}
-                </option>
-                {options
-                    .into_iter()
-                    .map(|(val, text)| {
-                        view! {
-                            <option value=val.clone() selected=move || value.get() == val>
-                                {text}
-                            </option>
-                        }
-                    })
-                    .collect_view()}
-            </select>
-            <Show when=move || validation_error.get().is_err()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
-                    </span>
-                </label>
-            </Show>
-        </div>
-    }
-}
-
-// ToDo: replace all instances of ValidatedTextInput and TextInput with this more advanced component
-#[component]
-pub fn EnumSelectWithValidation<E>(
+pub fn SelectWithValidation<S>(
     /// Label text for the input
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
-    /// Using Signal<Option<E>> allows passing ReadSignal, Memo, or derived closures.
+    /// Using Signal<Option<S>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
-    value: Signal<Option<E>>,
+    value: Signal<Option<S>>,
     /// Callback to push changes to source of value
-    /// Using Callback<E> allows passing closures and Callbacks.
-    set_value: Callback<E>,
+    /// Using Callback<Option<S>> allows passing closures and Callbacks and handling None (clearing).
+    set_value: Callback<Option<S>>,
+    #[prop(into)] options: Signal<Vec<(String, S)>>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
     optional: bool,
+    /// Optional label for a "Clear selection" option.
+    /// If Some("Text"), an option to clear the selection (set to None) is displayed.
+    /// Note: Make sure that the "clear" option value does not conflict with any options value.
+    #[prop(into, optional)]
+    clear_label: Option<String>,
 ) -> impl IntoView
 where
-    E: SelectableOption,
+    S: FromStr + Display + Clone + Send + Sync + PartialEq + Eq + 'static,
 {
+    // StoredValue helper for optional props
+    let clear_label = StoredValue::new(clear_label);
+
     // Local state: true while user is interacting with the select
     let (is_selecting, set_is_selecting) = signal(false);
 
@@ -339,15 +187,9 @@ where
     // We hide errors while the user is actively selecting (proactive reset)
     let show_error = move || !is_selecting.get() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Select);
 
     view! {
         <div class="form-control w-full">
@@ -357,10 +199,176 @@ where
             <select
                 class="select select-bordered w-full"
                 aria-invalid=move || show_error().to_string()
-                prop:value=move || value.get().as_ref().map(|v| v.value()).unwrap_or_default()
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("select-{}", name)
+                prop:value=move || {
+                    value
+                        .with(|maybe_v| {
+                            match maybe_v.as_ref() {
+                                Some(v) => {
+                                    options
+                                        .with(|opts| {
+                                            opts.iter()
+                                                .find_map(|(text, opt_v)| {
+                                                    (opt_v == v).then(|| text.clone())
+                                                })
+                                        })
+                                }
+                                None => clear_label.get_value(),
+                            }
+                        })
+                        .unwrap_or_default()
+                }
+                name=name
+                data-testid=data_testid
+                // USER STARTED: Mark as selecting to hide errors
+                on:focus=move |_| {
+                    set_is_selecting.set(true);
+                }
+                // USER FINISHED: Release control and attempt to commit to core
+                on:blur=move |_| {
+                    set_is_selecting.set(false);
+                }
+                // USER FINISHED: Release control and attempt to commit to core
+                on:change:target={
+                    let options = options.clone();
+                    move |ev| {
+                        let new_val_str = ev.target().value();
+                        if new_val_str.is_empty()
+                            || clear_label.get_value().as_deref() == Some(&new_val_str)
+                        {
+                            set_value.run(None);
+                        } else if let Some(selected_variant) = options
+                            .with(move |opts| {
+                                opts.iter()
+                                    .find_map(move |(val_str, val)| {
+                                        (*val_str == new_val_str).then(|| val.clone())
+                                    })
+                            })
+                        {
+                            set_value.run(Some(selected_variant));
+                        }
+                        set_is_selecting.set(false);
+                    }
+                }
+            >
+                // The disabled placeholder serves as the default empty state
+                <option disabled selected value="">
+                    {placeholder_text}
+                </option>
+
+                // Optional "Clear" option if provided
+                {move || {
+                    clear_label
+                        .get_value()
+                        .map(|text| {
+                            let val = text.clone();
+                            view! { <option value=val>{text}</option> }
+                        })
+                }}
+
+                {options
+                    .get()
+                    .into_iter()
+                    .map(|(text, val)| {
+                        // We need to check equality for the "selected" attribute.
+                        // Since S implements PartialEq, we can compare the value directly
+                        view! {
+                            <option
+                                value=val.to_string()
+                                selected=move || value.with(|v| v.as_ref() == Some(&val))
+                            >
+                                {text}
+                            </option>
+                        }
+                    })
+                    .collect_view()}
+            </select>
+            // Display error only when not typing and an error exists
+            <Show when=show_error>
+                <label class="label">
+                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
+                        {move || error.get()}
+                    </span>
+                </label>
+            </Show>
+        </div>
+    }
+}
+
+#[component]
+pub fn EnumSelectWithValidation<E>(
+    /// Label text for the input
+    #[prop(into)]
+    label: String,
+    /// Name attribute for the input (also used for test-id)
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
+    /// Reactive read-access to Option<T>.
+    /// Using Signal<Option<E>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into)]
+    value: Signal<Option<E>>,
+    /// Callback to push changes to source of value
+    /// Using Callback<Option<E>> allows passing closures and Callbacks and handling None (clearing).
+    set_value: Callback<Option<E>>,
+    /// Reactive read-access to validation results
+    /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
+    validation_result: Signal<ValidationResult<()>>,
+    /// Object ID for field error lookup
+    #[prop(into, default = None.into())]
+    object_id: Signal<Option<Uuid>>,
+    /// Field name for field error lookup
+    #[prop(into, default = String::new())]
+    field: String,
+    /// Whether the field is optional (affects label and placeholder)
+    #[prop(into, default = false)]
+    optional: bool,
+    /// Optional label for a "Clear selection" option.
+    /// If Some("Text"), an option to clear the selection (set to None) is displayed.
+    /// Note: Make sure that the "clear" option value does not conflict with any Enum option value.
+    #[prop(into, optional)]
+    clear_label: Option<String>,
+) -> impl IntoView
+where
+    E: SelectableOption,
+{
+    // StoredValue helper for optional props
+    let clear_label = StoredValue::new(clear_label);
+
+    // Local state: true while user is interacting with the select
+    let (is_selecting, set_is_selecting) = signal(false);
+
+    // Error state from validation of all objects
+    let error = Signal::derive(move || {
+        is_object_field_valid(validation_result, object_id, &field)
+            .err()
+            .map(|e| e.to_string())
+    });
+
+    // Derived: Error visibility logic
+    // We hide errors while the user is actively selecting (proactive reset)
+    let show_error = move || !is_selecting.get() && error.get().is_some();
+
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Select);
+
+    view! {
+        <div class="form-control w-full">
+            <label class="label">
+                <span class="label-text">{label}</span>
+            </label>
+            <select
+                class="select select-bordered w-full"
+                aria-invalid=move || show_error().to_string()
+                prop:value=move || {
+                    match value.get().as_ref() {
+                        Some(v) => v.value(),
+                        None => clear_label.get_value().unwrap_or_default(),
+                    }
+                }
+                name=name
+                data-testid=data_testid
                 // USER STARTED: Mark as selecting to hide errors
                 on:focus=move |_| {
                     set_is_selecting.set(true);
@@ -372,11 +380,13 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
-                    if let Some(selected_variant) = E::options()
+                    if new_val.is_empty() || clear_label.get_value().as_deref() == Some(&new_val) {
+                        set_value.run(None);
+                    } else if let Some(selected_variant) = E::options()
                         .into_iter()
                         .find(|o| o.value() == new_val)
                     {
-                        set_value.run(selected_variant);
+                        set_value.run(Some(selected_variant));
                     }
                     set_is_selecting.set(false);
                 }
@@ -384,6 +394,17 @@ where
                 <option disabled selected value="">
                     {placeholder_text}
                 </option>
+
+                // Optional "Clear" option if provided
+                {move || {
+                    clear_label
+                        .get_value()
+                        .map(|text| {
+                            let val = text.clone();
+                            view! { <option value=val>{text}</option> }
+                        })
+                }}
+
                 {E::options()
                     .into_iter()
                     .map(|opt| {
@@ -417,154 +438,23 @@ where
     }
 }
 
-// ToDo: deprecated, replace with EnumSelectWithValidation
-#[component]
-pub fn EnumSelect<E: SelectableOption>(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
-    value: RwSignal<E>,
-    // Optional on change callback, e.g. for update of json config
-    #[prop(into, optional)] on_change: Option<Callback<()>>,
-) -> impl IntoView {
-    view! {
-        <div class="form-control w-full">
-            <label class="label">
-                <span class="label-text">{label.clone()}</span>
-            </label>
-            <select
-                class="select select-bordered w-full"
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("select-{}", name)
-                on:change=move |ev| {
-                    let val_str = event_target_value(&ev);
-                    if let Some(selected_variant) = E::options()
-                        .into_iter()
-                        .find(|o| o.value() == val_str)
-                    {
-                        value.set(selected_variant);
-                        if let Some(cb) = on_change {
-                            cb.run(());
-                        }
-                    }
-                }
-                prop:value=move || value.get().value()
-            >
-                {E::options()
-                    .into_iter()
-                    .map(|opt| {
-                        let val = opt.value();
-                        let text = opt.label();
-                        // We need to check equality for the "selected" attribute.
-                        // Since E implements PartialEq, we can compare the variant structure directly
-                        // OR compare the value strings if variants with different data are considered "same selection"
-                        view! {
-                            <option value=val.clone() selected=move || value.get().value() == val>
-                                {text}
-                            </option>
-                        }
-                    })
-                    .collect_view()}
-            </select>
-        </div>
-    }
-}
-
-// ToDo: deprecated, replace with NumberInputWithValidation
-#[component]
-pub fn ValidatedNumberInput<T>(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
-    value: RwSignal<T>,
-    #[prop(into)] validation_error: Signal<FieldResult<()>>,
-    #[prop(into, optional)] step: String, // "1" for int, "0.1" for float
-    #[prop(into, optional)] min: String,
-    // Optional on blur callback, e.g. for update of json config
-    #[prop(into, optional)] on_blur: Option<Callback<()>>,
-) -> impl IntoView
-where
-    T: FromStr + Display + Default + Copy + Send + Sync + 'static,
-    <T as FromStr>::Err: std::fmt::Debug,
-{
-    // Default step to "1" if not provided
-    let step_val = if step.is_empty() {
-        "1".to_string()
-    } else {
-        step
-    };
-    // Default min to "0" if not provided
-    let min = if min.is_empty() { "0".to_string() } else { min };
-
-    let (parse_err, set_parse_err) = signal(None::<String>);
-
-    view! {
-        <div class="form-control w-full">
-            <label class="label">
-                <span class="label-text">{label.clone()}</span>
-            </label>
-            <input
-                type="number"
-                step=step_val
-                min=min
-                class="input input-bordered w-full"
-                class:input-error=move || validation_error.get().is_err()
-                name=name.clone()
-                data-testid=format!("input-{}", name)
-                aria-invalid=move || validation_error.get().is_err().to_string()
-                // We bind the value via prop:value which expects a string/number
-                prop:value=move || value.get().to_string()
-                on:input=move |ev| {
-                    let val_str = event_target_value(&ev);
-                    match val_str.parse::<T>() {
-                        Ok(val) => {
-                            value.set(val);
-                            set_parse_err.set(None);
-                        }
-                        Err(err) => {
-                            set_parse_err.set(Some(format!("Invalid number format: {:?}", err)));
-                        }
-                    }
-                }
-                on:blur=move |_| {
-                    if let Some(cb) = on_blur {
-                        cb.run(());
-                    }
-                }
-            />
-            <Show when=move || validation_error.get().is_err()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
-                    </span>
-                </label>
-            </Show>
-            <Show when=move || parse_err.get().is_some()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { parse_err.get().clone().unwrap_or_default() }}
-                    </span>
-                </label>
-            </Show>
-        </div>
-    }
-}
-
-// ToDo: replace all instances of ValidatedNumberInput and ValidatedOptionNumberInput with this more advanced component
 #[component]
 pub fn NumberInputWithValidation<T>(
     /// Label text for the input
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
     value: Signal<Option<T>>,
     /// Callback to push changes to source of value
-    /// Using Callback<T> allows passing closures and Callbacks.
-    set_value: Callback<T>,
+    /// Using Callback<Option<T>> allows passing closures and Callbacks and to clear value
+    /// for optional inputs.
+    set_value: Callback<Option<T>>,
     /// Optional step attribute for the number input
     #[prop(into, optional)]
     step: String,
@@ -573,12 +463,13 @@ pub fn NumberInputWithValidation<T>(
     min: String,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
@@ -615,15 +506,10 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
+
     // Default step to "1" if not provided
     let step_val = if step.is_empty() {
         "1".to_string()
@@ -645,9 +531,8 @@ where
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("input-{}", name)
+                name=name
+                data-testid=data_testid
                 placeholder=placeholder_text
                 // USER TYPING: Update draft to take control from the core
                 on:input:target=move |ev| {
@@ -656,9 +541,15 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
+                    if new_val.is_empty() {
+                        set_value.run(None);
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                        return;
+                    }
                     match new_val.parse::<T>() {
                         Ok(val) => {
-                            set_value.run(val);
+                            set_value.run(Some(val));
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
@@ -687,94 +578,6 @@ where
     }
 }
 
-// ToDo: deprecated, replace with NumberInputWithValidation
-#[component]
-pub fn ValidatedOptionNumberInput<T>(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
-    value: RwSignal<Option<T>>,
-    #[prop(into)] validation_error: Signal<FieldResult<()>>,
-    #[prop(into, optional)] step: String,
-    #[prop(into, optional)] min: String,
-    // Optional on blur callback, e.g. for update of json config
-    #[prop(into, optional)] on_blur: Option<Callback<()>>,
-) -> impl IntoView
-where
-    T: FromStr + Display + Copy + Send + Sync + 'static,
-    <T as FromStr>::Err: std::fmt::Debug,
-{
-    // Default step to "1" if not provided
-    let step_val = if step.is_empty() {
-        "1".to_string()
-    } else {
-        step
-    };
-    // Default min to "0" if not provided
-    let min = if min.is_empty() { "0".to_string() } else { min };
-
-    let (parse_err, set_parse_err) = signal(None::<String>);
-
-    view! {
-        <div class="form-control w-full">
-            <label class="label">
-                <span class="label-text">{format!("{}", label)}</span>
-            </label>
-            <input
-                type="number"
-                step=step_val
-                min=min
-                class="input input-bordered w-full"
-                class:input-error=move || validation_error.get().is_err()
-                name=name.clone()
-                data-testid=format!("input-{}", name)
-                aria-invalid=move || validation_error.get().is_err().to_string()
-                prop:value=move || {
-                    match value.get() {
-                        Some(v) => v.to_string(),
-                        None => String::new(),
-                    }
-                }
-                on:input=move |ev| {
-                    let val_str = event_target_value(&ev);
-                    if val_str.is_empty() {
-                        value.set(None);
-                    } else {
-                        match val_str.parse::<T>() {
-                            Ok(val) => {
-                                value.set(Some(val));
-                                set_parse_err.set(None);
-                            }
-                            Err(err) => {
-                                set_parse_err
-                                    .set(Some(format!("Invalid number format: {:?}", err)));
-                            }
-                        }
-                    }
-                }
-                on:blur=move |_| {
-                    if let Some(cb) = on_blur {
-                        cb.run(());
-                    }
-                }
-            />
-            <Show when=move || validation_error.get().is_err()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
-                    </span>
-                </label>
-            </Show>
-            <Show when=move || parse_err.get().is_some()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { parse_err.get().clone().unwrap_or_default() }}
-                    </span>
-                </label>
-            </Show>
-        </div>
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
 pub enum DurationInputUnit {
     /// seconds
@@ -785,112 +588,34 @@ pub enum DurationInputUnit {
     Hours,
 }
 
-// ToDo: deprecated, replace with DurationInputWithValidation
-#[component]
-pub fn ValidatedDurationInput(
-    #[prop(into)] label: String,
-    #[prop(into)] name: String,
-    value: RwSignal<Duration>,
-    #[prop(into)] unit: DurationInputUnit,
-    #[prop(into)] validation_error: Signal<FieldResult<()>>,
-    // Optional on blur callback, e.g. for update of json config
-    #[prop(into, optional)] on_blur: Option<Callback<()>>,
-) -> impl IntoView {
-    let (parse_err, set_parse_err) = signal(None::<String>);
-
-    view! {
-        <div class="form-control w-full">
-            <label class="label">
-                <span class="label-text">{format!("{} ({})", label, unit)}</span>
-            </label>
-            <input
-                type="number"
-                min="0"
-                step="1"
-                class="input input-bordered w-full"
-                class:input-error=move || validation_error.get().is_err()
-                name=name.clone()
-                data-testid=format!("input-{}", name)
-                aria-invalid=move || validation_error.get().is_err().to_string()
-                // Convert Duration to unit for display
-                prop:value=move || {
-                    match unit {
-                        DurationInputUnit::Seconds => value.get().as_secs().to_string(),
-                        DurationInputUnit::Minutes => (value.get().as_secs() / 60).to_string(),
-                        DurationInputUnit::Hours => (value.get().as_secs() / 3600).to_string(),
-                    }
-                }
-                on:input=move |ev| {
-                    let val_str = event_target_value(&ev);
-                    match val_str.parse::<u64>() {
-                        Ok(input) => {
-                            match unit {
-                                DurationInputUnit::Seconds => value.set(Duration::from_secs(input)),
-                                DurationInputUnit::Minutes => {
-                                    value.set(Duration::from_secs(input * 60))
-                                }
-                                DurationInputUnit::Hours => {
-                                    value.set(Duration::from_secs(input * 3600))
-                                }
-                            }
-                            set_parse_err.set(None);
-                        }
-                        Err(err) => {
-                            set_parse_err.set(Some(format!("Invalid number format: {:?}", err)));
-                        }
-                    }
-                }
-                on:blur=move |_| {
-                    if let Some(cb) = on_blur {
-                        cb.run(());
-                    }
-                }
-            />
-            <Show when=move || validation_error.get().is_err()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { validation_error.get().err().map(|e| e.to_string()) }}
-                    </span>
-                </label>
-            </Show>
-            <Show when=move || parse_err.get().is_some()>
-                <label class="label">
-                    <span class="label-text-alt text-error w-full text-left block whitespace-normal">
-                        {move || { parse_err.get().clone().unwrap_or_default() }}
-                    </span>
-                </label>
-            </Show>
-        </div>
-    }
-}
-
-// ToDo: replace all instances of ValidatedDurationInput and TextInput with this more advanced component
 #[component]
 pub fn DurationInputWithValidation(
     /// Label text for the input
     #[prop(into)]
     label: String,
     /// Name attribute for the input (also used for test-id)
-    #[prop(into)]
-    name: String,
+    /// If None, input will not be submitted in forms.
+    #[prop(into, optional)]
+    name: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
     value: Signal<Option<Duration>>,
     /// Callback to push changes to source of value
-    /// Using Callback<T> allows passing closures and Callbacks.
-    set_value: Callback<Duration>,
+    /// Using Callback<Option<Duration>> allows passing closures and Callbacks.
+    set_value: Callback<Option<Duration>>,
     /// Duration unit for input and display
     #[prop(into)]
     unit: DurationInputUnit,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
+    #[prop(into, default = Ok(()).into())]
     validation_result: Signal<ValidationResult<()>>,
     /// Object ID for field error lookup
-    #[prop(into)]
+    #[prop(into, default = None.into())]
     object_id: Signal<Option<Uuid>>,
     /// Field name for field error lookup
-    #[prop(into)]
+    #[prop(into, default = String::new())]
     field: String,
     /// Whether the field is optional (affects label and placeholder)
     #[prop(into, default = false)]
@@ -932,15 +657,9 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
-    let (label, placeholder_text) = if optional {
-        (
-            format!("{} (optional)", label.clone()),
-            format!("Enter {} (optional)...", label.to_lowercase()),
-        )
-    } else {
-        (label.clone(), format!("Enter {}...", label.to_lowercase()))
-    };
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+    let (data_testid, label, placeholder_text) =
+        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
 
     view! {
         <div class="form-control w-full">
@@ -954,9 +673,8 @@ where
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
-                name=name.clone()
-                // Auto-generate test-id
-                data-testid=format!("input-{}", name)
+                name=name
+                data-testid=data_testid
                 placeholder=placeholder_text
                 // USER TYPING: Update draft to take control from the core
                 on:input:target=move |ev| {
@@ -965,6 +683,12 @@ where
                 // USER FINISHED: Release control and attempt to commit to core
                 on:change:target=move |ev| {
                     let new_val = ev.target().value();
+                    if new_val.is_empty() {
+                        set_value.run(None);
+                        set_parse_err.set(None);
+                        set_draft.set(None);
+                        return;
+                    }
                     match new_val.parse::<u64>() {
                         Ok(val) => {
                             let new_duration = match unit {
@@ -972,7 +696,7 @@ where
                                 DurationInputUnit::Minutes => Duration::from_secs(val * 60),
                                 DurationInputUnit::Hours => Duration::from_secs(val * 3600),
                             };
-                            set_value.run(new_duration);
+                            set_value.run(Some(new_duration));
                             set_parse_err.set(None);
                             set_draft.set(None);
                         }
@@ -999,4 +723,40 @@ where
             </Show>
         </div>
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
+enum FormControlType {
+    /// input
+    Input,
+    /// select
+    Select,
+}
+
+/// Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
+fn generate_testid_label_placeholder(
+    name: &Option<String>,
+    label: String,
+    optional: bool,
+    form_control_type: FormControlType,
+) -> (String, String, String) {
+    let data_testid: String = name
+        .as_ref()
+        .map(|n| format!("{}-{}", form_control_type, n))
+        .unwrap_or_else(|| {
+            format!(
+                "{}-{}",
+                form_control_type,
+                label.to_lowercase().replace(' ', "-")
+            )
+        });
+    let (label, placeholder_text) = if optional {
+        (
+            format!("{} (optional)", label.clone()),
+            format!("Enter {} (optional)...", label.to_lowercase()),
+        )
+    } else {
+        (label.clone(), format!("Enter {}...", label.to_lowercase()))
+    };
+    (data_testid, label, placeholder_text)
 }

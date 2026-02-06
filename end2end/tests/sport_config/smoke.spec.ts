@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
-  openSportSelectionAndConfigList,
+  openSportConfigurationList,
   clickNewSportConfig,
   searchAndOpenByNameOnCurrentPage,
   extractQueryParamFromUrl,
@@ -13,16 +13,14 @@ test("Smoke: Select Plugin -> Search Config -> New -> Cancel", async ({
   const SC = selectors(page).sportConfig;
 
   // 1. Open Sport Config List
-  await openSportSelectionAndConfigList(page);
+  await openSportConfigurationList(page, "Generic Sport");
 
-  // 2. Select a Sport Plugin (e.g., "Generic Sport")
-  await searchAndOpenByNameOnCurrentPage(SC.pluginSelector, "Generic Sport");
   const sport_id = extractQueryParamFromUrl(page.url(), "sport_id");
   expect(sport_id).toBeTruthy();
   expect(sport_id).toMatch(/^[0-9a-fA-F-]{36}$/);
 
-  // 3. Verify Search/List View is now active for configs
-  await expect(SC.search.dropdown.input).toBeVisible();
+  // 3. Verify new configuration button is visible
+  await expect(SC.list.btnNew).toBeVisible();
 
   // 4. Navigate to New Form
   await clickNewSportConfig(page);
@@ -35,8 +33,8 @@ test("Smoke: Select Plugin -> Search Config -> New -> Cancel", async ({
 
   // 7. Verify we are back at the list and sport_id is preserved
   const { pathname } = new URL(page.url());
-  expect(pathname.startsWith("/sport")).toBeTruthy();
-  expect(pathname).not.toContain("/new_pa");
+  expect(pathname.startsWith("/sport-configurations")).toBeTruthy();
+  expect(pathname).not.toContain("/new");
   expect(page.url()).toContain("sport_id=");
   expect(pathname).not.toContain("sport_config_id=");
 });

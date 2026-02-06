@@ -6,7 +6,6 @@ use app_core::{
 };
 use leptos::prelude::*;
 use serde_json::Value;
-use shared::RenderCfgProps;
 use shared::SportPortWebUi;
 use std::time::Duration;
 use uuid::Uuid;
@@ -38,7 +37,7 @@ impl SportPortWebUi for MockSport {
     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
     }
-    fn render_configuration(&self, _props: RenderCfgProps) -> AnyView {
+    fn render_configuration(&self) -> AnyView {
         view! { <div>{"Configuration UI"}</div> }.into_any()
     }
 }

@@ -48,7 +48,7 @@ impl SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportPortWebUi, RenderCfgProps};
+    /// # use shared::SportPortWebUi;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl ObjectIdVersion for MockSport {
@@ -76,7 +76,7 @@ impl SportPluginManagerMap {
     /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
     /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
     /// #     }
-    /// #     fn render_configuration(&self, _props: RenderCfgProps) -> AnyView {
+    /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()
     /// #     }
     /// # }
@@ -122,7 +122,7 @@ impl SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportPortWebUi, RenderCfgProps};
+    /// # use shared::SportPortWebUi;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl ObjectIdVersion for MockSport {
@@ -150,7 +150,7 @@ impl SportPluginManagerMap {
     /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
     /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
     /// #     }
-    /// #     fn render_configuration(&self, _props: RenderCfgProps) -> AnyView {
+    /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()
     /// #     }
     /// # }
@@ -194,7 +194,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportPortWebUi, RenderCfgProps};
+    /// # use shared::SportPortWebUi;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl ObjectIdVersion for MockSport {
@@ -222,7 +222,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
     /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
     /// #     }
-    /// #     fn render_configuration(&self, _props: RenderCfgProps) -> AnyView {
+    /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()
     /// #     }
     /// # }
@@ -266,7 +266,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # use std::{sync::Arc, time::Duration};
     /// # use uuid::Uuid;
     /// # use leptos::prelude::*;
-    /// # use shared::{SportPortWebUi, RenderCfgProps};
+    /// # use shared::SportPortWebUi;
     /// #
     /// # struct MockSport { id: Uuid, name: &'static str };
     /// # impl ObjectIdVersion for MockSport {
@@ -294,7 +294,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
     /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
     /// #     }
-    /// #     fn render_configuration(&self, _props: RenderCfgProps) -> AnyView {
+    /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()
     /// #     }
     /// # }

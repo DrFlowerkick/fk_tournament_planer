@@ -5,7 +5,7 @@ import {
   fillFields,
   clickSave,
   waitForPostalAddressListUrl,
-  selectors
+  selectors,
 } from "../../helpers";
 
 test.describe("Uniqueness constraint violation", () => {
@@ -13,7 +13,7 @@ test.describe("Uniqueness constraint violation", () => {
     page,
   }) => {
     const PA = selectors(page).postalAddress;
-    const BA = selectors(page).banners;
+    const TOAST = selectors(page).toasts;
 
     // -------------------- Arrange: Create first address --------------------
     const uniqueData = {
@@ -48,27 +48,22 @@ test.describe("Uniqueness constraint violation", () => {
     await fillFields(page, duplicate);
     await clickSave(page);
 
-    // -------------------- Assert: Duplicate error UI appears --------------------
-    // A banner should appear, and the dismiss button should be visible.
-    await expect(BA.acknowledgment.root).toBeVisible();
-    await expect(BA.acknowledgment.btnAction).toBeVisible();
+    // -------------------- Assert: Duplicate error Toast appears --------------------
+    // A toast should appear
+    await expect(TOAST.error).toBeVisible();
 
-    // The banner should contain a warning message.
-    await expect(BA.acknowledgment.root).toContainText(
-      `An address with name '${uniqueData.name}' already exists in '${uniqueData.postal_code} ${uniqueData.locality}'.`
-    );
+    // The toast should contain a warning message.
+    await expect(TOAST.error).toContainText(`A unique value is already in use`);
 
-    // Save must be disabled while the error is present.
-    await expect(PA.form.btnSave).toBeDisabled();
+    // The form should still be open with the duplicate data (not navigated away)
+    await expect(PA.form.inputName).toHaveValue(duplicate.name);
+    await expect(PA.form.inputStreet).toHaveValue(duplicate.street);
+    await expect(PA.form.inputPostalCode).toHaveValue(duplicate.postal_code);
+    await expect(PA.form.inputLocality).toHaveValue(duplicate.locality);
+    await expect(PA.form.inputRegion).toHaveValue(duplicate.region);
+    await expect(PA.form.inputCountry).toHaveValue(duplicate.country);
 
-    // -------------------- Resolve via dismiss --------------------
-    await BA.acknowledgment.btnAction.click();
-
-    // After dismiss, the banner should be gone.
-    await expect(BA.acknowledgment.root).toBeHidden();
-
-    // The form fields should be enabled again.
-    await expect(PA.form.inputName).toBeEnabled();
-    await expect(PA.form.btnSave).toBeEnabled();
+    // Toast should disappear after some time
+    await expect(TOAST.error).toBeHidden({ timeout: 10000 });
   });
 });

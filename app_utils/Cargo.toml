@@ -28,3 +28,4 @@ sport_plugin_manager = { path = "../sport_plugin_manager" }
 thiserror.workspace = true
 tracing.workspace = true
 uuid.workspace = true
+web-sys.workspace = true

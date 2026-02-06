@@ -8,7 +8,7 @@ import {
   extractUuidFromUrl,
   openEditForm,
   waitForPostalAddressListUrl,
-  typeThenBlur,
+  fillAndBlur,
   selectors,
 } from "../../helpers";
 
@@ -41,7 +41,7 @@ test.describe('"Save as new" functionality', () => {
 
     // Change the name and click "Save as new"
     const newName = `E2E SaveAsNew Copy ${Date.now()}`;
-    await typeThenBlur(PA.form.inputName, newName, PA.form.btnSaveAsNew);
+    await fillAndBlur(PA.form.inputName, newName);
     await clickSaveAsNew(page);
 
     // -------------------- Assert: A new address was created --------------------

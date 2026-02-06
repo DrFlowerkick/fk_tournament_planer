@@ -4,7 +4,7 @@ applyTo: "**"
 
 # Project general coding standards
 
-- All comments in code are in english. ALWAYS. NO EXCEPTIONS.
+- All comments in code are in english. ALWAYS. NO EXCEPTIONS. Even if the user asks in another language (e.g. German), code comments remain English.
 - Your answers in chat are always in german.
 - Use Rust 2024 edition.
 - Use idiomatic Rust patterns and practices.

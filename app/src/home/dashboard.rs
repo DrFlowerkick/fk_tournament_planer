@@ -1,5 +1,7 @@
 use app_utils::{
-    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    hooks::use_query_navigation::{
+        MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+    },
     params::use_sport_id_query,
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
@@ -11,8 +13,8 @@ use reactive_stores::Store;
 pub fn SportDashboard() -> impl IntoView {
     // get query helpers
     let UseQueryNavigationReturn {
-        url_with_path,
-        url_with_remove_query,
+        url_matched_route,
+        url_matched_route_remove_query,
         ..
     } = use_query_navigation();
 
@@ -70,7 +72,7 @@ pub fn SportDashboard() -> impl IntoView {
                         // Navigation Links Grid
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl">
                             <A
-                                href=url_with_path("tournaments")
+                                href=url_matched_route(MatchedRouteHandler::Extend("tournaments"))
                                 attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-tournaments"
                                 scroll=false
@@ -80,7 +82,10 @@ pub fn SportDashboard() -> impl IntoView {
                             </A>
 
                             <A
-                                href=url_with_remove_query("tournament_id", Some("new-tournament"))
+                                href=url_matched_route_remove_query(
+                                    "tournament_id",
+                                    MatchedRouteHandler::Extend("new-tournament"),
+                                )
 
                                 attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-plan-new"
@@ -91,7 +96,9 @@ pub fn SportDashboard() -> impl IntoView {
                             </A>
 
                             <A
-                                href=url_with_path("adhoc-tournament")
+                                href=url_matched_route(
+                                    MatchedRouteHandler::Extend("adhoc-tournament"),
+                                )
                                 attr:class="btn btn-accent h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-adhoc"
                                 scroll=false
@@ -101,7 +108,9 @@ pub fn SportDashboard() -> impl IntoView {
                             </A>
 
                             <A
-                                href=url_with_path("sport-configurations")
+                                href=url_matched_route(
+                                    MatchedRouteHandler::Extend("sport-configurations"),
+                                )
                                 attr:class="btn btn-neutral h-auto min-h-[4rem] text-lg shadow-md"
                                 attr:data-testid="link-nav-config"
                                 scroll=false
@@ -112,7 +121,7 @@ pub fn SportDashboard() -> impl IntoView {
 
                             // Full width About link
                             <A
-                                href=url_with_path("about-sport")
+                                href=url_matched_route(MatchedRouteHandler::Extend("about-sport"))
                                 attr:class="btn btn-ghost md:col-span-2 mt-4"
                                 attr:data-testid="link-nav-about"
                                 scroll=false

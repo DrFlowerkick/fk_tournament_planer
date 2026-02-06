@@ -87,6 +87,7 @@
     "postgresql",
     "prefersdark",
     "psql",
+    "rfind",
     "rlib",
     "rsplit",
     "rustc",

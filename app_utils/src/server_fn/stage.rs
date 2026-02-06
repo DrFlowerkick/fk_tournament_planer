@@ -1,15 +1,10 @@
 //! server functions for stage entities
 
-#[cfg(feature = "test-mock")]
-pub mod test_support;
-//#[cfg(any(feature = "ssr", feature = "test-mock"))]
 use crate::error::AppResult;
-// IdVersion Import wird hier nicht mehr explizit benötigt, da der Client das Objekt fertig liefert
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::CoreState;
 use app_core::Stage;
 use leptos::prelude::*;
-#[cfg(not(feature = "test-mock"))]
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -83,7 +78,6 @@ async fn list_stages_of_tournament_inner(tournament_id: Uuid) -> AppResult<Vec<S
     Ok(stages)
 }
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "stage.save",
@@ -93,13 +87,6 @@ async fn list_stages_of_tournament_inner(tournament_id: Uuid) -> AppResult<Vec<S
         number = stage.get_number(),
     )
 )]
-pub async fn save_stage(stage: Stage) -> AppResult<Stage> {
-    save_stage_inner(stage).await
-}
-
-#[cfg(feature = "test-mock")]
-pub use test_support::SaveStage;
-#[cfg(feature = "test-mock")]
 pub async fn save_stage(stage: Stage) -> AppResult<Stage> {
     save_stage_inner(stage).await
 }

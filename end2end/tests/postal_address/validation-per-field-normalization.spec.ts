@@ -4,7 +4,7 @@ import {
   expectSavesDisabled,
   expectSavesEnabled,
   fillAllRequiredValid,
-  typeThenBlur,
+  fillAndBlur,
   selectThenBlur,
   expectFieldValidity,
   selectors,
@@ -44,11 +44,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectSavesDisabled(page);
 
     // focus → type → blur -> normalize -> validate
-    await typeThenBlur(
-      PA.form.inputName,
-      "   Müller   GmbH   ",
-      PA.form.inputStreet,
-    );
+    await fillAndBlur(PA.form.inputName, "   Müller   GmbH   ");
 
     // expect normalized value & validation state (assume name becomes valid after normalization)
     await expectFieldValidity(
@@ -73,10 +69,9 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectSavesDisabled(page);
 
     // focus → type → blur -> normalize -> validate
-    await typeThenBlur(
+    await fillAndBlur(
       PA.form.inputStreet,
       "   Main      \n      Street         42  ",
-      PA.form.inputLocality,
     );
     await expectFieldValidity(
       PA.form.inputStreet,
@@ -100,11 +95,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectSavesDisabled(page);
 
     // focus → type → blur -> normalize -> validate
-    await typeThenBlur(
-      PA.form.inputLocality,
-      "   Berlin   Mitte  ",
-      PA.form.inputCountry,
-    );
+    await fillAndBlur(PA.form.inputLocality, "   Berlin   Mitte  ");
     await expectFieldValidity(
       PA.form.inputLocality,
       "Berlin Mitte",
@@ -127,7 +118,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     // blur path
     // Note: "uppercase on blur" is no longer relevant for a select field
     // as the values are predefined ISO codes.
-    await selectThenBlur(PA.form.inputCountry, "DE", PA.form.inputStreet);
+    await selectThenBlur(PA.form.inputCountry, "DE");
     await expectFieldValidity(PA.form.inputCountry, "DE", /*invalid*/ false);
 
     // as long as other required fields are empty/invalid, saving must remain disabled
@@ -154,14 +145,10 @@ test.describe("Per-field normalization → validation + gated save", () => {
      */
 
     // set DE
-    await selectThenBlur(PA.form.inputCountry, "DE", PA.form.inputStreet);
+    await selectThenBlur(PA.form.inputCountry, "DE");
 
     // Example 1: "   10115    " -> "10115" (valid for DE)
-    await typeThenBlur(
-      PA.form.inputPostalCode,
-      "   10115    ",
-      PA.form.inputStreet,
-    );
+    await fillAndBlur(PA.form.inputPostalCode, "   10115    ");
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "10115",
@@ -169,11 +156,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     );
 
     // Example 2: "  1234   " -> "1234" (invalid after normalization for DE: length != 5)
-    await typeThenBlur(
-      PA.form.inputPostalCode,
-      "  1234   ",
-      PA.form.inputStreet,
-    );
+    await fillAndBlur(PA.form.inputPostalCode, "  1234   ");
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "1234",
@@ -181,11 +164,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     );
 
     // Example 3: "  1234A   " -> "1234A" (invalid after normalization for DE: must be 5 digits)
-    await typeThenBlur(
-      PA.form.inputPostalCode,
-      "  1234A   ",
-      PA.form.inputStreet,
-    );
+    await fillAndBlur(PA.form.inputPostalCode, "  1234A   ");
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "1234A",
@@ -216,11 +195,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
      */
 
     // Example 1: "   10115    " -> "10115" (valid for DE)
-    await typeThenBlur(
-      PA.form.inputPostalCode,
-      "   1011    ",
-      PA.form.inputStreet,
-    );
+    await fillAndBlur(PA.form.inputPostalCode, "   1011    ");
     await expectFieldValidity(
       PA.form.inputPostalCode,
       "1011",
@@ -228,7 +203,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     );
 
     // set DE
-    await selectThenBlur(PA.form.inputCountry, "DE", PA.form.inputStreet);
+    await selectThenBlur(PA.form.inputCountry, "DE");
 
     await expectFieldValidity(
       PA.form.inputPostalCode,

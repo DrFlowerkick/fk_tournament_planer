@@ -23,20 +23,6 @@ export async function waitForAppHydration(page: Page) {
 }
 
 /**
- * Type a value into a field, then blur by focusing another field.
- * Simulates: focus → type → blur -> normalize -> validate for that field.
- */
-export async function typeThenBlur(
-  inputLocator: Locator,
-  value: string,
-  blurToLocator: Locator,
-) {
-  await expect(inputLocator).toBeVisible();
-  await inputLocator.fill(value);
-  await blurToLocator.focus();
-}
-
-/**
  * Fills a value into an input field and immediately calls blur().
  * This ensures on:change events are fired for components relying on blur/change for committing state.
  */
@@ -47,19 +33,13 @@ export async function fillAndBlur(locator: Locator, value: string) {
 }
 
 /**
- * Select a value in a dropdown, then blur by focusing another field.
+ * Select a value in a dropdown, then blur.
  * Necessary because .fill() does not work on <select> elements.
  */
-export async function selectThenBlur(
-  selectLocator: Locator,
-  value: string,
-  blurToLocator: Locator,
-) {
+export async function selectThenBlur(selectLocator: Locator, value: string) {
   await expect(selectLocator).toBeVisible();
-  // Playwright specific method for <select>
   await selectLocator.selectOption(value);
-  // Focus next element to trigger blur/validation
-  await blurToLocator.focus();
+  await selectLocator.blur();
 }
 
 /**

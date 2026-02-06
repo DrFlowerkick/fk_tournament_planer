@@ -9,12 +9,10 @@ pub use sub_pages::*;
 use crate::home::dashboard::SportDashboard;
 use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
-    components::{banner::GlobalErrorBanner, toast::ToastContainer},
     params::{SportIdQuery, use_sport_id_query},
     state::{
-        error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
-        toast_state::{ToastContext, ToastVariant},
+        toast_state::ToastContext,
     },
 };
 use leptos::prelude::*;
@@ -28,12 +26,9 @@ use reactive_stores::Store;
 /// Renders the home page of fk tournament
 #[component]
 pub fn HomePage() -> impl IntoView {
-    // set context for error reporting
-    let page_error_context = PageErrorContext::new();
-    provide_context(page_error_context);
-    let toast_context = ToastContext::new();
-    provide_context(toast_context);
     // get global state and sport plugin manager
+    let toast_context = expect_context::<ToastContext>();
+
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
     // setup hooks
@@ -70,7 +65,7 @@ pub fn HomePage() -> impl IntoView {
 
     Effect::new(move || {
         if is_sport_id_invalid() {
-            toast_context.add("Invalid sport id", ToastVariant::Error);
+            toast_context.error("Invalid sport id");
             navigate(
                 "/",
                 NavigateOptions {
@@ -79,7 +74,7 @@ pub fn HomePage() -> impl IntoView {
                 },
             );
         } else if url.get().path() != "/" && !is_sport_id_given() {
-            toast_context.add("Missing sport id", ToastVariant::Error);
+            toast_context.error("Missing sport id");
             navigate(
                 "/",
                 NavigateOptions {
@@ -91,8 +86,6 @@ pub fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <GlobalErrorBanner />
-        <ToastContainer />
         <div class="flex flex-col min-h-screen">
             {move || {
                 if is_sport_active() {

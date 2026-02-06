@@ -1,13 +1,12 @@
 use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value, set_url,
 };
-use app::{provide_global_state, sport_config::SportConfigForm};
+use app::{home::LoadSportConfiguration, provide_global_context};
 use app_core::DbpSportConfig;
-use app_utils::state::{error_state::PageErrorContext, toast_state::ToastContext};
+use app_utils::state::sport_config::SportConfigListContext;
 use generic_sport_plugin::config::GenericSportConfig;
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
-use leptos_axum_socket::provide_socket_context;
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -23,21 +22,20 @@ async fn test_new_sport_config() {
     let ts = init_test_state();
 
     // 1. Set initial URL for creating a new sport config
-    set_url(&format!("/sport/new_sc?sport_id={}", ts.generic_sport_id));
+    set_url(&format!(
+        "/wasm_testing/new_sc?sport_id={}",
+        ts.generic_sport_id
+    ));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
-        let page_error_context = PageErrorContext::new();
-        provide_context(page_error_context);
-        let toast_context = ToastContext::new();
-        provide_context(toast_context);
+        provide_global_context();
+        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/sport/new_sc") view=SportConfigForm />
+                    <Route path=path!("/wasm_testing/new_sc") view=LoadSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -73,23 +71,19 @@ async fn test_edit_sport_config() {
 
     // 1. Set URL with sport_id
     set_url(&format!(
-        "/sport/edit_sc?sport_id={}&sport_config_id={}",
+        "/wasm_testing/edit_sc?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
-        let page_error_context = PageErrorContext::new();
-        provide_context(page_error_context);
-        let toast_context = ToastContext::new();
-        provide_context(toast_context);
+        provide_global_context();
+        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/sport/edit_sc") view=SportConfigForm />
+                    <Route path=path!("/wasm_testing/edit_sc") view=LoadSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -132,23 +126,19 @@ async fn test_save_as_new_sport_config() {
 
     // 1. Set URL with sport_id
     set_url(&format!(
-        "/sport/edit_sc?sport_id={}&sport_config_id={}",
+        "/wasm_testing/edit_sc?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
-        let page_error_context = PageErrorContext::new();
-        provide_context(page_error_context);
-        let toast_context = ToastContext::new();
-        provide_context(toast_context);
+        provide_global_context();
+        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/sport/edit_sc") view=SportConfigForm />
+                    <Route path=path!("/wasm_testing/edit_sc") view=LoadSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -156,6 +146,7 @@ async fn test_save_as_new_sport_config() {
 
     sleep(Duration::from_millis(10)).await;
 
+    web_sys::console::log_1(&"Test is starting".into());
     // verify that the form is populated with existing data
     let name_input = get_element_by_test_id("input-name")
         .dyn_into::<HtmlInputElement>()

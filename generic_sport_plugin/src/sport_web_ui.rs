@@ -3,15 +3,18 @@
 use crate::config::GenericSportConfig;
 
 use super::GenericSportPlugin;
-use app_core::{SportConfig, utils::validation::ValidationErrors};
+use app_core::{
+    SportConfig,
+    utils::validation::{ValidationErrors, ValidationResult},
+};
 use app_utils::{
     components::inputs::{
-        DurationInputUnit, ValidatedDurationInput, ValidatedNumberInput, ValidatedOptionNumberInput,
+        DurationInputUnit, DurationInputWithValidation, NumberInputWithValidation,
     },
-    hooks::is_field_valid::is_field_valid,
+    state::sport_config::SportConfigEditorContext,
 };
 use leptos::prelude::*;
-use shared::{RenderCfgProps, SportPortWebUi};
+use shared::SportPortWebUi;
 use std::time::Duration;
 
 impl SportPortWebUi for GenericSportPlugin {
@@ -107,190 +110,195 @@ impl SportPortWebUi for GenericSportPlugin {
         }
         .into_any()
     }
-    fn render_configuration(&self, props: RenderCfgProps) -> AnyView {
-        let RenderCfgProps {
-            object_id,
-            config,
-            is_valid_json,
-        } = props;
+    fn render_configuration(&self) -> AnyView {
+        // get editor context
+        let sport_config_editor = expect_context::<SportConfigEditorContext>();
 
         // --- extract current configuration ---
-        // ToDo: refactor this to keep the Result of parse in a Signal and use below ErrorBoundary to investigate the error.
-        // For now, we ignore errors in parsing here, as validation is done below.
-        let current_configuration = move || {
-            if let Some(json_cfg) = config.get()
+        let current_config = Signal::derive(move || {
+            if let Some(json_cfg) = sport_config_editor.config.get()
                 && let Ok(cfg) = GenericSportConfig::parse_config(json_cfg)
             {
-                cfg
+                Some(cfg)
             } else {
-                GenericSportConfig::default()
+                None
             }
-        };
+        });
 
         let validation_result = Signal::derive(move || {
-            current_configuration().validate(object_id.get(), ValidationErrors::new())
+            if let Some(object_id) = sport_config_editor.sport_config_id.get()
+                && let Some(cfg) = current_config.get()
+            {
+                cfg.validate(object_id, ValidationErrors::new())
+            } else {
+                ValidationResult::Ok(())
+            }
         });
 
         Effect::new(move || {
-            is_valid_json.set(validation_result.get().is_ok());
+            sport_config_editor
+                .set_is_valid_json
+                .set(validation_result.with(|vr| vr.is_ok()));
         });
 
-        let is_valid_sets_to_win =
-            Signal::derive(move || is_field_valid(validation_result, "sets_to_win"));
-        let is_valid_score_to_win =
-            Signal::derive(move || is_field_valid(validation_result, "score_to_win"));
-        let is_valid_win_by_margin =
-            Signal::derive(move || is_field_valid(validation_result, "win_by_margin"));
-        let is_valid_hard_cap =
-            Signal::derive(move || is_field_valid(validation_result, "hard_cap"));
-        let is_valid_victory_points_win =
-            Signal::derive(move || is_field_valid(validation_result, "victory_points_win"));
-        let is_valid_victory_points_draw =
-            Signal::derive(move || is_field_valid(validation_result, "victory_points_draw"));
-        let is_valid_expected_match_duration_minutes = Signal::derive(move || {
-            is_field_valid(validation_result, "expected_match_duration_minutes")
-        });
         // --- Signals for form fields ---
-        let set_sets_to_win = RwSignal::new(0_u16);
-        let set_score_to_win = RwSignal::new(None::<u16>);
-        let set_win_by_margin = RwSignal::new(None::<u16>);
-        let set_hard_cap = RwSignal::new(None::<u16>);
-        let set_victory_points_win = RwSignal::new(0.0_f32);
-        let set_victory_points_draw = RwSignal::new(0.0_f32);
-        let set_expected_match_duration_minutes = RwSignal::new(Duration::from_secs(0));
 
-        Effect::new(move || {
-            let cfg = current_configuration();
-            set_sets_to_win.set(cfg.sets_to_win);
-            set_score_to_win.set(cfg.score_to_win);
-            set_win_by_margin.set(cfg.win_by_margin);
-            set_hard_cap.set(cfg.hard_cap);
-            set_victory_points_win.set(cfg.victory_points_win);
-            set_victory_points_draw.set(cfg.victory_points_draw);
-            set_expected_match_duration_minutes.set(cfg.expected_match_duration_minutes);
+        let sets_to_win =
+            Signal::derive(move || current_config.with(|cfg| cfg.as_ref().map(|c| c.sets_to_win)));
+        let set_sets_to_win = Callback::new(move |sets: Option<u16>| {
+            if let Some(mut cfg) = current_config.get() {
+                cfg.sets_to_win = sets.unwrap_or_default();
+                sport_config_editor
+                    .set_config
+                    .set(serde_json::to_value(cfg).unwrap());
+            }
         });
-
-        // Synchronize changes from local signals back to the main config
-        // accessible via 'config'. Using tracking signals ensures updates happen
-        // regardless of focus/blur events (fixing Firefox spinner issue).
-        Effect::new(move || {
-            let sets = set_sets_to_win.get();
-            let score = set_score_to_win.get();
-            let margin = set_win_by_margin.get();
-            let cap = set_hard_cap.get();
-            let vp_win = set_victory_points_win.get();
-            let vp_draw = set_victory_points_draw.get();
-            let duration = set_expected_match_duration_minutes.get();
-
-            // Use untrack to prevent cyclic dependencies. We only want to push
-            // *up* to config when local signals change, not re-run when config changes.
-            untrack(move || {
-                let mut cfg = current_configuration();
-                let mut changed = false;
-
-                if cfg.sets_to_win != sets {
-                    cfg.sets_to_win = sets;
-                    changed = true;
-                }
-                if cfg.score_to_win != score {
-                    cfg.score_to_win = score;
-                    changed = true;
-                }
-                if cfg.win_by_margin != margin {
-                    cfg.win_by_margin = margin;
-                    changed = true;
-                }
-                if cfg.hard_cap != cap {
-                    cfg.hard_cap = cap;
-                    changed = true;
-                }
-                if (cfg.victory_points_win - vp_win).abs() > f32::EPSILON {
-                    cfg.victory_points_win = vp_win;
-                    changed = true;
-                }
-                if (cfg.victory_points_draw - vp_draw).abs() > f32::EPSILON {
-                    cfg.victory_points_draw = vp_draw;
-                    changed = true;
-                }
-                if cfg.expected_match_duration_minutes != duration {
-                    cfg.expected_match_duration_minutes = duration;
-                    changed = true;
-                }
-
-                if changed {
-                    config.set(serde_json::to_value(cfg).ok());
+        let score_to_win = Signal::derive(move || {
+            current_config.with(|cfg| cfg.as_ref().and_then(|c| c.score_to_win))
+        });
+        let set_score_to_win = Callback::new(move |score: Option<u16>| {
+            if let Some(mut cfg) = current_config.get() {
+                cfg.score_to_win = score;
+                sport_config_editor
+                    .set_config
+                    .set(serde_json::to_value(cfg).unwrap());
+            }
+        });
+        let win_by_margin = Signal::derive(move || {
+            current_config.with(|cfg| cfg.as_ref().and_then(|c| c.win_by_margin))
+        });
+        let set_win_by_margin = Callback::new(move |margin: Option<u16>| {
+            if let Some(mut cfg) = current_config.get() {
+                cfg.win_by_margin = margin;
+                sport_config_editor
+                    .set_config
+                    .set(serde_json::to_value(cfg).unwrap());
+            }
+        });
+        let hard_cap = Signal::derive(move || {
+            current_config.with(|cfg| cfg.as_ref().and_then(|c| c.hard_cap))
+        });
+        let set_hard_cap = Callback::new(move |cap: Option<u16>| {
+            if let Some(mut cfg) = current_config.get() {
+                cfg.hard_cap = cap;
+                sport_config_editor
+                    .set_config
+                    .set(serde_json::to_value(cfg).unwrap());
+            }
+        });
+        let victory_points_win = Signal::derive(move || {
+            current_config.with(|cfg| cfg.as_ref().map(|c| c.victory_points_win))
+        });
+        let set_victory_points_win = Callback::new(move |points: Option<f32>| {
+            if let Some(mut cfg) = current_config.get() {
+                cfg.victory_points_win = points.unwrap_or_default();
+                sport_config_editor
+                    .set_config
+                    .set(serde_json::to_value(cfg).unwrap());
+            }
+        });
+        let victory_points_draw = Signal::derive(move || {
+            current_config.with(|cfg| cfg.as_ref().map(|c| c.victory_points_draw))
+        });
+        let set_victory_points_draw = Callback::new(move |points: Option<f32>| {
+            if let Some(mut cfg) = current_config.get() {
+                cfg.victory_points_draw = points.unwrap_or_default();
+                sport_config_editor
+                    .set_config
+                    .set(serde_json::to_value(cfg).unwrap());
+            }
+        });
+        let expected_match_duration_minutes = Signal::derive(move || {
+            current_config.with(|cfg| cfg.as_ref().map(|c| c.expected_match_duration_minutes))
+        });
+        let set_expected_match_duration_minutes =
+            Callback::new(move |duration: Option<Duration>| {
+                if let Some(mut cfg) = current_config.get() {
+                    cfg.expected_match_duration_minutes =
+                        duration.unwrap_or(Duration::from_secs(0));
+                    sport_config_editor
+                        .set_config
+                        .set(serde_json::to_value(cfg).unwrap());
                 }
             });
-        });
 
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">
-                <ValidatedNumberInput<
-                u16,
-            >
+                <NumberInputWithValidation
                     label="Sets to Win"
                     name="sets_to_win"
-                    value=set_sets_to_win
-                    validation_error=is_valid_sets_to_win
+                    value=sets_to_win
+                    set_value=set_sets_to_win
+                    validation_result=validation_result
+                    object_id=sport_config_editor.sport_config_id
+                    field="sets_to_win"
                     min="1"
                 />
                 <div class="grid grid-cols-3 gap-4">
-                    <ValidatedOptionNumberInput<
-                    u16,
-                >
+                    <NumberInputWithValidation
                         label="Score to Win a Set"
                         name="score_to_win"
-                        value=set_score_to_win
-                        validation_error=is_valid_score_to_win
+                        value=score_to_win
+                        set_value=set_score_to_win
+                        validation_result=validation_result
+                        object_id=sport_config_editor.sport_config_id
+                        field="score_to_win"
                         min="1"
                     />
-                    <ValidatedOptionNumberInput<
-                    u16,
-                >
+                    <NumberInputWithValidation
                         label="Win by Margin"
                         name="win_by_margin"
-                        value=set_win_by_margin
-                        validation_error=is_valid_win_by_margin
+                        value=win_by_margin
+                        set_value=set_win_by_margin
+                        validation_result=validation_result
+                        object_id=sport_config_editor.sport_config_id
+                        field="win_by_margin"
                         min="1"
                     />
-                    <ValidatedOptionNumberInput<
-                    u16,
-                >
+                    <NumberInputWithValidation
                         label="Hard Cap"
                         name="hard_cap"
-                        value=set_hard_cap
-                        validation_error=is_valid_hard_cap
+                        value=hard_cap
+                        set_value=set_hard_cap
+                        validation_result=validation_result
+                        object_id=sport_config_editor.sport_config_id
+                        field="hard_cap"
                         min="1"
                     />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <ValidatedNumberInput<
-                    f32,
-                >
+                    <NumberInputWithValidation
                         label="Victory Points for Win"
                         name="victory_points_win"
-                        value=set_victory_points_win
-                        validation_error=is_valid_victory_points_win
+                        value=victory_points_win
+                        set_value=set_victory_points_win
+                        validation_result=validation_result
+                        object_id=sport_config_editor.sport_config_id
+                        field="victory_points_win"
                         min="0"
                         step="0.1"
                     />
-                    <ValidatedNumberInput<
-                    f32,
-                >
+                    <NumberInputWithValidation
                         label="Victory Points for Draw"
                         name="victory_points_draw"
-                        value=set_victory_points_draw
-                        validation_error=is_valid_victory_points_draw
+                        value=victory_points_draw
+                        set_value=set_victory_points_draw
+                        validation_result=validation_result
+                        object_id=sport_config_editor.sport_config_id
+                        field="victory_points_draw"
                         min="0"
                         step="0.1"
                     />
                 </div>
-                <ValidatedDurationInput
+                <DurationInputWithValidation
                     label="Expected Match Duration"
                     name="expected_match_duration_minutes"
-                    value=set_expected_match_duration_minutes
+                    value=expected_match_duration_minutes
+                    set_value=set_expected_match_duration_minutes
+                    validation_result=validation_result
+                    object_id=sport_config_editor.sport_config_id
+                    field="expected_match_duration_minutes"
                     unit=DurationInputUnit::Minutes
-                    validation_error=is_valid_expected_match_duration_minutes
                 />
             </div>
         }

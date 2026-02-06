@@ -5,13 +5,12 @@
 
 use crate::{
     error::strategy::handle_write_error,
-    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    hooks::use_query_navigation::{
+        MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+    },
     params::{use_group_number_params, use_stage_number_params, use_tournament_base_id_query},
     server_fn::tournament_editor::SaveTournamentEditorDiff,
-    state::{
-        error_state::PageErrorContext,
-        toast_state::{ToastContext, ToastVariant},
-    },
+    state::{error_state::PageErrorContext, toast_state::ToastContext},
 };
 use app_core::{
     Stage, TournamentEditor, TournamentMode, TournamentState, utils::validation::ValidationResult,
@@ -55,19 +54,19 @@ pub struct TournamentEditorContext {
     /// Read slice for accessing the tournament base name, if any
     pub base_name: Signal<Option<String>>,
     /// Write slice for setting the tournament base name
-    pub set_base_name: Callback<String>,
+    pub set_base_name: Callback<Option<String>>,
     /// Read slice for accessing the tournament base number of entrants, if any
     pub base_num_entrants: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of entrants
-    pub set_base_num_entrants: Callback<u32>,
+    pub set_base_num_entrants: Callback<Option<u32>>,
     /// Read slice for accessing the tournament base mode, if any
     pub base_mode: Signal<Option<TournamentMode>>,
     /// Write slice for setting the tournament base mode
-    pub set_base_mode: Callback<TournamentMode>,
+    pub set_base_mode: Callback<Option<TournamentMode>>,
     /// Read slice for accessing the tournament base number of rounds for Swiss System, if any
     pub base_num_rounds_swiss_system: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of rounds for Swiss System
-    pub set_base_num_rounds_swiss_system: Callback<u32>,
+    pub set_base_num_rounds_swiss_system: Callback<Option<u32>>,
 
     // --- Signals, Slices & Callbacks for Current Stage ---
     /// Read slice for checking if stage is initialized
@@ -81,7 +80,7 @@ pub struct TournamentEditorContext {
     /// Read slice for accessing the current stage number of groups, if any
     pub stage_num_groups: Signal<Option<u32>>,
     /// Write slice for setting the current stage number of groups
-    pub set_stage_num_groups: Callback<u32>,
+    pub set_stage_num_groups: Callback<Option<u32>>,
 
     // --- Signals, Slices & Callbacks for Current Group ---
     /// Read slice for checking if stage is initialized
@@ -91,13 +90,14 @@ pub struct TournamentEditorContext {
 impl TournamentEditorContext {
     /// Creates a new, empty context.
     pub fn new(initialized_tournament_editor: TournamentEditor) -> Self {
+        // --- refetch context ---
         let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
         // --- navigation and globale state context ---
         let navigate = use_navigate();
         let UseQueryNavigationReturn {
-            url_with_update_query,
-            url_route_with_sub_path,
+            url_update_query,
+            url_matched_route,
             ..
         } = use_query_navigation();
         let page_err_ctx = expect_context::<PageErrorContext>();
@@ -144,8 +144,9 @@ impl TournamentEditorContext {
                         .collect::<Vec<_>>()
                         .join("/");
                     // Navigate to the corrected path
+                    let url = url_matched_route(MatchedRouteHandler::Extend(&redirect_path));
                     navigate(
-                        &url_route_with_sub_path(&redirect_path),
+                        &url,
                         NavigateOptions {
                             replace: true, // Replace history to avoid dead ends
                             scroll: false,
@@ -164,9 +165,8 @@ impl TournamentEditorContext {
 
         // --- effects for server action and resource results ---
         // retry function for error handling
-        let refetch_and_reset = Callback::new(move |()| {
+        let refetch = Callback::new(move |()| {
             refetch_trigger.trigger_refetch();
-            save_diff.clear();
         });
 
         // Effect to handle save action results
@@ -174,17 +174,15 @@ impl TournamentEditorContext {
             let navigate = navigate.clone();
             move || match save_diff.value().get() {
                 Some(Ok(base_id)) => {
-                    toast_ctx.add("Tournament saved successfully", ToastVariant::Success);
-
+                    toast_ctx.success("Tournament saved successfully");
+                    // clear save action state
+                    save_diff.clear();
                     if tournament_id.get().is_some() {
                         // if it was an existing tournament, trigger refetch to load the full data
-                        refetch_and_reset.run(());
+                        refetch.run(());
                     } else {
-                        // clear save action state
-                        save_diff.clear();
                         // else navigate directly
-                        let nav_url =
-                            url_with_update_query("tournament_id", &base_id.to_string(), None);
+                        let nav_url = url_update_query("tournament_id", &base_id.to_string());
                         navigate(
                             &nav_url,
                             NavigateOptions {
@@ -203,7 +201,7 @@ impl TournamentEditorContext {
                         &toast_ctx,
                         component_id.get_value(),
                         &err,
-                        refetch_and_reset,
+                        refetch,
                     );
                 }
                 None => { /* saving state - do nothing */ }
@@ -229,8 +227,8 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_name(name);
             },
         );
-        let set_base_name = Callback::new(move |name: String| {
-            set_base_name.set(name);
+        let set_base_name = Callback::new(move |name: Option<String>| {
+            set_base_name.set(name.unwrap_or_default());
         });
         let (base_num_entrants, set_base_num_entrants) = create_slice(
             inner,
@@ -239,8 +237,8 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_num_entrants(num_entrants);
             },
         );
-        let set_base_num_entrants = Callback::new(move |num_entrants: u32| {
-            set_base_num_entrants.set(num_entrants);
+        let set_base_num_entrants = Callback::new(move |num_entrants: Option<u32>| {
+            set_base_num_entrants.set(num_entrants.unwrap_or_default());
         });
         let (base_mode, set_base_mode) = create_slice(
             inner,
@@ -249,8 +247,10 @@ impl TournamentEditorContext {
                 inner.get_local_mut().set_base_mode(mode);
             },
         );
-        let set_base_mode = Callback::new(move |mode: TournamentMode| {
-            set_base_mode.set(mode);
+        let set_base_mode = Callback::new(move |mode: Option<TournamentMode>| {
+            if let Some(mode) = mode {
+                set_base_mode.set(mode);
+            }
         });
         let (base_num_rounds_swiss_system, set_base_num_rounds_swiss_system) = create_slice(
             inner,
@@ -265,9 +265,10 @@ impl TournamentEditorContext {
                     .set_base_num_rounds_swiss_system(num_rounds_swiss);
             },
         );
-        let set_base_num_rounds_swiss_system = Callback::new(move |num_rounds_swiss: u32| {
-            set_base_num_rounds_swiss_system.set(num_rounds_swiss);
-        });
+        let set_base_num_rounds_swiss_system =
+            Callback::new(move |num_rounds_swiss: Option<u32>| {
+                set_base_num_rounds_swiss_system.set(num_rounds_swiss.unwrap_or_default());
+            });
 
         // --- Create slices for stage ---
         let is_stage_initialized = create_read_slice(inner, move |inner| {
@@ -309,8 +310,8 @@ impl TournamentEditorContext {
                 }
             },
         );
-        let set_stage_num_groups = Callback::new(move |num_groups: u32| {
-            set_stage_num_groups.set(num_groups);
+        let set_stage_num_groups = Callback::new(move |num_groups: Option<u32>| {
+            set_stage_num_groups.set(num_groups.unwrap_or_default());
         });
 
         // --- Create slices for group ---

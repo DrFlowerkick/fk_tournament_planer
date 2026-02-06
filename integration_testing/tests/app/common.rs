@@ -74,6 +74,9 @@ pub fn set_input_value(test_id: &str, value: &str) {
         .unwrap();
     input.set_value(value);
     input.dispatch_event(&Event::new("input").unwrap()).unwrap();
+    input
+        .dispatch_event(&Event::new("change").unwrap())
+        .unwrap();
     input.dispatch_event(&Event::new("blur").unwrap()).unwrap();
 }
 

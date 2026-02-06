@@ -1,5 +1,5 @@
 use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
-use app::{postal_addresses::SearchPostalAddress, provide_global_state};
+use app::{postal_addresses::SearchPostalAddress, provide_global_context};
 use gloo_timers::future::sleep;
 use isocountry::CountryCode;
 use leptos::{
@@ -8,7 +8,6 @@ use leptos::{
     wasm_bindgen::JsCast,
     web_sys::{Event, HtmlAnchorElement, HtmlInputElement, KeyboardEvent, KeyboardEventInit},
 };
-use leptos_axum_socket::provide_socket_context;
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -28,9 +27,8 @@ async fn test_search_postal_address() {
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
-        provide_socket_context();
         provide_context(core.clone());
-        provide_global_state();
+        provide_global_context();
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>

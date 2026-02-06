@@ -23,6 +23,9 @@ export const BANNER_IDS = {
   ackNavigate: "acknowledgment-navigate-banner",
   btnAckNavAction: "btn-acknowledgment-navigate-action",
   btnAckNav: "btn-acknowledgment-navigate",
+  globalErrorBanner: "global-error-banner",
+  btnRetry: "btn-retry-action",
+  btnCancel: "btn-cancel-action",
 } as const;
 
 export function getBannerSelectors(page: Page) {
@@ -35,6 +38,11 @@ export function getBannerSelectors(page: Page) {
       root: page.getByTestId(BANNER_IDS.ackNavigate),
       btnAction: page.getByTestId(BANNER_IDS.btnAckNavAction),
       btnNavigate: page.getByTestId(BANNER_IDS.btnAckNav),
+    },
+    globalErrorBanner: {
+      root: page.getByTestId(BANNER_IDS.globalErrorBanner),
+      btnRetry: page.getByTestId(BANNER_IDS.btnRetry),
+      btnCancel: page.getByTestId(BANNER_IDS.btnCancel),
     },
   };
 }

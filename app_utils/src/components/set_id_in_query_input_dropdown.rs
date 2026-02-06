@@ -42,7 +42,7 @@ where
     // ---- initialize query navigation ----
     let UseQueryNavigationReturn {
         get_query,
-        url_with_update_query,
+        url_update_query,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -67,8 +67,7 @@ where
                 return;
             }
             // 3) update URL query parameter with new id
-            let nav_url =
-                url_with_update_query(key, &item.get_id_version().get_id().to_string(), None);
+            let nav_url = url_update_query(key, &item.get_id_version().get_id().to_string());
             navigate(
                 &nav_url,
                 NavigateOptions {

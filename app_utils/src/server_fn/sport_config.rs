@@ -1,7 +1,5 @@
 //! Sport Config Server Functions Module
 
-#[cfg(feature = "test-mock")]
-pub mod test_support;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use crate::error::AppError;
 use crate::error::AppResult;
@@ -9,7 +7,8 @@ use app_core::SportConfig;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
-#[cfg(not(feature = "test-mock"))]
+//#[cfg(feature = "test-mock")]
+//use leptos::{wasm_bindgen::JsCast, web_sys};
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -44,31 +43,33 @@ pub async fn load_sport_config_inner(id: Uuid) -> AppResult<Option<SportConfig>>
 pub async fn list_sport_configs(
     sport_id: Uuid,
     name: String,
+    limit: Option<usize>,
 ) -> AppResult<Vec<app_core::SportConfig>> {
-    list_sport_configs_inner(sport_id, name).await
+    list_sport_configs_inner(sport_id, name, limit).await
 }
 
 #[cfg(feature = "test-mock")]
 pub async fn list_sport_configs(
     sport_id: Uuid,
     name: String,
+    limit: Option<usize>,
 ) -> AppResult<Vec<app_core::SportConfig>> {
-    list_sport_configs_inner(sport_id, name).await
+    list_sport_configs_inner(sport_id, name, limit).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 async fn list_sport_configs_inner(
     sport_id: Uuid,
     name: String,
+    limit: Option<usize>,
 ) -> AppResult<Vec<app_core::SportConfig>> {
     let core = expect_context::<CoreState>().as_sport_config_state();
     let configs = core
-        .list_sport_configs(sport_id, Some(&name), Some(10))
+        .list_sport_configs(sport_id, Some(&name), limit)
         .await?;
     Ok(configs)
 }
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "sport_config.save",
@@ -97,11 +98,11 @@ pub async fn save_sport_config(
     save_sport_config_inner(id, version, sport_id, name, config, intent).await
 }
 
-#[cfg(feature = "test-mock")]
-pub use test_support::SaveSportConfig;
+/*
+Replace by on:submit handler for test mock, which is at the moment defined at EditSportConfig
 
 #[cfg(feature = "test-mock")]
-pub async fn save_sport_config(
+pub fn save_sport_config_mock_submit(
     id: Uuid,
     version: u32,
     sport_id: Uuid,
@@ -110,7 +111,7 @@ pub async fn save_sport_config(
     intent: Option<String>,
 ) -> AppResult<SportConfig> {
     save_sport_config_inner(id, version, sport_id, name, config, intent).await
-}
+}*/
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 #[allow(clippy::too_many_arguments)]
@@ -128,6 +129,9 @@ pub async fn save_sport_config_inner(
     let mut_sc_core = core.get_mut();
 
     // Interpret intent
+    // ToDo: we have to refactor this when switching to auto save.
+    // AND: we changed logic to ALWAYS provide a valid id. This is circumvented here
+    // (database creates new id). This is for now no problem, but should be changed.
     let is_update = matches!(intent.as_deref(), Some("update"));
     if is_update {
         // set id and version previously loaded
