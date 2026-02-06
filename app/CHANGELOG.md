@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/app-v0.9.0...app-v0.10.0) (2026-02-06)
+
+
+### Features
+
+* Move sport config listing and editing to dashboard ([#32](https://github.com/DrFlowerkick/fk_tournament_planer/issues/32)) ([9732fa4](https://github.com/DrFlowerkick/fk_tournament_planer/commit/9732fa478fe48fe8c09c99650930e02fcebe89a5))
+
 ## [0.9.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/app-v0.8.0...app-v0.9.0) (2026-01-23)
 
 

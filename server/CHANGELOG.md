@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/server-v0.9.0...server-v0.10.0) (2026-02-06)
+
+
+### Miscellaneous Chores
+
+* **server:** Synchronize fk_tournament versions
+
 ## [0.9.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/server-v0.8.0...server-v0.9.0) (2026-01-23)
 
 
