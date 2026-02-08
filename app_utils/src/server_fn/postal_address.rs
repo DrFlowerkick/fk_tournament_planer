@@ -6,6 +6,8 @@ use crate::error::AppResult;
 use app_core::PostalAddress;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use app_core::{CoreState, utils::id_version::IdVersion};
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
+use isocountry::CountryCode;
 use leptos::prelude::*;
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
@@ -154,6 +156,8 @@ pub async fn save_postal_address_inner(
     country: String,
     intent: Option<String>,
 ) -> AppResult<PostalAddress> {
+    use app_core::{CoreError, DbError};
+
     let mut core = expect_context::<CoreState>().as_postal_address_state();
 
     // get mut handle to wrapped PostalAddress
@@ -176,6 +180,9 @@ pub async fn save_postal_address_inner(
         info!("saving_create");
     }
 
+    let country_code =
+        CountryCode::for_alpha2(&country).map_err(|e| CoreError::from(DbError::from(e)))?;
+
     // set address data from Form inputs
     mut_pa_core
         .set_name(name)
@@ -183,7 +190,7 @@ pub async fn save_postal_address_inner(
         .set_postal_code(postal_code)
         .set_locality(locality)
         .set_region(region.unwrap_or_default())
-        .set_country(country);
+        .set_country(Some(country_code));
 
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {

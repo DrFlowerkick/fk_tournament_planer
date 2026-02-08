@@ -11,6 +11,7 @@ use app_core::{
     utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use async_trait::async_trait;
+use isocountry::CountryCode;
 use sport_plugin_manager::SportPluginManagerMap;
 use std::{
     collections::HashMap,
@@ -184,7 +185,7 @@ pub fn make_addr(
     postal: &str,
     city: &str,
     region: &str,
-    country: &str,
+    country: CountryCode,
 ) -> PostalAddress {
     let mut pa = PostalAddress::default();
     pa.set_name(name)
@@ -192,7 +193,7 @@ pub fn make_addr(
         .set_postal_code(postal)
         .set_locality(city)
         .set_region(region)
-        .set_country(country);
+        .set_country(Some(country));
     pa
 }
 

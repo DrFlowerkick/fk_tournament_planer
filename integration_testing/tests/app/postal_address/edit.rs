@@ -44,7 +44,7 @@ async fn test_new_postal_address() {
     set_input_value("input-postal_code", &ts.postal);
     set_input_value("input-locality", &ts.city);
     set_input_value("input-region", &ts.region);
-    set_select_value("select-country", &ts.country);
+    set_select_value("select-country", ts.country.alpha2());
 
     sleep(Duration::from_millis(10)).await;
     let save_button = get_element_by_test_id("btn-save");

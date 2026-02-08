@@ -3,7 +3,6 @@
 
 pub mod home;
 pub mod postal_addresses;
-pub mod sport_config;
 
 use app_utils::{
     components::{banner::GlobalErrorBanner, toast::ToastContainer},

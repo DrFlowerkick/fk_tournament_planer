@@ -5,6 +5,7 @@
 use anyhow::Result;
 use app_core::{DatabasePort, DbError, DbpPostalAddress};
 use integration_testing::db_postgres_test_support::{common::*, postal_address::*};
+use isocountry::CountryCode;
 use tracing::info;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -44,7 +45,7 @@ async fn given_new_when_save_then_get_roundtrip_version_is_0() -> Result<()> {
     assert_eq!(fetched.get_street(), "A Street 1");
     assert_eq!(fetched.get_postal_code(), "12345");
     assert_eq!(fetched.get_locality(), "Berlin");
-    assert_eq!(fetched.get_country(), "DE");
+    assert_eq!(fetched.get_country(), Some(CountryCode::DEU));
 
     Ok(())
 }

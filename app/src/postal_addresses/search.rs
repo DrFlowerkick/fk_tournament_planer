@@ -22,10 +22,10 @@ use leptos::prelude::*;
 use leptos_router::{components::A, hooks::use_query, nested_router::Outlet};
 use uuid::Uuid;
 
-fn display_country(code: &str) -> String {
-    CountryCode::for_alpha2(code)
-        .map(|c| c.name().to_string())
-        .unwrap_or_else(|_| code.to_string()) // Fallback to Code, if invalid
+fn display_country(country_code: Option<CountryCode>) -> String {
+    country_code
+        .map(|c| format!("{} ({})", c.name(), c.alpha2()))
+        .unwrap_or_default()
 }
 
 #[component]
@@ -209,7 +209,7 @@ pub fn SearchPostalAddress() -> impl IntoView {
                                             {addr.get_region().unwrap_or_default().to_string()}
                                         </p>
                                         <p data-testid="preview-country">
-                                            {display_country(&addr.get_country())}
+                                            {display_country(addr.get_country())}
                                         </p>
                                         <p class="hidden" data-testid="preview-address-id">
                                             {addr.get_id().to_string()}

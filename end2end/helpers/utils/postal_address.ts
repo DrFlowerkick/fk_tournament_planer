@@ -212,9 +212,9 @@ export async function clickSaveAsNew(page: Page) {
 
 // mapping of countries used in tests
 const COUNTRY_CODE_TO_NAME: Record<string, string> = {
-  DE: "Germany",
-  US: "United States",
-  FR: "France",
+  DE: "Germany (DE)",
+  US: "United States (US)",
+  FR: "France (FR)",
   // add more as needed
 };
 

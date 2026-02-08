@@ -1,7 +1,6 @@
 use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
 use app::{postal_addresses::SearchPostalAddress, provide_global_context};
 use gloo_timers::future::sleep;
-use isocountry::CountryCode;
 use leptos::{
     mount::mount_to,
     prelude::*,
@@ -120,10 +119,8 @@ async fn test_search_postal_address() {
     let preview_country = get_element_by_test_id("preview-country")
         .text_content()
         .unwrap();
-    let expected_country_name = CountryCode::for_alpha2(&ts.country)
-        .map(|c| c.name())
-        .unwrap_or(&ts.country);
-    assert!(preview_country.contains(expected_country_name));
+    let expected_country_name = format!("{} ({})", ts.country.name(), ts.country.alpha2());
+    assert!(preview_country.contains(&expected_country_name));
     let preview_id = get_element_by_test_id("preview-address-id")
         .text_content()
         .unwrap();

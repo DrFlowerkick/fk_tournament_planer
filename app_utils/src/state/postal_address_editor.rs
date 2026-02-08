@@ -137,14 +137,9 @@ impl PostalAddressEditorContext {
         });
         let (country, set_country) = create_slice(
             local,
-            |local| {
-                local
-                    .as_ref()
-                    .and_then(|pa| CountryCode::for_alpha2(pa.get_country()).ok())
-            },
+            |local| local.as_ref().and_then(|pa| pa.get_country()),
             |local, country: Option<CountryCode>| {
                 if let Some(pa) = local {
-                    let country = country.map(|c| c.alpha2()).unwrap_or_default();
                     pa.set_country(country);
                 }
             },

@@ -2,6 +2,7 @@
 
 use crate::{PostalAddress, SportConfig, Stage, TournamentBase};
 use async_trait::async_trait;
+use isocountry::CountryCodeParseErr;
 use serde::{Deserialize, Serialize};
 use std::any::Any;
 use thiserror::Error;
@@ -106,6 +107,10 @@ pub enum DbError {
     #[error("serialization failure")]
     SerializationFailure,
 
+    /// invalid country code
+    #[error("invalid country code: {0}")]
+    InvalidCountryCode(String),
+
     /// connection, pool, or other DB errors
     #[error("internal error: {0}")]
     Other(String),
@@ -115,6 +120,13 @@ impl From<anyhow::Error> for DbError {
     fn from(err: anyhow::Error) -> Self {
         tracing::error!("Database Error converted to string: {:?}", err);
         Self::Other(err.to_string())
+    }
+}
+
+impl From<CountryCodeParseErr> for DbError {
+    fn from(err: CountryCodeParseErr) -> Self {
+        tracing::error!("Country code parse error: {:?}", err);
+        Self::InvalidCountryCode(err.to_string())
     }
 }
 

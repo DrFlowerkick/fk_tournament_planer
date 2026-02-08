@@ -1,7 +1,7 @@
 use app_core::{CoreError, DbError};
-use uuid::Uuid;
-
 use integration_testing::port_fakes::*;
+use isocountry::CountryCode;
+use uuid::Uuid;
 
 /// 1) load(): found → state replaced, Some returned
 #[tokio::test]
@@ -9,7 +9,14 @@ async fn given_existing_id_when_load_then_state_is_replaced_and_some_is_returned
     let (mut core, _db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Seed via DB fake:
-    let a = make_addr("Alpha", "Street 1", "10115", "Berlin", "BE", "DE");
+    let a = make_addr(
+        "Alpha",
+        "Street 1",
+        "10115",
+        "Berlin",
+        "BE",
+        CountryCode::DEU,
+    );
 
     *core.get_mut() = a.clone();
     let id = core
@@ -35,7 +42,14 @@ async fn given_missing_id_when_load_then_none_and_state_unchanged() {
     let (mut core, _db_fake, _cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Prepare a known state
-    let known = make_addr("Alpha", "Street 1", "10115", "Berlin", "BE", "DE");
+    let known = make_addr(
+        "Alpha",
+        "Street 1",
+        "10115",
+        "Berlin",
+        "BE",
+        CountryCode::DEU,
+    );
     *core.get_mut() = known.clone();
 
     // Act
@@ -87,7 +101,7 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
         .set_postal_code("10117")
         .set_locality("Berlin")
         .set_region("BE")
-        .set_country("DE");
+        .set_country(Some(CountryCode::DEU));
 
     // Act
     let saved = core.save().await.expect("save ok").clone();
@@ -109,7 +123,7 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
         .set_postal_code("10117")
         .set_locality("Berlin")
         .set_region("BE")
-        .set_country("DE");
+        .set_country(Some(CountryCode::DEU));
 
     // Seed state
     let before = core.get().clone();
@@ -142,7 +156,7 @@ async fn given_filter_and_limit_when_list_addresses_then_db_fake_results_are_for
         ("Mara", "S2", "10116"),
         ("Zoe", "S3", "10117"),
     ] {
-        *core.get_mut() = make_addr(nm, st, pc, "Berlin", "BE", "DE");
+        *core.get_mut() = make_addr(nm, st, pc, "Berlin", "BE", CountryCode::DEU);
         core.save().await.expect("seed save");
     }
 
@@ -166,7 +180,7 @@ async fn given_only_limit_when_list_addresses_then_limit_is_respected() {
 
     for i in 0..5 {
         let nm = format!("Name{i}");
-        *core.get_mut() = make_addr(&nm, "S", "66666", "C", "", "DE");
+        *core.get_mut() = make_addr(&nm, "S", "66666", "C", "", CountryCode::DEU);
         core.save().await.expect("seed save");
     }
 

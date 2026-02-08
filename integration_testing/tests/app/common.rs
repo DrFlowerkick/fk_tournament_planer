@@ -5,6 +5,7 @@ use futures_util::lock::{Mutex, MutexGuard};
 use generic_sport_plugin::GenericSportPlugin;
 use generic_sport_plugin::config::GenericSportConfig;
 use integration_testing::port_fakes::{FakeClientRegistryPort, FakeDatabasePort, make_addr};
+use isocountry::CountryCode;
 use leptos::{
     prelude::*,
     wasm_bindgen::{JsCast, JsValue},
@@ -111,7 +112,7 @@ pub struct InitialTestState {
     pub postal: String,
     pub city: String,
     pub region: String,
-    pub country: String,
+    pub country: CountryCode,
     pub generic_sport_id: Uuid,
     pub generic_sport_config_id: Uuid,
 }
@@ -141,7 +142,7 @@ pub fn init_test_state() -> InitialTestState {
     let postal = "12345";
     let city = "Testcity";
     let region = "TS";
-    let country = "DE";
+    let country = CountryCode::DEU;
     let mut entries = Vec::new();
     for index in 0..=2 {
         let name = format!("{name_base}{}", index + 1);
@@ -168,7 +169,7 @@ pub fn init_test_state() -> InitialTestState {
         postal: postal.into(),
         city: city.into(),
         region: region.into(),
-        country: country.to_uppercase(),
+        country,
         generic_sport_id,
         generic_sport_config_id,
     }

@@ -1,6 +1,6 @@
 use app_core::{CoreError, CrError, CrMsg, DbError};
-
 use integration_testing::port_fakes::*;
+use isocountry::CountryCode;
 
 /// 9) save(): publishes exactly once with correct payload after successful persist
 #[tokio::test]
@@ -8,7 +8,14 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
     let (mut core, _db_fake, cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Arrange: new address in state (insert → version 0 after save)
-    *core.get_mut() = make_addr("Alpha", "Street 1", "10115", "Berlin", "BE", "DE");
+    *core.get_mut() = make_addr(
+        "Alpha",
+        "Street 1",
+        "10115",
+        "Berlin",
+        "BE",
+        CountryCode::DEU,
+    );
 
     // Act: persist (DB succeeds) → should publish once
     let saved = core
@@ -49,7 +56,14 @@ async fn given_db_failure_when_save_then_no_publish_occurs() {
     db_fake.fail_save_pa_once();
 
     // Put something in state so that save attempts to persist
-    *core.get_mut() = make_addr("Beta", "Street 2", "10247", "Berlin", "BE", "DE");
+    *core.get_mut() = make_addr(
+        "Beta",
+        "Street 2",
+        "10247",
+        "Berlin",
+        "BE",
+        CountryCode::DEU,
+    );
 
     // Act
     let err = core
@@ -80,7 +94,14 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
     let (mut core, _db_fake, cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Arrange: insert a new address (DB should succeed), but inject publish failure
-    *core.get_mut() = make_addr("Gamma", "Street 3", "10117", "Berlin", "BE", "DE");
+    *core.get_mut() = make_addr(
+        "Gamma",
+        "Street 3",
+        "10117",
+        "Berlin",
+        "BE",
+        CountryCode::DEU,
+    );
     cr_fake.fail_publish_once();
 
     // Act: expect error (publish fails after DB has persisted)
@@ -122,9 +143,9 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     let (mut core, _db_fake, cr_fake) = make_core_postal_address_state_with_fakes();
 
     // Seed two entries via normal saves (which *do* publish)...
-    *core.get_mut() = make_addr("Seed0", "S1", "10111", "Berlin", "BE", "DE");
+    *core.get_mut() = make_addr("Seed0", "S1", "10111", "Berlin", "BE", CountryCode::DEU);
     core.save().await.expect("seed 0");
-    *core.get_mut() = make_addr("Seed1", "S2", "10112", "Berlin", "BE", "DE");
+    *core.get_mut() = make_addr("Seed1", "S2", "10112", "Berlin", "BE", CountryCode::DEU);
     core.save().await.expect("seed 1");
 
     // ...then clear the registry to focus purely on read calls.
@@ -148,7 +169,7 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
     let (mut core, _db_fake, cr_fake) = make_core_postal_address_state_with_fakes();
 
     // First insert
-    *core.get_mut() = make_addr("Delta", "S3", "10113", "Berlin", "BE", "DE");
+    *core.get_mut() = make_addr("Delta", "S3", "10113", "Berlin", "BE", CountryCode::DEU);
     let first = core.save().await.expect("first save").clone();
     let id = first.get_id();
     assert_eq!(first.get_version(), Some(0));
