@@ -184,3 +184,25 @@ impl PostalAddressEditorContext {
         self.origin.set_value(Some(pa));
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct PostalAddressListContext {
+    /// Trigger to refetch data from server
+    refetch_trigger: RwSignal<u64>,
+    /// Read slice for getting the current state of the postal address list
+    pub track_fetch_trigger: Signal<u64>,
+}
+
+impl PostalAddressListContext {
+    pub fn new() -> Self {
+        let refetch_trigger = RwSignal::new(0);
+        Self {
+            refetch_trigger,
+            track_fetch_trigger: refetch_trigger.read_only().into(),
+        }
+    }
+
+    pub fn trigger_refetch(&self) {
+        self.refetch_trigger.update(|v| *v += 1);
+    }
+}

@@ -68,6 +68,28 @@ pub fn get_element_by_test_id(id: &str) -> HtmlElement {
         .unwrap()
 }
 
+/// Helper function to get an element by its data-testid attribute.
+pub fn get_sub_element_by_test_id(id: &str, sub_id: &str) -> HtmlElement {
+    let document = document();
+    let primary_element = document
+        .query_selector(&format!("[data-testid='{}']", id))
+        .unwrap()
+        .unwrap_or_else(|| panic!("Element with test-id '{}' not found", id))
+        .dyn_into::<HtmlElement>()
+        .unwrap();
+    primary_element
+        .query_selector(&format!("[data-testid='{}']", sub_id))
+        .unwrap()
+        .unwrap_or_else(|| {
+            panic!(
+                "Sub-element with test-id '{}' not found in '{}'",
+                sub_id, id
+            )
+        })
+        .dyn_into::<HtmlElement>()
+        .unwrap()
+}
+
 /// Helper to simulate user typing and leaving the field (crucial for plugin fields)
 pub fn set_input_value(test_id: &str, value: &str) {
     let input = get_element_by_test_id(test_id)

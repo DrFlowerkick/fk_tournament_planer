@@ -4,6 +4,7 @@ use crate::common::{
 };
 use app::{postal_addresses::LoadPostalAddress, provide_global_context};
 use app_core::DbpPostalAddress;
+use app_utils::state::postal_address::PostalAddressListContext;
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
 use leptos_router::{
@@ -21,16 +22,17 @@ async fn test_new_postal_address() {
     let ts = init_test_state();
 
     // 1. Set initial URL for creating a new address
-    set_url("/postal-address/new_pa");
+    set_url("/postal-address/new");
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
+        provide_context(PostalAddressListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/new_pa") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/new") view=LoadPostalAddress />
                 </Routes>
             </Router>
         }
@@ -70,19 +72,17 @@ async fn test_edit_postal_address() {
 
     // 1. Set initial URL for creating a new address
     let existing_id = ts.entries[0];
-    set_url(&format!(
-        "/postal-address/edit_pa?address_id={}",
-        existing_id
-    ));
+    set_url(&format!("/postal-address/edit?address_id={}", existing_id));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
+        provide_context(PostalAddressListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit_pa") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/edit") view=LoadPostalAddress />
                 </Routes>
             </Router>
         }
@@ -125,19 +125,17 @@ async fn test_save_as_new_postal_address() {
 
     // 1. Set initial URL for creating a new address
     let existing_id = ts.entries[0];
-    set_url(&format!(
-        "/postal-address/edit_pa?address_id={}",
-        existing_id
-    ));
+    set_url(&format!("/postal-address/edit?address_id={}", existing_id));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
+        provide_context(PostalAddressListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit_pa") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/edit") view=LoadPostalAddress />
                 </Routes>
             </Router>
         }

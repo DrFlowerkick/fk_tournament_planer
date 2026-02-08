@@ -25,20 +25,18 @@ test.describe("Cancel button navigation", () => {
     const url = page.url();
     const uuid = extractUuidFromUrl(url);
 
-    // Go to list and search for it to create a history entry
-    await expect(PA.search.dropdown.input).toBeVisible();
-    await searchAndOpenByNameOnCurrentPage(PA.search.dropdown, name);
+    // Go to list and select the created address to enable the edit button
+    const row = await searchAndOpenByNameOnCurrentPage(page, name);
+    await expect(PA.list.btnEdit).toBeVisible();
 
     // -------------------- Act: Go to edit and click cancel --------------------
-    await PA.search.btnEdit.click();
+    await PA.list.btnEdit.click();
     await expect(PA.form.root).toBeVisible();
     await PA.form.btnCancel.click();
 
     // -------------------- Assert: We are back on the search page with uuid in url--------------------
     // The URL should be the search/list URL, not the edit URL
     await expect(page).toHaveURL(url);
-    // The search input should be visible again
-    await expect(PA.search.dropdown.input).toBeVisible();
 
     // -------------------- Act: Open edit page directly and cancel --------------------
     await openPostalAddressList(page); // Ensure we have no uuid in current url

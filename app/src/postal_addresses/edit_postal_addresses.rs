@@ -14,18 +14,23 @@ use app_utils::{
         use_query_navigation::{
             MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
         },
+        use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::use_address_id_query,
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::{
-        error_state::PageErrorContext, postal_address_editor::PostalAddressEditorContext,
+        error_state::PageErrorContext,
+        postal_address::{PostalAddressEditorContext, PostalAddressListContext},
         toast_state::ToastContext,
     },
 };
-use leptos::prelude::*;
+use leptos::{html::H2, prelude::*};
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
-use leptos_router::{NavigateOptions, hooks::use_navigate};
+use leptos_router::{
+    NavigateOptions,
+    hooks::{use_matched, use_navigate},
+};
 use uuid::Uuid;
 
 #[component]
@@ -114,24 +119,31 @@ pub fn EditPostalAddress(
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
         url_matched_route_update_query,
+        url_is_matched_route,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
+    let matched_route = use_matched();
+
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+
+    let postal_address_list_ctx = expect_context::<PostalAddressListContext>();
+
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
     });
 
     let postal_address_editor = PostalAddressEditorContext::new();
-    let is_new = if let Some(pa) = postal_address {
+    let (show_form, is_new) = if let Some(pa) = postal_address {
         postal_address_editor.set_postal_address(pa);
-        false
+        (true, false)
     } else {
         postal_address_editor.new_postal_address();
-        true
+        let is_new = matched_route.get_untracked().ends_with("new");
+        (is_new, is_new)
     };
     provide_context(postal_address_editor);
 
@@ -147,6 +159,9 @@ pub fn EditPostalAddress(
             Some(Ok(pa)) => {
                 save_postal_address.clear();
                 toast_ctx.success("Postal Address saved successfully");
+                if is_new {
+                    postal_address_list_ctx.trigger_refetch();
+                }
                 let nav_url = url_matched_route_update_query(
                     "address_id",
                     &pa.get_id().to_string(),
@@ -185,15 +200,27 @@ pub fn EditPostalAddress(
             .unwrap_or(false)
     };
 
+    // scroll into view handling
+    let scroll_ref = NodeRef::<H2>::new();
+    use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
+
     view! {
         <div class="card w-full bg-base-100 shadow-xl">
             <div class="card-body">
-                <h2 class="card-title">
+                <h2 class="card-title" node_ref=scroll_ref>
                     {move || { if is_new { "New Postal Address" } else { "Edit Postal Address" } }}
                 </h2>
-                // --- Debug Element for Integration Tests ---
-                <div id="debug-output" data-testid="debug-output" style="display:none;"></div>
-
+                <Show
+                    when=move || show_form
+                    fallback=|| {
+                        view! {
+                            <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                                <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
+                                <p class="text-2xl font-bold text-center">"Please select a postal address from the list."</p>
+                            </div>
+                        }
+                    }
+                >
                 // --- Address Form ---
                 <div data-testid="form-address">
                     <ActionForm
@@ -380,6 +407,7 @@ pub fn EditPostalAddress(
                         </fieldset>
                     </ActionForm>
                 </div>
+                </Show>
             </div>
         </div>
     }

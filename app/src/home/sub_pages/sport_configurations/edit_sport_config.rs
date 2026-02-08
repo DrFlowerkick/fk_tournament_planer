@@ -28,7 +28,10 @@ use app_utils::{
 use leptos::{html::H2, prelude::*};
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
-use leptos_router::{NavigateOptions, hooks::use_navigate};
+use leptos_router::{
+    NavigateOptions,
+    hooks::{use_matched, use_navigate},
+};
 use reactive_stores::Store;
 use uuid::Uuid;
 
@@ -122,6 +125,7 @@ pub fn EditSportConfiguration(
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
+    let matched_route = use_matched();
 
     let sport_id = use_sport_id_query();
 
@@ -168,7 +172,8 @@ pub fn EditSportConfiguration(
         sc.set_sport_id(s_id);
         sc.set_config(plugin.get_default_config());
         sport_config_editor.set_sport_config(sc);
-        (true, true)
+        let is_new = matched_route.get_untracked().ends_with("new");
+        (is_new, is_new)
     } else {
         (false, false)
     };
@@ -252,14 +257,15 @@ pub fn EditSportConfiguration(
                         )
                     }}
                 </h2>
-                // ToDo fix icon
                 <Show
                     when=move || show_form
                     fallback=|| {
                         view! {
                             <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
                                 <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                                <p class="text-2xl font-bold text-center">"Invalid sport id"</p>
+                                <p class="text-2xl font-bold text-center">
+                                    "Please select a sport configuration from the list."
+                                </p>
                             </div>
                         }
                     }

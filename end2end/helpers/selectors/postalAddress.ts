@@ -1,13 +1,17 @@
 import type { Page } from "@playwright/test";
-import { getDropdown } from "./common";
 
 export const POSTAL_IDS = {
-  search: {
-    input: "address_id-search-input",
-    suggestList: "address_id-search-suggest",
-    suggestItem: "address_id-search-suggest-item",
-    btnNew: "btn-new-address",
-    btnEdit: "btn-edit-address",
+  list: {
+    root: "postal-address-list-root",
+    filterName: "filter-name-search",
+    filterLimit: "filter-limit-select",
+    emptyList: "postal-address-list-empty",
+    table: "postal-address-table",
+    btnNew: "action-btn-new",
+    btnEdit: "action-btn-edit",
+    rowPrefix: "postal-address-row-",
+    previewPrefix: "postal-address-preview-",
+    // Reuse existing preview IDs for the inner card content
     preview: {
       root: "address-preview",
       id: "preview-address-id",
@@ -39,24 +43,34 @@ export const POSTAL_IDS = {
 
 export function getPostalSelectors(page: Page) {
   return {
-    search: {
-      dropdown: getDropdown(page, POSTAL_IDS.search),
-      preview: {
-        root: page.getByTestId(POSTAL_IDS.search.preview.root),
-        id: page.getByTestId(POSTAL_IDS.search.preview.id),
-        version: page.getByTestId(POSTAL_IDS.search.preview.version),
-        name: page.getByTestId(POSTAL_IDS.search.preview.name),
-        street: page.getByTestId(POSTAL_IDS.search.preview.street),
-        postalLocality: page.getByTestId(
-          POSTAL_IDS.search.preview.postalLocality
-        ),
-        postalCode: page.getByTestId(POSTAL_IDS.search.preview.postalCode),
-        locality: page.getByTestId(POSTAL_IDS.search.preview.locality),
-        region: page.getByTestId(POSTAL_IDS.search.preview.region),
-        country: page.getByTestId(POSTAL_IDS.search.preview.country),
-      },
-      btnNew: page.getByTestId(POSTAL_IDS.search.btnNew),
-      btnEdit: page.getByTestId(POSTAL_IDS.search.btnEdit),
+    list: {
+      // 1. If you know the ID
+      previewById: (id: string) =>
+        page.getByTestId(`${POSTAL_IDS.list.previewPrefix}${id}`),
+
+      // 2. If you know the name (Robust E2E approach)
+      // Finds the row containing the name, then finds the preview inside that row
+      previewByName: (name: string) =>
+        page
+          .getByRole("row")
+          .filter({ hasText: name })
+          .getByTestId(new RegExp(`^${POSTAL_IDS.list.previewPrefix}`)),
+
+      // 3. Just get the first visible one
+      anyPreview: page
+        .locator(`[data-testid^="${POSTAL_IDS.list.previewPrefix}"]`)
+        .first(),
+      anyRow: page
+        .locator(`[data-testid^="${POSTAL_IDS.list.rowPrefix}"]`)
+        .first(),
+
+      root: page.getByTestId(POSTAL_IDS.list.root),
+      filterName: page.getByTestId(POSTAL_IDS.list.filterName),
+      filterLimit: page.getByTestId(POSTAL_IDS.list.filterLimit),
+      emptyList: page.getByTestId(POSTAL_IDS.list.emptyList),
+      table: page.getByTestId(POSTAL_IDS.list.table),
+      btnNew: page.getByTestId(POSTAL_IDS.list.btnNew),
+      btnEdit: page.getByTestId(POSTAL_IDS.list.btnEdit),
     },
     form: {
       root: page.getByTestId(POSTAL_IDS.form.root),

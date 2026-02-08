@@ -5,7 +5,7 @@ pub mod home;
 pub mod postal_addresses;
 
 use app_utils::{
-    components::{banner::GlobalErrorBanner, toast::ToastContainer},
+    components::{global_error_banner::GlobalErrorBanner, toast::ToastContainer},
     state::{error_state::PageErrorContext, global_state::GlobalState, toast_state::ToastContext},
 };
 use ddc_plugin::DdcSportPlugin;
@@ -86,8 +86,6 @@ pub fn App() -> impl IntoView {
         // routing
         <Router>
             // global error banner and toast container are placed here so they are available on all pages
-            <GlobalErrorBanner />
-            <ToastContainer />
             <div class="flex flex-col min-h-screen">
                 // navigation
                 <header class="navbar bg-base-300">
@@ -105,6 +103,10 @@ pub fn App() -> impl IntoView {
                     </div>
                 </header>
 
+                // banner and toast container are global, so they are outside the main content area
+                <GlobalErrorBanner />
+                <ToastContainer />
+
                 <main class="flex-grow p-4 bg-base-200">
                     <Routes fallback=|| "Page not found.".into_view()>
                         <ParentRoute path=path!("/") view=HomePage>
@@ -119,18 +121,8 @@ pub fn App() -> impl IntoView {
                             <Route path=path!("adhoc-tournament") view=AdhocTournament />
                             <SportConfigRoutes />
                             <Route path=path!("about-sport") view=AboutSport />
-
                         </ParentRoute>
-                        <ParentRoute path=path!("/postal-address") view=SearchPostalAddress>
-                            <Route
-                                path=path!("")
-                                view={
-                                    view! {}
-                                }
-                            />
-                            <Route path=path!("new_pa") view=LoadPostalAddress />
-                            <Route path=path!("edit_pa") view=LoadPostalAddress />
-                        </ParentRoute>
+                        <PostalAddressRoutes />
                     </Routes>
                 </main>
 

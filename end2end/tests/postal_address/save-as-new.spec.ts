@@ -10,7 +10,9 @@ import {
   waitForPostalAddressListUrl,
   fillAndBlur,
   selectors,
+  searchAndOpenByNameOnCurrentPage,
 } from "../../helpers";
+import { POSTAL_IDS } from "../../helpers/selectors/postalAddress";
 
 test.describe('"Save as new" functionality', () => {
   test("creates a new address from an existing one", async ({ page }) => {
@@ -53,7 +55,8 @@ test.describe('"Save as new" functionality', () => {
     expect(newId).not.toEqual(originalId);
 
     // The preview should show the new name
-    await expect(PA.search.preview.name).toHaveText(newName);
+    const newRow = await searchAndOpenByNameOnCurrentPage(page, newName);
+    await expect(newRow.getByTestId(POSTAL_IDS.list.preview.name)).toHaveText(newName);
 
     // -------------------- Assert: Original address is unchanged --------------------
     await openEditForm(page, originalId);

@@ -24,7 +24,7 @@ use app_utils::{
     },
 };
 use leptos::{html::H2, prelude::*};
-use leptos_router::{components::A, hooks::use_url, nested_router::Outlet};
+use leptos_router::{components::A, hooks::use_matched, nested_router::Outlet};
 use uuid::Uuid;
 
 #[component]
@@ -128,7 +128,7 @@ pub fn LoadTournament() -> impl IntoView {
 pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     // --- prepare initial tournament editor state ---
     let sport_id = use_sport_id_query();
-    let url = use_url();
+    let matched_route = use_matched();
 
     let mut tournament_editor = TournamentEditor::new();
     let (show_form, is_new) = if let Some(b) = base {
@@ -136,7 +136,7 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
         (true, false)
     } else if let Some(s_id) = sport_id.get_untracked() {
         tournament_editor.new_base(s_id);
-        let is_new = url.get_untracked().path().starts_with("/new-tournament");
+        let is_new = matched_route.get_untracked().ends_with("new-tournament");
         (is_new, is_new)
     } else {
         (false, false)

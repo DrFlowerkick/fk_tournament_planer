@@ -17,7 +17,7 @@ test("Smoke: Search → New → Cancel", async ({ page }) => {
     // Accept either /postal-address or /postal-address?address_id=UUID URL
     const { pathname } = new URL(page.url());
     expect(pathname.startsWith("/postal-address")).toBeTruthy();
-    expect(pathname).not.toContain("/new_pa");
+    expect(pathname).not.toContain("/new");
     expect(pathname).not.toContain("address_id=");
   });
 });

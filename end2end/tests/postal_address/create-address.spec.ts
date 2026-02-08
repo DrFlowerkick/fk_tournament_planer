@@ -27,7 +27,7 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
 
   await test.step("Open search and navigate to New", async () => {
     await openPostalAddressList(page);
-    await PA.search.btnNew.click();
+    await PA.list.btnNew.click();
     await expect(PA.form.root).toBeVisible();
   });
 
@@ -43,18 +43,11 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
     // Wait for hydration after raw navigation
     await waitForAppHydration(page);
 
-    await expect(PA.search.dropdown.input).toBeVisible();
+    await expect(PA.list.btnNew).toBeVisible();
   });
 
-  await test.step("Find the created address via search", async () => {
-    await searchAndOpenByNameOnCurrentPage(PA.search.dropdown, initial.name, {
-      clearFirst: true,
-      expectUnique: true,
-      waitAriaBusy: true,
-    });
-  });
-
-  await test.step("Verify preview shows the saved data", async () => {
-    await expectPreviewShows(page, initial);
+  await test.step("Find the created address via table and verify preview", async () => {
+    const row = await searchAndOpenByNameOnCurrentPage(page, initial.name);
+    await expectPreviewShows(row, initial);
   });
 });

@@ -8,7 +8,7 @@ use leptos::web_sys::{ScrollBehavior, ScrollIntoViewOptions, ScrollLogicalPositi
 ///
 /// # Arguments
 /// * `node_ref` - The NodeRef attached to the container element of the page/component.
-pub fn use_scroll_h2_into_view<T>(node_ref: NodeRef<H2>, trigger: Signal<T>)
+pub fn use_scroll_h2_into_view<T>(node_ref: NodeRef<H2>, trigger: Memo<T>)
 where
     T: Sync + Send + 'static,
 {

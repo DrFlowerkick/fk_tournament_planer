@@ -63,6 +63,17 @@ async fn test_config_search_renders() {
         .to_string();
     assert_eq!(url_id, ts.generic_sport_config_id.to_string());
 
+    // test new button URL
+    let new_button = get_element_by_test_id("action-btn-new")
+        .dyn_into::<HtmlAnchorElement>()
+        .unwrap();
+    let href = new_button.href();
+    assert!(href.ends_with(&format!("new?sport_id={}", ts.generic_sport_id)));
+    assert_eq!(
+        new_button.text_content().unwrap(),
+        "Create New Configuration"
+    );
+
     // test buttons which show after click on table row
     let edit_button = get_element_by_test_id("action-btn-edit")
         .dyn_into::<HtmlAnchorElement>()

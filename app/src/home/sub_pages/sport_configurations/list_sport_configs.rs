@@ -35,6 +35,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
         url_remove_query,
         url_matched_route,
         url_is_matched_route,
+        url_matched_route_remove_query,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
@@ -135,7 +136,10 @@ pub fn ListSportConfigurations() -> impl IntoView {
             // --- Action Bar ---
             <div class="flex flex-col md:flex-row justify-end gap-4">
                 <A
-                    href=move || url_matched_route(MatchedRouteHandler::Extend("new"))
+                    href=move || url_matched_route_remove_query(
+                        "sport_config_id",
+                        MatchedRouteHandler::Extend("new"),
+                    )
                     attr:class="btn btn-sm btn-primary"
                     attr:data-testid="action-btn-new"
                     scroll=false

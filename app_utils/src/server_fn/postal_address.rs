@@ -42,22 +42,31 @@ pub async fn load_postal_address_inner(id: Uuid) -> AppResult<Option<PostalAddre
 #[instrument(
     name = "postal_address.list",
     skip_all,
-    fields(q_len = name.len(), limit = 10)
+    fields(q_len = name.len(), limit = limit.unwrap_or(10))
 )]
-pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
-    list_postal_addresses_inner(name).await
+pub async fn list_postal_addresses(
+    name: String,
+    limit: Option<usize>,
+) -> AppResult<Vec<PostalAddress>> {
+    list_postal_addresses_inner(name, limit).await
 }
 
 #[cfg(feature = "test-mock")]
-pub async fn list_postal_addresses(name: String) -> AppResult<Vec<PostalAddress>> {
-    list_postal_addresses_inner(name).await
+pub async fn list_postal_addresses(
+    name: String,
+    limit: Option<usize>,
+) -> AppResult<Vec<PostalAddress>> {
+    list_postal_addresses_inner(name, limit).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-pub async fn list_postal_addresses_inner(name: String) -> AppResult<Vec<PostalAddress>> {
+pub async fn list_postal_addresses_inner(
+    name: String,
+    limit: Option<usize>,
+) -> AppResult<Vec<PostalAddress>> {
     let core = expect_context::<CoreState>().as_postal_address_state();
     info!("list_request");
-    match core.list_addresses(Some(&name), Some(10)).await {
+    match core.list_addresses(Some(&name), limit).await {
         Ok(list) => {
             info!(count = list.len(), "list_ok");
             Ok(list)

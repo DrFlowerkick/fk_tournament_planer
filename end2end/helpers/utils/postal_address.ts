@@ -1,15 +1,16 @@
 // Shared helpers for address form flows
-import { expect, Page } from "@playwright/test";
-import { selectors } from "../selectors";
+import { expect, Locator, Page } from "@playwright/test";
 import {
   fillAndBlur,
   selectThenBlur,
   extractQueryParamFromUrl,
   waitForAppHydration,
-} from "./common"; // Added waitForAppHydration
+  selectors,
+} from "../../helpers";
+import { POSTAL_IDS } from "../selectors/postalAddress";
 
 export const PA_ROUTES = {
-  newAddress: "/postal-address/new_pa",
+  newAddress: "/postal-address/new",
   list: "/postal-address",
 };
 
@@ -24,10 +25,8 @@ export async function openPostalAddressList(page: Page) {
   // strict hydration check
   await waitForAppHydration(page);
 
-  await expect(PA.search.dropdown.input).toBeVisible();
-  await expect(PA.search.btnNew).toBeVisible();
-  await expect(PA.search.btnEdit).toBeVisible();
-  await expect(PA.search.btnEdit).toHaveAttribute("disabled");
+  await expect(PA.list.filterName).toBeVisible();
+  await expect(PA.list.btnNew).toBeVisible();
 }
 
 /**
@@ -41,10 +40,8 @@ export async function waitForPostalAddressListUrl(page: Page) {
   // strict hydration check
   await waitForAppHydration(page);
 
-  await expect(PA.search.dropdown.input).toBeVisible();
-  await expect(PA.search.btnNew).toBeVisible();
-  await expect(PA.search.btnEdit).toBeVisible();
-  await expect(PA.search.btnEdit).not.toHaveAttribute("disabled");
+  await expect(PA.list.filterName).toBeVisible();
+  await expect(PA.list.btnNew).toBeVisible();
 }
 
 /**
@@ -72,11 +69,12 @@ export async function openNewForm(page: Page) {
 
 /**
  * Enter edit mode from a detail page (if you have a dedicated edit button).
+ * Assumes you're already on a page with the edit button visible (e.g., after clicking on row from the list).
  */
 export async function clickEditPostalAddress(page: Page) {
   const PA = selectors(page).postalAddress;
-  await expect(PA.search.btnEdit).toBeVisible();
-  await PA.search.btnEdit.click();
+  await expect(PA.list.btnEdit).toBeVisible();
+  await PA.list.btnEdit.click();
   // Assert the form is shown again
   await waitForPostalAddressEditUrl(page);
 }
@@ -85,7 +83,7 @@ export async function clickEditPostalAddress(page: Page) {
  * Enter edit mode directly by navigating to the edit URL.
  */
 export async function openEditForm(page: Page, id: string) {
-  await page.goto(`/postal-address/edit_pa?address_id=${id}`);
+  await page.goto(`/postal-address/edit?address_id=${id}`);
   // Assert the form is shown again
 
   // Note: waitForPostalAddressEditUrl internally waits for URL AND hydration
@@ -99,8 +97,8 @@ export async function openEditForm(page: Page, id: string) {
  */
 export async function waitForPostalAddressEditUrl(page: Page) {
   const PA = selectors(page).postalAddress;
-  // Wait for URL like /postal-address/edit_pa?address_id=UUID
-  await page.waitForURL(/\/postal-address\/edit_pa\?address_id=[0-9a-f-]{36}$/);
+  // Wait for URL like /postal-address/edit?address_id=UUID
+  await page.waitForURL(/\/postal-address\/edit\?address_id=[0-9a-f-]{36}$/);
 
   // strict hydration check
   await waitForAppHydration(page);
@@ -219,6 +217,22 @@ const COUNTRY_CODE_TO_NAME: Record<string, string> = {
 };
 
 /**
+ * Helper to filter address list by name and to select row with given name.
+ * Assumes you're already on the list page.
+ * Returns the row locator for further assertions.
+ */
+export async function searchAndOpenByNameOnCurrentPage(page: Page, name: string): Promise<Locator> {
+  const PA = selectors(page).postalAddress;
+  await expect(PA.list.filterName).toBeVisible();
+  await PA.list.filterName.fill(name);
+  // Assuming the list updates reactively, we can now select the row.
+  const row = PA.list.previewByName(name);
+  await expect(row).toBeVisible();
+  await row.click();
+  return row;
+}
+
+/**
  * Helper to resolve expected display text from input value.
  * Handles special cases like Country Codes -> Names.
  */
@@ -236,7 +250,7 @@ function resolveExpectedPreviewText(
  * Assert preview view shows specific field values
  */
 export async function expectPreviewShows(
-  page: Page,
+  row: Locator,
   expected: {
     name?: string;
     street?: string;
@@ -246,30 +260,31 @@ export async function expectPreviewShows(
     country?: string;
   },
 ) {
-  const PA = selectors(page).postalAddress;
+  // "preview-" prefix locator for fields inside the preview component
+  const PA_PREVIEW = POSTAL_IDS.list.preview;
   // check preview fields
-  await expect(PA.search.preview.root).toBeVisible();
+  await expect(row.getByTestId(PA_PREVIEW.root)).toBeVisible();
 
   if (expected.name !== undefined) {
-    await expect(PA.search.preview.name).toHaveText(expected.name!);
+    await expect(row.getByTestId(PA_PREVIEW.name)).toHaveText(expected.name!);
   }
 
   if (expected.street !== undefined) {
-    await expect(PA.search.preview.street).toHaveText(expected.street!);
+    await expect(row.getByTestId(PA_PREVIEW.street)).toHaveText(expected.street!);
   }
 
   if (expected.postal_code !== undefined) {
-    await expect(PA.search.preview.postalCode).toHaveText(
+    await expect(row.getByTestId(PA_PREVIEW.postalCode)).toHaveText(
       expected.postal_code!,
     );
   }
 
   if (expected.locality !== undefined) {
-    await expect(PA.search.preview.locality).toHaveText(expected.locality!);
+    await expect(row.getByTestId(PA_PREVIEW.locality)).toHaveText(expected.locality!);
   }
 
   if (expected.region !== undefined) {
-    await expect(PA.search.preview.region).toHaveText(expected.region!);
+    await expect(row.getByTestId(PA_PREVIEW.region)).toHaveText(expected.region!);
   }
 
   if (expected.country !== undefined) {
@@ -277,6 +292,6 @@ export async function expectPreviewShows(
       "country",
       expected.country,
     );
-    await expect(PA.search.preview.country).toHaveText(expectedText);
+    await expect(row.getByTestId(PA_PREVIEW.country)).toHaveText(expectedText);
   }
 }

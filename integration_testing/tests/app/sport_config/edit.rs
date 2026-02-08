@@ -23,7 +23,7 @@ async fn test_new_sport_config() {
 
     // 1. Set initial URL for creating a new sport config
     set_url(&format!(
-        "/wasm_testing/new_sc?sport_id={}",
+        "/wasm_testing/new?sport_id={}",
         ts.generic_sport_id
     ));
 
@@ -35,7 +35,7 @@ async fn test_new_sport_config() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/new_sc") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/new") view=LoadSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -71,7 +71,7 @@ async fn test_edit_sport_config() {
 
     // 1. Set URL with sport_id
     set_url(&format!(
-        "/wasm_testing/edit_sc?sport_id={}&sport_config_id={}",
+        "/wasm_testing/edit?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
 
@@ -83,7 +83,7 @@ async fn test_edit_sport_config() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit_sc") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -126,7 +126,7 @@ async fn test_save_as_new_sport_config() {
 
     // 1. Set URL with sport_id
     set_url(&format!(
-        "/wasm_testing/edit_sc?sport_id={}&sport_config_id={}",
+        "/wasm_testing/edit?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
 
@@ -138,7 +138,7 @@ async fn test_save_as_new_sport_config() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit_sc") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfiguration />
                 </Routes>
             </Router>
         }

@@ -27,9 +27,9 @@ pub fn SportConfigRoutes() -> impl MatchNestedRoutes + Clone {
                     view! {}
                 }
             />
+            <Route path=path!("new") view=LoadSportConfiguration />
             <Route path=path!("edit") view=LoadSportConfiguration />
             <Route path=path!("copy") view=CopySportConfiguration />
-            <Route path=path!("new") view=LoadSportConfiguration />
         </ParentRoute>
     }
     .into_inner()
