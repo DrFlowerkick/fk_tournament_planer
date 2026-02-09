@@ -6,6 +6,7 @@ pub mod postal_addresses;
 
 use app_utils::{
     components::{global_error_banner::GlobalErrorBanner, toast::ToastContainer},
+    hooks::blur_active_element::blur_active_element,
     state::{error_state::PageErrorContext, global_state::GlobalState, toast_state::ToastContext},
 };
 use ddc_plugin::DdcSportPlugin;
@@ -71,6 +72,9 @@ pub fn App() -> impl IntoView {
     // Get the error context to reactively toggle the inert state
     let page_err_ctx = expect_context::<PageErrorContext>();
 
+    // Signal to manage the mobile menu state
+    let (menu_open, set_menu_open) = signal(false);
+
     // HYDRATION MARKER for E2E TESTS:
     // This effect runs only on the client once the WASM is active and hydration is complete.
     // We mark the body so Playwright knows exactly when it's safe to click.
@@ -96,10 +100,45 @@ pub fn App() -> impl IntoView {
                             "Tournament Planner"
                         </A>
                     </div>
-                    <div class="flex-none">
-                        <ul class="menu menu-horizontal px-1">
+                    <div class="flex-none dropdown dropdown-end" class:dropdown-open=menu_open>
+                        // Use a button instead of label/input to avoid event conflicts in Leptos.
+                        // The 'swap-active' class controls which icon is visible based on the signal.
+                        // Trigger blur if false or when clicking links to ensure closing the dropdown menu.
+                        // This is required because daisyUI's dropdown relies on focus/blur of CSS selectors.
+                        <button
+                            type="button"
+                            class="btn btn-ghost btn-circle swap swap-rotate"
+                            class:swap-active=menu_open
+                            on:click=move |_| {
+                                set_menu_open.update(|v| *v = !*v);
+                                if !menu_open.get() {
+                                    blur_active_element();
+                                }
+                            }
+                            on:blur=move |_| set_menu_open.set(false)
+                        >
+                            // Hamburger menu icon (visible when menu_open is false)
+                            <span class="swap-off icon-[heroicons--bars-3] w-6 h-6 inline-block"></span>
+
+                            // Close icon (visible when menu_open is true)
+                            <span class="swap-on icon-[heroicons--x-mark] w-6 h-6 inline-block"></span>
+                        </button>
+
+                        // Vertical dropdown menu
+                        <ul
+                            tabindex="0"
+                            class="dropdown-content menu bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow border border-base-content/10"
+                        >
                             <li>
-                                <A href="/postal-address">"Postal Addresses"</A>
+                                <A
+                                    href="/postal-address"
+                                    on:click=move |_| {
+                                        set_menu_open.set(false);
+                                        blur_active_element();
+                                    }
+                                >
+                                    "Postal Addresses"
+                                </A>
                             </li>
                         </ul>
                     </div>
