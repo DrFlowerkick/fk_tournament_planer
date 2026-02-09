@@ -1,5 +1,6 @@
 //! state structures for the application
 
+pub mod activity_tracker;
 pub mod error_state;
 pub mod global_state;
 pub mod postal_address;
