@@ -18,29 +18,17 @@ export function getDropdown(
 }
 
 export const BANNER_IDS = {
-  acknowledgment: "acknowledgment-banner",
-  btnAck: "btn-acknowledgment-action",
-  ackNavigate: "acknowledgment-navigate-banner",
-  btnAckNavAction: "btn-acknowledgment-navigate-action",
-  btnAckNav: "btn-acknowledgment-navigate",
   globalErrorBanner: "global-error-banner",
+  globalErrorBannerMsg: "global-error-banner-msg",
   btnRetry: "btn-retry-action",
   btnCancel: "btn-cancel-action",
 } as const;
 
 export function getBannerSelectors(page: Page) {
   return {
-    acknowledgment: {
-      root: page.getByTestId(BANNER_IDS.acknowledgment),
-      btnAction: page.getByTestId(BANNER_IDS.btnAck),
-    },
-    acknowledgmentNavigate: {
-      root: page.getByTestId(BANNER_IDS.ackNavigate),
-      btnAction: page.getByTestId(BANNER_IDS.btnAckNavAction),
-      btnNavigate: page.getByTestId(BANNER_IDS.btnAckNav),
-    },
     globalErrorBanner: {
       root: page.getByTestId(BANNER_IDS.globalErrorBanner),
+      msg: page.getByTestId(BANNER_IDS.globalErrorBannerMsg),
       btnRetry: page.getByTestId(BANNER_IDS.btnRetry),
       btnCancel: page.getByTestId(BANNER_IDS.btnCancel),
     },

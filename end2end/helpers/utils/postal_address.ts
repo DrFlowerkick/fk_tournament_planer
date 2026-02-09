@@ -229,6 +229,7 @@ export async function searchAndOpenByNameOnCurrentPage(page: Page, name: string)
   const row = PA.list.previewByName(name);
   await expect(row).toBeVisible();
   await row.click();
+  await expect(PA.list.btnEdit).toBeVisible();
   return row;
 }
 

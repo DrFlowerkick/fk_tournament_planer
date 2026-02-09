@@ -145,7 +145,6 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     // --- Initialize context for creating and editing tournaments ---
     let tournament_editor_context = TournamentEditorContext::new(tournament_editor);
     provide_context(tournament_editor_context);
-    let page_err_ctx = expect_context::<PageErrorContext>();
 
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
@@ -192,20 +191,11 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                 <div class="card w-full bg-base-100 shadow-xl">
                     <div class="card-body">
                         // --- Form Area ---
-                        // we have to use try_get here to avoid runtime panics, because
-                        // page_err_ctx "lives" independent of tournament_editor_context
                         <fieldset
                             disabled=move || {
-                                page_err_ctx.has_errors()
-                                    || tournament_editor_context
-                                        .is_disabled_base_editing
-                                        .try_get()
-                                        .unwrap_or(false)
-                                    || tournament_editor_context.is_busy.try_get().unwrap_or(false)
-                                    || !tournament_editor_context
-                                        .is_base_initialized
-                                        .try_get()
-                                        .unwrap_or(false)
+                                tournament_editor_context.is_disabled_base_editing.get()
+                                    || tournament_editor_context.is_busy.get()
+                                    || !tournament_editor_context.is_base_initialized.get()
                             }
                             class="contents"
                             data-testid="tournament-editor-form"
@@ -406,14 +396,11 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                         data-testid="btn-tournament-save"
                         on:click=move |_| tournament_editor_context.save_diff()
                         disabled=move || {
-                            !tournament_editor_context.is_changed.try_get().unwrap_or(false)
+                            !tournament_editor_context.is_changed.get()
                                 || tournament_editor_context
                                     .validation_result
-                                    .try_get()
-                                    .map(|res| res.is_err())
-                                    .unwrap_or(false)
-                                || tournament_editor_context.is_busy.try_get().unwrap_or(false)
-                                || page_err_ctx.has_errors()
+                                    .with(|res| res.is_err())
+                                || tournament_editor_context.is_busy.get()
                         }
                     >
                         <Show

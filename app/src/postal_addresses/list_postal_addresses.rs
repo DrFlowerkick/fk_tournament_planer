@@ -116,7 +116,10 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 // --- Action Bar ---
                 <div class="flex flex-col md:flex-row justify-end gap-4">
                     <A
-                        href=move || url_matched_route_remove_query("address_id", MatchedRouteHandler::Extend("new"))
+                        href=move || url_matched_route_remove_query(
+                            "address_id",
+                            MatchedRouteHandler::Extend("new"),
+                        )
                         attr:class="btn btn-sm btn-primary"
                         attr:data-testid="action-btn-new"
                         scroll=false
@@ -262,10 +265,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                                         >
                                                                             {pa.get_name().to_string()}
                                                                         </td>
-                                                                        <td data-testid=format!(
-                                                                            "postal-address-preview-{}",
-                                                                            pa_id,
-                                                                        )>
+                                                                        <td data-testid=format!("postal-address-preview-{}", pa_id)>
                                                                             <div
                                                                                 class="card w-full bg-base-200 shadow-md mt-4"
                                                                                 data-testid="address-preview"

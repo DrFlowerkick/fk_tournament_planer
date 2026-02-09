@@ -68,6 +68,9 @@ pub fn App() -> impl IntoView {
     // provide global context elements
     provide_global_context();
 
+    // Get the error context to reactively toggle the inert state
+    let page_err_ctx = expect_context::<PageErrorContext>();
+
     // HYDRATION MARKER for E2E TESTS:
     // This effect runs only on the client once the WASM is active and hydration is complete.
     // We mark the body so Playwright knows exactly when it's safe to click.
@@ -85,10 +88,9 @@ pub fn App() -> impl IntoView {
 
         // routing
         <Router>
-            // global error banner and toast container are placed here so they are available on all pages
             <div class="flex flex-col min-h-screen">
                 // navigation
-                <header class="navbar bg-base-300">
+                <header class="navbar bg-base-300 sticky top-0 z-50">
                     <div class="flex-1">
                         <A href="/" attr:class="btn btn-ghost normal-case text-xl">
                             "Tournament Planner"
@@ -102,12 +104,17 @@ pub fn App() -> impl IntoView {
                         </ul>
                     </div>
                 </header>
-
-                // banner and toast container are global, so they are outside the main content area
-                <GlobalErrorBanner />
+                // global toast container is placed here so they are available on all pages
                 <ToastContainer />
-
-                <main class="flex-grow p-4 bg-base-200">
+                // global error banner is placed here to be always on top of the page content, but below the navbar
+                <div class="sticky z-40 top-16 bg-base-200">
+                    <GlobalErrorBanner />
+                </div>
+                <main
+                    class="flex-grow p-4 bg-base-200 transition-all duration-200"
+                    class:opacity-50=move || page_err_ctx.has_errors()
+                    inert=move || page_err_ctx.has_errors()
+                >
                     <Routes fallback=|| "Page not found.".into_view()>
                         <ParentRoute path=path!("/") view=HomePage>
                             <Route

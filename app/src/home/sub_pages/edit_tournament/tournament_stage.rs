@@ -116,7 +116,6 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
     let active_stage_number = use_stage_number_params();
 
     let tournament_editor_context = expect_context::<TournamentEditorContext>();
-    let page_err_ctx = expect_context::<PageErrorContext>();
 
     Effect::new(move || {
         if let Some(s) = stage {
@@ -170,20 +169,11 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                                 {move || editor_title()}
                             </h2>
                         </div>
-                        // we have to use try_get here to avoid runtime panics, because
-                        // page_err_ctx "lives" independent of tournament_editor_context
                         <fieldset
                             disabled=move || {
-                                page_err_ctx.has_errors()
-                                    || tournament_editor_context
-                                        .is_disabled_stage_editing
-                                        .try_get()
-                                        .unwrap_or(false)
-                                    || tournament_editor_context.is_busy.try_get().unwrap_or(false)
-                                    || !tournament_editor_context
-                                        .is_stage_initialized
-                                        .try_get()
-                                        .unwrap_or(false)
+                                tournament_editor_context.is_disabled_stage_editing.get()
+                                    || tournament_editor_context.is_busy.get()
+                                    || !tournament_editor_context.is_stage_initialized.get()
                             }
                             class="contents"
                             data-testid="stage-editor-form"

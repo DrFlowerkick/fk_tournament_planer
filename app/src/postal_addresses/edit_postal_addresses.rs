@@ -101,7 +101,7 @@ pub fn LoadPostalAddress() -> impl IntoView {
                             view! {
                                 <EditPostalAddress
                                     postal_address=may_be_pa.clone()
-                                    refetch=refetch.clone()
+                                    refetch=refetch
                                 />
                             }
                         })
@@ -187,17 +187,12 @@ pub fn EditPostalAddress(
     let save_postal_address_pending = save_postal_address.pending();
 
     // --- Signals for UI state & errors ---
-    // use try, because these signals are use in conjunction with page_err_ctx,
-    // which has another "lifetime" in the reactive system, which may cause panics
-    // for the other signals when the component is unmounted.
-    let is_disabled =
-        move || save_postal_address_pending.try_get().unwrap_or(false) || page_err_ctx.has_errors();
+    let is_disabled = move || save_postal_address_pending.get();
 
     let is_valid_addr = move || {
         postal_address_editor
             .validation_result
-            .try_with(|vr| vr.is_ok())
-            .unwrap_or(false)
+            .with(|vr| vr.is_ok())
     };
 
     // scroll into view handling
@@ -216,197 +211,202 @@ pub fn EditPostalAddress(
                         view! {
                             <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
                                 <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                                <p class="text-2xl font-bold text-center">"Please select a postal address from the list."</p>
+                                <p class="text-2xl font-bold text-center">
+                                    "Please select a postal address from the list."
+                                </p>
                             </div>
                         }
                     }
                 >
-                // --- Address Form ---
-                <div data-testid="form-address">
-                    <ActionForm
-                        action=save_postal_address
-                        on:submit:capture=move |ev| {
-                            #[cfg(feature = "test-mock")]
-                            {
-                                ev.prevent_default();
-                                let intent = ev
-                                    .submitter()
-                                    .and_then(|el| {
-                                        el.dyn_into::<web_sys::HtmlButtonElement>().ok()
-                                    })
-                                    .map(|btn| btn.value());
-                                let data = SavePostalAddress {
-                                    id: postal_address_editor
-                                        .postal_address_id
-                                        .get()
-                                        .unwrap_or(Uuid::nil()),
-                                    version: postal_address_editor
-                                        .local_readonly
-                                        .get()
-                                        .map_or(0, |pa| pa.get_version().unwrap_or_default()),
-                                    name: postal_address_editor.name.get().unwrap_or_default(),
-                                    street: postal_address_editor.street.get().unwrap_or_default(),
-                                    postal_code: postal_address_editor
-                                        .postal_code
-                                        .get()
-                                        .unwrap_or_default(),
-                                    locality: postal_address_editor
-                                        .locality
-                                        .get()
-                                        .unwrap_or_default(),
-                                    region: postal_address_editor.region.get(),
-                                    country: postal_address_editor
-                                        .country
-                                        .get()
-                                        .map(|c| c.alpha2().to_string())
-                                        .unwrap_or_default(),
-                                    intent,
-                                };
-                                let save_action = Action::new(|pa: &SavePostalAddress| {
-                                    let pa = pa.clone();
-                                    async move {
-                                        save_postal_address_inner(
-                                                pa.id,
-                                                pa.version,
-                                                pa.name,
-                                                pa.street,
-                                                pa.postal_code,
-                                                pa.locality,
-                                                pa.region,
-                                                pa.country,
-                                                pa.intent,
-                                            )
-                                            .await
+                    // --- Address Form ---
+                    <div data-testid="form-address">
+                        <ActionForm
+                            action=save_postal_address
+                            on:submit:capture=move |ev| {
+                                #[cfg(feature = "test-mock")]
+                                {
+                                    ev.prevent_default();
+                                    let intent = ev
+                                        .submitter()
+                                        .and_then(|el| {
+                                            el.dyn_into::<web_sys::HtmlButtonElement>().ok()
+                                        })
+                                        .map(|btn| btn.value());
+                                    let data = SavePostalAddress {
+                                        id: postal_address_editor
+                                            .postal_address_id
+                                            .get()
+                                            .unwrap_or(Uuid::nil()),
+                                        version: postal_address_editor
+                                            .local_readonly
+                                            .get()
+                                            .map_or(0, |pa| pa.get_version().unwrap_or_default()),
+                                        name: postal_address_editor.name.get().unwrap_or_default(),
+                                        street: postal_address_editor
+                                            .street
+                                            .get()
+                                            .unwrap_or_default(),
+                                        postal_code: postal_address_editor
+                                            .postal_code
+                                            .get()
+                                            .unwrap_or_default(),
+                                        locality: postal_address_editor
+                                            .locality
+                                            .get()
+                                            .unwrap_or_default(),
+                                        region: postal_address_editor.region.get(),
+                                        country: postal_address_editor
+                                            .country
+                                            .get()
+                                            .map(|c| c.alpha2().to_string())
+                                            .unwrap_or_default(),
+                                        intent,
+                                    };
+                                    let save_action = Action::new(|pa: &SavePostalAddress| {
+                                        let pa = pa.clone();
+                                        async move {
+                                            save_postal_address_inner(
+                                                    pa.id,
+                                                    pa.version,
+                                                    pa.name,
+                                                    pa.street,
+                                                    pa.postal_code,
+                                                    pa.locality,
+                                                    pa.region,
+                                                    pa.country,
+                                                    pa.intent,
+                                                )
+                                                .await
+                                        }
+                                    });
+                                    save_action.dispatch(data);
+                                }
+                                #[cfg(not(feature = "test-mock"))]
+                                {
+                                    let _ = ev;
+                                }
+                            }
+                        >
+                            // --- Address Form Fields ---
+                            <fieldset class="space-y-4" prop:disabled=is_disabled>
+                                // Hidden meta fields the server expects (id / version)
+                                <input
+                                    type="hidden"
+                                    name="id"
+                                    data-testid="hidden-id"
+                                    prop:value=move || {
+                                        postal_address_editor
+                                            .postal_address_id
+                                            .get()
+                                            .unwrap_or(Uuid::nil())
+                                            .to_string()
                                     }
-                                });
-                                save_action.dispatch(data);
-                            }
-                            #[cfg(not(feature = "test-mock"))]
-                            {
-                                let _ = ev;
-                            }
-                        }
-                    >
-                        // --- Address Form Fields ---
-                        <fieldset class="space-y-4" prop:disabled=is_disabled>
-                            // Hidden meta fields the server expects (id / version)
-                            <input
-                                type="hidden"
-                                name="id"
-                                data-testid="hidden-id"
-                                prop:value=move || {
-                                    postal_address_editor
-                                        .postal_address_id
-                                        .get()
-                                        .unwrap_or(Uuid::nil())
-                                        .to_string()
-                                }
-                            />
-                            <input
-                                type="hidden"
-                                name="version"
-                                data-testid="hidden-version"
-                                prop:value=move || {
-                                    postal_address_editor
-                                        .local_readonly
-                                        .get()
-                                        .map_or(0, |pa| pa.get_version().unwrap_or_default())
-                                }
-                            />
-                            <TextInputWithValidation
-                                label="Name"
-                                name="name"
-                                value=postal_address_editor.name
-                                set_value=postal_address_editor.set_name
-                                validation_result=postal_address_editor.validation_result
-                                object_id=postal_address_editor.postal_address_id
-                                field="Name"
-                            />
-                            <TextInputWithValidation
-                                label="Street & number"
-                                name="street"
-                                value=postal_address_editor.street
-                                set_value=postal_address_editor.set_street
-                                validation_result=postal_address_editor.validation_result
-                                object_id=postal_address_editor.postal_address_id
-                                field="Street"
-                            />
-                            <div class="grid grid-cols-2 gap-4">
-                                <TextInputWithValidation
-                                    label="Postal code"
-                                    name="postal_code"
-                                    value=postal_address_editor.postal_code
-                                    set_value=postal_address_editor.set_postal_code
-                                    validation_result=postal_address_editor.validation_result
-                                    object_id=postal_address_editor.postal_address_id
-                                    field="PostalCode"
+                                />
+                                <input
+                                    type="hidden"
+                                    name="version"
+                                    data-testid="hidden-version"
+                                    prop:value=move || {
+                                        postal_address_editor
+                                            .local_readonly
+                                            .get()
+                                            .map_or(0, |pa| pa.get_version().unwrap_or_default())
+                                    }
                                 />
                                 <TextInputWithValidation
-                                    label="City"
-                                    name="locality"
-                                    value=postal_address_editor.locality
-                                    set_value=postal_address_editor.set_locality
+                                    label="Name"
+                                    name="name"
+                                    value=postal_address_editor.name
+                                    set_value=postal_address_editor.set_name
                                     validation_result=postal_address_editor.validation_result
                                     object_id=postal_address_editor.postal_address_id
-                                    field="Locality"
+                                    field="Name"
                                 />
-                            </div>
-                            <TextInputWithValidation
-                                label="Region"
-                                name="region"
-                                value=postal_address_editor.region
-                                set_value=postal_address_editor.set_region
-                                optional=true
-                            />
-                            <EnumSelectWithValidation
-                                label="Country"
-                                name="country"
-                                value=postal_address_editor.country
-                                set_value=postal_address_editor.set_country
-                                validation_result=postal_address_editor.validation_result
-                                object_id=postal_address_editor.postal_address_id
-                                field="Country"
-                            />
-                            <div class="card-actions justify-end mt-4">
-                                <button
-                                    type="submit"
-                                    name="intent"
-                                    value=move || if is_new { "create" } else { "update" }
-                                    data-testid="btn-save"
-                                    class="btn btn-primary"
-                                    prop:disabled=move || is_disabled() || !is_valid_addr()
-                                >
-                                    "Save"
-                                </button>
+                                <TextInputWithValidation
+                                    label="Street & number"
+                                    name="street"
+                                    value=postal_address_editor.street
+                                    set_value=postal_address_editor.set_street
+                                    validation_result=postal_address_editor.validation_result
+                                    object_id=postal_address_editor.postal_address_id
+                                    field="Street"
+                                />
+                                <div class="grid grid-cols-2 gap-4">
+                                    <TextInputWithValidation
+                                        label="Postal code"
+                                        name="postal_code"
+                                        value=postal_address_editor.postal_code
+                                        set_value=postal_address_editor.set_postal_code
+                                        validation_result=postal_address_editor.validation_result
+                                        object_id=postal_address_editor.postal_address_id
+                                        field="PostalCode"
+                                    />
+                                    <TextInputWithValidation
+                                        label="City"
+                                        name="locality"
+                                        value=postal_address_editor.locality
+                                        set_value=postal_address_editor.set_locality
+                                        validation_result=postal_address_editor.validation_result
+                                        object_id=postal_address_editor.postal_address_id
+                                        field="Locality"
+                                    />
+                                </div>
+                                <TextInputWithValidation
+                                    label="Region"
+                                    name="region"
+                                    value=postal_address_editor.region
+                                    set_value=postal_address_editor.set_region
+                                    optional=true
+                                />
+                                <EnumSelectWithValidation
+                                    label="Country"
+                                    name="country"
+                                    value=postal_address_editor.country
+                                    set_value=postal_address_editor.set_country
+                                    validation_result=postal_address_editor.validation_result
+                                    object_id=postal_address_editor.postal_address_id
+                                    field="Country"
+                                />
+                                <div class="card-actions justify-end mt-4">
+                                    <button
+                                        type="submit"
+                                        name="intent"
+                                        value=move || if is_new { "create" } else { "update" }
+                                        data-testid="btn-save"
+                                        class="btn btn-primary"
+                                        prop:disabled=move || is_disabled() || !is_valid_addr()
+                                    >
+                                        "Save"
+                                    </button>
 
-                                <button
-                                    type="submit"
-                                    name="intent"
-                                    value="create"
-                                    data-testid="btn-save-as-new"
-                                    class="btn btn-secondary"
-                                    prop:disabled=move || {
-                                        is_disabled() || is_new || !is_valid_addr()
-                                    }
-                                    prop:hidden=move || is_new
-                                >
-                                    "Save as new"
-                                </button>
+                                    <button
+                                        type="submit"
+                                        name="intent"
+                                        value="create"
+                                        data-testid="btn-save-as-new"
+                                        class="btn btn-secondary"
+                                        prop:disabled=move || {
+                                            is_disabled() || is_new || !is_valid_addr()
+                                        }
+                                        prop:hidden=move || is_new
+                                    >
+                                        "Save as new"
+                                    </button>
 
-                                <button
-                                    type="button"
-                                    name="intent"
-                                    value="cancel"
-                                    data-testid="btn-cancel"
-                                    class="btn btn-ghost"
-                                    on:click=move |_| on_cancel.run(())
-                                >
-                                    "Cancel"
-                                </button>
-                            </div>
-                        </fieldset>
-                    </ActionForm>
-                </div>
+                                    <button
+                                        type="button"
+                                        name="intent"
+                                        value="cancel"
+                                        data-testid="btn-cancel"
+                                        class="btn btn-ghost"
+                                        on:click=move |_| on_cancel.run(())
+                                    >
+                                        "Cancel"
+                                    </button>
+                                </div>
+                            </fieldset>
+                        </ActionForm>
+                    </div>
                 </Show>
             </div>
         </div>

@@ -75,8 +75,25 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
         "The record has been modified in the meantime. Please reload. Any unsaved changes will be lost.",
       );
 
-      // Save must be disabled while the conflict is unresolved.
-      await expect(PA_A.form.btnSave).toBeDisabled();
+      // Verify that the main content is inert
+      await expect(pageA.locator("main")).toHaveAttribute("inert");
+
+      // -------------------- Cancel should keep stale data and remove banner -----------
+      await BA_A.globalErrorBanner.btnCancel.click();
+
+      // After cancel, the banner should be gone and the form-version should still be "0".
+      await expect(BA_A.globalErrorBanner.root).toBeHidden();
+      await expect(PA_A.form.hiddenVersion).toHaveValue("0");
+
+      // The name input should still reflect A's unsaved value.
+      await expect(PA_A.form.inputName).toHaveValue(editedByA);
+
+      // -------------------- Try to save again, then reload to resolve -----------
+      await PA_A.form.btnSave.click(); // expect conflict UI again
+      // A banner should appear, and the reload button should be visible.
+      await expect(BA_A.globalErrorBanner.root).toBeVisible();
+      await expect(BA_A.globalErrorBanner.btnRetry).toBeVisible();
+      await expect(BA_A.globalErrorBanner.btnCancel).toBeVisible();
 
       // -------------------- Resolve via reload --------------------
       await BA_A.globalErrorBanner.btnRetry.click();
@@ -88,8 +105,8 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       // The name input should now reflect B's saved value.
       await expect(PA_A.form.inputName).toHaveValue(editedByB);
 
-      // Save becomes enabled again.
-      await expect(PA_A.form.btnSave).toBeEnabled();
+      // Verify that the main content is not inert anymore
+      await expect(pageA.locator("main")).not.toHaveAttribute("inert");
     } finally {
       await ctxA.close();
       await ctxB.close();

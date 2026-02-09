@@ -223,21 +223,11 @@ pub fn EditSportConfiguration(
     let save_sport_config_pending = save_sport_config.pending();
 
     // --- Signals for UI state & errors ---
-    // use try, because these signals are use in conjunction with page_err_ctx,
-    // which has another "lifetime" in the reactive system, which may cause panics
-    // for the other signals when the component is unmounted.
-    let is_disabled = move || {
-        sport_plugin().is_none()
-            || save_sport_config_pending.try_get().unwrap_or(false)
-            || page_err_ctx.has_errors()
-    };
+    let is_disabled = move || sport_plugin().is_none() || save_sport_config_pending.get();
 
     let is_valid_config = move || {
-        sport_config_editor.is_valid_json.try_get().unwrap_or(false)
-            && sport_config_editor
-                .validation_result
-                .try_with(|vr| vr.is_ok())
-                .unwrap_or(false)
+        sport_config_editor.is_valid_json.get()
+            && sport_config_editor.validation_result.with(|vr| vr.is_ok())
     };
 
     // scroll into view handling

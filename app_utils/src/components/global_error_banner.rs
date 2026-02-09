@@ -31,29 +31,31 @@ pub fn GlobalErrorBanner() -> impl IntoView {
                                 />
                             </svg>
 
-                            <span>{first_error.message.clone()}</span>
+                            <span data-testid="global-error-banner-msg">
+                                {first_error.message.clone()}
+                            </span>
 
                             <div class="flex gap-2">
+
                                 {first_error
-                                    .retry_action
-                                    .map(|action| {
-                                        let label = action.label.clone();
+                                    .has_retry()
+                                    .map(|action_label| {
                                         view! {
                                             <button
                                                 class="btn btn-sm btn-ghost"
                                                 data-testid="btn-retry-action"
                                                 on:click=move |_| ctx.retry_all()
                                             >
-                                                {label}
+                                                {action_label}
                                             </button>
                                         }
                                     })}
                                 <button
                                     class="btn btn-sm"
                                     data-testid="btn-cancel-action"
-                                    on:click=move |_| first_error.cancel_action.on_click.run(())
+                                    on:click=move |_| first_error.do_cancel()
                                 >
-                                    {first_error.cancel_action.label.clone()}
+                                    {first_error.cancel_label()}
                                 </button>
                             </div>
                         </div>
