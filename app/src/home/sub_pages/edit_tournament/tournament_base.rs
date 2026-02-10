@@ -86,9 +86,15 @@ pub fn LoadTournament() -> impl IntoView {
     view! {
         <Transition fallback=move || {
             view! {
-                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
-                    <span class="loading loading-spinner w-24 h-24 mb-4"></span>
-                    <p class="text-2xl font-bold text-center">"Loading tournament data..."</p>
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                            <span class="loading loading-spinner w-24 h-24 mb-4"></span>
+                            <p class="text-2xl font-bold text-center">
+                                "Loading tournament data..."
+                            </p>
+                        </div>
+                    </div>
                 </div>
             }
         }>
@@ -167,35 +173,29 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <div
-            class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-            data-testid="tournament-editor-root"
-        >
-            <div class="w-full flex justify-between items-center pb-4">
-                <h2
-                    class="text-3xl font-bold"
-                    data-testid="tournament-editor-title"
-                    node_ref=scroll_ref
-                >
-                    {move || { if is_new { "Plan New Tournament" } else { "Edit Tournament" } }}
-                </h2>
-            </div>
-            <Show
-                when=move || show_form
-                fallback=|| {
-                    view! {
-                        <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
-                            <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                            <p class="text-2xl font-bold text-center">
-                                "Please select a tournament from the list."
-                            </p>
-                        </div>
-                    }
-                }
-            >
-                // Card wrapping Form and Stage Links
-                <div class="card w-full bg-base-100 shadow-xl">
-                    <div class="card-body">
+        <div data-testid="tournament-editor-root">
+            <div class="card w-full bg-base-100 shadow-xl">
+                <div class="card-body">
+                    <h2
+                        class="card-title"
+                        data-testid="tournament-editor-title"
+                        node_ref=scroll_ref
+                    >
+                        {move || { if is_new { "Plan New Tournament" } else { "Edit Tournament" } }}
+                    </h2>
+                    <Show
+                        when=move || show_form
+                        fallback=|| {
+                            view! {
+                                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                                    <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
+                                    <p class="text-2xl font-bold text-center">
+                                        "Please select a tournament from the list."
+                                    </p>
+                                </div>
+                            }
+                        }
+                    >
                         // --- Form Area ---
                         <fieldset
                             disabled=move || {
@@ -377,47 +377,55 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                             }
                             None => ().into_any(),
                         }}
-                    </div>
+                    </Show>
                 </div>
-            </Show>
+            </div>
 
+            <div class="my-4"></div>
             <Outlet />
+            <div class="my-4"></div>
 
             <Show when=move || show_form>
-                // --- Action Buttons ---
-                <div class="w-full flex justify-end gap-4 pt-6">
-                    <button
-                        class="btn btn-ghost"
-                        data-testid="btn-tournament-cancel"
-                        on:click=move |_| on_cancel.run(())
-                        disabled=move || tournament_editor_context.is_busy.get()
-                    >
-                        "Cancel"
-                    </button>
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        // --- Action Buttons ---
+                        <div class="w-full flex justify-end gap-4">
+                            <button
+                                class="btn btn-ghost"
+                                data-testid="btn-tournament-cancel"
+                                on:click=move |_| on_cancel.run(())
+                                disabled=move || tournament_editor_context.is_busy.get()
+                            >
+                                "Cancel"
+                            </button>
 
-                    // we have to use try_get here to avoid runtime panics, because
-                    // page_err_ctx "lives" independent of tournament_editor_context
-                    <button
-                        class="btn btn-primary"
-                        data-testid="btn-tournament-save"
-                        on:click=move |_| tournament_editor_context.save_diff()
-                        disabled=move || {
-                            !tournament_editor_context.is_changed.get()
-                                || tournament_editor_context
-                                    .validation_result
-                                    .with(|res| res.is_err())
-                                || tournament_editor_context.is_busy.get()
-                        }
-                    >
-                        <Show
-                            when=move || !tournament_editor_context.is_busy.get()
-                            fallback=|| {
-                                view! { <span class="loading loading-spinner">"Saving..."</span> }
-                            }
-                        >
-                            <span>"Save Tournament"</span>
-                        </Show>
-                    </button>
+                            // we have to use try_get here to avoid runtime panics, because
+                            // page_err_ctx "lives" independent of tournament_editor_context
+                            <button
+                                class="btn btn-primary"
+                                data-testid="btn-tournament-save"
+                                on:click=move |_| tournament_editor_context.save_diff()
+                                disabled=move || {
+                                    !tournament_editor_context.is_changed.get()
+                                        || tournament_editor_context
+                                            .validation_result
+                                            .with(|res| res.is_err())
+                                        || tournament_editor_context.is_busy.get()
+                                }
+                            >
+                                <Show
+                                    when=move || !tournament_editor_context.is_busy.get()
+                                    fallback=|| {
+                                        view! {
+                                            <span class="loading loading-spinner">"Saving..."</span>
+                                        }
+                                    }
+                                >
+                                    <span>"Save Tournament"</span>
+                                </Show>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </Show>
         </div>

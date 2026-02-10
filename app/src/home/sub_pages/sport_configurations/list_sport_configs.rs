@@ -131,219 +131,216 @@ pub fn ListSportConfigurations() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <div
-            class="flex flex-col w-full max-w-6xl mx-auto py-8 space-y-6 px-4"
-            data-testid="sport-config-list-root"
-        >
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 class="text-3xl font-bold" node_ref=scroll_ref>
+        <div class="card w-full bg-base-100 shadow-xl" data-testid="sport-config-list-root">
+            <div class="card-body">
+                <h2 class="card-title" node_ref=scroll_ref>
                     "Sport Configurations"
                 </h2>
-            </div>
 
-            // --- Action Bar ---
-            <div class="flex flex-col md:flex-row justify-end gap-4">
-                <A
-                    href=move || url_matched_route_remove_query(
-                        "sport_config_id",
-                        MatchedRouteHandler::Extend("new"),
-                    )
-                    attr:class="btn btn-sm btn-primary"
-                    attr:data-testid="action-btn-new"
-                    scroll=false
-                >
-                    "Create New Configuration"
-                </A>
-            </div>
-
-            // --- Filter Bar ---
-            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
-                // Text Search
-                <div class="form-control w-full max-w-xs">
-                    <label class="label">
-                        <span class="label-text">"Search Name"</span>
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="Type to search for name..."
-                        class="input input-bordered w-full"
-                        data-testid="filter-name-search"
-                        on:input=move |ev| set_search_term.set(event_target_value(&ev))
-                        prop:value=move || search_term.get()
-                    />
-                </div>
-
-                // Limit Selector
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">"Limit"</span>
-                    </label>
-                    <select
-                        class="select select-bordered"
-                        data-testid="filter-limit-select"
-                        on:change=move |ev| {
-                            if let Ok(val) = event_target_value(&ev).parse::<usize>() {
-                                set_limit.set(val);
-                            }
-                        }
-                        prop:value=move || limit.get().to_string()
+                // --- Action Bar ---
+                <div class="flex flex-col md:flex-row justify-end gap-4">
+                    <A
+                        href=move || url_matched_route_remove_query(
+                            "sport_config_id",
+                            MatchedRouteHandler::Extend("new"),
+                        )
+                        attr:class="btn btn-sm btn-primary"
+                        attr:data-testid="action-btn-new"
+                        scroll=false
                     >
-                        <option value="10">"10"</option>
-                        <option value="25">"25"</option>
-                        <option value="50">"50"</option>
-                    </select>
+                        "Create New Configuration"
+                    </A>
                 </div>
-            </div>
 
-            // --- Table Area ---
-            <div class="overflow-x-auto">
-                <Transition fallback=move || {
-                    view! { <span class="loading loading-spinner loading-lg"></span> }
-                }>
-                    <ErrorBoundary fallback=move |errors| {
-                        for (_err_id, err) in errors.get().into_iter() {
-                            let e = err.into_inner();
-                            if let Some(app_err) = e.downcast_ref::<AppError>() {
-                                handle_read_error(
-                                    &page_err_ctx,
-                                    component_id.get_value(),
-                                    app_err,
-                                    refetch,
-                                    on_cancel,
-                                );
-                            } else {
-                                handle_general_error(
-                                    &page_err_ctx,
-                                    component_id.get_value(),
-                                    "An unexpected error occurred.",
-                                    None,
-                                    on_cancel,
-                                );
+                // --- Filter Bar ---
+                <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                    // Text Search
+                    <div class="form-control w-full max-w-xs">
+                        <label class="label">
+                            <span class="label-text">"Search Name"</span>
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Type to search for name..."
+                            class="input input-bordered w-full"
+                            data-testid="filter-name-search"
+                            on:input=move |ev| set_search_term.set(event_target_value(&ev))
+                            prop:value=move || search_term.get()
+                        />
+                    </div>
+
+                    // Limit Selector
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">"Limit"</span>
+                        </label>
+                        <select
+                            class="select select-bordered"
+                            data-testid="filter-limit-select"
+                            on:change=move |ev| {
+                                if let Ok(val) = event_target_value(&ev).parse::<usize>() {
+                                    set_limit.set(val);
+                                }
                             }
-                        }
+                            prop:value=move || limit.get().to_string()
+                        >
+                            <option value="10">"10"</option>
+                            <option value="25">"25"</option>
+                            <option value="50">"50"</option>
+                        </select>
+                    </div>
+                </div>
+
+                // --- Table Area ---
+                <div class="overflow-x-auto">
+                    <Transition fallback=move || {
+                        view! { <span class="loading loading-spinner loading-lg"></span> }
                     }>
-                        {move || {
-                            sport_configs_data
-                                .and_then(|data| {
-                                    if let Some(selected_id) = selected_id.get_untracked()
-                                        && !data.iter().any(|t| t.get_id() == selected_id)
-                                    {
-                                        handle_selection_change.run(None);
-                                    }
-                                    let data = StoredValue::new(data.clone());
-                                    sport_plugin()
-                                        .map(|sp| {
-                                            let sp = StoredValue::new(sp);
-                                            view! {
-                                                <Show
-                                                    when=move || data.with_value(|val| !val.is_empty())
-                                                    fallback=|| {
-                                                        view! {
-                                                            <div
-                                                                class="text-center py-10 bg-base-100 border border-base-300 rounded-lg"
-                                                                data-testid="sport-configs-list-empty"
-                                                            >
-                                                                <p class="text-lg opacity-60">
-                                                                    "No sport configurations found with the current filters."
-                                                                </p>
-                                                            </div>
+                        <ErrorBoundary fallback=move |errors| {
+                            for (_err_id, err) in errors.get().into_iter() {
+                                let e = err.into_inner();
+                                if let Some(app_err) = e.downcast_ref::<AppError>() {
+                                    handle_read_error(
+                                        &page_err_ctx,
+                                        component_id.get_value(),
+                                        app_err,
+                                        refetch,
+                                        on_cancel,
+                                    );
+                                } else {
+                                    handle_general_error(
+                                        &page_err_ctx,
+                                        component_id.get_value(),
+                                        "An unexpected error occurred.",
+                                        None,
+                                        on_cancel,
+                                    );
+                                }
+                            }
+                        }>
+                            {move || {
+                                sport_configs_data
+                                    .and_then(|data| {
+                                        if let Some(selected_id) = selected_id.get_untracked()
+                                            && !data.iter().any(|t| t.get_id() == selected_id)
+                                        {
+                                            handle_selection_change.run(None);
+                                        }
+                                        let data = StoredValue::new(data.clone());
+                                        sport_plugin()
+                                            .map(|sp| {
+                                                let sp = StoredValue::new(sp);
+                                                view! {
+                                                    <Show
+                                                        when=move || data.with_value(|val| !val.is_empty())
+                                                        fallback=|| {
+                                                            view! {
+                                                                <div
+                                                                    class="text-center py-10 bg-base-100 border border-base-300 rounded-lg"
+                                                                    data-testid="sport-configs-list-empty"
+                                                                >
+                                                                    <p class="text-lg opacity-60">
+                                                                        "No sport configurations found with the current filters."
+                                                                    </p>
+                                                                </div>
+                                                            }
                                                         }
-                                                    }
-                                                >
-                                                    <table
-                                                        class="table w-full"
-                                                        data-testid="sport-configs-table"
                                                     >
-                                                        <thead data-testid="sport-configs-table-header">
-                                                            <tr>
-                                                                <th>"Name"</th>
-                                                                <th>"Preview"</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            <For
-                                                                each=move || data.read_value().clone()
-                                                                key=|sc| sc.get_id()
-                                                                children=move |sc| {
-                                                                    let sc_id = sc.get_id();
-                                                                    let is_selected = move || {
-                                                                        selected_id.get() == Some(sc_id)
-                                                                    };
-                                                                    let topic = Signal::derive(move || {
-                                                                        Some(CrTopic::SportConfig(sc_id))
-                                                                    });
-                                                                    let version = Signal::derive({
-                                                                        let sc = sc.clone();
-                                                                        move || { sc.get_version().unwrap_or_default() }
-                                                                    });
-                                                                    use_client_registry_socket(topic, version, refetch);
-                                                                    view! {
-                                                                        <tr
-                                                                            class="hover cursor-pointer"
-                                                                            class:bg-base-200=is_selected
-                                                                            data-testid=format!("sport-configs-row-{}", sc_id)
-                                                                            on:click=move |_| {
-                                                                                if selected_id.get() == Some(sc_id) {
-                                                                                    handle_selection_change.run(None);
-                                                                                } else {
-                                                                                    handle_selection_change.run(Some(sc_id));
+                                                        <table
+                                                            class="table w-full"
+                                                            data-testid="sport-configs-table"
+                                                        >
+                                                            <thead data-testid="sport-configs-table-header">
+                                                                <tr>
+                                                                    <th>"Name"</th>
+                                                                    <th>"Preview"</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <For
+                                                                    each=move || data.read_value().clone()
+                                                                    key=|sc| sc.get_id()
+                                                                    children=move |sc| {
+                                                                        let sc_id = sc.get_id();
+                                                                        let is_selected = move || {
+                                                                            selected_id.get() == Some(sc_id)
+                                                                        };
+                                                                        let topic = Signal::derive(move || {
+                                                                            Some(CrTopic::SportConfig(sc_id))
+                                                                        });
+                                                                        let version = Signal::derive({
+                                                                            let sc = sc.clone();
+                                                                            move || { sc.get_version().unwrap_or_default() }
+                                                                        });
+                                                                        use_client_registry_socket(topic, version, refetch);
+                                                                        view! {
+                                                                            <tr
+                                                                                class="hover cursor-pointer"
+                                                                                class:bg-base-200=is_selected
+                                                                                data-testid=format!("sport-configs-row-{}", sc_id)
+                                                                                on:click=move |_| {
+                                                                                    if selected_id.get() == Some(sc_id) {
+                                                                                        handle_selection_change.run(None);
+                                                                                    } else {
+                                                                                        handle_selection_change.run(Some(sc_id));
+                                                                                    }
                                                                                 }
-                                                                            }
-                                                                        >
-                                                                            <td
-                                                                                class="font-bold"
-                                                                                data-testid=format!("sport-configs-name-{}", sc_id)
                                                                             >
-                                                                                {sc.get_name().to_string()}
-                                                                            </td>
-                                                                            <td data-testid=format!(
-                                                                                "sport-configs-preview-{}",
-                                                                                sc_id,
-                                                                            )>{move || { sp.get_value().render_preview(&sc) }}</td>
-                                                                        </tr>
-                                                                        <Show when=is_selected>
-                                                                            <tr>
-                                                                                <td colspan="4" class="p-0">
-                                                                                    <div
-                                                                                        class="flex gap-2 justify-end p-2 bg-base-200"
-                                                                                        data-testid="row-actions"
-                                                                                    >
-                                                                                        <A
-                                                                                            href=move || url_matched_route(
-                                                                                                MatchedRouteHandler::Extend("edit"),
-                                                                                            )
-                                                                                            attr:class="btn btn-sm btn-primary"
-                                                                                            attr:data-testid="action-btn-edit"
-                                                                                            scroll=false
-                                                                                        >
-                                                                                            "Edit"
-                                                                                        </A>
-                                                                                        <A
-                                                                                            href=move || url_matched_route(
-                                                                                                MatchedRouteHandler::Extend("copy"),
-                                                                                            )
-                                                                                            attr:class="btn btn-sm btn-ghost"
-                                                                                            attr:data-testid="action-btn-copy"
-                                                                                            scroll=false
-                                                                                        >
-                                                                                            "Copy"
-                                                                                        </A>
-                                                                                    </div>
+                                                                                <td
+                                                                                    class="font-bold"
+                                                                                    data-testid=format!("sport-configs-name-{}", sc_id)
+                                                                                >
+                                                                                    {sc.get_name().to_string()}
                                                                                 </td>
+                                                                                <td data-testid=format!(
+                                                                                    "sport-configs-preview-{}",
+                                                                                    sc_id,
+                                                                                )>{move || { sp.get_value().render_preview(&sc) }}</td>
                                                                             </tr>
-                                                                        </Show>
+                                                                            <Show when=is_selected>
+                                                                                <tr>
+                                                                                    <td colspan="4" class="p-0">
+                                                                                        <div
+                                                                                            class="flex gap-2 justify-end p-2 bg-base-200"
+                                                                                            data-testid="row-actions"
+                                                                                        >
+                                                                                            <A
+                                                                                                href=move || url_matched_route(
+                                                                                                    MatchedRouteHandler::Extend("edit"),
+                                                                                                )
+                                                                                                attr:class="btn btn-sm btn-primary"
+                                                                                                attr:data-testid="action-btn-edit"
+                                                                                                scroll=false
+                                                                                            >
+                                                                                                "Edit"
+                                                                                            </A>
+                                                                                            <A
+                                                                                                href=move || url_matched_route(
+                                                                                                    MatchedRouteHandler::Extend("copy"),
+                                                                                                )
+                                                                                                attr:class="btn btn-sm btn-ghost"
+                                                                                                attr:data-testid="action-btn-copy"
+                                                                                                scroll=false
+                                                                                            >
+                                                                                                "Copy"
+                                                                                            </A>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </Show>
+                                                                        }
                                                                     }
-                                                                }
-                                                            />
-                                                        </tbody>
-                                                    </table>
-                                                </Show>
-                                            }
-                                        })
-                                })
-                        }}
-                    </ErrorBoundary>
-                </Transition>
+                                                                />
+                                                            </tbody>
+                                                        </table>
+                                                    </Show>
+                                                }
+                                            })
+                                    })
+                            }}
+                        </ErrorBoundary>
+                    </Transition>
+                </div>
             </div>
         </div>
         <div class="my-4"></div>

@@ -86,11 +86,10 @@ pub fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <div class="flex flex-col min-h-screen">
-            {move || {
-                if is_sport_active() {
-                    view! { <SportDashboard /> }.into_any()
-                } else {
+        <div class="flex flex-col">
+            <Show
+                when=move || is_sport_active()
+                fallback=|| {
                     view! {
                         <div class="hero py-10 bg-base-100" data-testid="home-hero">
                             <div class="hero-content text-center">
@@ -104,16 +103,16 @@ pub fn HomePage() -> impl IntoView {
                                 </div>
                             </div>
                         </div>
-
                         <div class="px-4">
                             <SelectSportPlugin />
                         </div>
                     }
-                        .into_any()
                 }
-            }} <div class="flex-grow w-full">
-                <Outlet />
-            </div>
+            >
+                <SportDashboard />
+            </Show>
         </div>
+        <div class="my-4"></div>
+        <Outlet />
     }
 }

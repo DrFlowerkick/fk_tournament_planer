@@ -75,8 +75,12 @@ pub fn LoadSportConfiguration() -> impl IntoView {
     view! {
         <Transition fallback=move || {
             view! {
-                <div class="flex justify-center items-center p-4">
-                    <span class="loading loading-spinner loading-lg"></span>
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <div class="flex justify-center items-center p-4">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    </div>
                 </div>
             }
         }>
@@ -244,7 +248,6 @@ pub fn EditSportConfiguration(
     view! {
         <div class="card w-full bg-base-100 shadow-xl">
             <div class="card-body">
-                // ToDo: header as part of card?
                 <h2 class="card-title" node_ref=scroll_ref>
                     {move || {
                         format!(
@@ -324,7 +327,7 @@ pub fn EditSportConfiguration(
                             }
                         >
                             // --- Sport Config Form Fields ---
-                            <fieldset class="space-y-4" prop:disabled=is_disabled>
+                            <fieldset class="space-y-4 contents" prop:disabled=is_disabled>
                                 // Hidden meta fields the server expects (id / version)
                                 <input
                                     type="hidden"

@@ -134,198 +134,196 @@ pub fn ListTournaments() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <div
-            class="flex flex-col w-full max-w-6xl mx-auto py-8 space-y-6 px-4"
-            data-testid="tournaments-list-root"
-        >
-            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 class="text-3xl font-bold" node_ref=scroll_ref>
+        <div class="card w-full bg-base-100 shadow-xl" data-testid="tournaments-list-root">
+            <div class="card-body">
+                <h2 class="card-title" node_ref=scroll_ref>
                     "List Tournaments"
                 </h2>
-            </div>
 
-            // --- Filter Bar ---
-            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                // --- Filter Bar ---
+                <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
 
-                // Status Filter
-                <div class="form-control w-full max-w-xs">
-                    <label class="label">
-                        <span class="label-text">"Status"</span>
-                    </label>
-                    <EnumSelectWithValidation
-                        label="Filter Tournament State"
-                        name="filter-tournament-state"
-                        value=status
-                        set_value=set_status
-                        clear_label="No Status Filter"
-                    />
-                </div>
-
-                // Text Search
-                <div class="form-control w-full max-w-xs">
-                    <label class="label">
-                        <span class="label-text">"Search Name"</span>
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="Type to search..."
-                        class="input input-bordered w-full"
-                        data-testid="filter-name-search"
-                        on:input=move |ev| set_search_term.set(event_target_value(&ev))
-                        prop:value=move || search_term.get()
-                    />
-                </div>
-
-                // Limit Selector
-                <div class="form-control">
-                    <label class="label">
-                        <span class="label-text">"Limit"</span>
-                    </label>
-                    <select
-                        class="select select-bordered"
-                        data-testid="filter-limit-select"
-                        on:change=move |ev| {
-                            if let Ok(val) = event_target_value(&ev).parse::<usize>() {
-                                set_limit.set(val);
-                            }
-                        }
-                        prop:value=move || limit.get().to_string()
-                    >
-                        <option value="10">"10"</option>
-                        <option value="25">"25"</option>
-                        <option value="50">"50"</option>
-                    </select>
-                </div>
-
-                // Adhoc Toggle
-                <div class="form-control">
-                    <label class="label cursor-pointer gap-2">
-                        <span class="label-text">"Include Adhoc"</span>
-                        <input
-                            type="checkbox"
-                            class="toggle"
-                            data-testid="filter-include-adhoc-toggle"
-                            on:change=move |ev| set_include_adhoc.set(event_target_checked(&ev))
-                            prop:checked=move || include_adhoc.get()
+                    // Status Filter
+                    <div class="form-control w-full max-w-xs">
+                        <label class="label">
+                            <span class="label-text">"Status"</span>
+                        </label>
+                        <EnumSelectWithValidation
+                            label="Filter Tournament State"
+                            name="filter-tournament-state"
+                            value=status
+                            set_value=set_status
+                            clear_label="No Status Filter"
                         />
-                    </label>
-                </div>
-            </div>
+                    </div>
 
-            // --- Table Area ---
-            <div class="overflow-x-auto">
-                <Transition fallback=move || {
-                    view! { <span class="loading loading-spinner loading-lg"></span> }
-                }>
-                    <ErrorBoundary fallback=move |errors| {
-                        for (_err_id, err) in errors.get().into_iter() {
-                            let e = err.into_inner();
-                            if let Some(app_err) = e.downcast_ref::<AppError>() {
-                                handle_read_error(
-                                    &page_err_ctx,
-                                    component_id.get_value(),
-                                    app_err,
-                                    refetch,
-                                    on_cancel,
-                                );
-                            } else {
-                                handle_general_error(
-                                    &page_err_ctx,
-                                    component_id.get_value(),
-                                    "An unexpected error occurred.",
-                                    None,
-                                    on_cancel,
-                                );
+                    // Text Search
+                    <div class="form-control w-full max-w-xs">
+                        <label class="label">
+                            <span class="label-text">"Search Name"</span>
+                        </label>
+                        <input
+                            type="text"
+                            placeholder="Type to search..."
+                            class="input input-bordered w-full"
+                            data-testid="filter-name-search"
+                            on:input=move |ev| set_search_term.set(event_target_value(&ev))
+                            prop:value=move || search_term.get()
+                        />
+                    </div>
+
+                    // Limit Selector
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">"Limit"</span>
+                        </label>
+                        <select
+                            class="select select-bordered"
+                            data-testid="filter-limit-select"
+                            on:change=move |ev| {
+                                if let Ok(val) = event_target_value(&ev).parse::<usize>() {
+                                    set_limit.set(val);
+                                }
                             }
-                        }
-                    }>
-                        {move || {
-                            tournaments_data
-                                .and_then(|data| {
-                                    if let Some(selected_id) = selected_id.get_untracked()
-                                        && !data.iter().any(|t| t.get_id() == selected_id)
-                                    {
-                                        handle_selection_change.run(None);
-                                    }
-                                    let data = StoredValue::new(data.clone());
-                                    view! {
-                                        <Show
-                                            when=move || data.with_value(|val| !val.is_empty())
-                                            fallback=|| {
-                                                view! {
-                                                    <div
-                                                        class="text-center py-10 bg-base-100 border border-base-300 rounded-lg"
-                                                        data-testid="tournaments-list-empty"
-                                                    >
-                                                        <p class="text-lg opacity-60">
-                                                            "No tournaments found with the current filters."
-                                                        </p>
-                                                    </div>
-                                                }
-                                            }
-                                        >
-                                            <table class="table w-full" data-testid="tournaments-table">
-                                                <thead data-testid="tournaments-table-header">
-                                                    <tr>
-                                                        <th>"Name"</th>
-                                                        <th>"Status"</th>
-                                                        <th>"Entrants"</th>
-                                                        <th>"Type"</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    <For
-                                                        each=move || data.read_value().clone()
-                                                        key=|t| t.get_id()
-                                                        children=move |t| {
-                                                            let t_id = t.get_id();
-                                                            let is_selected = move || {
-                                                                selected_id.get() == Some(t_id)
-                                                            };
+                            prop:value=move || limit.get().to_string()
+                        >
+                            <option value="10">"10"</option>
+                            <option value="25">"25"</option>
+                            <option value="50">"50"</option>
+                        </select>
+                    </div>
 
-                                                            view! {
-                                                                <tr
-                                                                    class="hover cursor-pointer"
-                                                                    class:bg-base-200=is_selected
-                                                                    data-testid=format!("tournaments-row-{}", t_id)
-                                                                    on:click=move |_| {
-                                                                        if selected_id.get() == Some(t_id) {
-                                                                            handle_selection_change.run(None);
-                                                                        } else {
-                                                                            handle_selection_change.run(Some(t_id));
+                    // Adhoc Toggle
+                    <div class="form-control">
+                        <label class="label cursor-pointer gap-2">
+                            <span class="label-text">"Include Adhoc"</span>
+                            <input
+                                type="checkbox"
+                                class="toggle"
+                                data-testid="filter-include-adhoc-toggle"
+                                on:change=move |ev| set_include_adhoc.set(event_target_checked(&ev))
+                                prop:checked=move || include_adhoc.get()
+                            />
+                        </label>
+                    </div>
+                </div>
+
+                // --- Table Area ---
+                <div class="overflow-x-auto">
+                    <Transition fallback=move || {
+                        view! { <span class="loading loading-spinner loading-lg"></span> }
+                    }>
+                        <ErrorBoundary fallback=move |errors| {
+                            for (_err_id, err) in errors.get().into_iter() {
+                                let e = err.into_inner();
+                                if let Some(app_err) = e.downcast_ref::<AppError>() {
+                                    handle_read_error(
+                                        &page_err_ctx,
+                                        component_id.get_value(),
+                                        app_err,
+                                        refetch,
+                                        on_cancel,
+                                    );
+                                } else {
+                                    handle_general_error(
+                                        &page_err_ctx,
+                                        component_id.get_value(),
+                                        "An unexpected error occurred.",
+                                        None,
+                                        on_cancel,
+                                    );
+                                }
+                            }
+                        }>
+                            {move || {
+                                tournaments_data
+                                    .and_then(|data| {
+                                        if let Some(selected_id) = selected_id.get_untracked()
+                                            && !data.iter().any(|t| t.get_id() == selected_id)
+                                        {
+                                            handle_selection_change.run(None);
+                                        }
+                                        let data = StoredValue::new(data.clone());
+                                        view! {
+                                            <Show
+                                                when=move || data.with_value(|val| !val.is_empty())
+                                                fallback=|| {
+                                                    view! {
+                                                        <div
+                                                            class="text-center py-10 bg-base-100 border border-base-300 rounded-lg"
+                                                            data-testid="tournaments-list-empty"
+                                                        >
+                                                            <p class="text-lg opacity-60">
+                                                                "No tournaments found with the current filters."
+                                                            </p>
+                                                        </div>
+                                                    }
+                                                }
+                                            >
+                                                <table class="table w-full" data-testid="tournaments-table">
+                                                    <thead data-testid="tournaments-table-header">
+                                                        <tr>
+                                                            <th>"Name"</th>
+                                                            <th>"Status"</th>
+                                                            <th>"Entrants"</th>
+                                                            <th>"Type"</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <For
+                                                            each=move || data.read_value().clone()
+                                                            key=|t| t.get_id()
+                                                            children=move |t| {
+                                                                let t_id = t.get_id();
+                                                                let is_selected = move || {
+                                                                    selected_id.get() == Some(t_id)
+                                                                };
+
+                                                                view! {
+                                                                    <tr
+                                                                        class="hover cursor-pointer"
+                                                                        class:bg-base-200=is_selected
+                                                                        data-testid=format!("tournaments-row-{}", t_id)
+                                                                        on:click=move |_| {
+                                                                            if selected_id.get() == Some(t_id) {
+                                                                                handle_selection_change.run(None);
+                                                                            } else {
+                                                                                handle_selection_change.run(Some(t_id));
+                                                                            }
                                                                         }
-                                                                    }
-                                                                >
-                                                                    <td class="font-bold">{t.get_name().to_string()}</td>
-                                                                    <td>
-                                                                        <div class="badge badge-outline">
-                                                                            {t.get_tournament_state().to_string()}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td>{t.get_num_entrants()}</td>
-                                                                    <td>{t.get_tournament_mode().to_string()}</td>
-                                                                </tr>
-                                                                <Show when=is_selected>
-                                                                    <tr>
-                                                                        <td colspan="4" class="p-0">
-                                                                            <SelectedTournamentActions tournament_state=t
-                                                                                .get_tournament_state() />
+                                                                    >
+                                                                        <td class="font-bold">{t.get_name().to_string()}</td>
+                                                                        <td>
+                                                                            <div class="badge badge-outline">
+                                                                                {t.get_tournament_state().to_string()}
+                                                                            </div>
                                                                         </td>
+                                                                        <td>{t.get_num_entrants()}</td>
+                                                                        <td>{t.get_tournament_mode().to_string()}</td>
                                                                     </tr>
-                                                                </Show>
+                                                                    <Show when=is_selected>
+                                                                        <tr>
+                                                                            <td colspan="4" class="p-0">
+                                                                                <SelectedTournamentActions tournament_state=t
+                                                                                    .get_tournament_state() />
+                                                                            </td>
+                                                                        </tr>
+                                                                    </Show>
+                                                                }
                                                             }
-                                                        }
-                                                    />
-                                                </tbody>
-                                            </table>
-                                        </Show>
-                                    }
-                                })
-                        }}
-                    </ErrorBoundary>
-                </Transition>
+                                                        />
+                                                    </tbody>
+                                                </table>
+                                            </Show>
+                                        }
+                                    })
+                            }}
+                        </ErrorBoundary>
+                    </Transition>
+                </div>
             </div>
         </div>
+        <div class="my-4"></div>
         <Outlet />
     }
 }

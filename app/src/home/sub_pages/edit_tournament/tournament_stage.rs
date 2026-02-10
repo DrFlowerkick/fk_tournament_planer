@@ -80,8 +80,12 @@ pub fn LoadTournamentStage() -> impl IntoView {
     view! {
         <Transition fallback=move || {
             view! {
-                <div class="w-full flex justify-center py-8">
-                    <span class="loading loading-spinner loading-lg"></span>
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <div class="w-full flex justify-center py-8">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    </div>
                 </div>
             }
         }>
@@ -164,26 +168,17 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
             <div class="card w-full bg-base-100 shadow-xl">
                 <div class="card-body">
                     // --- Form Area ---
-                    <div
-                        class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-                        data-testid="stage-editor-root"
-                    >
-                        <div class="w-full flex justify-between items-center pb-4">
-                            <h2
-                                class="text-3xl font-bold"
-                                data-testid="stage-editor-title"
-                                node_ref=scroll_ref
-                            >
-                                {move || editor_title()}
-                            </h2>
-                        </div>
+                    <div data-testid="stage-editor-root">
+                        <h2 class="card-title" data-testid="stage-editor-title" node_ref=scroll_ref>
+                            {move || editor_title()}
+                        </h2>
                         <fieldset
                             disabled=move || {
                                 tournament_editor_context.is_disabled_stage_editing.get()
                                     || tournament_editor_context.is_busy.get()
                                     || !tournament_editor_context.is_stage_initialized.get()
                             }
-                            class="contents"
+                            class="space-y-4 contents"
                             data-testid="stage-editor-form"
                         >
                             <div class="w-full max-w-md grid grid-cols-1 gap-6">
@@ -230,6 +225,7 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                 </div>
             </div>
         </Show>
+        <div class="my-4"></div>
         <Outlet />
     }
 }
