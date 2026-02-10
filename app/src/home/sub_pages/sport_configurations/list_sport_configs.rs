@@ -16,6 +16,7 @@ use app_utils::{
     params::use_sport_id_query,
     server_fn::sport_config::list_sport_configs,
     state::{
+        activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
         sport_config::SportConfigListContext,
@@ -43,9 +44,11 @@ pub fn ListSportConfigurations() -> impl IntoView {
     // --- global context and state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+    let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
     // Derived Query Params
     let sport_id = use_sport_id_query();
@@ -105,7 +108,12 @@ pub fn ListSportConfigurations() -> impl IntoView {
         },
         move |(maybe_sport_id, term, lim, _refetch_trigger)| async move {
             if let Some(s_id) = maybe_sport_id {
-                list_sport_configs(s_id, term, Some(lim)).await
+                activity_tracker
+                    .track_activity_wrapper(
+                        component_id.get_value(),
+                        list_sport_configs(s_id, term, Some(lim)),
+                    )
+                    .await
             } else {
                 Ok(vec![])
             }
@@ -338,6 +346,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                 </Transition>
             </div>
         </div>
+        <div class="my-4"></div>
         <Outlet />
     }
 }

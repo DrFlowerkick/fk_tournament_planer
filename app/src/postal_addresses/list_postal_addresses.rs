@@ -14,7 +14,10 @@ use app_utils::{
         use_scroll_into_view::use_scroll_h2_into_view,
     },
     server_fn::postal_address::list_postal_addresses,
-    state::{error_state::PageErrorContext, postal_address::PostalAddressListContext},
+    state::{
+        activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        postal_address::PostalAddressListContext,
+    },
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
@@ -45,9 +48,12 @@ pub fn ListPostalAddresses() -> impl IntoView {
     // --- global context and state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
-    // remove errors on unmount
+    let activity_tracker = expect_context::<ActivityTracker>();
+
+    // remove errors and activity tracker on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     // --- local context ---
@@ -94,7 +100,14 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 postal_address_list_ctx.track_fetch_trigger.get(),
             )
         },
-        move |(term, lim, _refetch_trigger)| async move { list_postal_addresses(term, Some(lim)).await },
+        move |(term, lim, _refetch_trigger)| async move {
+            activity_tracker
+                .track_activity_wrapper(
+                    component_id.get_value(),
+                    list_postal_addresses(term, Some(lim)),
+                )
+                .await
+        },
     );
 
     // Refetch function for errors
@@ -348,6 +361,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 </div>
             </div>
         </div>
+        <div class="my-4"></div>
         <Outlet />
     }
 }

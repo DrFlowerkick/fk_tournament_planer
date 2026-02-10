@@ -17,6 +17,7 @@ use app_utils::{
     params::{use_stage_number_params, use_tournament_base_id_query},
     server_fn::stage::load_stage_by_number,
     state::{
+        activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
     },
@@ -30,9 +31,11 @@ pub fn LoadTournamentStage() -> impl IntoView {
     // --- global context ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+    let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     let refetch_trigger = expect_context::<TournamentRefetchContext>();
@@ -54,7 +57,12 @@ pub fn LoadTournamentStage() -> impl IntoView {
             if let Some(t_id) = maybe_t_id
                 && let Some(stage_number) = maybe_s_num
             {
-                load_stage_by_number(t_id, stage_number).await
+                activity_tracker
+                    .track_activity_wrapper(
+                        component_id.get_value(),
+                        load_stage_by_number(t_id, stage_number),
+                    )
+                    .await
             } else {
                 Ok(None)
             }

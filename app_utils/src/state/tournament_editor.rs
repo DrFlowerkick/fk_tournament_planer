@@ -10,7 +10,9 @@ use crate::{
     },
     params::{use_group_number_params, use_stage_number_params, use_tournament_base_id_query},
     server_fn::tournament_editor::SaveTournamentEditorDiff,
-    state::{error_state::PageErrorContext, toast_state::ToastContext},
+    state::{
+        activity_tracker::ActivityTracker, error_state::PageErrorContext, toast_state::ToastContext,
+    },
 };
 use app_core::{
     Stage, TournamentEditor, TournamentMode, TournamentState, utils::validation::ValidationResult,
@@ -103,9 +105,11 @@ impl TournamentEditorContext {
         let page_err_ctx = expect_context::<PageErrorContext>();
         let toast_ctx = expect_context::<ToastContext>();
         let component_id = StoredValue::new(Uuid::new_v4());
+        let activity_tracker = expect_context::<ActivityTracker>();
         // remove errors on unmount
         on_cleanup(move || {
             page_err_ctx.clear_all_for_component(component_id.get_value());
+            activity_tracker.remove_component(component_id.get_value());
         });
 
         // --- core signals ---
@@ -159,6 +163,8 @@ impl TournamentEditorContext {
 
         // --- server actions and resources ---
         let save_diff = ServerAction::<SaveTournamentEditorDiff>::new();
+        let save_diff_pending = save_diff.pending();
+        activity_tracker.track_pending_memo(component_id.get_value(), save_diff_pending);
 
         // server action & resource activity tracking
         let is_busy = Signal::derive(move || save_diff.pending().get());

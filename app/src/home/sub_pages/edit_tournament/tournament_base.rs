@@ -19,6 +19,7 @@ use app_utils::{
     params::{use_sport_id_query, use_tournament_base_id_query},
     server_fn::tournament_base::load_tournament_base,
     state::{
+        activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
     },
@@ -32,9 +33,11 @@ pub fn LoadTournament() -> impl IntoView {
     // --- global context ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+    let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
     let refetch_trigger = TournamentRefetchContext::new();
     provide_context(refetch_trigger);
@@ -56,7 +59,10 @@ pub fn LoadTournament() -> impl IntoView {
             if let Some(t_id) = maybe_t_id
                 && maybe_s_id.is_some()
             {
-                match load_tournament_base(t_id).await {
+                match activity_tracker
+                    .track_activity_wrapper(component_id.get_value(), load_tournament_base(t_id))
+                    .await
+                {
                     Ok(None) => Err(AppError::ResourceNotFound(
                         "Tournament Base".to_string(),
                         t_id,

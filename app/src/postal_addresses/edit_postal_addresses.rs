@@ -19,6 +19,7 @@ use app_utils::{
     params::use_address_id_query,
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::{
+        activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         postal_address::{PostalAddressEditorContext, PostalAddressListContext},
         toast_state::ToastContext,
@@ -37,10 +38,12 @@ use uuid::Uuid;
 pub fn LoadPostalAddress() -> impl IntoView {
     // --- global state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
+    let activity_tracker = expect_context::<ActivityTracker>();
     let component_id = StoredValue::new(Uuid::new_v4());
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     // --- Server Resources ---
@@ -49,7 +52,10 @@ pub fn LoadPostalAddress() -> impl IntoView {
         move || postal_address_id.get(),
         move |maybe_id| async move {
             match maybe_id {
-                Some(id) => match load_postal_address(id).await {
+                Some(id) => match activity_tracker
+                    .track_activity_wrapper(component_id.get_value(), load_postal_address(id))
+                    .await
+                {
                     Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
                     load_result => load_result,
                 },
@@ -94,7 +100,6 @@ pub fn LoadPostalAddress() -> impl IntoView {
                     }
                 }
             }>
-
                 {move || {
                     addr_res
                         .and_then(|may_be_pa| {
@@ -129,11 +134,14 @@ pub fn EditPostalAddress(
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
 
+    let activity_tracker = expect_context::<ActivityTracker>();
+
     let postal_address_list_ctx = expect_context::<PostalAddressListContext>();
 
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     let postal_address_editor = PostalAddressEditorContext::new();
@@ -152,6 +160,8 @@ pub fn EditPostalAddress(
 
     // --- Server Actions ---
     let save_postal_address = ServerAction::<SavePostalAddress>::new();
+    let save_postal_address_pending = save_postal_address.pending();
+    activity_tracker.track_pending_memo(component_id.get_value(), save_postal_address_pending);
 
     // handle save result
     Effect::new(move || {
@@ -183,8 +193,6 @@ pub fn EditPostalAddress(
             None => { /* saving state - do nothing */ }
         }
     });
-
-    let save_postal_address_pending = save_postal_address.pending();
 
     // --- Signals for UI state & errors ---
     let is_disabled = move || save_postal_address_pending.get();

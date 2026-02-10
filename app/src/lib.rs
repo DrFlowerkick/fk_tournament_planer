@@ -100,7 +100,7 @@ pub fn App() -> impl IntoView {
         <Title text="FK Tournament Planer" />
 
         // routing
-        <Router>
+        <Router set_is_routing=activity_tracker.set_router_activity>
             <div class="flex flex-col min-h-screen">
                 // navigation
                 <header class="navbar bg-base-300 sticky top-0 z-50">

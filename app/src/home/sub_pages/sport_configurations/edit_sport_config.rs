@@ -19,6 +19,7 @@ use app_utils::{
     params::{use_sport_config_id_query, use_sport_id_query},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
+        activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
         sport_config::{SportConfigEditorContext, SportConfigListContext},
@@ -40,9 +41,11 @@ pub fn LoadSportConfiguration() -> impl IntoView {
     // --- global state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+    let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     // --- Server Resources ---
@@ -51,7 +54,10 @@ pub fn LoadSportConfiguration() -> impl IntoView {
         move || sport_config_id.get(),
         move |maybe_id| async move {
             match maybe_id {
-                Some(id) => match load_sport_config(id).await {
+                Some(id) => match activity_tracker
+                    .track_activity_wrapper(component_id.get_value(), load_sport_config(id))
+                    .await
+                {
                     Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
                     load_result => load_result,
                 },
@@ -132,12 +138,13 @@ pub fn EditSportConfiguration(
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
-
+    let activity_tracker = expect_context::<ActivityTracker>();
     let sport_config_list_ctx = expect_context::<SportConfigListContext>();
 
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     let state = expect_context::<Store<GlobalState>>();
@@ -184,6 +191,8 @@ pub fn EditSportConfiguration(
 
     // --- Server Actions ---
     let save_sport_config = ServerAction::<SaveSportConfig>::new();
+    let save_sport_config_pending = save_sport_config.pending();
+    activity_tracker.track_pending_memo(component_id.get_value(), save_sport_config_pending);
 
     // handle save result
     Effect::new(move || match save_sport_config.value().get() {
@@ -219,8 +228,6 @@ pub fn EditSportConfiguration(
         }
         None => { /* saving state - do nothing */ }
     });
-
-    let save_sport_config_pending = save_sport_config.pending();
 
     // --- Signals for UI state & errors ---
     let is_disabled = move || sport_plugin().is_none() || save_sport_config_pending.get();

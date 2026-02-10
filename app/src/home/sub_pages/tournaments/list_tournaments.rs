@@ -16,7 +16,7 @@ use app_utils::{
     },
     params::use_sport_id_query,
     server_fn::tournament_base::list_tournament_bases,
-    state::error_state::PageErrorContext,
+    state::{activity_tracker::ActivityTracker, error_state::PageErrorContext},
 };
 use leptos::{html::H2, prelude::*};
 use leptos_router::{NavigateOptions, components::A, hooks::use_navigate, nested_router::Outlet};
@@ -36,9 +36,11 @@ pub fn ListTournaments() -> impl IntoView {
     // --- global context ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+    let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     // Signals for Filters
@@ -94,7 +96,11 @@ pub fn ListTournaments() -> impl IntoView {
         },
         move |(maybe_sport_id, term, lim, status, include_adhoc)| async move {
             if let Some(s_id) = maybe_sport_id {
-                list_tournament_bases(s_id, term, Some(lim))
+                activity_tracker
+                    .track_activity_wrapper(
+                        component_id.get_value(),
+                    list_tournament_bases(s_id, term, Some(lim)),
+                    )
                     .await
                     .map(|tournaments| {
                         tournaments
