@@ -211,6 +211,7 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 <TextInputWithValidation
                                     label="Tournament Name"
                                     name="tournament-name"
+                                    data_testid="input-tournament-name"
                                     value=tournament_editor_context.base_name
                                     set_value=tournament_editor_context.set_base_name
                                     validation_result=tournament_editor_context.validation_result
@@ -221,6 +222,7 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 <NumberInputWithValidation
                                     label="Number of Entrants"
                                     name="tournament-entrants"
+                                    data_testid="input-tournament-entrants"
                                     value=tournament_editor_context.base_num_entrants
                                     set_value=tournament_editor_context.set_base_num_entrants
                                     validation_result=tournament_editor_context.validation_result
@@ -232,6 +234,7 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 <EnumSelectWithValidation
                                     label="Mode"
                                     name="tournament-mode"
+                                    data_testid="select-tournament-mode"
                                     value=tournament_editor_context.base_mode
                                     set_value=tournament_editor_context.set_base_mode
                                 />
@@ -245,6 +248,7 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                     <NumberInputWithValidation
                                         label="Rounds (Swiss System)"
                                         name="tournament-swiss-num_rounds"
+                                        data_testid="input-tournament-swiss-num_rounds"
                                         value=tournament_editor_context.base_num_rounds_swiss_system
                                         set_value=tournament_editor_context
                                             .set_base_num_rounds_swiss_system

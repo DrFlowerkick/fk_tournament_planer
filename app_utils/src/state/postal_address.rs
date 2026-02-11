@@ -1,11 +1,13 @@
 //! postal address editor context
 
+use crate::hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation};
 use app_core::{
     PostalAddress,
     utils::{id_version::IdVersion, validation::ValidationResult},
 };
 use isocountry::CountryCode;
 use leptos::prelude::*;
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
 
 #[derive(Clone, Copy)]
@@ -25,6 +27,8 @@ pub struct PostalAddressEditorContext {
     // --- Signals, Slices & Callbacks for form fields ---
     /// Signal slice for the postal_address_id field
     pub postal_address_id: Signal<Option<Uuid>>,
+    /// Signal slice for the postal_address_version field
+    pub postal_address_version: Signal<Option<u32>>,
     /// Signal slice for the name field
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
@@ -71,6 +75,9 @@ impl PostalAddressEditorContext {
         let postal_address_id =
             create_read_slice(local, move |local| local.as_ref().map(|pa| pa.get_id()));
 
+        let postal_address_version = create_read_slice(local, move |local| {
+            local.as_ref().and_then(|pa| pa.get_version())
+        });
         let (name, set_name) = create_slice(
             local,
             |local| local.as_ref().map(|pa| pa.get_name().to_string()),
@@ -154,6 +161,7 @@ impl PostalAddressEditorContext {
             is_changed,
             validation_result,
             postal_address_id,
+            postal_address_version,
             name,
             set_name,
             street,
@@ -187,6 +195,10 @@ impl PostalAddressEditorContext {
 
 #[derive(Clone, Copy)]
 pub struct PostalAddressListContext {
+    /// Read slice for the currently selected postal address id
+    pub selected_id: Signal<Option<Uuid>>,
+    /// Callback for updating the currently selected postal address id
+    pub set_selected_id: Callback<Option<Uuid>>,
     /// Trigger to refetch data from server
     refetch_trigger: RwSignal<u64>,
     /// Read slice for getting the current state of the postal address list
@@ -195,8 +207,39 @@ pub struct PostalAddressListContext {
 
 impl PostalAddressListContext {
     pub fn new() -> Self {
+        let UseQueryNavigationReturn {
+            url_update_query,
+            url_remove_query,
+            ..
+        } = use_query_navigation();
+        let navigate = use_navigate();
+
+        let selected_id = RwSignal::new(None);
+        let set_selected_id = Callback::new({
+            let navigate = navigate.clone();
+            move |new_id: Option<Uuid>| {
+                selected_id.set(new_id);
+
+                let nav_url = if let Some(t_id) = new_id {
+                    url_update_query("address_id", &t_id.to_string())
+                } else {
+                    url_remove_query("address_id")
+                };
+                navigate(
+                    &nav_url,
+                    NavigateOptions {
+                        replace: true,
+                        scroll: false,
+                        ..Default::default()
+                    },
+                );
+            }
+        });
         let refetch_trigger = RwSignal::new(0);
+
         Self {
+            selected_id: selected_id.read_only().into(),
+            set_selected_id,
             refetch_trigger,
             track_fetch_trigger: refetch_trigger.read_only().into(),
         }

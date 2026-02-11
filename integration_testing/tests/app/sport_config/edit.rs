@@ -14,6 +14,14 @@ use leptos_router::{
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
+#[component]
+fn LoadSportConfigurationWrapper() -> impl IntoView {
+    // requires Router context
+    provide_context(SportConfigListContext::new());
+
+    view! { <LoadSportConfiguration /> }
+}
+
 #[wasm_bindgen_test]
 async fn test_new_sport_config() {
     // Acquire lock and clean DOM.
@@ -31,11 +39,10 @@ async fn test_new_sport_config() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/new") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/new") view=LoadSportConfigurationWrapper />
                 </Routes>
             </Router>
         }
@@ -79,11 +86,10 @@ async fn test_edit_sport_config() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfigurationWrapper />
                 </Routes>
             </Router>
         }
@@ -134,11 +140,10 @@ async fn test_save_as_new_sport_config() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfigurationWrapper />
                 </Routes>
             </Router>
         }

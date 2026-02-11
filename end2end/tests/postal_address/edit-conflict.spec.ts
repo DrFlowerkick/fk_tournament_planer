@@ -48,12 +48,12 @@ test.describe("Edit conflict shows proper fallback reaction", () => {
       // A opens edit for this id. Expect form-version "0".
       await openEditForm(pageA, id);
       // The version is in a hidden input field. We check its value attribute.
-      await expect(pageA.locator('input[name="version"]')).toHaveValue("0");
+      await expect(PA_A.form.hiddenVersion).toHaveValue("0");
 
       // -------------------- B updates first -----------------------
       await openEditForm(pageB, id);
       // The version is in a hidden input field. We check its value attribute.
-      await expect(pageB.locator('input[name="version"]')).toHaveValue("0");
+      await expect(PA_B.form.hiddenVersion).toHaveValue("0");
 
       const editedByB = `${initial.name} (B)`;
       await fillAndBlur(PA_B.form.inputName, editedByB);

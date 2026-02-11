@@ -185,6 +185,7 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                                 <NumberInputWithValidation
                                     label="Number of Groups"
                                     name="stage-num-groups"
+                                    data_testid="input-stage-num-groups"
                                     value=tournament_editor_context.stage_num_groups
                                     set_value=tournament_editor_context.set_stage_num_groups
                                     validation_result=tournament_editor_context.validation_result

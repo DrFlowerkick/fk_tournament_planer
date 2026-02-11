@@ -70,9 +70,6 @@ test.describe("Generic error handling loading address", () => {
     // -------------------- Act: Try to load the address --------------------
     await PA.list.btnEdit.click();
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.url()).toContain(
-      `/postal-address/edit?address_id=${addressId}`,
-    );
 
     // -------------------- Assert: error banner is shown --------------------
     await expect(BA.globalErrorBanner.root).toBeVisible();

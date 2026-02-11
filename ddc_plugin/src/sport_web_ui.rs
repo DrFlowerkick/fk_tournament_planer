@@ -341,6 +341,7 @@ impl SportPortWebUi for DdcSportPlugin {
                 <EnumSelectWithValidation
                     label="Sets Configuration"
                     name="sets_cfg"
+                    data_testid="select-sets_cfg"
                     value=sets_cfg
                     set_value=set_sets_cfg
                 />
@@ -351,6 +352,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                 <NumberInputWithValidation
                                     label="Sets to Win"
                                     name="num_sets"
+                                    data_testid="input-num_sets"
                                     value=num_sets
                                     set_value=set_num_sets
                                     validation_result=validation_result
@@ -366,6 +368,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                 <NumberInputWithValidation
                                     label="Total Sets"
                                     name="num_sets"
+                                    data_testid="input-num_sets"
                                     value=num_sets
                                     set_value=set_num_sets
                                     validation_result=validation_result
@@ -382,6 +385,7 @@ impl SportPortWebUi for DdcSportPlugin {
                 <EnumSelectWithValidation
                     label="Set Winning Configuration"
                     name="set_winning_cfg"
+                    data_testid="select-set_winning_cfg"
                     value=winning_cfg
                     set_value=set_winning_cfg
                 />
@@ -393,6 +397,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                     <NumberInputWithValidation
                                         label="Score to Win a Set"
                                         name="score_to_win"
+                                        data_testid="input-score_to_win"
                                         value=score_to_win
                                         set_value=set_score_to_win
                                         validation_result=validation_result
@@ -403,6 +408,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                     <NumberInputWithValidation
                                         label="Win by Margin"
                                         name="win_by_margin"
+                                        data_testid="input-win_by_margin"
                                         value=win_by_margin
                                         set_value=set_win_by_margin
                                         validation_result=validation_result
@@ -413,6 +419,7 @@ impl SportPortWebUi for DdcSportPlugin {
                                     <NumberInputWithValidation
                                         label="Hard Cap"
                                         name="hard_cap"
+                                        data_testid="input-hard_cap"
                                         value=hard_cap
                                         set_value=set_hard_cap
                                         validation_result=validation_result
@@ -431,6 +438,7 @@ impl SportPortWebUi for DdcSportPlugin {
                     <NumberInputWithValidation
                         label="Victory Points for Win"
                         name="victory_points_win"
+                        data_testid="input-victory_points_win"
                         value=victory_points_win
                         set_value=set_victory_points_win
                         validation_result=validation_result
@@ -442,6 +450,7 @@ impl SportPortWebUi for DdcSportPlugin {
                     <NumberInputWithValidation
                         label="Victory Points for Draw"
                         name="victory_points_draw"
+                        data_testid="input-victory_points_draw"
                         value=victory_points_draw
                         set_value=set_victory_points_draw
                         validation_result=validation_result
@@ -454,6 +463,7 @@ impl SportPortWebUi for DdcSportPlugin {
                 <DurationInputWithValidation
                     label="Expected Rally Duration"
                     name="expected_rally_duration_seconds"
+                    data_testid="input-expected_rally_duration_seconds"
                     value=expected_rally_duration_seconds
                     set_value=set_expected_rally_duration_seconds
                     unit=DurationInputUnit::Seconds

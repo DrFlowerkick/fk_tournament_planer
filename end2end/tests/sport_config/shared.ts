@@ -4,8 +4,9 @@ import {
   clickEditSportConfig,
   extractQueryParamFromUrl,
   waitForAppHydration,
-  selectors
+  selectors,
 } from "../../helpers";
+import { SPORT_IDS } from "../../helpers/selectors/sportConfig";
 
 export interface SportConfigTestAdapter {
   sportName: string;
@@ -46,14 +47,32 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         await expect(SC.form.root).toBeHidden();
 
         // Verify preview
-        await expect(SC.list.previewByName(initialName)).toContainText(initialName);
-        await adapter.assertSpecificFields(SC.list.previewByName(initialName), initialData);
+        await expect(SC.list.previewByName(initialName)).toContainText(
+          initialName,
+        );
+        await adapter.assertSpecificFields(
+          SC.list.previewByName(initialName),
+          initialData,
+        );
       });
 
       await test.step("Edit Config", async () => {
-        const row = SC.list.previewByName(initialName);
-        row.click();
-        await expect(SC.list.btnEdit).toBeVisible();
+        // After save the row should be selected, when the url contains the sport_config_id of the
+        // created config, and the preview should be visible.
+        const preview = SC.list.previewByName(initialName);
+        
+        // Extract the specific UUID from the data-testid before clicking
+        const testId = await preview.getAttribute("data-testid");
+        const expectedId = testId?.replace(SPORT_IDS.list.previewPrefix, "");
+
+        // Wait for the URL to contain exactly the ID of the row we just clicked.
+        // This ensures Leptos has processed the correct navigation.
+        if (expectedId) {
+          await page.waitForURL(
+            (url) => url.searchParams.get("sport_config_id") === expectedId,
+          );
+        }
+        
         await clickEditSportConfig(page);
 
         // Update fields
@@ -64,8 +83,13 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         await expect(SC.list.previewByName(updatedName)).toBeVisible();
 
         // Verify preview
-        await expect(SC.list.previewByName(updatedName)).toContainText(updatedName);
-        await adapter.assertSpecificFields(SC.list.previewByName(updatedName), updatedData);
+        await expect(SC.list.previewByName(updatedName)).toContainText(
+          updatedName,
+        );
+        await adapter.assertSpecificFields(
+          SC.list.previewByName(updatedName),
+          updatedData,
+        );
       });
     });
 
@@ -130,8 +154,13 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
 
         // --- User A sees updates live ---
         await test.step("User A sees updates live", async () => {
-          await expect(SC_A.list.previewByName(updatedName)).toContainText(updatedName);
-          await adapter.assertSpecificFields(SC_A.list.previewByName(updatedName), updatedData);
+          await expect(SC_A.list.previewByName(updatedName)).toContainText(
+            updatedName,
+          );
+          await adapter.assertSpecificFields(
+            SC_A.list.previewByName(updatedName),
+            updatedData,
+          );
         });
       } finally {
         await ctxA.close();

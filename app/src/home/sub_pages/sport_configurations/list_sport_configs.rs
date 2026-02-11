@@ -24,7 +24,7 @@ use app_utils::{
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
-use leptos_router::{NavigateOptions, components::A, hooks::use_navigate, nested_router::Outlet};
+use leptos_router::{components::A, nested_router::Outlet};
 use reactive_stores::Store;
 use uuid::Uuid;
 
@@ -32,14 +32,11 @@ use uuid::Uuid;
 pub fn ListSportConfigurations() -> impl IntoView {
     // navigation and query handling Hook
     let UseQueryNavigationReturn {
-        url_update_query,
-        url_remove_query,
         url_matched_route,
         url_is_matched_route,
         url_matched_route_remove_query,
         ..
     } = use_query_navigation();
-    let navigate = use_navigate();
 
     // --- global context and state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
@@ -71,30 +68,6 @@ pub fn ListSportConfigurations() -> impl IntoView {
     // This would allow users to share filtered views via URL and preserve filter state on page reloads.
     let (search_term, set_search_term) = signal("".to_string());
     let (limit, set_limit) = signal(10usize);
-    // Signal for Selected Row (UI interaction)
-    let (selected_id, set_selected_id) = signal::<Option<Uuid>>(None);
-
-    // update tournament_id query param when selected_id changes
-    let handle_selection_change = Callback::new({
-        let navigate = navigate.clone();
-        move |new_id: Option<Uuid>| {
-            set_selected_id.set(new_id);
-
-            let nav_url = if let Some(t_id) = new_id {
-                url_update_query("sport_config_id", &t_id.to_string())
-            } else {
-                url_remove_query("sport_config_id")
-            };
-            navigate(
-                &nav_url,
-                NavigateOptions {
-                    replace: true,
-                    scroll: false,
-                    ..Default::default()
-                },
-            );
-        }
-    });
 
     // Resource that fetches data when filters change
     let sport_configs_data = Resource::new(
@@ -221,10 +194,12 @@ pub fn ListSportConfigurations() -> impl IntoView {
                             {move || {
                                 sport_configs_data
                                     .and_then(|data| {
-                                        if let Some(selected_id) = selected_id.get_untracked()
+                                        if let Some(selected_id) = sport_config_list_ctx
+                                            .selected_id
+                                            .get_untracked()
                                             && !data.iter().any(|t| t.get_id() == selected_id)
                                         {
-                                            handle_selection_change.run(None);
+                                            sport_config_list_ctx.set_selected_id.run(None);
                                         }
                                         let data = StoredValue::new(data.clone());
                                         sport_plugin()
@@ -263,7 +238,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                                     children=move |sc| {
                                                                         let sc_id = sc.get_id();
                                                                         let is_selected = move || {
-                                                                            selected_id.get() == Some(sc_id)
+                                                                            sport_config_list_ctx.selected_id.get() == Some(sc_id)
                                                                         };
                                                                         let topic = Signal::derive(move || {
                                                                             Some(CrTopic::SportConfig(sc_id))
@@ -279,10 +254,10 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                                                 class:bg-base-200=is_selected
                                                                                 data-testid=format!("sport-configs-row-{}", sc_id)
                                                                                 on:click=move |_| {
-                                                                                    if selected_id.get() == Some(sc_id) {
-                                                                                        handle_selection_change.run(None);
+                                                                                    if sport_config_list_ctx.selected_id.get() == Some(sc_id) {
+                                                                                        sport_config_list_ctx.set_selected_id.run(None);
                                                                                     } else {
-                                                                                        handle_selection_change.run(Some(sc_id));
+                                                                                        sport_config_list_ctx.set_selected_id.run(Some(sc_id));
                                                                                     }
                                                                                 }
                                                                             >

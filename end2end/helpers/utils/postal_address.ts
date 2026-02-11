@@ -48,7 +48,9 @@ export async function waitForPostalAddressListUrl(page: Page) {
  * Extracts the UUID from a /postal-address/<uuid> URL.
  */
 export function extractUuidFromUrl(url: string): string {
-  return extractQueryParamFromUrl(url, "address_id");
+  const value = extractQueryParamFromUrl(url, "address_id");
+  if (!value) throw new Error(`No value for key "address_id" found in URL: ${url}`);
+  return value;
 }
 
 /**
@@ -221,16 +223,34 @@ const COUNTRY_CODE_TO_NAME: Record<string, string> = {
  * Assumes you're already on the list page.
  * Returns the row locator for further assertions.
  */
-export async function searchAndOpenByNameOnCurrentPage(page: Page, name: string): Promise<Locator> {
+export async function searchAndOpenByNameOnCurrentPage(
+  page: Page,
+  name: string,
+): Promise<Locator> {
   const PA = selectors(page).postalAddress;
   await expect(PA.list.filterName).toBeVisible();
   await PA.list.filterName.fill(name);
-  // Assuming the list updates reactively, we can now select the row.
-  const row = PA.list.previewByName(name);
-  await expect(row).toBeVisible();
-  await row.click();
+
+  // Get the row by name
+  const rowByName = PA.list.previewByName(name);
+  await expect(rowByName).toBeVisible();
+
+  // 1. Extract UUID from the row found by name
+  const testId = await rowByName.getAttribute("data-testid");
+  const idFromName = testId?.replace(POSTAL_IDS.list.previewPrefix, "");
+
+  // 2. Extract UUID from the URL
+  // The function now returns null if the parameter is missing, so no try-catch is needed.
+  const idFromUrl = extractQueryParamFromUrl(page.url(), "address_id");
+
+  // 3. Compare and click if they don't match
+  // !idFromUrl is true if the parameter is null or an empty string.
+  if (!idFromUrl || idFromName !== idFromUrl) {
+    await rowByName.click();
+  }
+
   await expect(PA.list.btnEdit).toBeVisible();
-  return row;
+  return rowByName;
 }
 
 /**
@@ -271,7 +291,9 @@ export async function expectPreviewShows(
   }
 
   if (expected.street !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.street)).toHaveText(expected.street!);
+    await expect(row.getByTestId(PA_PREVIEW.street)).toHaveText(
+      expected.street!,
+    );
   }
 
   if (expected.postal_code !== undefined) {
@@ -281,11 +303,15 @@ export async function expectPreviewShows(
   }
 
   if (expected.locality !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.locality)).toHaveText(expected.locality!);
+    await expect(row.getByTestId(PA_PREVIEW.locality)).toHaveText(
+      expected.locality!,
+    );
   }
 
   if (expected.region !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.region)).toHaveText(expected.region!);
+    await expect(row.getByTestId(PA_PREVIEW.region)).toHaveText(
+      expected.region!,
+    );
   }
 
   if (expected.country !== undefined) {

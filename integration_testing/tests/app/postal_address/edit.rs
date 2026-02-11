@@ -14,6 +14,14 @@ use leptos_router::{
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
+#[component]
+fn LoadPostalAddressWrapper() -> impl IntoView {
+    // requires Router context
+    provide_context(PostalAddressListContext::new());
+
+    view! { <LoadPostalAddress /> }
+}
+
 #[wasm_bindgen_test]
 async fn test_new_postal_address() {
     // Acquire lock and clean DOM.
@@ -28,11 +36,10 @@ async fn test_new_postal_address() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(PostalAddressListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/new") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/new") view=LoadPostalAddressWrapper />
                 </Routes>
             </Router>
         }
@@ -78,11 +85,10 @@ async fn test_edit_postal_address() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(PostalAddressListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/edit") view=LoadPostalAddressWrapper />
                 </Routes>
             </Router>
         }
@@ -131,15 +137,16 @@ async fn test_save_as_new_postal_address() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(PostalAddressListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/edit") view=LoadPostalAddressWrapper />
                 </Routes>
             </Router>
         }
     });
+
+    leptos::web_sys::console::log_1(&"test_save_as_new_postal_address started".into());
 
     // The component should react to the URL change.
     // A small delay helps ensure all reactive updates are processed.
@@ -157,9 +164,10 @@ async fn test_save_as_new_postal_address() {
     sleep(Duration::from_millis(10)).await;
 
     let save_as_new_button = get_element_by_test_id("btn-save-as-new");
-
     save_as_new_button.click();
+
     sleep(Duration::from_millis(10)).await;
+
     let cloned_addresses = ts
         .db
         .list_postal_addresses(Some("Cloned"), None)

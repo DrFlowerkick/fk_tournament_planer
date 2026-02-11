@@ -61,13 +61,14 @@ export async function expectFieldValidity(
 
 /**
  * Extracts a query parameter (e.g., UUID) from any URL.
- * Returns the value as a string or throws an error if not found.
+ * Returns the value as a string or null if not found.
  */
-export function extractQueryParamFromUrl(url: string, key: string): string {
+export function extractQueryParamFromUrl(
+  url: string,
+  key: string,
+): string | null {
   const u = new URL(url, "http://dummy"); // Base URL needed for relative URLs
-  const value = u.searchParams.get(key);
-  if (!value) throw new Error(`No value for key "${key}" found in URL: ${url}`);
-  return value;
+  return u.searchParams.get(key);
 }
 
 /**

@@ -2,7 +2,7 @@
 
 use app_core::SportConfig;
 #[cfg(feature = "test-mock")]
-use app_utils::server_fn::sport_config::save_sport_config_inner;
+use app_utils::server_fn::sport_config::{SaveSportConfigFormData, save_sport_config_inner};
 use app_utils::{
     components::inputs::TextInputWithValidation,
     error::{
@@ -203,9 +203,8 @@ pub fn EditSportConfiguration(
         Some(Ok(sc)) => {
             save_sport_config.clear();
             toast_ctx.success("Sport Configuration saved successfully");
-            if is_new {
-                sport_config_list_ctx.trigger_refetch();
-            }
+            sport_config_list_ctx.set_selected_id.run(Some(sc.get_id()));
+            sport_config_list_ctx.trigger_refetch();
             let nav_url = url_matched_route_update_query(
                 "sport_config_id",
                 &sc.get_id().to_string(),
@@ -287,35 +286,33 @@ pub fn EditSportConfiguration(
                                         })
                                         .map(|btn| btn.value());
                                     let data = SaveSportConfig {
-                                        id: sport_config_editor
-                                            .sport_config_id
-                                            .get()
-                                            .unwrap_or(Uuid::nil()),
-                                        version: sport_config_editor
-                                            .local_readonly
-                                            .get()
-                                            .map_or(0, |sc| sc.get_version().unwrap_or_default()),
-                                        sport_id: sport_id.get().unwrap_or(Uuid::nil()),
-                                        name: sport_config_editor.name.get().unwrap_or_default(),
-                                        config: sport_config_editor
-                                            .config
-                                            .get()
-                                            .unwrap_or_default()
-                                            .to_string(),
-                                        intent,
+                                        form: SaveSportConfigFormData {
+                                            id: sport_config_editor
+                                                .sport_config_id
+                                                .get()
+                                                .unwrap_or(Uuid::nil()),
+                                            version: sport_config_editor
+                                                .local_readonly
+                                                .get()
+                                                .map_or(0, |sc| sc.get_version().unwrap_or_default()),
+                                            sport_id: sport_id.get().unwrap_or(Uuid::nil()),
+                                            name: sport_config_editor.name.get().unwrap_or_default(),
+                                            config: sport_config_editor
+                                                .config
+                                                .get()
+                                                .unwrap_or_default()
+                                                .to_string(),
+                                            intent,
+                                        },
                                     };
                                     let save_action = Action::new(|sc: &SaveSportConfig| {
                                         let sc = sc.clone();
                                         async move {
-                                            save_sport_config_inner(
-                                                    sc.id,
-                                                    sc.version,
-                                                    sc.sport_id,
-                                                    sc.name,
-                                                    sc.config,
-                                                    sc.intent,
-                                                )
-                                                .await
+                                            let result = save_sport_config_inner(sc.form).await;
+                                            leptos::web_sys::console::log_1(
+                                                &format!("Result of save sport config: {:?}", result).into(),
+                                            );
+                                            result
                                         }
                                     });
                                     save_action.dispatch(data);
@@ -331,7 +328,7 @@ pub fn EditSportConfiguration(
                                 // Hidden meta fields the server expects (id / version)
                                 <input
                                     type="hidden"
-                                    name="id"
+                                    name="form[id]"
                                     data-testid="hidden-id"
                                     prop:value=move || {
                                         sport_config_editor
@@ -343,7 +340,7 @@ pub fn EditSportConfiguration(
                                 />
                                 <input
                                     type="hidden"
-                                    name="version"
+                                    name="form[version]"
                                     data-testid="hidden-version"
                                     prop:value=move || {
                                         sport_config_editor
@@ -354,7 +351,7 @@ pub fn EditSportConfiguration(
                                 />
                                 <input
                                     type="hidden"
-                                    name="sport_id"
+                                    name="form[sport_id]"
                                     data-testid="hidden-sport-id"
                                     prop:value=move || {
                                         sport_id.get().unwrap_or_default().to_string()
@@ -362,7 +359,7 @@ pub fn EditSportConfiguration(
                                 />
                                 <input
                                     type="hidden"
-                                    name="config"
+                                    name="form[config]"
                                     data-testid="hidden-sport-config"
                                     prop:value=move || {
                                         sport_config_editor
@@ -374,7 +371,8 @@ pub fn EditSportConfiguration(
                                 />
                                 <TextInputWithValidation
                                     label="Name"
-                                    name="name"
+                                    name="form[name]"
+                                    data_testid="input-name"
                                     value=sport_config_editor.name
                                     set_value=sport_config_editor.set_name
                                     validation_result=sport_config_editor.validation_result
@@ -389,7 +387,7 @@ pub fn EditSportConfiguration(
                                 <div class="card-actions justify-end mt-4">
                                     <button
                                         type="submit"
-                                        name="intent"
+                                        name="form[intent]"
                                         value=move || if is_new { "create" } else { "update" }
                                         data-testid="btn-save"
                                         class="btn btn-primary"
@@ -402,8 +400,8 @@ pub fn EditSportConfiguration(
 
                                     <button
                                         type="submit"
-                                        name="intent"
-                                        value="create"
+                                        name="form[intent]"
+                                        value="copy_as_new"
                                         data-testid="btn-save-as-new"
                                         class="btn btn-secondary"
                                         prop:disabled=move || {
@@ -416,7 +414,7 @@ pub fn EditSportConfiguration(
 
                                     <button
                                         type="button"
-                                        name="intent"
+                                        name="form[intent]"
                                         value="cancel"
                                         data-testid="btn-cancel"
                                         class="btn btn-ghost"

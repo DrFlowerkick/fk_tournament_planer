@@ -9,6 +9,7 @@ use app_core::{CoreState, utils::id_version::IdVersion};
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use isocountry::CountryCode;
 use leptos::prelude::*;
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -78,48 +79,35 @@ pub async fn list_postal_addresses_inner(
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SavePostalAddressFormData {
+    pub id: Uuid,
+    pub version: u32,
+    pub name: String,
+    pub street: String,
+    pub postal_code: String,
+    pub locality: String,
+    pub region: Option<String>,
+    pub country: String,
+    pub intent: Option<String>,
+}
+
 #[server]
 #[instrument(
     name = "postal_address.save",
     skip_all,
     fields(
-        id = %id,
-        version = version,
+        id = %form.id,
+        version = form.version,
         // capture intent without logging full payloads
-        intent = intent.as_deref().unwrap_or(""),
+        intent = form.intent.as_deref().unwrap_or(""),
         // tiny hints only; avoid PII/body dumps
-        name_len = name.len(),
-        locality_len = locality.len()
+        name_len = form.name.len(),
+        locality_len = form.locality.len()
     )
 )]
-#[allow(clippy::too_many_arguments)]
-pub async fn save_postal_address(
-    // hidden in the form; nil => new; else => update
-    id: Uuid,
-    // hidden in the form
-    version: u32,
-    name: String,
-    street: String,
-    postal_code: String,
-    locality: String,
-    // optional text field: treat "" as None
-    region: Option<String>,
-    country: String,
-    // which submit button was clicked: "update" | "create"
-    intent: Option<String>,
-) -> AppResult<PostalAddress> {
-    save_postal_address_inner(
-        id,
-        version,
-        name,
-        street,
-        postal_code,
-        locality,
-        region,
-        country,
-        intent,
-    )
-    .await
+pub async fn save_postal_address(form: SavePostalAddressFormData) -> AppResult<PostalAddress> {
+    save_postal_address_inner(form).await
 }
 
 /*
@@ -153,17 +141,8 @@ pub async fn save_postal_address(
 }*/
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-#[allow(clippy::too_many_arguments)]
 pub async fn save_postal_address_inner(
-    id: Uuid,
-    version: u32,
-    name: String,
-    street: String,
-    postal_code: String,
-    locality: String,
-    region: Option<String>,
-    country: String,
-    intent: Option<String>,
+    form: SavePostalAddressFormData,
 ) -> AppResult<PostalAddress> {
     use app_core::{CoreError, DbError};
 
@@ -174,31 +153,40 @@ pub async fn save_postal_address_inner(
 
     // Interpret intent
     // ToDo: we have to refactor this when switching to auto save.
-    // AND: we changed logic to ALWAYS provide a valid id. This is circumvented here
-    // (database creates new id). This is for now no problem, but should be changed.
-    let is_update = matches!(intent.as_deref(), Some("update"));
-    if is_update {
-        // set id and version previously loaded
-        if id.is_nil() {
-            return Err(AppError::NilIdUpdate);
+    match form.intent.as_deref() {
+        Some("update") => {
+            // set id and version previously loaded
+            if form.id.is_nil() {
+                return Err(AppError::NilIdUpdate);
+            }
+            let id_version = IdVersion::new(form.id, Some(form.version));
+            mut_pa_core.set_id_version(id_version);
+            info!("saving_update");
         }
-        let id_version = IdVersion::new(id, Some(version));
-        mut_pa_core.set_id_version(id_version);
-        info!("saving_update");
-    } else {
-        info!("saving_create");
+        Some("create") => {
+            let id_version = IdVersion::new(form.id, None);
+            mut_pa_core.set_id_version(id_version);
+            info!("saving_create");
+        }
+        Some("copy_as_new") => {
+            // set to nil id and no version to create a new copy
+            let id_version = IdVersion::new(Uuid::nil(), None);
+            mut_pa_core.set_id_version(id_version);
+            info!("saving_copy_as_new");
+        }
+        _ => { /* ToDo: should we return err for unknown intent? Or how do we handle this case? */ }
     }
 
     let country_code =
-        CountryCode::for_alpha2(&country).map_err(|e| CoreError::from(DbError::from(e)))?;
+        CountryCode::for_alpha2(&form.country).map_err(|e| CoreError::from(DbError::from(e)))?;
 
     // set address data from Form inputs
     mut_pa_core
-        .set_name(name)
-        .set_street(street)
-        .set_postal_code(postal_code)
-        .set_locality(locality)
-        .set_region(region.unwrap_or_default())
+        .set_name(form.name)
+        .set_street(form.street)
+        .set_postal_code(form.postal_code)
+        .set_locality(form.locality)
+        .set_region(form.region.unwrap_or_default())
         .set_country(Some(country_code));
 
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save

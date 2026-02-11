@@ -64,13 +64,15 @@ test.describe("postal address live update (Preview-only UI)", () => {
 
       // After save, route should be /postal-address/<uuid>
       await waitForPostalAddressListUrl(pageA);
-      const urlA = pageA.url();
-      const id = extractUuidFromUrl(urlA);
 
       // Ensure the preview shows the initial values and correct version
       const row = await searchAndOpenByNameOnCurrentPage(pageA, initial.name);
       await expectPreviewShows(row, initial);
       await expect(row.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("0");
+      
+      // Extract ID after click on row, because if table is "full", the ID might be removed from URL
+      const urlA = pageA.url();
+      const id = extractUuidFromUrl(urlA);
 
       // ----------------------- Act (B edits & saves) -------------------------
       // B opens the edit route directly for the same UUID.

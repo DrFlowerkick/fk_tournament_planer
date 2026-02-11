@@ -2,7 +2,7 @@
 
 use app_core::PostalAddress;
 #[cfg(feature = "test-mock")]
-use app_utils::server_fn::postal_address::save_postal_address_inner;
+use app_utils::server_fn::postal_address::{SavePostalAddressFormData, save_postal_address_inner};
 use app_utils::{
     components::inputs::{EnumSelectWithValidation, TextInputWithValidation},
     error::{
@@ -173,9 +173,10 @@ pub fn EditPostalAddress(
             Some(Ok(pa)) => {
                 save_postal_address.clear();
                 toast_ctx.success("Postal Address saved successfully");
-                if is_new {
-                    postal_address_list_ctx.trigger_refetch();
-                }
+                postal_address_list_ctx
+                    .set_selected_id
+                    .run(Some(pa.get_id()));
+                postal_address_list_ctx.trigger_refetch();
                 let nav_url = url_matched_route_update_query(
                     "address_id",
                     &pa.get_id().to_string(),
@@ -245,50 +246,46 @@ pub fn EditPostalAddress(
                                         })
                                         .map(|btn| btn.value());
                                     let data = SavePostalAddress {
-                                        id: postal_address_editor
-                                            .postal_address_id
-                                            .get()
-                                            .unwrap_or(Uuid::nil()),
-                                        version: postal_address_editor
-                                            .local_readonly
-                                            .get()
-                                            .map_or(0, |pa| pa.get_version().unwrap_or_default()),
-                                        name: postal_address_editor.name.get().unwrap_or_default(),
-                                        street: postal_address_editor
-                                            .street
-                                            .get()
-                                            .unwrap_or_default(),
-                                        postal_code: postal_address_editor
-                                            .postal_code
-                                            .get()
-                                            .unwrap_or_default(),
-                                        locality: postal_address_editor
-                                            .locality
-                                            .get()
-                                            .unwrap_or_default(),
-                                        region: postal_address_editor.region.get(),
-                                        country: postal_address_editor
-                                            .country
-                                            .get()
-                                            .map(|c| c.alpha2().to_string())
-                                            .unwrap_or_default(),
-                                        intent,
+                                        form: SavePostalAddressFormData {
+                                            id: postal_address_editor
+                                                .postal_address_id
+                                                .get()
+                                                .unwrap_or(Uuid::nil()),
+                                            version: postal_address_editor
+                                                .postal_address_version
+                                                .get()
+                                                .unwrap_or_default(),
+                                            name: postal_address_editor.name.get().unwrap_or_default(),
+                                            street: postal_address_editor
+                                                .street
+                                                .get()
+                                                .unwrap_or_default(),
+                                            postal_code: postal_address_editor
+                                                .postal_code
+                                                .get()
+                                                .unwrap_or_default(),
+                                            locality: postal_address_editor
+                                                .locality
+                                                .get()
+                                                .unwrap_or_default(),
+                                            region: postal_address_editor.region.get(),
+                                            country: postal_address_editor
+                                                .country
+                                                .get()
+                                                .map(|c| c.alpha2().to_string())
+                                                .unwrap_or_default(),
+                                            intent,
+                                        },
                                     };
                                     let save_action = Action::new(|pa: &SavePostalAddress| {
                                         let pa = pa.clone();
                                         async move {
-                                            save_postal_address_inner(
-                                                    pa.id,
-                                                    pa.version,
-                                                    pa.name,
-                                                    pa.street,
-                                                    pa.postal_code,
-                                                    pa.locality,
-                                                    pa.region,
-                                                    pa.country,
-                                                    pa.intent,
-                                                )
-                                                .await
+                                            let result = save_postal_address_inner(pa.form).await;
+                                            leptos::web_sys::console::log_1(
+                                                &format!("Result of save postal address: {:?}", result)
+                                                    .into(),
+                                            );
+                                            result
                                         }
                                     });
                                     save_action.dispatch(data);
@@ -304,7 +301,7 @@ pub fn EditPostalAddress(
                                 // Hidden meta fields the server expects (id / version)
                                 <input
                                     type="hidden"
-                                    name="id"
+                                    name="form[id]"
                                     data-testid="hidden-id"
                                     prop:value=move || {
                                         postal_address_editor
@@ -316,7 +313,7 @@ pub fn EditPostalAddress(
                                 />
                                 <input
                                     type="hidden"
-                                    name="version"
+                                    name="form[version]"
                                     data-testid="hidden-version"
                                     prop:value=move || {
                                         postal_address_editor
@@ -327,7 +324,8 @@ pub fn EditPostalAddress(
                                 />
                                 <TextInputWithValidation
                                     label="Name"
-                                    name="name"
+                                    name="form[name]"
+                                    data_testid="input-name"
                                     value=postal_address_editor.name
                                     set_value=postal_address_editor.set_name
                                     validation_result=postal_address_editor.validation_result
@@ -336,7 +334,8 @@ pub fn EditPostalAddress(
                                 />
                                 <TextInputWithValidation
                                     label="Street & number"
-                                    name="street"
+                                    name="form[street]"
+                                    data_testid="input-street"
                                     value=postal_address_editor.street
                                     set_value=postal_address_editor.set_street
                                     validation_result=postal_address_editor.validation_result
@@ -346,7 +345,8 @@ pub fn EditPostalAddress(
                                 <div class="grid grid-cols-2 gap-4">
                                     <TextInputWithValidation
                                         label="Postal code"
-                                        name="postal_code"
+                                        name="form[postal_code]"
+                                        data_testid="input-postal_code"
                                         value=postal_address_editor.postal_code
                                         set_value=postal_address_editor.set_postal_code
                                         validation_result=postal_address_editor.validation_result
@@ -355,7 +355,8 @@ pub fn EditPostalAddress(
                                     />
                                     <TextInputWithValidation
                                         label="City"
-                                        name="locality"
+                                        name="form[locality]"
+                                        data_testid="input-locality"
                                         value=postal_address_editor.locality
                                         set_value=postal_address_editor.set_locality
                                         validation_result=postal_address_editor.validation_result
@@ -365,14 +366,16 @@ pub fn EditPostalAddress(
                                 </div>
                                 <TextInputWithValidation
                                     label="Region"
-                                    name="region"
+                                    name="form[region]"
+                                    data_testid="input-region"
                                     value=postal_address_editor.region
                                     set_value=postal_address_editor.set_region
                                     optional=true
                                 />
                                 <EnumSelectWithValidation
                                     label="Country"
-                                    name="country"
+                                    name="form[country]"
+                                    data_testid="select-country"
                                     value=postal_address_editor.country
                                     set_value=postal_address_editor.set_country
                                     validation_result=postal_address_editor.validation_result
@@ -382,7 +385,7 @@ pub fn EditPostalAddress(
                                 <div class="card-actions justify-end mt-4">
                                     <button
                                         type="submit"
-                                        name="intent"
+                                        name="form[intent]"
                                         value=move || if is_new { "create" } else { "update" }
                                         data-testid="btn-save"
                                         class="btn btn-primary"
@@ -393,8 +396,8 @@ pub fn EditPostalAddress(
 
                                     <button
                                         type="submit"
-                                        name="intent"
-                                        value="create"
+                                        name="form[intent]"
+                                        value="copy_as_new"
                                         data-testid="btn-save-as-new"
                                         class="btn btn-secondary"
                                         prop:disabled=move || {
@@ -407,7 +410,7 @@ pub fn EditPostalAddress(
 
                                     <button
                                         type="button"
-                                        name="intent"
+                                        name="form[intent]"
                                         value="cancel"
                                         data-testid="btn-cancel"
                                         class="btn btn-ghost"

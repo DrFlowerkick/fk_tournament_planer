@@ -18,6 +18,9 @@ pub fn TextInputWithValidation<T>(
     /// If None, input will not be submitted in forms.
     #[prop(into, optional)]
     name: Option<String>,
+    /// Optional data-testid attribute for testing
+    #[prop(into, optional)]
+    data_testid: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -69,9 +72,8 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
-    let (data_testid, label, placeholder_text) =
-        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
+    // Auto-generate label and placeholder text based on label and optionality
+    let (label, placeholder_text) = generate_label_placeholder(label, optional);
 
     view! {
         <div class="form-control w-full">
@@ -84,7 +86,6 @@ where
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
                 name=name
-                // Auto-generate test-id
                 data-testid=data_testid
                 placeholder=placeholder_text
                 // USER TYPING: Update draft to take control from the core
@@ -140,6 +141,9 @@ pub fn SelectWithValidation<S>(
     /// If None, input will not be submitted in forms.
     #[prop(into, optional)]
     name: Option<String>,
+    /// Optional data-testid attribute for testing
+    #[prop(into, optional)]
+    data_testid: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<S>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -187,9 +191,8 @@ where
     // We hide errors while the user is actively selecting (proactive reset)
     let show_error = move || !is_selecting.get() && error.get().is_some();
 
-    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
-    let (data_testid, label, placeholder_text) =
-        generate_testid_label_placeholder(&name, label, optional, FormControlType::Select);
+    // Auto-generate label and placeholder text based on label and optionality
+    let (label, placeholder_text) = generate_label_placeholder(label, optional);
 
     view! {
         <div class="form-control w-full">
@@ -303,6 +306,9 @@ pub fn EnumSelectWithValidation<E>(
     /// If None, input will not be submitted in forms.
     #[prop(into, optional)]
     name: Option<String>,
+    /// Optional data-testid attribute for testing
+    #[prop(into, optional)]
+    data_testid: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<E>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -350,8 +356,7 @@ where
     let show_error = move || !is_selecting.get() && error.get().is_some();
 
     // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
-    let (data_testid, label, placeholder_text) =
-        generate_testid_label_placeholder(&name, label, optional, FormControlType::Select);
+    let (label, placeholder_text) = generate_label_placeholder(label, optional);
 
     view! {
         <div class="form-control w-full">
@@ -447,6 +452,9 @@ pub fn NumberInputWithValidation<T>(
     /// If None, input will not be submitted in forms.
     #[prop(into, optional)]
     name: Option<String>,
+    /// Optional data-testid attribute for testing
+    #[prop(into, optional)]
+    data_testid: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -506,9 +514,8 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
-    let (data_testid, label, placeholder_text) =
-        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
+    // Auto-generate label and placeholder text based on label and optionality
+    let (label, placeholder_text) = generate_label_placeholder(label, optional);
 
     // Default step to "1" if not provided
     let step_val = if step.is_empty() {
@@ -597,6 +604,9 @@ pub fn DurationInputWithValidation(
     /// If None, input will not be submitted in forms.
     #[prop(into, optional)]
     name: Option<String>,
+    /// Optional data-testid attribute for testing
+    #[prop(into, optional)]
+    data_testid: Option<String>,
     /// Reactive read-access to Option<T>.
     /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
@@ -657,9 +667,8 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
-    let (data_testid, label, placeholder_text) =
-        generate_testid_label_placeholder(&name, label, optional, FormControlType::Input);
+    // Auto-generate label and placeholder text based on label and optionality
+    let (label, placeholder_text) = generate_label_placeholder(label, optional);
 
     view! {
         <div class="form-control w-full">
@@ -725,31 +734,8 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Display)]
-enum FormControlType {
-    /// input
-    Input,
-    /// select
-    Select,
-}
-
-/// Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
-fn generate_testid_label_placeholder(
-    name: &Option<String>,
-    label: String,
-    optional: bool,
-    form_control_type: FormControlType,
-) -> (String, String, String) {
-    let data_testid: String = name
-        .as_ref()
-        .map(|n| format!("{}-{}", form_control_type, n))
-        .unwrap_or_else(|| {
-            format!(
-                "{}-{}",
-                form_control_type,
-                label.to_lowercase().replace(' ', "-")
-            )
-        });
+/// Auto-generate label and placeholder text based on label and optionality
+fn generate_label_placeholder(label: String, optional: bool) -> (String, String) {
     let (label, placeholder_text) = if optional {
         (
             format!("{} (optional)", label.clone()),
@@ -758,5 +744,5 @@ fn generate_testid_label_placeholder(
     } else {
         (label.clone(), format!("Enter {}...", label.to_lowercase()))
     };
-    (data_testid, label, placeholder_text)
+    (label, placeholder_text)
 }

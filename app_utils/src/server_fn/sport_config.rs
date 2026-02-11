@@ -9,6 +9,7 @@ use app_core::{CoreState, utils::id_version::IdVersion};
 use leptos::prelude::*;
 //#[cfg(feature = "test-mock")]
 //use leptos::{wasm_bindgen::JsCast, web_sys};
+use serde::{Deserialize, Serialize};
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -70,32 +71,32 @@ async fn list_sport_configs_inner(
     Ok(configs)
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SaveSportConfigFormData {
+    pub id: Uuid,
+    pub version: u32,
+    pub sport_id: Uuid,
+    pub name: String,
+    pub config: String,
+    pub intent: Option<String>,
+}
+
 #[server]
 #[instrument(
     name = "sport_config.save",
     skip_all,
     fields(
-        id = %id,
-        version = version,
+        id = %form.id,
+        version = form.version,
         // capture intent without logging full payloads
-        intent = intent.as_deref().unwrap_or(""),
+        intent = form.intent.as_deref().unwrap_or(""),
         // tiny hints only; avoid PII/body dumps
-        name_len = name.len(),
+        name_len = form.name.len(),
     )
 )]
 #[allow(clippy::too_many_arguments)]
-pub async fn save_sport_config(
-    // hidden in the form; nil => new; else => update
-    id: Uuid,
-    // hidden in the form
-    version: u32,
-    sport_id: Uuid,
-    name: String,
-    config: String,
-    // which submit button was clicked: "update" | "create"
-    intent: Option<String>,
-) -> AppResult<SportConfig> {
-    save_sport_config_inner(id, version, sport_id, name, config, intent).await
+pub async fn save_sport_config(form: SaveSportConfigFormData) -> AppResult<SportConfig> {
+    save_sport_config_inner(form).await
 }
 
 /*
@@ -115,14 +116,7 @@ pub fn save_sport_config_mock_submit(
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 #[allow(clippy::too_many_arguments)]
-pub async fn save_sport_config_inner(
-    id: Uuid,
-    version: u32,
-    sport_id: Uuid,
-    name: String,
-    config: String,
-    intent: Option<String>,
-) -> AppResult<SportConfig> {
+pub async fn save_sport_config_inner(form: SaveSportConfigFormData) -> AppResult<SportConfig> {
     let mut core = expect_context::<CoreState>().as_sport_config_state();
 
     // get mut handle to wrapped SportConfig
@@ -130,25 +124,34 @@ pub async fn save_sport_config_inner(
 
     // Interpret intent
     // ToDo: we have to refactor this when switching to auto save.
-    // AND: we changed logic to ALWAYS provide a valid id. This is circumvented here
-    // (database creates new id). This is for now no problem, but should be changed.
-    let is_update = matches!(intent.as_deref(), Some("update"));
-    if is_update {
-        // set id and version previously loaded
-        if id.is_nil() {
-            return Err(AppError::NilIdUpdate);
+    match form.intent.as_deref() {
+        Some("update") => {
+            // set id and version previously loaded
+            if form.id.is_nil() {
+                return Err(AppError::NilIdUpdate);
+            }
+            let id_version = IdVersion::new(form.id, Some(form.version));
+            mut_sc_core.set_id_version(id_version);
+            info!("saving_update");
         }
-        let id_version = IdVersion::new(id, Some(version));
-        mut_sc_core.set_id_version(id_version);
-        info!("saving_update");
-    } else {
-        info!("saving_create");
+        Some("create") => {
+            let id_version = IdVersion::new(form.id, None);
+            mut_sc_core.set_id_version(id_version);
+            info!("saving_create");
+        }
+        Some("copy_as_new") => {
+            // set to nil id and no version to create a new copy
+            let id_version = IdVersion::new(Uuid::nil(), None);
+            mut_sc_core.set_id_version(id_version);
+            info!("saving_copy_as_new");
+        }
+        _ => { /* ToDo: should we return err for unknown intent? Or how do we handle this case? */ }
     }
 
     // set sport config data from Form inputs
-    mut_sc_core.set_name(name);
-    mut_sc_core.set_sport_id(sport_id);
-    mut_sc_core.set_config(serde_json::from_str(&config)?);
+    mut_sc_core.set_name(form.name);
+    mut_sc_core.set_sport_id(form.sport_id);
+    mut_sc_core.set_config(serde_json::from_str(&form.config)?);
 
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {

@@ -1,6 +1,6 @@
 //! list tournaments
 
-use app_core::{TournamentBase, TournamentState, TournamentType};
+use app_core::{CrTopic, TournamentBase, TournamentState, TournamentType};
 use app_utils::{
     components::inputs::EnumSelectWithValidation,
     error::{
@@ -18,6 +18,7 @@ use app_utils::{
     server_fn::tournament_base::list_tournament_bases,
     state::{activity_tracker::ActivityTracker, error_state::PageErrorContext},
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{NavigateOptions, components::A, hooks::use_navigate, nested_router::Outlet};
 use uuid::Uuid;
@@ -151,6 +152,7 @@ pub fn ListTournaments() -> impl IntoView {
                         <EnumSelectWithValidation
                             label="Filter Tournament State"
                             name="filter-tournament-state"
+                            data_testid="select-filter-tournament-state"
                             value=status
                             set_value=set_status
                             clear_label="No Status Filter"
@@ -278,6 +280,14 @@ pub fn ListTournaments() -> impl IntoView {
                                                                 let is_selected = move || {
                                                                     selected_id.get() == Some(t_id)
                                                                 };
+                                                                let topic = Signal::derive(move || {
+                                                                    Some(CrTopic::TournamentBase(t_id))
+                                                                });
+                                                                let version = Signal::derive({
+                                                                    let t = t.clone();
+                                                                    move || { t.get_version().unwrap_or_default() }
+                                                                });
+                                                                use_client_registry_socket(topic, version, refetch);
 
                                                                 view! {
                                                                     <tr
