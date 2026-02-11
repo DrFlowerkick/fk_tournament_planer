@@ -26,7 +26,7 @@ test.describe("Tournaments List Page", () => {
     // Stability Check
     const LIST = selectors(page).home.dashboard.tournamentsList;
     await expect(LIST.root).toBeVisible();
-    await expect(LIST.filters.search).toBeEditable();
+    await expect(LIST.filterName).toBeEditable();
   });
 
   test("displays filter controls and table structure", async ({ page }) => {
@@ -34,7 +34,7 @@ test.describe("Tournaments List Page", () => {
 
     await expect(page.locator("h2")).toHaveText("List Tournaments");
     await expect(LIST.filters.status).toHaveValue("Draft"); // Default according to Rust code
-    await expect(LIST.filters.search).toBeEmpty();
+    await expect(LIST.filterName).toBeEmpty();
   });
 
   test("finds seeded tournament via search", async ({ page }) => {
@@ -42,7 +42,7 @@ test.describe("Tournaments List Page", () => {
     const targetName = SEED_DATA.DRAFT;
 
     // Execute search
-    await fillAndBlur(LIST.filters.search, targetName);
+    await fillAndBlur(LIST.filterName, targetName);
 
     // Wait/Check
     // We expect exactly this entry in the table
@@ -58,7 +58,7 @@ test.describe("Tournaments List Page", () => {
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
     // Search for something impossible
-    await fillAndBlur(LIST.filters.search, "X9Z9 NonExistent Tournament");
+    await fillAndBlur(LIST.filterName, "X9Z9 NonExistent Tournament");
 
     // Expect empty message
     // Rust: data-testid="tournaments-list-empty"
@@ -74,7 +74,7 @@ test.describe("Tournaments List Page", () => {
     const LIST = selectors(page).home.dashboard.tournamentsList;
     const targetName = SEED_DATA.DRAFT;
 
-    await fillAndBlur(LIST.filters.search, targetName);
+    await fillAndBlur(LIST.filterName, targetName);
 
     // Find the row
     const cell = page.getByRole("cell", { name: targetName }).first();
@@ -98,7 +98,7 @@ test.describe("Tournaments List Page", () => {
     const targetName = SEED_DATA.DRAFT;
     const LIST = selectors(page).home.dashboard.tournamentsList;
 
-    await fillAndBlur(LIST.filters.search, targetName);
+    await fillAndBlur(LIST.filterName, targetName);
     const cell = page.getByRole("cell", { name: targetName }).first();
     await cell.click();
 

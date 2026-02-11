@@ -4,9 +4,10 @@ import {
   clickEditSportConfig,
   extractQueryParamFromUrl,
   waitForAppHydration,
+  waitForNavigationRowSelectionByName,
+  IDS,
   selectors,
 } from "../../helpers";
-import { SPORT_IDS } from "../../helpers/selectors/sportConfig";
 
 export interface SportConfigTestAdapter {
   sportName: string;
@@ -57,13 +58,13 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       });
 
       await test.step("Edit Config", async () => {
-        // After save the row should be selected, when the url contains the sport_config_id of the
+        /*// After save the row should be selected, when the url contains the sport_config_id of the
         // created config, and the preview should be visible.
         const preview = SC.list.previewByName(initialName);
         
         // Extract the specific UUID from the data-testid before clicking
         const testId = await preview.getAttribute("data-testid");
-        const expectedId = testId?.replace(SPORT_IDS.list.previewPrefix, "");
+        const expectedId = testId?.replace(IDS.list.entryPreviewPrefix, "");
 
         // Wait for the URL to contain exactly the ID of the row we just clicked.
         // This ensures Leptos has processed the correct navigation.
@@ -71,8 +72,12 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
           await page.waitForURL(
             (url) => url.searchParams.get("sport_config_id") === expectedId,
           );
-        }
-        
+        }*/
+        await waitForNavigationRowSelectionByName(
+          page,
+          initialName,
+          "sport_config_id",
+        );
         await clickEditSportConfig(page);
 
         // Update fields

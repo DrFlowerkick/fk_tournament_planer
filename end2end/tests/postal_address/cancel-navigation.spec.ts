@@ -26,7 +26,7 @@ test.describe("Cancel button navigation", () => {
     const uuid = extractUuidFromUrl(url);
 
     // Go to list and select the created address to enable the edit button
-    const row = await searchAndOpenByNameOnCurrentPage(page, name);
+    const row = await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
     await expect(PA.list.btnEdit).toBeVisible();
 
     // -------------------- Act: Go to edit and click cancel --------------------

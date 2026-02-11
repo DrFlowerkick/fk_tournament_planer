@@ -5,9 +5,9 @@ import {
   selectThenBlur,
   extractQueryParamFromUrl,
   waitForAppHydration,
+  IDS,
   selectors,
 } from "../../helpers";
-import { POSTAL_IDS } from "../selectors/postalAddress";
 
 export const PA_ROUTES = {
   newAddress: "/postal-address/new",
@@ -49,7 +49,8 @@ export async function waitForPostalAddressListUrl(page: Page) {
  */
 export function extractUuidFromUrl(url: string): string {
   const value = extractQueryParamFromUrl(url, "address_id");
-  if (!value) throw new Error(`No value for key "address_id" found in URL: ${url}`);
+  if (!value)
+    throw new Error(`No value for key "address_id" found in URL: ${url}`);
   return value;
 }
 
@@ -219,41 +220,6 @@ const COUNTRY_CODE_TO_NAME: Record<string, string> = {
 };
 
 /**
- * Helper to filter address list by name and to select row with given name.
- * Assumes you're already on the list page.
- * Returns the row locator for further assertions.
- */
-export async function searchAndOpenByNameOnCurrentPage(
-  page: Page,
-  name: string,
-): Promise<Locator> {
-  const PA = selectors(page).postalAddress;
-  await expect(PA.list.filterName).toBeVisible();
-  await PA.list.filterName.fill(name);
-
-  // Get the row by name
-  const rowByName = PA.list.previewByName(name);
-  await expect(rowByName).toBeVisible();
-
-  // 1. Extract UUID from the row found by name
-  const testId = await rowByName.getAttribute("data-testid");
-  const idFromName = testId?.replace(POSTAL_IDS.list.previewPrefix, "");
-
-  // 2. Extract UUID from the URL
-  // The function now returns null if the parameter is missing, so no try-catch is needed.
-  const idFromUrl = extractQueryParamFromUrl(page.url(), "address_id");
-
-  // 3. Compare and click if they don't match
-  // !idFromUrl is true if the parameter is null or an empty string.
-  if (!idFromUrl || idFromName !== idFromUrl) {
-    await rowByName.click();
-  }
-
-  await expect(PA.list.btnEdit).toBeVisible();
-  return rowByName;
-}
-
-/**
  * Helper to resolve expected display text from input value.
  * Handles special cases like Country Codes -> Names.
  */
@@ -282,9 +248,10 @@ export async function expectPreviewShows(
   },
 ) {
   // "preview-" prefix locator for fields inside the preview component
-  const PA_PREVIEW = POSTAL_IDS.list.preview;
+  const LIST_PREVIEW = IDS.list.detailedPreview;
+  const PA_PREVIEW = IDS.postalAddress.list.preview;
   // check preview fields
-  await expect(row.getByTestId(PA_PREVIEW.root)).toBeVisible();
+  await expect(row.getByTestId(LIST_PREVIEW)).toBeVisible();
 
   if (expected.name !== undefined) {
     await expect(row.getByTestId(PA_PREVIEW.name)).toHaveText(expected.name!);

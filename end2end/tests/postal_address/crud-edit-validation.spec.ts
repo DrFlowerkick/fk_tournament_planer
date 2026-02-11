@@ -37,7 +37,7 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
 
     // After save, either you land on detail page or back to list.
     await waitForPostalAddressListUrl(page);
-    const row = await searchAndOpenByNameOnCurrentPage(page, name);
+    const row = await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
     
     // Extract ID after click on row, because if table is "full", the ID might be removed from URL
     const uuid = extractUuidFromUrl(page.url());

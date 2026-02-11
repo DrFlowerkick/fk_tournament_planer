@@ -209,9 +209,9 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                             >
                                                 <table
                                                     class="table w-full"
-                                                    data-testid="postal-address-table"
+                                                    data-testid="table-list"
                                                 >
-                                                    <thead data-testid="postal-address-table-header">
+                                                    <thead data-testid="table-list-header">
                                                         <tr>
                                                             <th>"Name"</th>
                                                             <th>"Preview"</th>
@@ -239,7 +239,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                                     <tr
                                                                         class="hover cursor-pointer"
                                                                         class:bg-base-200=is_selected
-                                                                        data-testid=format!("postal-address-row-{}", pa_id)
+                                                                        data-testid=format!("table-entry-row-{}", pa_id)
                                                                         on:click=move |_| {
                                                                             if postal_address_list_ctx.selected_id.get() == Some(pa_id)
                                                                             {
@@ -251,14 +251,14 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                                     >
                                                                         <td
                                                                             class="font-bold"
-                                                                            data-testid=format!("postal-address-name-{}", pa_id)
+                                                                            data-testid=format!("table-entry-name-{}", pa_id)
                                                                         >
                                                                             {pa.get_name().to_string()}
                                                                         </td>
-                                                                        <td data-testid=format!("postal-address-preview-{}", pa_id)>
+                                                                        <td data-testid=format!("table-entry-preview-{}", pa_id)>
                                                                             <div
                                                                                 class="card w-full bg-base-200 shadow-md mt-4"
-                                                                                data-testid="address-preview"
+                                                                                data-testid="table-entry-detailed-preview"
                                                                             >
                                                                                 <div class="card-body">
                                                                                     <h3 class="card-title" data-testid="preview-address-name">

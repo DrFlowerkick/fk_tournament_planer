@@ -66,7 +66,7 @@ test.describe("postal address live update (Preview-only UI)", () => {
       await waitForPostalAddressListUrl(pageA);
 
       // Ensure the preview shows the initial values and correct version
-      const row = await searchAndOpenByNameOnCurrentPage(pageA, initial.name);
+      const row = await searchAndOpenByNameOnCurrentPage(pageA, initial.name, "address_id");
       await expectPreviewShows(row, initial);
       await expect(row.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("0");
       

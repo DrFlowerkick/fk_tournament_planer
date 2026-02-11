@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { getListSelectors } from "./common";
 
 export const HOME_IDS = {
   hero: {
@@ -28,22 +29,7 @@ export const HOME_IDS = {
       filters: {
         statusSelect: "select-filter-tournament-state",
         includeAdhoc: "filter-include-adhoc-toggle",
-        nameSearch: "filter-name-search",
         limitSelect: "filter-limit-select",
-      },
-      table: {
-        root: "tournaments-table",
-        header: "tournaments-table-header",
-        row: (id: string) => `tournaments-row-${id}`,
-        rowCellName: "cell-name",
-        rowCellStatus: "cell-status",
-        rowActions: "row-actions",
-        actions: {
-          edit: "action-btn-edit",
-          show: "action-btn-show",
-          register: "action-btn-register",
-          results: "action-btn-results",
-        },
       },
       emptyState: "tournaments-list-empty",
     },
@@ -108,6 +94,7 @@ export function getHomeSelectors(page: Page) {
         about: page.getByTestId(ids.dashboard.nav.about),
       },
       tournamentsList: {
+        ...getListSelectors(page),
         root: page.getByTestId(ids.dashboard.tournamentsList.root),
         filters: {
           status: page.getByTestId(
@@ -116,38 +103,14 @@ export function getHomeSelectors(page: Page) {
           adhocToggle: page.getByTestId(
             ids.dashboard.tournamentsList.filters.includeAdhoc,
           ),
-          search: page.getByTestId(
-            ids.dashboard.tournamentsList.filters.nameSearch,
-          ),
           limit: page.getByTestId(
             ids.dashboard.tournamentsList.filters.limitSelect,
           ),
         },
-        table: {
-          root: page.getByTestId(ids.dashboard.tournamentsList.table.root),
-          // Regex to match any row starting with the ID prefix
-          rows: page.getByTestId(
-            new RegExp(`^${ids.dashboard.tournamentsList.table.row(".*")}$`),
-          ),
-          rowById: (id: string) =>
-            page.getByTestId(ids.dashboard.tournamentsList.table.row(id)),
-          actions: {
-            container: page.getByTestId(
-              ids.dashboard.tournamentsList.table.rowActions,
-            ),
-            edit: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.edit,
-            ),
-            show: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.show,
-            ),
-            register: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.register,
-            ),
-            results: page.getByTestId(
-              ids.dashboard.tournamentsList.table.actions.results,
-            ),
-          },
+        actions: {
+          show: page.getByTestId("action-btn-show"),
+          register: page.getByTestId("action-btn-register"),
+          results: page.getByTestId("action-btn-results"),
         },
         emptyState: page.getByTestId(ids.dashboard.tournamentsList.emptyState),
       },

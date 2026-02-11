@@ -1,6 +1,77 @@
 // shared utils for end2end tests
 import { expect, Page, Locator } from "@playwright/test";
-import { DropdownLocators } from "../selectors";
+import { selectors, IDS } from "../selectors";
+
+/**
+ * Extracts a query parameter (e.g., UUID) from any URL.
+ * Returns the value as a string or null if not found.
+ */
+export function extractQueryParamFromUrl(
+  url: string,
+  key: string,
+): string | null {
+  const u = new URL(url, "http://dummy"); // Base URL needed for relative URLs
+  return u.searchParams.get(key);
+}
+
+/**
+ * Helper to filter a list by name and select the row with the given name.
+ * Assumes you're already on a page with a list using standard LIST_IDS.
+ * Returns the locator for the name cell of the entry.
+ */
+export async function searchAndOpenByNameOnCurrentPage(
+  page: Page,
+  name: string,
+  queryParamKey: string,
+): Promise<Locator> {
+  const list = selectors(page).list;
+  await expect(list.filterName).toBeVisible();
+  await list.filterName.fill(name);
+
+  // Find the interactive entry by name
+  const entry = list.previewByName(name);
+  await expect(entry).toBeVisible();
+
+  // 1. Extract UUID from the test-id
+  const testId = await entry.getAttribute("data-testid");
+  const idFromName = testId?.replace(IDS.list.entryPreviewPrefix, "");
+
+  // 2. Extract selected UUID from URL
+  const idFromUrl = extractQueryParamFromUrl(page.url(), queryParamKey);
+
+  // 3. Click if not already selected
+  if (!idFromUrl || idFromName !== idFromUrl) {
+    await entry.click();
+  }
+
+  // Ensure navigation/UI update triggered the edit button visibility
+  await expect(list.btnEdit).toBeVisible();
+  return entry;
+}
+
+export async function waitForNavigationRowSelectionByName(
+  page: Page,
+  name: string,
+  queryParamKey: string,
+) {
+  const LIST = selectors(page).list;
+
+  // After save the row of "name" should be selected, when the url contains
+  // the corresponding ID of the created object and the detailed preview should be visible.
+  const preview = LIST.previewByName(name);
+  
+  // Extract the specific UUID from the data-testid before clicking
+  const testId = await preview.getAttribute("data-testid");
+  const expectedId = testId?.replace(IDS.list.entryPreviewPrefix, "");
+
+  // Wait for the URL to contain exactly the ID of the row we just clicked.
+  // This ensures Leptos has processed the correct navigation.
+  if (expectedId) {
+    await page.waitForURL(
+      (url) => url.searchParams.get(queryParamKey) === expectedId,
+    );
+  }
+}
 
 /**
  * Waits strictly until the Leptos/WASM app has signaled hydration complete.
@@ -57,18 +128,6 @@ export async function expectFieldValidity(
     const ariaInvalid = await inputLocator.getAttribute("aria-invalid");
     expect(ariaInvalid === null || ariaInvalid === "false").toBeTruthy();
   }
-}
-
-/**
- * Extracts a query parameter (e.g., UUID) from any URL.
- * Returns the value as a string or null if not found.
- */
-export function extractQueryParamFromUrl(
-  url: string,
-  key: string,
-): string | null {
-  const u = new URL(url, "http://dummy"); // Base URL needed for relative URLs
-  return u.searchParams.get(key);
 }
 
 /**

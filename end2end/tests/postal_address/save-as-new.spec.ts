@@ -51,7 +51,7 @@ test.describe('"Save as new" functionality', () => {
     await waitForPostalAddressListUrl(page);
 
     // The preview should show the new name
-    const newRow = await searchAndOpenByNameOnCurrentPage(page, newName);
+    const newRow = await searchAndOpenByNameOnCurrentPage(page, newName, "address_id");
     await expect(newRow.getByTestId(POSTAL_IDS.list.preview.name)).toHaveText(
       newName,
     );

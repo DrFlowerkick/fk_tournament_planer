@@ -223,9 +223,9 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                     >
                                                         <table
                                                             class="table w-full"
-                                                            data-testid="sport-configs-table"
+                                                            data-testid="table-list"
                                                         >
-                                                            <thead data-testid="sport-configs-table-header">
+                                                            <thead data-testid="table-list-header">
                                                                 <tr>
                                                                     <th>"Name"</th>
                                                                     <th>"Preview"</th>
@@ -252,7 +252,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                                             <tr
                                                                                 class="hover cursor-pointer"
                                                                                 class:bg-base-200=is_selected
-                                                                                data-testid=format!("sport-configs-row-{}", sc_id)
+                                                                                data-testid=format!("table-entry-row-{}", sc_id)
                                                                                 on:click=move |_| {
                                                                                     if sport_config_list_ctx.selected_id.get() == Some(sc_id) {
                                                                                         sport_config_list_ctx.set_selected_id.run(None);
@@ -263,12 +263,12 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                                             >
                                                                                 <td
                                                                                     class="font-bold"
-                                                                                    data-testid=format!("sport-configs-name-{}", sc_id)
+                                                                                    data-testid=format!("table-entry-name-{}", sc_id)
                                                                                 >
                                                                                     {sc.get_name().to_string()}
                                                                                 </td>
                                                                                 <td data-testid=format!(
-                                                                                    "sport-configs-preview-{}",
+                                                                                    "table-entry-preview-{}",
                                                                                     sc_id,
                                                                                 )>{move || { sp.get_value().render_preview(&sc) }}</td>
                                                                             </tr>
