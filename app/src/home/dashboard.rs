@@ -2,7 +2,7 @@ use app_utils::{
     hooks::use_query_navigation::{
         MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
     },
-    params::use_sport_id_query,
+    params::{ParamQuery, SportIdQuery},
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
@@ -21,7 +21,7 @@ pub fn SportDashboard() -> impl IntoView {
     // get global state and sport plugin manager
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
 
     // Helper to get both ID and Plugin for the view
     let sport_name = move || {

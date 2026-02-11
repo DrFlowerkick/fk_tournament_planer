@@ -16,7 +16,7 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{use_sport_config_id_query, use_sport_id_query},
+    params::{ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
         activity_tracker::ActivityTracker,
@@ -49,7 +49,7 @@ pub fn LoadSportConfiguration() -> impl IntoView {
     });
 
     // --- Server Resources ---
-    let sport_config_id = use_sport_config_id_query();
+    let sport_config_id = SportConfigIdQuery::use_param_query();
     let sc_res = Resource::new(
         move || sport_config_id.get(),
         move |maybe_id| async move {
@@ -137,7 +137,7 @@ pub fn EditSportConfiguration(
     let navigate = use_navigate();
     let matched_route = use_matched();
 
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
 
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();

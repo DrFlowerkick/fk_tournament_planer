@@ -9,7 +9,7 @@ pub use sub_pages::*;
 use crate::home::dashboard::SportDashboard;
 use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
-    params::{SportIdQuery, use_sport_id_query},
+    params::{ParamQuery, SportIdQuery},
     state::{
         global_state::{GlobalState, GlobalStateStoreFields},
         toast_state::ToastContext,
@@ -37,7 +37,7 @@ pub fn HomePage() -> impl IntoView {
 
     // get query params
     let sport_id_query = use_query::<SportIdQuery>();
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
 
     // check if a sport is active
     let is_sport_active = move || {

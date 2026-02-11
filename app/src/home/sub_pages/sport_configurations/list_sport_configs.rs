@@ -13,7 +13,7 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::use_sport_id_query,
+    params::{ParamQuery, SportIdQuery},
     server_fn::sport_config::list_sport_configs,
     state::{
         activity_tracker::ActivityTracker,
@@ -48,7 +48,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
         activity_tracker.remove_component(component_id.get_value());
     });
     // Derived Query Params
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
     // get global state and sport plugin manager
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
@@ -221,10 +221,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                             }
                                                         }
                                                     >
-                                                        <table
-                                                            class="table w-full"
-                                                            data-testid="table-list"
-                                                        >
+                                                        <table class="table w-full" data-testid="table-list">
                                                             <thead data-testid="table-list-header">
                                                                 <tr>
                                                                     <th>"Name"</th>

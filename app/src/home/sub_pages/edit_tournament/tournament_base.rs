@@ -16,7 +16,7 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{use_sport_id_query, use_tournament_base_id_query},
+    params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery},
     server_fn::tournament_base::load_tournament_base,
     state::{
         activity_tracker::ActivityTracker,
@@ -43,8 +43,8 @@ pub fn LoadTournament() -> impl IntoView {
     provide_context(refetch_trigger);
 
     // --- url queries ---
-    let sport_id = use_sport_id_query();
-    let tournament_id = use_tournament_base_id_query();
+    let sport_id = SportIdQuery::use_param_query();
+    let tournament_id = TournamentBaseIdQuery::use_param_query();
 
     // --- Resource to load tournament base ---
     let base_res = Resource::new(
@@ -139,7 +139,7 @@ pub fn LoadTournament() -> impl IntoView {
 #[component]
 pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     // --- prepare initial tournament editor state ---
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
     let matched_route = use_matched();
 
     let mut tournament_editor = TournamentEditor::new();

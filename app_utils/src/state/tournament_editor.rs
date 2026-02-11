@@ -8,7 +8,7 @@ use crate::{
     hooks::use_query_navigation::{
         MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
     },
-    params::{use_group_number_params, use_stage_number_params, use_tournament_base_id_query},
+    params::{GroupNumberParams, ParamQuery, StageNumberParams, TournamentBaseIdQuery},
     server_fn::tournament_editor::SaveTournamentEditorDiff,
     state::{
         activity_tracker::ActivityTracker, error_state::PageErrorContext, toast_state::ToastContext,
@@ -121,9 +121,9 @@ impl TournamentEditorContext {
         let validation_result = create_read_slice(inner, |inner| inner.validation());
 
         // --- url parameters & queries & validation ---
-        let tournament_id = use_tournament_base_id_query();
-        let active_stage_number = use_stage_number_params();
-        let active_group_number = use_group_number_params();
+        let tournament_id = TournamentBaseIdQuery::use_param_query();
+        let active_stage_number = StageNumberParams::use_param_query();
+        let active_group_number = GroupNumberParams::use_param_query();
 
         let valid_object_numbers = Memo::new(move |_| {
             inner.with(|state| {

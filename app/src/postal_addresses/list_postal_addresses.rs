@@ -1,7 +1,9 @@
 //! Postal Address Search Component
 
-use app_core::CrTopic;
+use app_core::{CrTopic, PostalAddress};
 use app_utils::{
+    components::inputs::EnumSelectFilter,
+    enum_utils::FilterLimit,
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error},
@@ -13,17 +15,21 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
+    params::{AddressIdQuery, FilterLimitQuery, FilterNameQuery, ParamQuery},
     server_fn::postal_address::list_postal_addresses,
     state::{
         activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        postal_address::PostalAddressListContext,
+        object_table_list::ObjectListContext,
     },
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
 use isocountry::CountryCode;
 use leptos::{html::H2, prelude::*};
-use leptos_router::{components::A, nested_router::Outlet};
+use leptos_router::{
+    components::{A, Form},
+    nested_router::Outlet,
+};
 use uuid::Uuid;
 
 fn display_country(country_code: Option<CountryCode>) -> String {
@@ -54,15 +60,12 @@ pub fn ListPostalAddresses() -> impl IntoView {
     });
 
     // --- local context ---
-    let postal_address_list_ctx = PostalAddressListContext::new();
+    let postal_address_list_ctx = ObjectListContext::<PostalAddress, AddressIdQuery>::new();
     provide_context(postal_address_list_ctx);
 
     // Signals for Filters
-    // ToDo: consider using query search params as described in
-    // https://book.leptos.dev/router/20_form.html
-    // This would allow users to share filtered views via URL and preserve filter state on page reloads.
-    let (search_term, set_search_term) = signal("".to_string());
-    let (limit, set_limit) = signal(10usize);
+    let search_term = FilterNameQuery::use_param_query();
+    let limit = FilterLimitQuery::use_param_query();
 
     // Resource that fetches data when filters change
     let postal_addresses_data = Resource::new(
@@ -77,7 +80,11 @@ pub fn ListPostalAddresses() -> impl IntoView {
             activity_tracker
                 .track_activity_wrapper(
                     component_id.get_value(),
-                    list_postal_addresses(term, Some(lim)),
+                    list_postal_addresses(
+                        term.unwrap_or_default(),
+                        lim.or_else(|| Some(FilterLimit::default()))
+                            .map(|l| l as usize),
+                    ),
                 )
                 .await
         },
@@ -103,7 +110,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 <div class="flex flex-col md:flex-row justify-end gap-4">
                     <A
                         href=move || url_matched_route_remove_query(
-                            "address_id",
+                            AddressIdQuery::key(),
                             MatchedRouteHandler::Extend("new"),
                         )
                         attr:class="btn btn-sm btn-primary"
@@ -115,43 +122,37 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 </div>
 
                 // --- Filter Bar ---
-                <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
-                    // Text Search
-                    <div class="form-control w-full max-w-xs">
-                        <label class="label">
-                            <span class="label-text">"Search Name"</span>
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="Type to search for name..."
-                            class="input input-bordered w-full"
-                            data-testid="filter-name-search"
-                            on:input=move |ev| set_search_term.set(event_target_value(&ev))
-                            prop:value=move || search_term.get()
-                        />
-                    </div>
-
-                    // Limit Selector
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">"Limit"</span>
-                        </label>
-                        <select
-                            class="select select-bordered"
-                            data-testid="filter-limit-select"
-                            on:change=move |ev| {
-                                if let Ok(val) = event_target_value(&ev).parse::<usize>() {
-                                    set_limit.set(val);
-                                }
-                            }
-                            prop:value=move || limit.get().to_string()
+                <Form method="GET" action="">
+                    <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                        // Text Search
+                        <div class="form-control w-full max-w-xs">
+                            <label class="label">
+                                <span class="label-text">"Search Name"</span>
+                            </label>
+                            <input
+                                type="text"
+                                name=FilterNameQuery::key()
+                                placeholder="Type to search for name..."
+                                class="input input-bordered w-full"
+                                data-testid="filter-name-search"
+                                prop:value=move || search_term.get()
+                                oninput="this.form.requestSubmit()"
+                            />
+                        </div>
+                        // Limit Selector
+                        <div class="w-full max-w-xs">
+                            <EnumSelectFilter<
+                            FilterLimit,
                         >
-                            <option value="10">"10"</option>
-                            <option value="25">"25"</option>
-                            <option value="50">"50"</option>
-                        </select>
+                                name=FilterLimitQuery::key()
+                                label="Limit"
+                                value=limit
+                                data_testid="filter-limit-select"
+                                clear_label=FilterLimit::default().to_string()
+                            />
+                        </div>
                     </div>
-                </div>
+                </Form>
 
                 // --- Table Area ---
                 <div class="overflow-x-auto">
@@ -207,10 +208,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                     }
                                                 }
                                             >
-                                                <table
-                                                    class="table w-full"
-                                                    data-testid="table-list"
-                                                >
+                                                <table class="table w-full" data-testid="table-list">
                                                     <thead data-testid="table-list-header">
                                                         <tr>
                                                             <th>"Name"</th>

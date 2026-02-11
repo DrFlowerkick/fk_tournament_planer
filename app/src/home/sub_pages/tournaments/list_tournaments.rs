@@ -14,7 +14,7 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::use_sport_id_query,
+    params::{ParamQuery, SportIdQuery},
     server_fn::tournament_base::list_tournament_bases,
     state::{activity_tracker::ActivityTracker, error_state::PageErrorContext},
 };
@@ -82,7 +82,7 @@ pub fn ListTournaments() -> impl IntoView {
     });
 
     // Derived Query Params
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
 
     // Resource that fetches data when filters change
     let tournaments_data = Resource::new(

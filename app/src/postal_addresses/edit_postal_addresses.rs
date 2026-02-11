@@ -16,12 +16,11 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::use_address_id_query,
+    params::{AddressIdQuery, FilterNameQuery, ParamQuery},
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::{
-        activity_tracker::ActivityTracker,
-        error_state::PageErrorContext,
-        postal_address::{PostalAddressEditorContext, PostalAddressListContext},
+        activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        object_table_list::ObjectListContext, postal_address::PostalAddressEditorContext,
         toast_state::ToastContext,
     },
 };
@@ -47,7 +46,7 @@ pub fn LoadPostalAddress() -> impl IntoView {
     });
 
     // --- Server Resources ---
-    let postal_address_id = use_address_id_query();
+    let postal_address_id = AddressIdQuery::use_param_query();
     let addr_res = Resource::new(
         move || postal_address_id.get(),
         move |maybe_id| async move {
@@ -127,7 +126,9 @@ pub fn EditPostalAddress(
 ) -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
+        get_query,
         url_matched_route_update_query,
+        url_matched_route_update_queries,
         url_is_matched_route,
         ..
     } = use_query_navigation();
@@ -140,7 +141,8 @@ pub fn EditPostalAddress(
 
     let activity_tracker = expect_context::<ActivityTracker>();
 
-    let postal_address_list_ctx = expect_context::<PostalAddressListContext>();
+    let postal_address_list_ctx =
+        expect_context::<ObjectListContext<PostalAddress, AddressIdQuery>>();
 
     // remove errors on unmount
     on_cleanup(move || {
@@ -171,18 +173,36 @@ pub fn EditPostalAddress(
     Effect::new(move || {
         match save_postal_address.value().get() {
             Some(Ok(pa)) => {
+                let pa_id = pa.get_id();
                 save_postal_address.clear();
                 toast_ctx.success("Postal Address saved successfully");
-                postal_address_list_ctx
-                    .set_selected_id
-                    .run(Some(pa.get_id()));
-                postal_address_list_ctx.trigger_refetch();
-                let nav_url = url_matched_route_update_query(
-                    "address_id",
-                    &pa.get_id().to_string(),
-                    MatchedRouteHandler::RemoveSegment(1),
-                );
-                navigate(&nav_url, NavigateOptions::default());
+                if postal_address_list_ctx.selected_id.get() == Some(pa_id) {
+                    postal_address_list_ctx.trigger_refetch();
+                } else if postal_address_list_ctx.is_id_in_list(pa_id) {
+                    let nav_url = url_matched_route_update_query(
+                        AddressIdQuery::key(),
+                        &pa_id.to_string(),
+                        MatchedRouteHandler::RemoveSegment(1),
+                    );
+                    navigate(&nav_url, NavigateOptions::default());
+                    postal_address_list_ctx.trigger_refetch();
+                } else {
+                    let refetch =
+                        get_query(FilterNameQuery::key()) != Some(pa.get_name().to_string());
+                    let pa_id = pa_id.to_string();
+                    let key_value = vec![
+                        (AddressIdQuery::key(), pa_id.as_str()),
+                        (FilterNameQuery::key(), pa.get_name()),
+                    ];
+                    let nav_url = url_matched_route_update_queries(
+                        key_value,
+                        MatchedRouteHandler::RemoveSegment(1),
+                    );
+                    navigate(&nav_url, NavigateOptions::default());
+                    if refetch {
+                        postal_address_list_ctx.trigger_refetch();
+                    }
+                }
             }
             Some(Err(err)) => {
                 leptos::logging::log!("Error saving Postal Address: {:?}", err);

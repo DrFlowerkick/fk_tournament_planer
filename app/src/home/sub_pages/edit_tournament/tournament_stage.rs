@@ -14,7 +14,7 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{use_stage_number_params, use_tournament_base_id_query},
+    params::{ParamQuery, StageNumberParams, TournamentBaseIdQuery},
     server_fn::stage::load_stage_by_number,
     state::{
         activity_tracker::ActivityTracker,
@@ -41,8 +41,8 @@ pub fn LoadTournamentStage() -> impl IntoView {
     let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
     // --- url parameters & queries ---
-    let tournament_id = use_tournament_base_id_query();
-    let active_stage_number = use_stage_number_params();
+    let tournament_id = TournamentBaseIdQuery::use_param_query();
+    let active_stage_number = StageNumberParams::use_param_query();
 
     // --- Resource to load tournament stage ---
     let stage_res = Resource::new(
@@ -125,7 +125,7 @@ pub fn LoadTournamentStage() -> impl IntoView {
 #[component]
 pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
     // --- Get context for creating and editing tournaments ---
-    let active_stage_number = use_stage_number_params();
+    let active_stage_number = StageNumberParams::use_param_query();
 
     let tournament_editor_context = expect_context::<TournamentEditorContext>();
 

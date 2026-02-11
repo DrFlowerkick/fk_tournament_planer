@@ -3,8 +3,8 @@ use crate::common::{
     set_select_value, set_url,
 };
 use app::{postal_addresses::LoadPostalAddress, provide_global_context};
-use app_core::DbpPostalAddress;
-use app_utils::state::postal_address::PostalAddressListContext;
+use app_core::{DbpPostalAddress, PostalAddress};
+use app_utils::{params::AddressIdQuery, state::object_table_list::ObjectListContext};
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
 use leptos_router::{
@@ -17,7 +17,7 @@ use wasm_bindgen_test::*;
 #[component]
 fn LoadPostalAddressWrapper() -> impl IntoView {
     // requires Router context
-    provide_context(PostalAddressListContext::new());
+    provide_context(ObjectListContext::<PostalAddress, AddressIdQuery>::new());
 
     view! { <LoadPostalAddress /> }
 }
