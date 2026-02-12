@@ -2,8 +2,8 @@ use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value, set_url,
 };
 use app::{home::LoadSportConfiguration, provide_global_context};
-use app_core::DbpSportConfig;
-use app_utils::state::sport_config::SportConfigListContext;
+use app_core::{DbpSportConfig, SportConfig};
+use app_utils::{params::SportConfigIdQuery, state::object_table_list::ObjectListContext};
 use generic_sport_plugin::config::GenericSportConfig;
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
@@ -14,6 +14,14 @@ use leptos_router::{
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
+#[component]
+fn LoadSportConfigurationWrapper() -> impl IntoView {
+    // requires Router context
+    provide_context(ObjectListContext::<SportConfig, SportConfigIdQuery>::new());
+
+    view! { <LoadSportConfiguration /> }
+}
+
 #[wasm_bindgen_test]
 async fn test_new_sport_config() {
     // Acquire lock and clean DOM.
@@ -23,7 +31,7 @@ async fn test_new_sport_config() {
 
     // 1. Set initial URL for creating a new sport config
     set_url(&format!(
-        "/wasm_testing/new_sc?sport_id={}",
+        "/wasm_testing/new?sport_id={}",
         ts.generic_sport_id
     ));
 
@@ -31,11 +39,10 @@ async fn test_new_sport_config() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/new_sc") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/new") view=LoadSportConfigurationWrapper />
                 </Routes>
             </Router>
         }
@@ -71,7 +78,7 @@ async fn test_edit_sport_config() {
 
     // 1. Set URL with sport_id
     set_url(&format!(
-        "/wasm_testing/edit_sc?sport_id={}&sport_config_id={}",
+        "/wasm_testing/edit?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
 
@@ -79,11 +86,10 @@ async fn test_edit_sport_config() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit_sc") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfigurationWrapper />
                 </Routes>
             </Router>
         }
@@ -126,7 +132,7 @@ async fn test_save_as_new_sport_config() {
 
     // 1. Set URL with sport_id
     set_url(&format!(
-        "/wasm_testing/edit_sc?sport_id={}&sport_config_id={}",
+        "/wasm_testing/edit?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
 
@@ -134,11 +140,10 @@ async fn test_save_as_new_sport_config() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(SportConfigListContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit_sc") view=LoadSportConfiguration />
+                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfigurationWrapper />
                 </Routes>
             </Router>
         }

@@ -2,6 +2,7 @@
 
 use app_core::{TournamentMode, TournamentState, TournamentType};
 use isocountry::CountryCode;
+use std::{num::ParseIntError, str::FromStr};
 
 pub trait SelectableOption: Sized + Clone + PartialEq + Send + Sync + 'static {
     /// Returns the unique string representation for the <option value="...">
@@ -17,11 +18,11 @@ pub trait SelectableOption: Sized + Clone + PartialEq + Send + Sync + 'static {
 
 impl SelectableOption for TournamentType {
     fn value(&self) -> String {
-        format!("{:?}", self)
+        self.to_string()
     }
 
     fn label(&self) -> String {
-        format!("{:?}", self)
+        self.to_string()
     }
 
     fn options() -> Vec<Self> {
@@ -31,11 +32,11 @@ impl SelectableOption for TournamentType {
 
 impl SelectableOption for TournamentState {
     fn value(&self) -> String {
-        format!("{}", self)
+        self.to_string()
     }
 
     fn label(&self) -> String {
-        format!("{}", self)
+        self.to_string()
     }
 
     fn options() -> Vec<Self> {
@@ -50,11 +51,11 @@ impl SelectableOption for TournamentState {
 
 impl SelectableOption for TournamentMode {
     fn value(&self) -> String {
-        format!("{}", self)
+        self.to_string()
     }
 
     fn label(&self) -> String {
-        format!("{}", self)
+        self.to_string()
     }
 
     fn options() -> Vec<Self> {
@@ -80,5 +81,52 @@ impl SelectableOption for CountryCode {
 
     fn options() -> Vec<Self> {
         CountryCode::as_array().into()
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, displaydoc::Display)]
+pub enum FilterLimit {
+    #[default]
+    /// 10
+    Ten = 10,
+    /// 20
+    Twenty = 20,
+    /// 50
+    Fifty = 50,
+    /// 100
+    Hundred = 100,
+}
+
+impl FromStr for FilterLimit {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let u = s.parse::<u32>()?;
+        match u {
+            10 => Ok(FilterLimit::Ten),
+            20 => Ok(FilterLimit::Twenty),
+            50 => Ok(FilterLimit::Fifty),
+            100 => Ok(FilterLimit::Hundred),
+            _ => Err("invalid filter limit".parse::<u32>().unwrap_err()),
+        }
+    }
+}
+
+impl SelectableOption for FilterLimit {
+    fn value(&self) -> String {
+        self.to_string()
+    }
+
+    fn label(&self) -> String {
+        self.to_string()
+    }
+
+    fn options() -> Vec<Self> {
+        vec![
+            FilterLimit::Ten,
+            FilterLimit::Twenty,
+            FilterLimit::Fifty,
+            FilterLimit::Hundred,
+        ]
     }
 }

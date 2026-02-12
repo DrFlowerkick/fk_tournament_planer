@@ -37,18 +37,8 @@ async fn test_config_search_renders() {
 
     sleep(Duration::from_millis(10)).await;
 
-    // check preview
-    let preview = get_element_by_test_id(&format!(
-        "sport-configs-preview-{}",
-        ts.generic_sport_config_id
-    ))
-    .text_content()
-    .unwrap();
-    assert!(preview.contains("Test Config 1"));
-    assert!(preview.contains("Expected Match Duration: 30 minutes"));
-
     // click table and check URL update
-    let row = get_element_by_test_id(&format!("sport-configs-row-{}", ts.generic_sport_config_id));
+    let row = get_element_by_test_id(&format!("table-entry-row-{}", ts.generic_sport_config_id));
     row.click();
     sleep(Duration::from_millis(10)).await;
 
@@ -62,6 +52,23 @@ async fn test_config_search_renders() {
         .unwrap()
         .to_string();
     assert_eq!(url_id, ts.generic_sport_config_id.to_string());
+
+    // check preview
+    let preview = get_element_by_test_id("table-entry-detailed-preview")
+        .text_content()
+        .unwrap();
+    assert!(preview.contains("~30 min"));
+
+    // test new button URL
+    let new_button = get_element_by_test_id("action-btn-new")
+        .dyn_into::<HtmlAnchorElement>()
+        .unwrap();
+    let href = new_button.href();
+    assert!(href.ends_with(&format!("new?sport_id={}", ts.generic_sport_id)));
+    assert_eq!(
+        new_button.text_content().unwrap(),
+        "Create New Configuration"
+    );
 
     // test buttons which show after click on table row
     let edit_button = get_element_by_test_id("action-btn-edit")

@@ -1,5 +1,4 @@
-//! This module contains the sub-pages related to sport configurations, including listing, editing,
-//! and copying sport configurations.
+//! This module contains the sub-pages related to copy a sport configurations.
 
 use leptos::prelude::*;
 

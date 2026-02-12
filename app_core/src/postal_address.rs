@@ -23,8 +23,8 @@ pub struct PostalAddress {
     locality: String,
     /// optional region
     region: Option<String>,
-    /// country: ISO name or code
-    country: String,
+    /// country: ISO code
+    country: Option<CountryCode>,
 }
 
 impl ObjectIdVersion for PostalAddress {
@@ -61,8 +61,8 @@ impl PostalAddress {
     pub fn get_region(&self) -> Option<&str> {
         self.region.as_deref()
     }
-    pub fn get_country(&self) -> &str {
-        self.country.as_str()
+    pub fn get_country(&self) -> Option<CountryCode> {
+        self.country
     }
 
     pub fn set_id_version(&mut self, id_version: IdVersion) -> &mut Self {
@@ -180,25 +180,9 @@ impl PostalAddress {
         self
     }
 
-    /// Sets the country code with normalization:
-    /// - trims leading/trailing whitespace
-    /// - collapses internal runs of whitespace to a single space
-    /// - converts code to upper case
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use app_core::PostalAddress;
-    ///
-    /// // Start from default.
-    /// let mut addr = PostalAddress::default();
-    ///
-    /// // Regularize spacing (trim + collapse):
-    /// addr.set_country("  De  ");
-    /// assert_eq!(addr.get_country(), "DE");
-    /// ```
-    pub fn set_country(&mut self, value: impl Into<String>) -> &mut Self {
-        self.country = normalize_ws(value).to_uppercase();
+    /// Sets the country code
+    pub fn set_country(&mut self, value: Option<CountryCode>) -> &mut Self {
+        self.country = value;
         self
     }
 
@@ -243,7 +227,7 @@ impl PostalAddress {
                     .build(),
             );
         }
-        if self.country.is_empty() {
+        if self.country.is_none() {
             errs.add(
                 FieldError::builder()
                     .set_field("Country")
@@ -252,19 +236,9 @@ impl PostalAddress {
                     .build(),
             );
         }
-        if CountryCode::for_alpha2(&self.country).is_err() {
-            errs.add(
-                FieldError::builder()
-                    .set_field("Country")
-                    .add_invalid_format()
-                    .add_message(format!("invalid ISO country code: {}", self.country))
-                    .set_object_id(object_id)
-                    .build(),
-            );
-        }
 
-        // Example country-specific hint (non-blocking placeholder):
-        if self.country == "DE"
+        // Example country-specific hint (non-blocking placeholder) for Germany
+        if self.country == Some(CountryCode::DEU)
             && (self.postal_code.len() != 5
                 || self.postal_code.chars().any(|c| !c.is_ascii_digit()))
         {
@@ -361,7 +335,7 @@ mod test_validate {
             .set_postal_code("10115")
             .set_locality("Berlin")
             .set_region("BE")
-            .set_country("DE");
+            .set_country(Some(CountryCode::DEU));
         pa
     }
 
@@ -457,7 +431,7 @@ mod test_validate {
     #[test]
     fn given_empty_country_when_validate_then_err() {
         let mut addr = valid_addr();
-        addr.country = "".into();
+        addr.country = None;
 
         let res = addr.validate();
         assert!(res.is_err(), "empty country must be rejected");
@@ -482,7 +456,7 @@ mod test_validate {
         addr.street = "".into();
         addr.postal_code = "".into();
         addr.locality = "".into();
-        addr.country = "".into();
+        addr.country = None;
 
         let res = addr.validate();
         assert!(res.is_err(), "should fail with multiple missing fields");
@@ -490,8 +464,8 @@ mod test_validate {
         let errs = res.unwrap_err();
         assert_eq!(
             errs.errors.len(),
-            5,
-            "should report all four missing fields plus invalid country code"
+            4,
+            "should report all four missing fields"
         );
         assert!(
             errs.errors
@@ -553,7 +527,7 @@ mod test_validate {
     #[test]
     fn given_de_country_and_wrong_length_postal_when_validate_then_err() {
         let mut addr = valid_addr();
-        addr.postal_code = "1011".into(); // 4 digits
+        addr.postal_code = "1011".into();
 
         let res = addr.validate();
         assert!(res.is_err(), "DE postal code must have length 5");

@@ -2,7 +2,7 @@
 
 use app_core::SportConfig;
 #[cfg(feature = "test-mock")]
-use app_utils::server_fn::sport_config::save_sport_config_inner;
+use app_utils::server_fn::sport_config::{SaveSportConfigFormData, save_sport_config_inner};
 use app_utils::{
     components::inputs::TextInputWithValidation,
     error::{
@@ -16,19 +16,24 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{use_sport_config_id_query, use_sport_id_query},
+    params::{FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
+        activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
-        sport_config::{SportConfigEditorContext, SportConfigListContext},
+        object_table_list::ObjectListContext,
+        sport_config::SportConfigEditorContext,
         toast_state::ToastContext,
     },
 };
 use leptos::{html::H2, prelude::*};
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
-use leptos_router::{NavigateOptions, hooks::use_navigate};
+use leptos_router::{
+    NavigateOptions,
+    hooks::{use_matched, use_navigate},
+};
 use reactive_stores::Store;
 use uuid::Uuid;
 
@@ -37,18 +42,23 @@ pub fn LoadSportConfiguration() -> impl IntoView {
     // --- global state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+    let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     // --- Server Resources ---
-    let sport_config_id = use_sport_config_id_query();
+    let sport_config_id = SportConfigIdQuery::use_param_query();
     let sc_res = Resource::new(
         move || sport_config_id.get(),
         move |maybe_id| async move {
             match maybe_id {
-                Some(id) => match load_sport_config(id).await {
+                Some(id) => match activity_tracker
+                    .track_activity_wrapper(component_id.get_value(), load_sport_config(id))
+                    .await
+                {
                     Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
                     load_result => load_result,
                 },
@@ -66,8 +76,12 @@ pub fn LoadSportConfiguration() -> impl IntoView {
     view! {
         <Transition fallback=move || {
             view! {
-                <div class="flex justify-center items-center p-4">
-                    <span class="loading loading-spinner loading-lg"></span>
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <div class="flex justify-center items-center p-4">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    </div>
                 </div>
             }
         }>
@@ -117,23 +131,28 @@ pub fn EditSportConfiguration(
 ) -> impl IntoView {
     // --- Hooks, Navigation & local and global state ---
     let UseQueryNavigationReturn {
+        get_query,
         url_matched_route_update_query,
+        url_matched_route_update_queries,
         url_is_matched_route,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
+    let matched_route = use_matched();
 
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
 
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
-
-    let sport_config_list_ctx = expect_context::<SportConfigListContext>();
+    let activity_tracker = expect_context::<ActivityTracker>();
+    let sport_config_list_ctx =
+        expect_context::<ObjectListContext<SportConfig, SportConfigIdQuery>>();
 
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     let state = expect_context::<Store<GlobalState>>();
@@ -168,7 +187,8 @@ pub fn EditSportConfiguration(
         sc.set_sport_id(s_id);
         sc.set_config(plugin.get_default_config());
         sport_config_editor.set_sport_config(sc);
-        (true, true)
+        let is_new = matched_route.get_untracked().ends_with("new");
+        (is_new, is_new)
     } else {
         (false, false)
     };
@@ -179,28 +199,39 @@ pub fn EditSportConfiguration(
 
     // --- Server Actions ---
     let save_sport_config = ServerAction::<SaveSportConfig>::new();
+    let save_sport_config_pending = save_sport_config.pending();
+    activity_tracker.track_pending_memo(component_id.get_value(), save_sport_config_pending);
 
     // handle save result
     Effect::new(move || match save_sport_config.value().get() {
         Some(Ok(sc)) => {
+            let sc_id = sc.get_id();
             save_sport_config.clear();
             toast_ctx.success("Sport Configuration saved successfully");
-            if is_new {
+            if sport_config_list_ctx.is_id_in_list(sc_id) {
+                let nav_url = url_matched_route_update_query(
+                    SportConfigIdQuery::key(),
+                    &sc_id.to_string(),
+                    MatchedRouteHandler::RemoveSegment(1),
+                );
+                navigate(&nav_url, NavigateOptions::default());
                 sport_config_list_ctx.trigger_refetch();
+            } else {
+                let refetch = get_query(FilterNameQuery::key()) != Some(sc.get_name().to_string());
+                let sc_id = sc.get_id().to_string();
+                let key_value = vec![
+                    (SportConfigIdQuery::key(), sc_id.as_str()),
+                    (FilterNameQuery::key(), sc.get_name()),
+                ];
+                let nav_url = url_matched_route_update_queries(
+                    key_value,
+                    MatchedRouteHandler::RemoveSegment(1),
+                );
+                navigate(&nav_url, NavigateOptions::default());
+                if refetch {
+                    sport_config_list_ctx.trigger_refetch();
+                }
             }
-            let nav_url = url_matched_route_update_query(
-                "sport_config_id",
-                &sc.get_id().to_string(),
-                MatchedRouteHandler::RemoveSegment(1),
-            );
-            navigate(
-                &nav_url,
-                NavigateOptions {
-                    replace: true,
-                    scroll: false,
-                    ..Default::default()
-                },
-            );
         }
         Some(Err(err)) => {
             save_sport_config.clear();
@@ -215,24 +246,12 @@ pub fn EditSportConfiguration(
         None => { /* saving state - do nothing */ }
     });
 
-    let save_sport_config_pending = save_sport_config.pending();
-
     // --- Signals for UI state & errors ---
-    // use try, because these signals are use in conjunction with page_err_ctx,
-    // which has another "lifetime" in the reactive system, which may cause panics
-    // for the other signals when the component is unmounted.
-    let is_disabled = move || {
-        sport_plugin().is_none()
-            || save_sport_config_pending.try_get().unwrap_or(false)
-            || page_err_ctx.has_errors()
-    };
+    let is_disabled = move || sport_plugin().is_none() || save_sport_config_pending.get();
 
     let is_valid_config = move || {
-        sport_config_editor.is_valid_json.try_get().unwrap_or(false)
-            && sport_config_editor
-                .validation_result
-                .try_with(|vr| vr.is_ok())
-                .unwrap_or(false)
+        sport_config_editor.is_valid_json.get()
+            && sport_config_editor.validation_result.with(|vr| vr.is_ok())
     };
 
     // scroll into view handling
@@ -242,7 +261,6 @@ pub fn EditSportConfiguration(
     view! {
         <div class="card w-full bg-base-100 shadow-xl">
             <div class="card-body">
-                // ToDo: header as part of card?
                 <h2 class="card-title" node_ref=scroll_ref>
                     {move || {
                         format!(
@@ -252,14 +270,15 @@ pub fn EditSportConfiguration(
                         )
                     }}
                 </h2>
-                // ToDo fix icon
                 <Show
                     when=move || show_form
                     fallback=|| {
                         view! {
                             <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
                                 <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                                <p class="text-2xl font-bold text-center">"Invalid sport id"</p>
+                                <p class="text-2xl font-bold text-center">
+                                    "Please select a sport configuration from the list."
+                                </p>
                             </div>
                         }
                     }
@@ -281,35 +300,33 @@ pub fn EditSportConfiguration(
                                         })
                                         .map(|btn| btn.value());
                                     let data = SaveSportConfig {
-                                        id: sport_config_editor
-                                            .sport_config_id
-                                            .get()
-                                            .unwrap_or(Uuid::nil()),
-                                        version: sport_config_editor
-                                            .local_readonly
-                                            .get()
-                                            .map_or(0, |sc| sc.get_version().unwrap_or_default()),
-                                        sport_id: sport_id.get().unwrap_or(Uuid::nil()),
-                                        name: sport_config_editor.name.get().unwrap_or_default(),
-                                        config: sport_config_editor
-                                            .config
-                                            .get()
-                                            .unwrap_or_default()
-                                            .to_string(),
-                                        intent,
+                                        form: SaveSportConfigFormData {
+                                            id: sport_config_editor
+                                                .sport_config_id
+                                                .get()
+                                                .unwrap_or(Uuid::nil()),
+                                            version: sport_config_editor
+                                                .local_readonly
+                                                .get()
+                                                .map_or(0, |sc| sc.get_version().unwrap_or_default()),
+                                            sport_id: sport_id.get().unwrap_or(Uuid::nil()),
+                                            name: sport_config_editor.name.get().unwrap_or_default(),
+                                            config: sport_config_editor
+                                                .config
+                                                .get()
+                                                .unwrap_or_default()
+                                                .to_string(),
+                                            intent,
+                                        },
                                     };
                                     let save_action = Action::new(|sc: &SaveSportConfig| {
                                         let sc = sc.clone();
                                         async move {
-                                            save_sport_config_inner(
-                                                    sc.id,
-                                                    sc.version,
-                                                    sc.sport_id,
-                                                    sc.name,
-                                                    sc.config,
-                                                    sc.intent,
-                                                )
-                                                .await
+                                            let result = save_sport_config_inner(sc.form).await;
+                                            leptos::web_sys::console::log_1(
+                                                &format!("Result of save sport config: {:?}", result).into(),
+                                            );
+                                            result
                                         }
                                     });
                                     save_action.dispatch(data);
@@ -321,11 +338,11 @@ pub fn EditSportConfiguration(
                             }
                         >
                             // --- Sport Config Form Fields ---
-                            <fieldset class="space-y-4" prop:disabled=is_disabled>
+                            <fieldset class="space-y-4 contents" prop:disabled=is_disabled>
                                 // Hidden meta fields the server expects (id / version)
                                 <input
                                     type="hidden"
-                                    name="id"
+                                    name="form[id]"
                                     data-testid="hidden-id"
                                     prop:value=move || {
                                         sport_config_editor
@@ -337,7 +354,7 @@ pub fn EditSportConfiguration(
                                 />
                                 <input
                                     type="hidden"
-                                    name="version"
+                                    name="form[version]"
                                     data-testid="hidden-version"
                                     prop:value=move || {
                                         sport_config_editor
@@ -348,7 +365,7 @@ pub fn EditSportConfiguration(
                                 />
                                 <input
                                     type="hidden"
-                                    name="sport_id"
+                                    name="form[sport_id]"
                                     data-testid="hidden-sport-id"
                                     prop:value=move || {
                                         sport_id.get().unwrap_or_default().to_string()
@@ -356,7 +373,7 @@ pub fn EditSportConfiguration(
                                 />
                                 <input
                                     type="hidden"
-                                    name="config"
+                                    name="form[config]"
                                     data-testid="hidden-sport-config"
                                     prop:value=move || {
                                         sport_config_editor
@@ -368,7 +385,8 @@ pub fn EditSportConfiguration(
                                 />
                                 <TextInputWithValidation
                                     label="Name"
-                                    name="name"
+                                    name="form[name]"
+                                    data_testid="input-name"
                                     value=sport_config_editor.name
                                     set_value=sport_config_editor.set_name
                                     validation_result=sport_config_editor.validation_result
@@ -383,7 +401,7 @@ pub fn EditSportConfiguration(
                                 <div class="card-actions justify-end mt-4">
                                     <button
                                         type="submit"
-                                        name="intent"
+                                        name="form[intent]"
                                         value=move || if is_new { "create" } else { "update" }
                                         data-testid="btn-save"
                                         class="btn btn-primary"
@@ -396,8 +414,8 @@ pub fn EditSportConfiguration(
 
                                     <button
                                         type="submit"
-                                        name="intent"
-                                        value="create"
+                                        name="form[intent]"
+                                        value="copy_as_new"
                                         data-testid="btn-save-as-new"
                                         class="btn btn-secondary"
                                         prop:disabled=move || {
@@ -410,7 +428,7 @@ pub fn EditSportConfiguration(
 
                                     <button
                                         type="button"
-                                        name="intent"
+                                        name="form[intent]"
                                         value="cancel"
                                         data-testid="btn-cancel"
                                         class="btn btn-ghost"

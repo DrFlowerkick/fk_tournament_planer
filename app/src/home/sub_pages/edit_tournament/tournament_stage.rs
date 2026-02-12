@@ -14,9 +14,10 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{use_stage_number_params, use_tournament_base_id_query},
+    params::{ParamQuery, StageNumberParams, TournamentBaseIdQuery},
     server_fn::stage::load_stage_by_number,
     state::{
+        activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
     },
@@ -30,16 +31,18 @@ pub fn LoadTournamentStage() -> impl IntoView {
     // --- global context ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
+    let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
     });
 
     let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
     // --- url parameters & queries ---
-    let tournament_id = use_tournament_base_id_query();
-    let active_stage_number = use_stage_number_params();
+    let tournament_id = TournamentBaseIdQuery::use_param_query();
+    let active_stage_number = StageNumberParams::use_param_query();
 
     // --- Resource to load tournament stage ---
     let stage_res = Resource::new(
@@ -54,7 +57,12 @@ pub fn LoadTournamentStage() -> impl IntoView {
             if let Some(t_id) = maybe_t_id
                 && let Some(stage_number) = maybe_s_num
             {
-                load_stage_by_number(t_id, stage_number).await
+                activity_tracker
+                    .track_activity_wrapper(
+                        component_id.get_value(),
+                        load_stage_by_number(t_id, stage_number),
+                    )
+                    .await
             } else {
                 Ok(None)
             }
@@ -72,8 +80,12 @@ pub fn LoadTournamentStage() -> impl IntoView {
     view! {
         <Transition fallback=move || {
             view! {
-                <div class="w-full flex justify-center py-8">
-                    <span class="loading loading-spinner loading-lg"></span>
+                <div class="card w-full bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <div class="w-full flex justify-center py-8">
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    </div>
                 </div>
             }
         }>
@@ -113,10 +125,9 @@ pub fn LoadTournamentStage() -> impl IntoView {
 #[component]
 pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
     // --- Get context for creating and editing tournaments ---
-    let active_stage_number = use_stage_number_params();
+    let active_stage_number = StageNumberParams::use_param_query();
 
     let tournament_editor_context = expect_context::<TournamentEditorContext>();
-    let page_err_ctx = expect_context::<PageErrorContext>();
 
     Effect::new(move || {
         if let Some(s) = stage {
@@ -157,41 +168,24 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
             <div class="card w-full bg-base-100 shadow-xl">
                 <div class="card-body">
                     // --- Form Area ---
-                    <div
-                        class="flex flex-col items-center w-full max-w-4xl mx-auto py-8 space-y-6"
-                        data-testid="stage-editor-root"
-                    >
-                        <div class="w-full flex justify-between items-center pb-4">
-                            <h2
-                                class="text-3xl font-bold"
-                                data-testid="stage-editor-title"
-                                node_ref=scroll_ref
-                            >
-                                {move || editor_title()}
-                            </h2>
-                        </div>
-                        // we have to use try_get here to avoid runtime panics, because
-                        // page_err_ctx "lives" independent of tournament_editor_context
+                    <div data-testid="stage-editor-root">
+                        <h2 class="card-title" data-testid="stage-editor-title" node_ref=scroll_ref>
+                            {move || editor_title()}
+                        </h2>
                         <fieldset
                             disabled=move || {
-                                page_err_ctx.has_errors()
-                                    || tournament_editor_context
-                                        .is_disabled_stage_editing
-                                        .try_get()
-                                        .unwrap_or(false)
-                                    || tournament_editor_context.is_busy.try_get().unwrap_or(false)
-                                    || !tournament_editor_context
-                                        .is_stage_initialized
-                                        .try_get()
-                                        .unwrap_or(false)
+                                tournament_editor_context.is_disabled_stage_editing.get()
+                                    || tournament_editor_context.is_busy.get()
+                                    || !tournament_editor_context.is_stage_initialized.get()
                             }
-                            class="contents"
+                            class="space-y-4 contents"
                             data-testid="stage-editor-form"
                         >
                             <div class="w-full max-w-md grid grid-cols-1 gap-6">
                                 <NumberInputWithValidation
                                     label="Number of Groups"
                                     name="stage-num-groups"
+                                    data_testid="input-stage-num-groups"
                                     value=tournament_editor_context.stage_num_groups
                                     set_value=tournament_editor_context.set_stage_num_groups
                                     validation_result=tournament_editor_context.validation_result
@@ -232,6 +226,7 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                 </div>
             </div>
         </Show>
+        <div class="my-4"></div>
         <Outlet />
     }
 }

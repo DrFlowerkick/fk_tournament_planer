@@ -11,6 +11,7 @@ import {
   extractUuidFromUrl,
   fillAndBlur,
   expectFieldValidity,
+  searchAndOpenByNameOnCurrentPage,
   selectors,
 } from "../../helpers";
 
@@ -36,6 +37,9 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
 
     // After save, either you land on detail page or back to list.
     await waitForPostalAddressListUrl(page);
+    await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
+    
+    // Extract ID after click on row, because if table is "full", the ID might be removed from URL
     const uuid = extractUuidFromUrl(page.url());
 
     await expectPreviewShows(page, {
@@ -73,6 +77,7 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
     await waitForPostalAddressListUrl(page);
     const uuid_edited = extractUuidFromUrl(page.url());
     test.expect(uuid_edited).toBe(uuid); // same id
+    //const new_row = await searchAndOpenByNameOnCurrentPage(page, name); // name unchanged
     await expectPreviewShows(page, {
       street: "Beispielstr. 3",
     });

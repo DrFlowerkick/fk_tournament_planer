@@ -61,7 +61,7 @@ async function seedTournaments(page: Page) {
 }
 
 async function seedPostalAddresses(page: Page) {
-  const NEW_PA_URL = "/postal-address/new_pa";
+  const NEW_PA_URL = "/postal-address/new";
   await page.goto(NEW_PA_URL);
 
   const names = ["Alpha", "Beta", "Gamma"];

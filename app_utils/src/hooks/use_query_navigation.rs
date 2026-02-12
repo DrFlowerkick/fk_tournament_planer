@@ -78,9 +78,11 @@ impl<'a> MatchedRouteHandler<'a> {
 pub fn use_query_navigation() -> UseQueryNavigationReturn<
     impl Fn(&str) -> Option<String> + Clone + Copy + Send + Sync + 'static,
     impl Fn(&str, &str) -> String + Clone + Copy + Send + Sync + 'static,
+    impl Fn(Vec<(&str, &str)>) -> String + Clone + Copy + Send + Sync + 'static,
     impl Fn(&str) -> String + Clone + Copy + Send + Sync + 'static,
     impl Fn(MatchedRouteHandler) -> String + Clone + Copy + Send + Sync + 'static,
     impl Fn(&str, &str, MatchedRouteHandler) -> String + Clone + Copy + Send + Sync + 'static,
+    impl Fn(Vec<(&str, &str)>, MatchedRouteHandler) -> String + Clone + Copy + Send + Sync + 'static,
     impl Fn(&str, MatchedRouteHandler) -> String + Clone + Copy + Send + Sync + 'static,
 > {
     let url = use_url();
@@ -90,6 +92,19 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
         new_url
             .search_params_mut()
             .replace(key.to_string(), value.to_string());
+        format!(
+            "{}{}",
+            new_url.path(),
+            new_url.search_params().to_query_string()
+        )
+    };
+    let url_update_queries = move |key_value: Vec<(&str, &str)>| {
+        let mut new_url = url.get();
+        for (key, value) in key_value {
+            new_url
+                .search_params_mut()
+                .replace(key.to_string(), value.to_string());
+        }
         format!(
             "{}{}",
             new_url.path(),
@@ -124,6 +139,20 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
                 new_url.search_params().to_query_string()
             )
         };
+    let url_matched_route_update_queries =
+        move |key_value: Vec<(&str, &str)>, matched_route_handler: MatchedRouteHandler| {
+            let mut new_url = url.get();
+            for (key, value) in key_value {
+                new_url
+                    .search_params_mut()
+                    .replace(key.to_string(), value.to_string());
+            }
+            format!(
+                "{}{}",
+                matched_route_handler.handle(),
+                new_url.search_params().to_query_string()
+            )
+        };
     let url_matched_route_remove_query =
         move |key: &str, matched_route_handler: MatchedRouteHandler| {
             let mut new_url = url.get();
@@ -135,13 +164,15 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
             )
         };
     let matched_path = use_matched();
-    let url_is_matched_route = Signal::derive(move || url.get().path() == matched_path.get());
+    let url_is_matched_route = Memo::new(move |_| url.get().path() == matched_path.get());
     UseQueryNavigationReturn {
         get_query,
         url_update_query,
+        url_update_queries,
         url_remove_query,
         url_matched_route,
         url_matched_route_update_query,
+        url_matched_route_update_queries,
         url_matched_route_remove_query,
         url_is_matched_route,
     }
@@ -151,23 +182,30 @@ pub fn use_query_navigation() -> UseQueryNavigationReturn<
 pub struct UseQueryNavigationReturn<
     GetFn,
     UrlUpdateQueryFn,
+    UrlUpdateQueriesFn,
     UrlRemoveQueryFn,
     UrlMatchedRouteFn,
     UrlMatchedRouteUpdateQueryFn,
+    UrlMatchedRouteUpdateQueriesFn,
     UrlMatchedRouteRemoveQueryFn,
 > where
     GetFn: Fn(&str) -> Option<String>,
     UrlUpdateQueryFn: Fn(&str, &str) -> String,
+    UrlUpdateQueriesFn: Fn(Vec<(&str, &str)>) -> String,
     UrlRemoveQueryFn: Fn(&str) -> String,
     UrlMatchedRouteFn: Fn(MatchedRouteHandler) -> String,
     UrlMatchedRouteUpdateQueryFn: Fn(&str, &str, MatchedRouteHandler) -> String,
+    UrlMatchedRouteUpdateQueriesFn: Fn(Vec<(&str, &str)>, MatchedRouteHandler) -> String,
     UrlMatchedRouteRemoveQueryFn: Fn(&str, MatchedRouteHandler) -> String,
 {
     /// Function to get the value of a query parameter by key.
     pub get_query: GetFn,
 
-    /// Function to return current url with an updated a specific query parameter.
+    /// Function to return current url with an updated specific query parameter.
     pub url_update_query: UrlUpdateQueryFn,
+
+    /// Function to return current url with an updated multiple query parameter.
+    pub url_update_queries: UrlUpdateQueriesFn,
 
     /// Function to return current url with a specific query parameter removed.
     pub url_remove_query: UrlRemoveQueryFn,
@@ -179,9 +217,12 @@ pub struct UseQueryNavigationReturn<
     /// Same as `url_matched_route`, but also updates a specific query parameter.
     pub url_matched_route_update_query: UrlMatchedRouteUpdateQueryFn,
 
+    /// Same as `url_matched_route`, but also updates multiple query parameter.
+    pub url_matched_route_update_queries: UrlMatchedRouteUpdateQueriesFn,
+
     /// Same as `url_matched_route`, but removes a specific query parameter.
     pub url_matched_route_remove_query: UrlMatchedRouteRemoveQueryFn,
 
-    /// Signal to check if the current URL matches the route of the router.
-    pub url_is_matched_route: Signal<bool>,
+    /// Memo to check if the current URL matches the route of the router.
+    pub url_is_matched_route: Memo<bool>,
 }

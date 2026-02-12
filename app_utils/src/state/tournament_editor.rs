@@ -8,9 +8,11 @@ use crate::{
     hooks::use_query_navigation::{
         MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
     },
-    params::{use_group_number_params, use_stage_number_params, use_tournament_base_id_query},
+    params::{GroupNumberParams, ParamQuery, StageNumberParams, TournamentBaseIdQuery},
     server_fn::tournament_editor::SaveTournamentEditorDiff,
-    state::{error_state::PageErrorContext, toast_state::ToastContext},
+    state::{
+        activity_tracker::ActivityTracker, error_state::PageErrorContext, toast_state::ToastContext,
+    },
 };
 use app_core::{
     Stage, TournamentEditor, TournamentMode, TournamentState, utils::validation::ValidationResult,
@@ -103,9 +105,11 @@ impl TournamentEditorContext {
         let page_err_ctx = expect_context::<PageErrorContext>();
         let toast_ctx = expect_context::<ToastContext>();
         let component_id = StoredValue::new(Uuid::new_v4());
+        let activity_tracker = expect_context::<ActivityTracker>();
         // remove errors on unmount
         on_cleanup(move || {
             page_err_ctx.clear_all_for_component(component_id.get_value());
+            activity_tracker.remove_component(component_id.get_value());
         });
 
         // --- core signals ---
@@ -117,9 +121,9 @@ impl TournamentEditorContext {
         let validation_result = create_read_slice(inner, |inner| inner.validation());
 
         // --- url parameters & queries & validation ---
-        let tournament_id = use_tournament_base_id_query();
-        let active_stage_number = use_stage_number_params();
-        let active_group_number = use_group_number_params();
+        let tournament_id = TournamentBaseIdQuery::use_param_query();
+        let active_stage_number = StageNumberParams::use_param_query();
+        let active_group_number = GroupNumberParams::use_param_query();
 
         let valid_object_numbers = Memo::new(move |_| {
             inner.with(|state| {
@@ -159,6 +163,8 @@ impl TournamentEditorContext {
 
         // --- server actions and resources ---
         let save_diff = ServerAction::<SaveTournamentEditorDiff>::new();
+        let save_diff_pending = save_diff.pending();
+        activity_tracker.track_pending_memo(component_id.get_value(), save_diff_pending);
 
         // server action & resource activity tracking
         let is_busy = Signal::derive(move || save_diff.pending().get());

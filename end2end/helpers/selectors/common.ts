@@ -1,46 +1,18 @@
 import type { Page, Locator } from "@playwright/test";
 
-export interface DropdownLocators {
-  input: Locator;
-  list: Locator;
-  items: Locator;
-}
-
-export function getDropdown(
-  page: Page,
-  ids: { input: string; suggestList: string; suggestItem: string },
-): DropdownLocators {
-  return {
-    input: page.getByTestId(ids.input),
-    list: page.getByTestId(ids.suggestList),
-    items: page.getByTestId(ids.suggestItem),
-  };
-}
 
 export const BANNER_IDS = {
-  acknowledgment: "acknowledgment-banner",
-  btnAck: "btn-acknowledgment-action",
-  ackNavigate: "acknowledgment-navigate-banner",
-  btnAckNavAction: "btn-acknowledgment-navigate-action",
-  btnAckNav: "btn-acknowledgment-navigate",
   globalErrorBanner: "global-error-banner",
+  globalErrorBannerMsg: "global-error-banner-msg",
   btnRetry: "btn-retry-action",
   btnCancel: "btn-cancel-action",
 } as const;
 
 export function getBannerSelectors(page: Page) {
   return {
-    acknowledgment: {
-      root: page.getByTestId(BANNER_IDS.acknowledgment),
-      btnAction: page.getByTestId(BANNER_IDS.btnAck),
-    },
-    acknowledgmentNavigate: {
-      root: page.getByTestId(BANNER_IDS.ackNavigate),
-      btnAction: page.getByTestId(BANNER_IDS.btnAckNavAction),
-      btnNavigate: page.getByTestId(BANNER_IDS.btnAckNav),
-    },
     globalErrorBanner: {
       root: page.getByTestId(BANNER_IDS.globalErrorBanner),
+      msg: page.getByTestId(BANNER_IDS.globalErrorBannerMsg),
       btnRetry: page.getByTestId(BANNER_IDS.btnRetry),
       btnCancel: page.getByTestId(BANNER_IDS.btnCancel),
     },
@@ -60,5 +32,38 @@ export function getToastSelectors(page: Page) {
     error: page.getByTestId(TOAST_IDS.error),
     info: page.getByTestId(TOAST_IDS.info),
     warning: page.getByTestId(TOAST_IDS.warning),
+  };
+}
+
+export const LIST_IDS = {
+  filterName: "filter-name-search",
+  table: "table-list",
+  header: "table-list-header",
+  btnNew: "action-btn-new",
+  btnEdit: "action-btn-edit",
+  entryNamePrefix: "table-entry-name-",
+  entryPreviewPrefix: "table-entry-preview-",
+  detailedPreview: "table-entry-detailed-preview",
+} as const;
+
+export function getListSelectors(page: Page) {
+  const ids = LIST_IDS;
+  return {
+    filterName: page.getByTestId(ids.filterName),
+    table: page.getByTestId(ids.table),
+    header: page.getByTestId(ids.header),
+    btnNew: page.getByTestId(ids.btnNew),
+    btnEdit: page.getByTestId(ids.btnEdit),
+    detailedPreview: page.getByTestId(ids.detailedPreview),
+    entryName: (id: string) => page.getByTestId(`${ids.entryNamePrefix}${id}`),
+    // Dynamic row/preview selectors
+    previewById: (id: string) => page.getByTestId(`${ids.entryPreviewPrefix}${id}`),
+    previewByName: (name: string) =>
+      page
+        .getByRole("row")
+        .filter({ hasText: name })
+        .getByTestId(new RegExp(`^${ids.entryPreviewPrefix}`)),
+    anyPreview: page.locator(`[data-testid^="${ids.entryPreviewPrefix}"]`).first(),
+    anyRow: page.locator(`tr:has([data-testid^="${ids.entryNamePrefix}"])`).first(),
   };
 }

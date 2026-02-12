@@ -19,6 +19,7 @@ use diesel::{
     sql_types::BigInt,
 };
 use diesel_async::RunQueryDsl;
+use isocountry::CountryCode;
 use tracing::{debug, error, info, instrument, warn};
 use uuid::Uuid;
 
@@ -52,13 +53,14 @@ impl TryFrom<DbPostalAddress> for PostalAddress {
             return Err(DbError::RowVersionOutOfRange);
         }
         let id_version = IdVersion::new(r.id, Some(r.version as u32));
+        let country_code = CountryCode::for_alpha2(&r.country)?;
         let mut pa = PostalAddress::new(id_version);
         pa.set_name(r.name)
             .set_street(r.street)
             .set_postal_code(r.postal_code)
             .set_locality(r.locality)
             .set_region(r.region.unwrap_or_default())
-            .set_country(r.country);
+            .set_country(Some(country_code));
         Ok(pa)
     }
 }
@@ -81,13 +83,14 @@ pub struct WriteDbPostalAddress<'a> {
 // Mapping Core -> DB
 impl<'a> From<&'a PostalAddress> for WriteDbPostalAddress<'a> {
     fn from(p: &'a PostalAddress) -> Self {
+        let country_code = p.get_country().map(|c| c.alpha2()).unwrap_or_default();
         WriteDbPostalAddress {
             name: p.get_name(),
             street: p.get_street(),
             postal_code: p.get_postal_code(),
             locality: p.get_locality(),
             region: p.get_region(),
-            country: p.get_country(),
+            country: country_code,
         }
     }
 }

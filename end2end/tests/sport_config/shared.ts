@@ -4,8 +4,11 @@ import {
   clickEditSportConfig,
   extractQueryParamFromUrl,
   waitForAppHydration,
-  selectors
+  waitForNavigationRowSelectionByName,
+  searchAndOpenByNameOnCurrentPage,
+  selectors,
 } from "../../helpers";
+import exp from "constants";
 
 export interface SportConfigTestAdapter {
   sportName: string;
@@ -45,14 +48,17 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         // Expect edit inputs are not visible anymore
         await expect(SC.form.root).toBeHidden();
 
+        await searchAndOpenByNameOnCurrentPage(page, initialName, "sport_config_id");
+
         // Verify preview
-        await expect(SC.list.previewByName(initialName)).toContainText(initialName);
-        await adapter.assertSpecificFields(SC.list.previewByName(initialName), initialData);
+        await expect(SC.list.detailedPreview).toBeVisible();
+        await adapter.assertSpecificFields(
+          SC.list.detailedPreview,
+          initialData,
+        );
       });
 
       await test.step("Edit Config", async () => {
-        const row = SC.list.previewByName(initialName);
-        row.click();
         await expect(SC.list.btnEdit).toBeVisible();
         await clickEditSportConfig(page);
 
@@ -64,8 +70,11 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         await expect(SC.list.previewByName(updatedName)).toBeVisible();
 
         // Verify preview
-        await expect(SC.list.previewByName(updatedName)).toContainText(updatedName);
-        await adapter.assertSpecificFields(SC.list.previewByName(updatedName), updatedData);
+        await expect(SC.list.detailedPreview).toBeVisible();
+        await adapter.assertSpecificFields(
+          SC.list.detailedPreview,
+          updatedData,
+        );
       });
     });
 
@@ -130,8 +139,11 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
 
         // --- User A sees updates live ---
         await test.step("User A sees updates live", async () => {
-          await expect(SC_A.list.previewByName(updatedName)).toContainText(updatedName);
-          await adapter.assertSpecificFields(SC_A.list.previewByName(updatedName), updatedData);
+          await expect(SC_A.list.entryName(configId!)).toHaveText(updatedName);
+          await adapter.assertSpecificFields(
+            SC_A.list.detailedPreview,
+            updatedData,
+          );
         });
       } finally {
         await ctxA.close();

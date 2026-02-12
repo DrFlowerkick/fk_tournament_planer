@@ -12,7 +12,9 @@ import {
   fillAndBlur,
   waitForAppHydration,
   selectors,
+  searchAndOpenByNameOnCurrentPage,
 } from "../../helpers";
+import { POSTAL_IDS } from "../../helpers/selectors/postalAddress";
 
 // --- Test data ---------------------------------------------------------------
 // Unique test data (avoid partial-unique collisions)
@@ -62,12 +64,15 @@ test.describe("postal address live update (Preview-only UI)", () => {
 
       // After save, route should be /postal-address/<uuid>
       await waitForPostalAddressListUrl(pageA);
-      const urlA = pageA.url();
-      const id = extractUuidFromUrl(urlA);
 
       // Ensure the preview shows the initial values and correct version
+      await searchAndOpenByNameOnCurrentPage(pageA, initial.name, "address_id");
       await expectPreviewShows(pageA, initial);
-      await expect(PA_A.search.preview.version).toHaveText("0");
+      await expect(pageA.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("0");
+      
+      // Extract ID after click on row, because if table is "full", the ID might be removed from URL
+      const urlA = pageA.url();
+      const id = extractUuidFromUrl(urlA);
 
       // ----------------------- Act (B edits & saves) -------------------------
       // B opens the edit route directly for the same UUID.
@@ -82,9 +87,9 @@ test.describe("postal address live update (Preview-only UI)", () => {
 
       // ----------------------- Assert (A updates via SSE) --------------------
       // wait for new version
-      await expect(PA_A.search.preview.version).toHaveText("1");
+      await expect(pageA.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("1");
       // A's preview should reflect the edited name.
-      await expect(PA_A.search.preview.name).toHaveText(edited.name);
+      await expect(PA_A.list.entryName(id)).toHaveText(edited.name);
 
       // Optional sanity check: A did not navigate away (no hard reload).
       await expect(pageA).toHaveURL(urlA);

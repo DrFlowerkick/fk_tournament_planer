@@ -11,6 +11,7 @@ use crate::{
 };
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use uuid::Uuid;
 
 /// mode of tournament
@@ -92,14 +93,18 @@ pub enum TournamentState {
     Finished,
 }
 
-impl From<String> for TournamentState {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "Draft" => TournamentState::Draft,
-            "Published" => TournamentState::Published,
-            "Running" => TournamentState::ActiveStage(0),
-            "Finished" => TournamentState::Finished,
-            _ => TournamentState::Draft, // default
+impl FromStr for TournamentState {
+    type Err = CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Draft" => Ok(TournamentState::Draft),
+            "Published" => Ok(TournamentState::Published),
+            "Running" => Ok(TournamentState::ActiveStage(0)),
+            "Finished" => Ok(TournamentState::Finished),
+            _ => Err(CoreError::ParsingError(
+                "Invalid tournament state".to_string(),
+            )),
         }
     }
 }

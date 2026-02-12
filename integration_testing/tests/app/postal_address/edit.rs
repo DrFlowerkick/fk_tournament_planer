@@ -3,7 +3,8 @@ use crate::common::{
     set_select_value, set_url,
 };
 use app::{postal_addresses::LoadPostalAddress, provide_global_context};
-use app_core::DbpPostalAddress;
+use app_core::{DbpPostalAddress, PostalAddress};
+use app_utils::{params::AddressIdQuery, state::object_table_list::ObjectListContext};
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
 use leptos_router::{
@@ -13,6 +14,14 @@ use leptos_router::{
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
+#[component]
+fn LoadPostalAddressWrapper() -> impl IntoView {
+    // requires Router context
+    provide_context(ObjectListContext::<PostalAddress, AddressIdQuery>::new());
+
+    view! { <LoadPostalAddress /> }
+}
+
 #[wasm_bindgen_test]
 async fn test_new_postal_address() {
     // Acquire lock and clean DOM.
@@ -21,7 +30,7 @@ async fn test_new_postal_address() {
     let ts = init_test_state();
 
     // 1. Set initial URL for creating a new address
-    set_url("/postal-address/new_pa");
+    set_url("/postal-address/new");
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
@@ -30,7 +39,7 @@ async fn test_new_postal_address() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/new_pa") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/new") view=LoadPostalAddressWrapper />
                 </Routes>
             </Router>
         }
@@ -44,7 +53,7 @@ async fn test_new_postal_address() {
     set_input_value("input-postal_code", &ts.postal);
     set_input_value("input-locality", &ts.city);
     set_input_value("input-region", &ts.region);
-    set_select_value("select-country", &ts.country);
+    set_select_value("select-country", ts.country.alpha2());
 
     sleep(Duration::from_millis(10)).await;
     let save_button = get_element_by_test_id("btn-save");
@@ -70,10 +79,7 @@ async fn test_edit_postal_address() {
 
     // 1. Set initial URL for creating a new address
     let existing_id = ts.entries[0];
-    set_url(&format!(
-        "/postal-address/edit_pa?address_id={}",
-        existing_id
-    ));
+    set_url(&format!("/postal-address/edit?address_id={}", existing_id));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
@@ -82,7 +88,7 @@ async fn test_edit_postal_address() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit_pa") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/edit") view=LoadPostalAddressWrapper />
                 </Routes>
             </Router>
         }
@@ -125,10 +131,7 @@ async fn test_save_as_new_postal_address() {
 
     // 1. Set initial URL for creating a new address
     let existing_id = ts.entries[0];
-    set_url(&format!(
-        "/postal-address/edit_pa?address_id={}",
-        existing_id
-    ));
+    set_url(&format!("/postal-address/edit?address_id={}", existing_id));
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
@@ -137,11 +140,13 @@ async fn test_save_as_new_postal_address() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit_pa") view=LoadPostalAddress />
+                    <Route path=path!("/postal-address/edit") view=LoadPostalAddressWrapper />
                 </Routes>
             </Router>
         }
     });
+
+    leptos::web_sys::console::log_1(&"test_save_as_new_postal_address started".into());
 
     // The component should react to the URL change.
     // A small delay helps ensure all reactive updates are processed.
@@ -159,9 +164,10 @@ async fn test_save_as_new_postal_address() {
     sleep(Duration::from_millis(10)).await;
 
     let save_as_new_button = get_element_by_test_id("btn-save-as-new");
-
     save_as_new_button.click();
+
     sleep(Duration::from_millis(10)).await;
+
     let cloned_addresses = ts
         .db
         .list_postal_addresses(Some("Cloned"), None)

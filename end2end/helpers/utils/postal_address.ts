@@ -1,16 +1,25 @@
 // Shared helpers for address form flows
-import { expect, Page } from "@playwright/test";
-import { selectors } from "../selectors";
+import { expect, Locator, Page } from "@playwright/test";
 import {
   fillAndBlur,
   selectThenBlur,
   extractQueryParamFromUrl,
   waitForAppHydration,
-} from "./common"; // Added waitForAppHydration
+  IDS,
+  selectors,
+} from "../../helpers";
+
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 export const PA_ROUTES = {
-  newAddress: "/postal-address/new_pa",
+  newAddress: "/postal-address/new",
+  editAddress: "/postal-address/edit",
   list: "/postal-address",
+};
+
+export const PA_QUERY_KEYS = {
+  addressId: "address_id",
 };
 
 /**
@@ -24,10 +33,8 @@ export async function openPostalAddressList(page: Page) {
   // strict hydration check
   await waitForAppHydration(page);
 
-  await expect(PA.search.dropdown.input).toBeVisible();
-  await expect(PA.search.btnNew).toBeVisible();
-  await expect(PA.search.btnEdit).toBeVisible();
-  await expect(PA.search.btnEdit).toHaveAttribute("disabled");
+  await expect(PA.list.filterName).toBeVisible();
+  await expect(PA.list.btnNew).toBeVisible();
 }
 
 /**
@@ -35,23 +42,28 @@ export async function openPostalAddressList(page: Page) {
  */
 export async function waitForPostalAddressListUrl(page: Page) {
   const PA = selectors(page).postalAddress;
-  // Wait for URL like /postal-address?address_id=UUID
-  await page.waitForURL(/\/postal-address\?address_id=[0-9a-f-]{36}$/);
+  // Wait for URL path /postal-address and valid address_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === PA_ROUTES.list;
+    const addressId = url.searchParams.get(PA_QUERY_KEYS.addressId);
+    return isCorrectPath && !!addressId && UUID_REGEX.test(addressId);
+  });
 
   // strict hydration check
   await waitForAppHydration(page);
 
-  await expect(PA.search.dropdown.input).toBeVisible();
-  await expect(PA.search.btnNew).toBeVisible();
-  await expect(PA.search.btnEdit).toBeVisible();
-  await expect(PA.search.btnEdit).not.toHaveAttribute("disabled");
+  await expect(PA.list.filterName).toBeVisible();
+  await expect(PA.list.btnNew).toBeVisible();
 }
 
 /**
  * Extracts the UUID from a /postal-address/<uuid> URL.
  */
 export function extractUuidFromUrl(url: string): string {
-  return extractQueryParamFromUrl(url, "address_id");
+  const value = extractQueryParamFromUrl(url, PA_QUERY_KEYS.addressId);
+  if (!value)
+    throw new Error(`No value for key "address_id" found in URL: ${url}`);
+  return value;
 }
 
 /**
@@ -72,11 +84,12 @@ export async function openNewForm(page: Page) {
 
 /**
  * Enter edit mode from a detail page (if you have a dedicated edit button).
+ * Assumes you're already on a page with the edit button visible (e.g., after clicking on row from the list).
  */
 export async function clickEditPostalAddress(page: Page) {
   const PA = selectors(page).postalAddress;
-  await expect(PA.search.btnEdit).toBeVisible();
-  await PA.search.btnEdit.click();
+  await expect(PA.list.btnEdit).toBeVisible();
+  await PA.list.btnEdit.click();
   // Assert the form is shown again
   await waitForPostalAddressEditUrl(page);
 }
@@ -85,7 +98,7 @@ export async function clickEditPostalAddress(page: Page) {
  * Enter edit mode directly by navigating to the edit URL.
  */
 export async function openEditForm(page: Page, id: string) {
-  await page.goto(`/postal-address/edit_pa?address_id=${id}`);
+  await page.goto(`${PA_ROUTES.editAddress}?${PA_QUERY_KEYS.addressId}=${id}`);
   // Assert the form is shown again
 
   // Note: waitForPostalAddressEditUrl internally waits for URL AND hydration
@@ -99,8 +112,12 @@ export async function openEditForm(page: Page, id: string) {
  */
 export async function waitForPostalAddressEditUrl(page: Page) {
   const PA = selectors(page).postalAddress;
-  // Wait for URL like /postal-address/edit_pa?address_id=UUID
-  await page.waitForURL(/\/postal-address\/edit_pa\?address_id=[0-9a-f-]{36}$/);
+  // Wait for URL path /postal-address/edit and valid address_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === PA_ROUTES.editAddress;
+    const addressId = url.searchParams.get(PA_QUERY_KEYS.addressId);
+    return isCorrectPath && !!addressId && UUID_REGEX.test(addressId);
+  });
 
   // strict hydration check
   await waitForAppHydration(page);
@@ -212,9 +229,9 @@ export async function clickSaveAsNew(page: Page) {
 
 // mapping of countries used in tests
 const COUNTRY_CODE_TO_NAME: Record<string, string> = {
-  DE: "Germany",
-  US: "United States",
-  FR: "France",
+  DE: "Germany (DE)",
+  US: "United States (US)",
+  FR: "France (FR)",
   // add more as needed
 };
 
@@ -246,30 +263,34 @@ export async function expectPreviewShows(
     country?: string;
   },
 ) {
-  const PA = selectors(page).postalAddress;
+  // "preview-" prefix locator for fields inside the preview component
+  const LIST_PREVIEW = IDS.list.detailedPreview;
+  const PA_PREVIEW = IDS.postalAddress.list.preview;
   // check preview fields
-  await expect(PA.search.preview.root).toBeVisible();
-
-  if (expected.name !== undefined) {
-    await expect(PA.search.preview.name).toHaveText(expected.name!);
-  }
+  await expect(page.getByTestId(LIST_PREVIEW)).toBeVisible();
 
   if (expected.street !== undefined) {
-    await expect(PA.search.preview.street).toHaveText(expected.street!);
+    await expect(page.getByTestId(PA_PREVIEW.street)).toHaveText(
+      expected.street!,
+    );
   }
 
   if (expected.postal_code !== undefined) {
-    await expect(PA.search.preview.postalCode).toHaveText(
+    await expect(page.getByTestId(PA_PREVIEW.postalCode)).toHaveText(
       expected.postal_code!,
     );
   }
 
   if (expected.locality !== undefined) {
-    await expect(PA.search.preview.locality).toHaveText(expected.locality!);
+    await expect(page.getByTestId(PA_PREVIEW.locality)).toHaveText(
+      expected.locality!,
+    );
   }
 
   if (expected.region !== undefined) {
-    await expect(PA.search.preview.region).toHaveText(expected.region!);
+    await expect(page.getByTestId(PA_PREVIEW.region)).toHaveText(
+      expected.region!,
+    );
   }
 
   if (expected.country !== undefined) {
@@ -277,6 +298,6 @@ export async function expectPreviewShows(
       "country",
       expected.country,
     );
-    await expect(PA.search.preview.country).toHaveText(expectedText);
+    await expect(page.getByTestId(PA_PREVIEW.country)).toHaveText(expectedText);
   }
 }

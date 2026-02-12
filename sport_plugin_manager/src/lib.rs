@@ -73,8 +73,8 @@ impl SportPluginManagerMap {
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
-    /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
-    /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
+    /// #     fn render_detailed_preview(&self, config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{format!("Extended preview of: {}", config.get_name())}</div> }.into_any()
     /// #     }
     /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()
@@ -147,8 +147,8 @@ impl SportPluginManagerMap {
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
-    /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
-    /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
+    /// #     fn render_detailed_preview(&self, config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{format!("Extended preview of: {}", config.get_name())}</div> }.into_any()
     /// #     }
     /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()
@@ -219,8 +219,8 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
-    /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
-    /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
+    /// #     fn render_detailed_preview(&self, config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{format!("Extended preview of: {}", config.get_name())}</div> }.into_any()
     /// #     }
     /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()
@@ -291,8 +291,8 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #     fn render_preview(&self, _config: &SportConfig) -> AnyView {
     /// #         view! { <div>{ "Mock Preview" }</div> }.into_any()
     /// #     }
-    /// #     fn render_dropdown(&self, config: &SportConfig) -> AnyView {
-    /// #         view! { <div>{format!("Dropdown: {}", config.get_name())}</div> }.into_any()
+    /// #     fn render_detailed_preview(&self, config: &SportConfig) -> AnyView {
+    /// #         view! { <div>{format!("Extended preview of: {}", config.get_name())}</div> }.into_any()
     /// #     }
     /// #     fn render_configuration(&self) -> AnyView {
     /// #         view! { <div>{"Configuration UI"}</div> }.into_any()

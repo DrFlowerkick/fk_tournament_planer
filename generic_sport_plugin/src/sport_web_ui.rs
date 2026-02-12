@@ -33,79 +33,102 @@ impl SportPortWebUi for GenericSportPlugin {
         }
         .into_any()
     }
+    fn render_detailed_preview(&self, config: &SportConfig) -> AnyView {
+        let generic_config = match self.validate_config(config, ValidationErrors::new()) {
+            Ok(cfg) => cfg,
+            Err(_) => return view! { <div>{"Invalid Configuration"}</div> }.into_any(),
+        };
+
+        let duration_minutes = generic_config.expected_match_duration_minutes.as_secs() / 60;
+
+        view! {
+            <div
+                class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 bg-base-200 text-sm rounded-lg"
+                data-testid="table-entry-detailed-preview"
+            >
+                // 1. Block: Match Rules (Sets & Scoring)
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1 font-semibold text-base-content">
+                        <span class="icon-[heroicons--trophy] w-4 h-4 opacity-70"></span>
+                        <span data-testid="preview-sets-to-win">
+                            {format!("Sets to win: {}", generic_config.sets_to_win)}
+                        </span>
+                    </div>
+
+                    <span class="hidden sm:inline text-base-content/30">"|"</span>
+
+                    <span class="text-base-content/80" data-testid="preview-score-config">
+                        {move || {
+                            match generic_config.score_to_win {
+                                Some(score) => {
+                                    let mut details = Vec::new();
+                                    if let Some(margin) = generic_config.win_by_margin {
+                                        details.push(format!("+{}", margin));
+                                    }
+                                    if let Some(cap) = generic_config.hard_cap {
+                                        details.push(format!("Cap {}", cap));
+                                    }
+                                    let details_str = if details.is_empty() {
+                                        String::new()
+                                    } else {
+                                        format!(" ({})", details.join(", "))
+                                    };
+                                    format!("Score: {}{}", score, details_str)
+                                }
+                                None => "No score limit".to_string(),
+                            }
+                        }}
+                    </span>
+                </div>
+
+                // 2. Block: Meta Info (Duration & Points)
+                <div class="flex items-center gap-3 ml-auto sm:ml-0">
+                    // Duration
+                    <div
+                        class="flex items-center gap-1 text-xs opacity-70"
+                        title="Expected Match Duration"
+                    >
+                        <span class="icon-[heroicons--clock] w-4 h-4"></span>
+                        <span data-testid="preview-expected-duration">
+                            {format!("~{} min", duration_minutes)}
+                        </span>
+                    </div>
+
+                    // Victory Points Badges
+                    <div class="flex gap-1">
+                        <span
+                            class="badge badge-sm badge-success badge-outline gap-1"
+                            title="Victory Points (Win)"
+                            data-testid="preview-victory-points-win"
+                        >
+                            <span class="font-bold">"W"</span>
+                            {generic_config.victory_points_win}
+                        </span>
+                        <span
+                            class="badge badge-sm badge-ghost badge-outline gap-1"
+                            title="Victory Points (Draw)"
+                            data-testid="preview-victory-points-draw"
+                        >
+                            <span class="font-bold">"D"</span>
+                            {generic_config.victory_points_draw}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        }
+        .into_any()
+    }
     fn render_preview(&self, config: &SportConfig) -> AnyView {
         let generic_config = match self.validate_config(config, ValidationErrors::new()) {
             Ok(cfg) => cfg,
             Err(_) => return view! { <div>{"Invalid Configuration"}</div> }.into_any(),
         };
         view! {
-            <div class="card w-full bg-base-200 shadow-md mt-4" data-testid="sport-config-preview">
-                <div class="card-body">
-                    <h3 class="card-title" data-testid="preview-sport-name">
-                        {config.get_name().to_string()}
-                    </h3>
-                    {move || {
-                        generic_config
-                            .score_to_win
-                            .map(|score| {
-                                view! {
-                                    <p data-testid="preview-score-config">
-                                        <span data-testid="preview-sets-to-win">
-                                            {format!("Sets to win: {}", generic_config.sets_to_win)}
-                                        </span>
-                                        " - "
-                                        <span data-testid="preview-score-to-win">
-                                            {format!("Score to win a set: {}", score)}
-                                        </span>
-                                        {move || {
-                                            generic_config
-                                                .win_by_margin
-                                                .map(|margin| {
-                                                    view! {
-                                                        <span data-testid="preview-win-by-margin">
-                                                            {" (win by "} {margin} {")"}
-                                                        </span>
-                                                    }
-                                                })
-                                        }}
-                                        {move || {
-                                            generic_config
-                                                .hard_cap
-                                                .map(|cap| {
-                                                    view! {
-                                                        <span data-testid="preview-hard-cap">
-                                                            {" (hard cap "} {cap} {")"}
-                                                        </span>
-                                                    }
-                                                })
-                                        }}
-                                    </p>
-                                }
-                                    .into_any()
-                            })
-                    }}
-                    <p data-testid="preview-victory-points">
-                        {format!(
-                            "Victory Points - Win: {}, Draw: {}",
-                            generic_config.victory_points_win,
-                            generic_config.victory_points_draw,
-                        )}
-                    </p>
-                    <p data-testid="preview-expected-duration">
-                        {format!(
-                            "Expected Match Duration: {} minutes",
-                            generic_config.expected_match_duration_minutes.as_secs() / 60,
-                        )}
-                    </p>
-                </div>
-            </div>
-        }
-        .into_any()
-    }
-    fn render_dropdown(&self, config: &SportConfig) -> AnyView {
-        view! {
-            <div class="p-2" data-testid="sport-config-dropdown">
-                <span class="font-medium">{config.get_name().to_string()}</span>
+            <div class="p-2">
+                <span class="font-medium">{generic_config.sets_to_win.to_string()}</span>
+                <span class="font-medium">
+                    {generic_config.score_to_win.map(|s| s.to_string()).unwrap_or_default()}
+                </span>
             </div>
         }
         .into_any()
@@ -227,6 +250,7 @@ impl SportPortWebUi for GenericSportPlugin {
                 <NumberInputWithValidation
                     label="Sets to Win"
                     name="sets_to_win"
+                    data_testid="input-sets_to_win"
                     value=sets_to_win
                     set_value=set_sets_to_win
                     validation_result=validation_result
@@ -238,6 +262,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     <NumberInputWithValidation
                         label="Score to Win a Set"
                         name="score_to_win"
+                        data_testid="input-score_to_win"
                         value=score_to_win
                         set_value=set_score_to_win
                         validation_result=validation_result
@@ -248,6 +273,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     <NumberInputWithValidation
                         label="Win by Margin"
                         name="win_by_margin"
+                        data_testid="input-win_by_margin"
                         value=win_by_margin
                         set_value=set_win_by_margin
                         validation_result=validation_result
@@ -258,6 +284,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     <NumberInputWithValidation
                         label="Hard Cap"
                         name="hard_cap"
+                        data_testid="input-hard_cap"
                         value=hard_cap
                         set_value=set_hard_cap
                         validation_result=validation_result
@@ -270,6 +297,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     <NumberInputWithValidation
                         label="Victory Points for Win"
                         name="victory_points_win"
+                        data_testid="input-victory_points_win"
                         value=victory_points_win
                         set_value=set_victory_points_win
                         validation_result=validation_result
@@ -281,6 +309,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     <NumberInputWithValidation
                         label="Victory Points for Draw"
                         name="victory_points_draw"
+                        data_testid="input-victory_points_draw"
                         value=victory_points_draw
                         set_value=set_victory_points_draw
                         validation_result=validation_result
@@ -293,6 +322,7 @@ impl SportPortWebUi for GenericSportPlugin {
                 <DurationInputWithValidation
                     label="Expected Match Duration"
                     name="expected_match_duration_minutes"
+                    data_testid="input-expected_match_duration_minutes"
                     value=expected_match_duration_minutes
                     set_value=set_expected_match_duration_minutes
                     validation_result=validation_result

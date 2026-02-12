@@ -1,18 +1,15 @@
 import type { Page } from "@playwright/test";
-import { getDropdown } from "./common";
+import { getListSelectors } from "./common";
 
 export const POSTAL_IDS = {
-  search: {
-    input: "address_id-search-input",
-    suggestList: "address_id-search-suggest",
-    suggestItem: "address_id-search-suggest-item",
-    btnNew: "btn-new-address",
-    btnEdit: "btn-edit-address",
+  list: {
+    root: "postal-address-list-root",
+    filterLimit: "filter-limit-select",
+    emptyList: "postal-address-list-empty",
+    // Reuse existing preview IDs for the inner card content
     preview: {
-      root: "address-preview",
       id: "preview-address-id",
       version: "preview-address-version",
-      name: "preview-address-name",
       street: "preview-street",
       postalLocality: "preview-postal_locality",
       postalCode: "preview-postal_code",
@@ -39,24 +36,11 @@ export const POSTAL_IDS = {
 
 export function getPostalSelectors(page: Page) {
   return {
-    search: {
-      dropdown: getDropdown(page, POSTAL_IDS.search),
-      preview: {
-        root: page.getByTestId(POSTAL_IDS.search.preview.root),
-        id: page.getByTestId(POSTAL_IDS.search.preview.id),
-        version: page.getByTestId(POSTAL_IDS.search.preview.version),
-        name: page.getByTestId(POSTAL_IDS.search.preview.name),
-        street: page.getByTestId(POSTAL_IDS.search.preview.street),
-        postalLocality: page.getByTestId(
-          POSTAL_IDS.search.preview.postalLocality
-        ),
-        postalCode: page.getByTestId(POSTAL_IDS.search.preview.postalCode),
-        locality: page.getByTestId(POSTAL_IDS.search.preview.locality),
-        region: page.getByTestId(POSTAL_IDS.search.preview.region),
-        country: page.getByTestId(POSTAL_IDS.search.preview.country),
-      },
-      btnNew: page.getByTestId(POSTAL_IDS.search.btnNew),
-      btnEdit: page.getByTestId(POSTAL_IDS.search.btnEdit),
+    list: {
+      ...getListSelectors(page),
+      root: page.getByTestId(POSTAL_IDS.list.root),
+      filterLimit: page.getByTestId(POSTAL_IDS.list.filterLimit),
+      emptyList: page.getByTestId(POSTAL_IDS.list.emptyList),
     },
     form: {
       root: page.getByTestId(POSTAL_IDS.form.root),

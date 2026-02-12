@@ -6,6 +6,7 @@ import {
   goToListTournaments,
   fillAndBlur,
   makeUniqueName,
+  searchAndOpenByNameOnCurrentPage,
   selectors,
 } from "../../helpers";
 
@@ -76,11 +77,11 @@ test.describe("Create New Tournament", () => {
     // 3. Verify Persistence via List
     await goToListTournaments(page);
 
-    // Wait until list and search are ready
+    // Wait until list and filter name are ready
     await expect(LIST.root).toBeVisible({ timeout: 10000 });
-    await expect(LIST.filters.search).toBeEditable();
+    await expect(LIST.filterName).toBeEditable();
 
-    await fillAndBlur(LIST.filters.search, tourneyName);
+    await fillAndBlur(LIST.filterName, tourneyName);
 
     await expect(page.getByRole("cell", { name: tourneyName })).toBeVisible({
       timeout: 10000,
@@ -106,13 +107,9 @@ test.describe("Create New Tournament", () => {
 
     // --- Step 2: Go to List and Find it ---
     await goToListTournaments(page);
-    await fillAndBlur(LIST.filters.search, initialName);
-
-    const rowCell = page.getByRole("cell", { name: initialName }).first();
-    await expect(rowCell).toBeVisible();
+    await searchAndOpenByNameOnCurrentPage(page, initialName, "tournament_id");
 
     // --- Step 3: Enter Edit Mode ---
-    await rowCell.click();
     const editBtn = page.getByTestId("action-btn-edit");
     await expect(editBtn).toBeVisible();
     await editBtn.click();
@@ -139,7 +136,7 @@ test.describe("Create New Tournament", () => {
 
     // Verify update in List
     await goToListTournaments(page);
-    await fillAndBlur(LIST.filters.search, updatedName);
+    await fillAndBlur(LIST.filterName, updatedName);
     await expect(page.getByRole("cell", { name: updatedName })).toBeVisible();
     await expect(
       page.getByRole("cell", { name: initialName }),
@@ -200,9 +197,9 @@ test.describe("Create New Tournament", () => {
       await goToListTournaments(page);
 
       await expect(LIST.root).toBeVisible();
-      await expect(LIST.filters.search).toBeEditable();
+      await expect(LIST.filterName).toBeEditable();
 
-      await LIST.filters.search.fill(cleanName);
+      await LIST.filterName.fill(cleanName);
 
       const cell = page.getByRole("cell", { name: cleanName });
       await expect(cell).toBeVisible();

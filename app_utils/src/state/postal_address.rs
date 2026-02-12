@@ -25,6 +25,8 @@ pub struct PostalAddressEditorContext {
     // --- Signals, Slices & Callbacks for form fields ---
     /// Signal slice for the postal_address_id field
     pub postal_address_id: Signal<Option<Uuid>>,
+    /// Signal slice for the postal_address_version field
+    pub postal_address_version: Signal<Option<u32>>,
     /// Signal slice for the name field
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
@@ -71,6 +73,9 @@ impl PostalAddressEditorContext {
         let postal_address_id =
             create_read_slice(local, move |local| local.as_ref().map(|pa| pa.get_id()));
 
+        let postal_address_version = create_read_slice(local, move |local| {
+            local.as_ref().and_then(|pa| pa.get_version())
+        });
         let (name, set_name) = create_slice(
             local,
             |local| local.as_ref().map(|pa| pa.get_name().to_string()),
@@ -137,14 +142,9 @@ impl PostalAddressEditorContext {
         });
         let (country, set_country) = create_slice(
             local,
-            |local| {
-                local
-                    .as_ref()
-                    .and_then(|pa| CountryCode::for_alpha2(pa.get_country()).ok())
-            },
+            |local| local.as_ref().and_then(|pa| pa.get_country()),
             |local, country: Option<CountryCode>| {
                 if let Some(pa) = local {
-                    let country = country.map(|c| c.alpha2()).unwrap_or_default();
                     pa.set_country(country);
                 }
             },
@@ -159,6 +159,7 @@ impl PostalAddressEditorContext {
             is_changed,
             validation_result,
             postal_address_id,
+            postal_address_version,
             name,
             set_name,
             street,

@@ -27,10 +27,10 @@ pub fn handle_write_error(
         AppError::Core(CoreError::Db(DbError::OptimisticLockConflict)) => {
             let builder = ActiveError::builder(
                 component_id,
+                key.clone(),
                 "The record has been modified in the meantime. Please reload. Any unsaved changes will be lost.",
             )
-            .with_key(key.clone())
-            .with_retry("Reload & Overwrite", retry_fn)
+            .with_retry("Reload", retry_fn)
             .with_clear_error_on_cancel("Cancel");
 
             page_ctx.report_error(builder.build());
@@ -40,10 +40,10 @@ pub fn handle_write_error(
         // Usually implies referencing data that was deleted/changed elsewhere (Stale State).
         // This is a system consistency issue requiring data refresh.
         AppError::Core(CoreError::Db(DbError::ForeignKeyViolation(_))) => {
-            let builder = ActiveError::builder(component_id, "Inconsistent data operation.")
-                .with_key(key.clone())
-                .with_retry("Refresh Data", retry_fn)
-                .with_clear_error_on_cancel("Close");
+            let builder =
+                ActiveError::builder(component_id, key.clone(), "Inconsistent data operation.")
+                    .with_retry("Refresh Data", retry_fn)
+                    .with_clear_error_on_cancel("Close");
 
             page_ctx.report_error(builder.build());
         }
@@ -98,8 +98,7 @@ pub fn handle_read_error(
         AppError::ResourceNotFound(entity, _) => {
             let msg = format!("'{entity}' could not be found.");
 
-            let builder = ActiveError::builder(component_id, msg)
-                .with_key(key.clone())
+            let builder = ActiveError::builder(component_id, key.clone(), msg)
                 .with_retry("Retry", retry_fn)
                 .with_cancel("Back", back_fn);
 
@@ -110,8 +109,7 @@ pub fn handle_read_error(
         AppError::Core(CoreError::Db(DbError::NotFound)) => {
             let msg = "The requested data could not be found in database.".to_string();
 
-            let builder = ActiveError::builder(component_id, msg)
-                .with_key(key.clone())
+            let builder = ActiveError::builder(component_id, key.clone(), msg)
                 .with_retry("Retry", retry_fn)
                 .with_cancel("Back", back_fn);
 
@@ -119,9 +117,8 @@ pub fn handle_read_error(
         }
 
         // Case 3: All other errors (treat as fatal/blocker for loading)
-        _ => {
-            let builder = ActiveError::builder(component_id, "Data could not be loaded.")
-                .with_key(key.clone())
+        err => {
+            let builder = ActiveError::builder(component_id, key.clone(), err.to_string())
                 .with_retry("Retry", retry_fn)
                 .with_cancel("Back", back_fn);
             ctx.report_error(builder.build());
@@ -141,7 +138,7 @@ pub fn handle_general_error(
 
     let error_msg = error_msg.into();
 
-    let mut builder = ActiveError::builder(component_id, error_msg).with_key(key);
+    let mut builder = ActiveError::builder(component_id, key.clone(), error_msg);
 
     if let Some(retry) = retry_fn {
         builder = builder.with_retry("Retry", retry);

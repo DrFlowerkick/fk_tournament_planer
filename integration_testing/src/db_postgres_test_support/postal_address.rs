@@ -1,4 +1,5 @@
 use app_core::PostalAddress;
+use isocountry::CountryCode;
 
 /// Build a valid "new" PostalAddress with deterministic fields.
 /// NOTE: `name` and `region` are optional at the DB level; we fill everything
@@ -13,7 +14,7 @@ pub fn make_new_address(label: &str) -> PostalAddress {
         .set_postal_code("12345")
         .set_locality("Berlin")
         .set_region("BE")
-        .set_country("DE");
+        .set_country(Some(CountryCode::DEU));
 
     pa
 }

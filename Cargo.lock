@@ -766,6 +766,7 @@ dependencies = [
  "diesel-async",
  "diesel_migrations",
  "dotenvy",
+ "isocountry",
  "serde_json",
  "tokio",
  "tracing",

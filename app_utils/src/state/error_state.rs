@@ -11,6 +11,12 @@ pub struct ErrorAction {
     pub on_click: Callback<()>,
 }
 
+#[derive(Clone)]
+pub enum CancelAction {
+    Discard(String),          // Label for discard/cancel action
+    ErrorAction(ErrorAction), // Custom cancel action with label and callback
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ErrorKey {
     /// Errors occurring during data reading (Resources: Load single, List many)
@@ -29,9 +35,9 @@ pub struct ActiveError {
     pub key: ErrorKey,
     pub message: String,
     /// If present, shows a primary action button (e.g. "Retry", "Reload")
-    pub retry_action: Option<ErrorAction>,
+    retry_action: Option<ErrorAction>,
     /// Mandatory secondary/cancel action (e.g. "Dismiss", "Back")
-    pub cancel_action: ErrorAction,
+    cancel_action: CancelAction,
 }
 
 impl ActiveError {
@@ -39,13 +45,44 @@ impl ActiveError {
     /// Returns a builder in 'NoCancelAction' state.
     pub fn builder(
         component_id: Uuid,
+        key: ErrorKey,
         message: impl Into<String>,
     ) -> ActiveErrorBuilder<NoCancelAction> {
-        ActiveErrorBuilder::new(component_id, message)
+        ActiveErrorBuilder::new(component_id, key, message)
+    }
+    pub fn has_retry(&self) -> Option<String> {
+        self.retry_action.as_ref().map(|a| a.label.clone())
+    }
+    pub fn do_retry(&self) {
+        let error_ctx = expect_context::<PageErrorContext>();
+        let key = self.key.clone();
+        if let Some(action) = &self.retry_action {
+            // Clear the error before running the retry action to avoid potential infinite loops
+            error_ctx.clear_error(self.component_id, key);
+            action.on_click.run(());
+        }
+    }
+    pub fn cancel_label(&self) -> String {
+        match &self.cancel_action {
+            CancelAction::Discard(label) => label.clone(),
+            CancelAction::ErrorAction(action) => action.label.clone(),
+        }
+    }
+    pub fn do_cancel(&self) {
+        let error_ctx = expect_context::<PageErrorContext>();
+        let key = self.key.clone();
+        // Clear the error before running the cancel action to ensure consistent state
+        error_ctx.clear_error(self.component_id, key);
+        match &self.cancel_action {
+            CancelAction::Discard(_) => {}
+            CancelAction::ErrorAction(action) => action.on_click.run(()),
+        }
     }
 }
 
 // --- Builder Implementation ---
+
+// The builder ensures that an error is removed from error queue after user interaction.
 
 // 1. State Markers (Zero-Sized Types)
 pub struct NoCancelAction;
@@ -57,16 +94,16 @@ pub struct ActiveErrorBuilder<State> {
     key: ErrorKey,
     message: String,
     retry_action: Option<ErrorAction>,
-    cancel_action: Option<ErrorAction>,
+    cancel_action: Option<CancelAction>,
     _marker: std::marker::PhantomData<State>,
 }
 
 // 3. Implementation for Initial State
 impl ActiveErrorBuilder<NoCancelAction> {
-    fn new(component_id: Uuid, message: impl Into<String>) -> Self {
+    fn new(component_id: Uuid, key: ErrorKey, message: impl Into<String>) -> Self {
         Self {
             component_id,
-            key: ErrorKey::General,
+            key,
             message: message.into(),
             retry_action: None,
             cancel_action: None,
@@ -86,10 +123,10 @@ impl ActiveErrorBuilder<NoCancelAction> {
             key: self.key,
             message: self.message,
             retry_action: self.retry_action,
-            cancel_action: Some(ErrorAction {
+            cancel_action: Some(CancelAction::ErrorAction(ErrorAction {
                 label: label.into(),
                 on_click,
-            }),
+            })),
             _marker: std::marker::PhantomData,
         }
     }
@@ -100,19 +137,12 @@ impl ActiveErrorBuilder<NoCancelAction> {
         self,
         label: impl Into<String>,
     ) -> ActiveErrorBuilder<HasCancelAction> {
-        let error_ctx = expect_context::<PageErrorContext>();
-        let cancel_key = self.key.clone();
         ActiveErrorBuilder {
             component_id: self.component_id,
             key: self.key,
             message: self.message,
             retry_action: self.retry_action,
-            cancel_action: Some(ErrorAction {
-                label: label.into(),
-                on_click: Callback::new(move |()| {
-                    error_ctx.clear_error(self.component_id, cancel_key.clone());
-                }),
-            }),
+            cancel_action: Some(CancelAction::Discard(label.into())),
             _marker: std::marker::PhantomData,
         }
     }
@@ -120,12 +150,6 @@ impl ActiveErrorBuilder<NoCancelAction> {
 
 // 4. Methods available in ANY state (both NoCancel and HasCancel)
 impl<State> ActiveErrorBuilder<State> {
-    /// Overrides the default ErrorKey::General.
-    pub fn with_key(mut self, key: ErrorKey) -> Self {
-        self.key = key;
-        self
-    }
-
     /// Adds or replaces a primary retry action.
     pub fn with_retry(mut self, label: impl Into<String>, on_click: Callback<()>) -> Self {
         self.retry_action = Some(ErrorAction {
@@ -193,16 +217,12 @@ impl PageErrorContext {
     /// Used for the "Global Retry" button.
     pub fn retry_all(&self) {
         // We clone actions to avoid holding the lock during execution
-        let actions: Vec<_> = self.0.with(|list| {
-            list.iter()
-                .filter_map(|e| e.retry_action.as_ref().map(|a| a.on_click.clone()))
-                .collect()
-        });
+        let actions: Vec<_> = self.0.get();
 
-        for callback in actions {
+        for active_error in actions {
             // We assume actions are safe and don't panic.
             // If they modify the error list (e.g. clear error on start), that's fine.
-            callback.run(());
+            active_error.do_retry();
         }
     }
 

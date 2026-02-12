@@ -9,7 +9,7 @@ pub use sub_pages::*;
 use crate::home::dashboard::SportDashboard;
 use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
-    params::{SportIdQuery, use_sport_id_query},
+    params::{ParamQuery, SportIdQuery},
     state::{
         global_state::{GlobalState, GlobalStateStoreFields},
         toast_state::ToastContext,
@@ -37,7 +37,7 @@ pub fn HomePage() -> impl IntoView {
 
     // get query params
     let sport_id_query = use_query::<SportIdQuery>();
-    let sport_id = use_sport_id_query();
+    let sport_id = SportIdQuery::use_param_query();
 
     // check if a sport is active
     let is_sport_active = move || {
@@ -86,11 +86,10 @@ pub fn HomePage() -> impl IntoView {
     });
 
     view! {
-        <div class="flex flex-col min-h-screen">
-            {move || {
-                if is_sport_active() {
-                    view! { <SportDashboard /> }.into_any()
-                } else {
+        <div class="flex flex-col">
+            <Show
+                when=move || is_sport_active()
+                fallback=|| {
                     view! {
                         <div class="hero py-10 bg-base-100" data-testid="home-hero">
                             <div class="hero-content text-center">
@@ -104,16 +103,16 @@ pub fn HomePage() -> impl IntoView {
                                 </div>
                             </div>
                         </div>
-
                         <div class="px-4">
                             <SelectSportPlugin />
                         </div>
                     }
-                        .into_any()
                 }
-            }} <div class="flex-grow w-full">
-                <Outlet />
-            </div>
+            >
+                <SportDashboard />
+            </Show>
         </div>
+        <div class="my-4"></div>
+        <Outlet />
     }
 }
