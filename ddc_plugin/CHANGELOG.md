@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/ddc_plugin-v0.10.0...ddc_plugin-v0.11.0) (2026-02-12)
+
+
+### Features
+
+* hamburger menu, activity tracker and search queries ([#34](https://github.com/DrFlowerkick/fk_tournament_planer/issues/34)) ([180b4e8](https://github.com/DrFlowerkick/fk_tournament_planer/commit/180b4e8418f10577e51aee855ff6dc4159f6b167))
+
 ## [0.10.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/ddc_plugin-v0.9.0...ddc_plugin-v0.10.0) (2026-02-06)
 
 
