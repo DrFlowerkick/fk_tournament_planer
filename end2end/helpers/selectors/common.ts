@@ -55,6 +55,7 @@ export function getListSelectors(page: Page) {
     btnNew: page.getByTestId(ids.btnNew),
     btnEdit: page.getByTestId(ids.btnEdit),
     detailedPreview: page.getByTestId(ids.detailedPreview),
+    entryName: (id: string) => page.getByTestId(`${ids.entryNamePrefix}${id}`),
     // Dynamic row/preview selectors
     previewById: (id: string) => page.getByTestId(`${ids.entryPreviewPrefix}${id}`),
     previewByName: (name: string) =>

@@ -226,16 +226,19 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                             each=move || { postal_address_list_ctx.object_list.get() }
                                                             key=|pa| pa.get_id()
                                                             children=move |pa| {
-                                                                let pa_id = pa.get_id();
+                                                                let pa = StoredValue::new(pa);
                                                                 let is_selected = move || {
-                                                                    postal_address_list_ctx.selected_id.get() == Some(pa_id)
+                                                                    postal_address_list_ctx.selected_id.get()
+                                                                        == Some(pa.read_value().get_id())
                                                                 };
                                                                 let topic = Signal::derive(move || {
-                                                                    Some(CrTopic::Address(pa_id))
+                                                                    Some(CrTopic::Address(pa.get_value().get_id()))
                                                                 });
                                                                 let version = Signal::derive({
                                                                     let pa = pa.clone();
-                                                                    move || { pa.get_version().unwrap_or_default() }
+                                                                    move || {
+                                                                        pa.read_value().get_version().unwrap_or_default()
+                                                                    }
                                                                 });
                                                                 use_client_registry_socket(topic, version, refetch);
 
@@ -243,62 +246,101 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                                     <tr
                                                                         class="hover cursor-pointer"
                                                                         class:bg-base-200=is_selected
-                                                                        data-testid=format!("table-entry-row-{}", pa_id)
+                                                                        data-testid=format!(
+                                                                            "table-entry-row-{}",
+                                                                            pa.read_value().get_id(),
+                                                                        )
                                                                         on:click=move |_| {
-                                                                            if postal_address_list_ctx.selected_id.get() == Some(pa_id)
+                                                                            if postal_address_list_ctx.selected_id.get()
+                                                                                == Some(pa.read_value().get_id())
                                                                             {
                                                                                 postal_address_list_ctx.set_selected_id.run(None);
                                                                             } else {
-                                                                                postal_address_list_ctx.set_selected_id.run(Some(pa_id));
+                                                                                postal_address_list_ctx
+                                                                                    .set_selected_id
+                                                                                    .run(Some(pa.read_value().get_id()));
                                                                             }
                                                                         }
                                                                     >
                                                                         <td
                                                                             class="font-bold"
-                                                                            data-testid=format!("table-entry-name-{}", pa_id)
+                                                                            data-testid=format!(
+                                                                                "table-entry-name-{}",
+                                                                                pa.read_value().get_id(),
+                                                                            )
                                                                         >
-                                                                            {pa.get_name().to_string()}
+                                                                            {pa.read_value().get_name().to_string()}
                                                                         </td>
-                                                                        <td data-testid=format!("table-entry-preview-{}", pa_id)>
-                                                                            <div
-                                                                                class="card w-full bg-base-200 shadow-md mt-4"
-                                                                                data-testid="table-entry-detailed-preview"
-                                                                            >
-                                                                                <div class="card-body">
-                                                                                    <h3 class="card-title" data-testid="preview-address-name">
-                                                                                        {pa.get_name().to_string()}
-                                                                                    </h3>
-                                                                                    <p data-testid="preview-street">
-                                                                                        {pa.get_street().to_string()}
-                                                                                    </p>
-                                                                                    <p data-testid="preview-postal_locality">
-                                                                                        <span data-testid="preview-postal_code">
-                                                                                            {pa.get_postal_code().to_string()}
-                                                                                        </span>
-                                                                                        " "
-                                                                                        <span data-testid="preview-locality">
-                                                                                            {pa.get_locality().to_string()}
-                                                                                        </span>
-                                                                                    </p>
-                                                                                    <p data-testid="preview-region">
-                                                                                        {pa.get_region().unwrap_or_default().to_string()}
-                                                                                    </p>
-                                                                                    <p data-testid="preview-country">
-                                                                                        {display_country(pa.get_country())}
-                                                                                    </p>
-                                                                                    <p class="hidden" data-testid="preview-address-id">
-                                                                                        {pa.get_id().to_string()}
-                                                                                    </p>
-                                                                                    <p class="hidden" data-testid="preview-address-version">
-                                                                                        {pa.get_version().unwrap_or_default()}
-                                                                                    </p>
-                                                                                </div>
-                                                                            </div>
+                                                                        <td data-testid=format!(
+                                                                            "table-entry-preview-{}",
+                                                                            pa.read_value().get_id(),
+                                                                        )>
+                                                                            {format!(
+                                                                                "{} - {}",
+                                                                                pa.read_value().get_locality(),
+                                                                                pa
+                                                                                    .read_value()
+                                                                                    .get_country()
+                                                                                    .map(|c| c.name())
+                                                                                    .unwrap_or_default(),
+                                                                            )}
                                                                         </td>
                                                                     </tr>
                                                                     <Show when=is_selected>
                                                                         <tr>
-                                                                            <td colspan="4" class="p-0">
+                                                                            <td colspan="2" class="p-0">
+                                                                                <div
+                                                                                    class="flex flex-wrap items-baseline gap-x-2 gap-y-1 p-4 bg-base-200 text-sm"
+                                                                                    data-testid="table-entry-detailed-preview"
+                                                                                >
+                                                                                    <span data-testid="preview-street" class="font-medium">
+                                                                                        {pa.read_value().get_street().to_string()}
+                                                                                    </span>
+
+                                                                                    <span class="opacity-50 hidden sm:inline">"•"</span>
+
+                                                                                    <span data-testid="preview-postal_locality">
+                                                                                        <span data-testid="preview-postal_code">
+                                                                                            {pa.read_value().get_postal_code().to_string()}
+                                                                                        </span>
+                                                                                        " "
+                                                                                        <span data-testid="preview-locality">
+                                                                                            {pa.read_value().get_locality().to_string()}
+                                                                                        </span>
+                                                                                    </span>
+
+                                                                                    <Show when=move || pa.read_value().get_region().is_some()>
+                                                                                        <span class="opacity-50 hidden sm:inline">"•"</span>
+                                                                                        <span data-testid="preview-region">
+                                                                                            {pa
+                                                                                                .read_value()
+                                                                                                .get_region()
+                                                                                                .map(|r| r.to_string())
+                                                                                                .unwrap_or_default()}
+                                                                                        </span>
+                                                                                    </Show>
+
+                                                                                    <span class="opacity-50 hidden sm:inline">"•"</span>
+
+                                                                                    <span
+                                                                                        data-testid="preview-country"
+                                                                                        class="text-base-content/70"
+                                                                                    >
+                                                                                        {display_country(pa.read_value().get_country())}
+                                                                                    </span>
+
+                                                                                    // Hidden technical fields
+                                                                                    <span class="hidden" data-testid="preview-address-id">
+                                                                                        {pa.read_value().get_id().to_string()}
+                                                                                    </span>
+                                                                                    <span class="hidden" data-testid="preview-address-version">
+                                                                                        {pa.read_value().get_version().unwrap_or_default()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td colspan="2" class="p-0">
                                                                                 <div
                                                                                     class="flex gap-2 justify-end p-2 bg-base-200"
                                                                                     data-testid="row-actions"

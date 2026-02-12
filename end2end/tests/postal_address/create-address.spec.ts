@@ -47,7 +47,7 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
   });
 
   await test.step("Find the created address via table and verify preview", async () => {
-    const row = await searchAndOpenByNameOnCurrentPage(page, initial.name, "address_id");
-    await expectPreviewShows(row, initial);
+    await searchAndOpenByNameOnCurrentPage(page, initial.name, "address_id");
+    await expectPreviewShows(page, initial);
   });
 });

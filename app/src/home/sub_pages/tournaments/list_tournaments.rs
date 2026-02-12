@@ -263,16 +263,17 @@ pub fn ListTournaments() -> impl IntoView {
                                                             each=move || { tournament_list_ctx.object_list.get() }
                                                             key=|t| t.get_id()
                                                             children=move |t| {
-                                                                let t_id = t.get_id();
+                                                                let t = StoredValue::new(t);
                                                                 let is_selected = move || {
-                                                                    tournament_list_ctx.selected_id.get() == Some(t_id)
+                                                                    tournament_list_ctx.selected_id.get()
+                                                                        == Some(t.read_value().get_id())
                                                                 };
                                                                 let topic = Signal::derive(move || {
-                                                                    Some(CrTopic::TournamentBase(t_id))
+                                                                    Some(CrTopic::TournamentBase(t.read_value().get_id()))
                                                                 });
                                                                 let version = Signal::derive({
                                                                     let t = t.clone();
-                                                                    move || { t.get_version().unwrap_or_default() }
+                                                                    move || { t.read_value().get_version().unwrap_or_default() }
                                                                 });
                                                                 use_client_registry_socket(topic, version, refetch);
 
@@ -280,33 +281,72 @@ pub fn ListTournaments() -> impl IntoView {
                                                                     <tr
                                                                         class="hover cursor-pointer"
                                                                         class:bg-base-200=is_selected
-                                                                        data-testid=format!("tournaments-row-{}", t_id)
+                                                                        data-testid=format!(
+                                                                            "tournaments-row-{}",
+                                                                            t.read_value().get_id(),
+                                                                        )
                                                                         on:click=move |_| {
-                                                                            if tournament_list_ctx.selected_id.get() == Some(t_id) {
+                                                                            if tournament_list_ctx.selected_id.get()
+                                                                                == Some(t.read_value().get_id())
+                                                                            {
                                                                                 tournament_list_ctx.set_selected_id.run(None);
                                                                             } else {
-                                                                                tournament_list_ctx.set_selected_id.run(Some(t_id));
+                                                                                tournament_list_ctx
+                                                                                    .set_selected_id
+                                                                                    .run(Some(t.read_value().get_id()));
                                                                             }
                                                                         }
                                                                     >
-                                                                        <td class="font-bold">{t.get_name().to_string()}</td>
-                                                                        <td data-testid=format!("table-entry-preview-{}", t_id)>
-                                                                            <p class="badge badge-outline">
-                                                                                {t.get_tournament_state().to_string()}
-                                                                            </p>
+                                                                        <td class="font-bold">
+                                                                            {t.read_value().get_name().to_string()}
+                                                                        </td>
+                                                                        <td data-testid=format!(
+                                                                            "table-entry-preview-{}",
+                                                                            t.read_value().get_id(),
+                                                                        )>
                                                                             <p>
+                                                                                <span class="badge badge-outline mr-2">
+                                                                                    {t.read_value().get_tournament_state().to_string()}
+                                                                                </span>
                                                                                 {format!(
                                                                                     "{} with {} number of entrants",
-                                                                                    t.get_tournament_state(),
-                                                                                    t.get_num_entrants(),
+                                                                                    t.read_value().get_tournament_mode(),
+                                                                                    t.read_value().get_num_entrants(),
                                                                                 )}
                                                                             </p>
                                                                         </td>
                                                                     </tr>
                                                                     <Show when=is_selected>
                                                                         <tr>
-                                                                            <td colspan="4" class="p-0">
+                                                                            <td colspan="2" class="p-0">
+                                                                                <div
+                                                                                    class="p-4 bg-base-100 border border-base-300 rounded-lg"
+                                                                                    data-testid="table-entry-detailed-preview"
+                                                                                >
+                                                                                    <h3 class="font-bold text-lg mb-2">"Tournament Details"</h3>
+                                                                                    <p>
+                                                                                        <strong>"ID: "</strong>
+                                                                                        {t.read_value().get_id().to_string()}
+                                                                                    </p>
+                                                                                    <p>
+                                                                                        <strong>"Type: "</strong>
+                                                                                        {t.read_value().get_tournament_type().to_string()}
+                                                                                    </p>
+                                                                                    <p>
+                                                                                        <strong>"State: "</strong>
+                                                                                        {t.read_value().get_tournament_state().to_string()}
+                                                                                    </p>
+                                                                                    <p>
+                                                                                        <strong>"Number of Entrants: "</strong>
+                                                                                        {t.read_value().get_num_entrants()}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                        <tr>
+                                                                            <td colspan="2" class="p-0">
                                                                                 <SelectedTournamentActions tournament_state=t
+                                                                                    .read_value()
                                                                                     .get_tournament_state() />
                                                                             </td>
                                                                         </tr>

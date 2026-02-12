@@ -1,7 +1,4 @@
-use crate::common::{
-    get_element_by_test_id, get_sub_element_by_test_id, get_test_root, init_test_state, lock_test,
-    set_url,
-};
+use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
 use app::{postal_addresses::ListPostalAddresses, provide_global_context};
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlAnchorElement};
@@ -37,47 +34,12 @@ async fn test_search_postal_address() {
 
     sleep(Duration::from_millis(10)).await;
 
-    // check preview
+    // check row
     let first_row_id = format!("table-entry-row-{}", ts.entries[0]);
-    let preview = get_element_by_test_id(&first_row_id)
+    let row = get_element_by_test_id(&first_row_id)
         .text_content()
         .unwrap();
-    assert!(preview.contains("Test Address1"));
-
-    // check preview data test id of first address and check if it contains correct data
-    let preview_name = get_sub_element_by_test_id(&first_row_id, "preview-address-name")
-        .text_content()
-        .unwrap();
-    assert!(preview_name.contains(&format!("{}{}", ts.name_base, 1)));
-    let preview_street = get_sub_element_by_test_id(&first_row_id, "preview-street")
-        .text_content()
-        .unwrap();
-    assert!(preview_street.contains(&ts.street));
-    let preview_postal = get_sub_element_by_test_id(&first_row_id, "preview-postal_code")
-        .text_content()
-        .unwrap();
-    assert!(preview_postal.contains(&ts.postal));
-    let preview_locality = get_sub_element_by_test_id(&first_row_id, "preview-locality")
-        .text_content()
-        .unwrap();
-    assert!(preview_locality.contains(&ts.city));
-    let preview_region = get_sub_element_by_test_id(&first_row_id, "preview-region")
-        .text_content()
-        .unwrap();
-    assert!(preview_region.contains(&ts.region));
-    let preview_country = get_sub_element_by_test_id(&first_row_id, "preview-country")
-        .text_content()
-        .unwrap();
-    let expected_country_name = format!("{} ({})", ts.country.name(), ts.country.alpha2());
-    assert!(preview_country.contains(&expected_country_name));
-    let preview_id = get_sub_element_by_test_id(&first_row_id, "preview-address-id")
-        .text_content()
-        .unwrap();
-    assert!(preview_id.contains(&ts.entries[0].to_string()));
-    let preview_version = get_sub_element_by_test_id(&first_row_id, "preview-address-version")
-        .text_content()
-        .unwrap();
-    assert!(preview_version.contains("0"));
+    assert!(row.contains("Test Address1"));
 
     // click table and check URL update
     let row = get_element_by_test_id(&format!("table-entry-row-{}", ts.entries[0]));
@@ -94,6 +56,37 @@ async fn test_search_postal_address() {
         .unwrap()
         .to_string();
     assert_eq!(url_id, ts.entries[0].to_string());
+
+    // check preview data test id of first address and check if it contains correct data
+    let preview_street = get_element_by_test_id("preview-street")
+        .text_content()
+        .unwrap();
+    assert!(preview_street.contains(&ts.street));
+    let preview_postal = get_element_by_test_id("preview-postal_code")
+        .text_content()
+        .unwrap();
+    assert!(preview_postal.contains(&ts.postal));
+    let preview_locality = get_element_by_test_id("preview-locality")
+        .text_content()
+        .unwrap();
+    assert!(preview_locality.contains(&ts.city));
+    let preview_region = get_element_by_test_id("preview-region")
+        .text_content()
+        .unwrap();
+    assert!(preview_region.contains(&ts.region));
+    let preview_country = get_element_by_test_id("preview-country")
+        .text_content()
+        .unwrap();
+    let expected_country_name = format!("{} ({})", ts.country.name(), ts.country.alpha2());
+    assert!(preview_country.contains(&expected_country_name));
+    let preview_id = get_element_by_test_id("preview-address-id")
+        .text_content()
+        .unwrap();
+    assert!(preview_id.contains(&ts.entries[0].to_string()));
+    let preview_version = get_element_by_test_id("preview-address-version")
+        .text_content()
+        .unwrap();
+    assert!(preview_version.contains("0"));
 
     // test new button URL
     let new_button = get_element_by_test_id("action-btn-new")

@@ -61,8 +61,11 @@ const ddcSportAdapter: SportConfigTestAdapter = {
     await expect(row.getByTestId("preview-set-winning-config")).toContainText(
       `Score to Win: ${data.score_to_win}, Hard Cap: ${data.hard_cap}, Win by Margin: ${data.win_by_margin}`
     );
-    await expect(row.getByTestId("preview-victory-points")).toContainText(
-      `Victory Points - Win: ${data.victory_points_win}, Draw: ${data.victory_points_draw}`
+    await expect(row.getByTestId("preview-victory-points-win")).toContainText(
+      `${data.victory_points_win}`
+    );
+    await expect(row.getByTestId("preview-victory-points-draw")).toContainText(
+      `${data.victory_points_draw}`
     );
 
     // Calculate expected match duration
@@ -76,7 +79,7 @@ const ddcSportAdapter: SportConfigTestAdapter = {
     const expected_minutes = Math.floor(total_seconds / 60);
 
     await expect(row.getByTestId("preview-expected-duration")).toContainText(
-      `Expected Match Duration: ${expected_minutes} minutes`
+      `~${expected_minutes} min`
     );
   },
 };

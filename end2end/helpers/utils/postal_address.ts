@@ -253,7 +253,7 @@ function resolveExpectedPreviewText(
  * Assert preview view shows specific field values
  */
 export async function expectPreviewShows(
-  row: Locator,
+  page: Page,
   expected: {
     name?: string;
     street?: string;
@@ -267,32 +267,28 @@ export async function expectPreviewShows(
   const LIST_PREVIEW = IDS.list.detailedPreview;
   const PA_PREVIEW = IDS.postalAddress.list.preview;
   // check preview fields
-  await expect(row.getByTestId(LIST_PREVIEW)).toBeVisible();
-
-  if (expected.name !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.name)).toHaveText(expected.name!);
-  }
+  await expect(page.getByTestId(LIST_PREVIEW)).toBeVisible();
 
   if (expected.street !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.street)).toHaveText(
+    await expect(page.getByTestId(PA_PREVIEW.street)).toHaveText(
       expected.street!,
     );
   }
 
   if (expected.postal_code !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.postalCode)).toHaveText(
+    await expect(page.getByTestId(PA_PREVIEW.postalCode)).toHaveText(
       expected.postal_code!,
     );
   }
 
   if (expected.locality !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.locality)).toHaveText(
+    await expect(page.getByTestId(PA_PREVIEW.locality)).toHaveText(
       expected.locality!,
     );
   }
 
   if (expected.region !== undefined) {
-    await expect(row.getByTestId(PA_PREVIEW.region)).toHaveText(
+    await expect(page.getByTestId(PA_PREVIEW.region)).toHaveText(
       expected.region!,
     );
   }
@@ -302,6 +298,6 @@ export async function expectPreviewShows(
       "country",
       expected.country,
     );
-    await expect(row.getByTestId(PA_PREVIEW.country)).toHaveText(expectedText);
+    await expect(page.getByTestId(PA_PREVIEW.country)).toHaveText(expectedText);
   }
 }

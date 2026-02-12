@@ -35,50 +35,86 @@ impl SportPortWebUi for DdcSportPlugin {
         }
         .into_any()
     }
+    fn render_detailed_preview(&self, config: &SportConfig) -> AnyView {
+        let generic_config = match self.validate_config(config, ValidationErrors::new()) {
+            Ok(cfg) => cfg,
+            Err(_) => return view! { <div>{"Invalid Configuration"}</div> }.into_any(),
+        };
+
+        let duration_minutes = Self::new()
+            .estimate_match_duration(config)
+            .unwrap_or(Duration::from_secs(0))
+            .as_secs()
+            / 60;
+
+        view! {
+            <div
+                class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 bg-base-200 text-sm rounded-lg"
+                data-testid="table-entry-detailed-preview"
+            >
+                // 1. Block: Match Rules (Sets & Scoring)
+                <div class="flex flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1 font-semibold text-base-content">
+                        <span class="icon-[heroicons--trophy] w-4 h-4 opacity-70"></span>
+                        <span data-testid="preview-set-config">
+                            {generic_config.sets_cfg.to_string()}
+                        </span>
+                    </div>
+
+                    <span class="hidden sm:inline text-base-content/30">"|"</span>
+
+                    <span class="text-base-content/80" data-testid="preview-set-winning-config">
+                        {generic_config.set_winning_cfg.to_string()}
+                    </span>
+                </div>
+
+                // Spacer to push meta info to the right on larger screens if desired,
+                // or just wrap naturally. Here we keep them close.
+
+                // 2. Block: Meta Info (Duration & Points)
+                <div class="flex items-center gap-3 ml-auto sm:ml-0">
+                    // Duration
+                    <div
+                        class="flex items-center gap-1 text-xs opacity-70"
+                        title="Expected Match Duration"
+                    >
+                        <span class="icon-[heroicons--clock] w-4 h-4"></span>
+                        <span data-testid="preview-expected-duration">
+                            {format!("~{} min", duration_minutes)}
+                        </span>
+                    </div>
+
+                    // Victory Points Badges
+                    <div class="flex gap-1">
+                        <span
+                            class="badge badge-sm badge-success badge-outline gap-1"
+                            title="Victory Points (Win)"
+                            data-testid="preview-victory-points-win"
+                        >
+                            <span class="font-bold">"W"</span>
+                            {generic_config.victory_points_win}
+                        </span>
+                        <span
+                            class="badge badge-sm badge-ghost badge-outline gap-1"
+                            title="Victory Points (Draw)"
+                            data-testid="preview-victory-points-draw"
+                        >
+                            <span class="font-bold">"D"</span>
+                            {generic_config.victory_points_draw}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        }
+        .into_any()
+    }
     fn render_preview(&self, config: &SportConfig) -> AnyView {
         let generic_config = match self.validate_config(config, ValidationErrors::new()) {
             Ok(cfg) => cfg,
             Err(_) => return view! { <div>{"Invalid Configuration"}</div> }.into_any(),
         };
         view! {
-            <div class="card w-full bg-base-200 shadow-md mt-4" data-testid="sport-config-preview">
-                <div class="card-body">
-                    <h3 class="card-title" data-testid="preview-sport-name">
-                        {config.get_name().to_string()}
-                    </h3>
-                    <p data-testid="preview-set-config">{generic_config.sets_cfg.to_string()}</p>
-                    <p data-testid="preview-set-winning-config">
-                        {generic_config.set_winning_cfg.to_string()}
-                    </p>
-                    <p data-testid="preview-victory-points">
-                        {format!(
-                            "Victory Points - Win: {}, Draw: {}",
-                            generic_config.victory_points_win,
-                            generic_config.victory_points_draw,
-                        )}
-                    </p>
-                    <p data-testid="preview-expected-duration">
-                        {format!(
-                            "Expected Match Duration: {} minutes",
-                            Self::new()
-                                .estimate_match_duration(config)
-                                .unwrap_or(Duration::from_secs(0))
-                                .as_secs() / 60,
-                        )}
-                    </p>
-                </div>
-            </div>
-        }
-        .into_any()
-    }
-    fn render_dropdown(&self, config: &SportConfig) -> AnyView {
-        let generic_config = match self.validate_config(config, ValidationErrors::new()) {
-            Ok(cfg) => cfg,
-            Err(_) => return view! { <div>{"Invalid Configuration"}</div> }.into_any(),
-        };
-        view! {
-            <div class="p-2" data-testid="sport-config-dropdown">
-                <span class="font-medium">{config.get_name().to_string()}</span>
+            <div class="p-2">
                 <span class="font-medium">{generic_config.sets_cfg.to_string()}</span>
                 <span class="font-medium">{generic_config.set_winning_cfg.to_string()}</span>
             </div>

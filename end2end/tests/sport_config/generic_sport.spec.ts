@@ -56,20 +56,17 @@ const genericSportAdapter: SportConfigTestAdapter = {
     await expect(row.getByTestId("preview-sets-to-win")).toContainText(
       `Sets to win: ${data.sets_to_win}`
     );
-    await expect(row.getByTestId("preview-score-to-win")).toContainText(
-      `Score to win a set: ${data.score_to_win}`
+    await expect(row.getByTestId("preview-score-config")).toContainText(
+      `Score: ${data.score_to_win} (+${data.win_by_margin}, Cap ${data.hard_cap})`
     );
-    await expect(row.getByTestId("preview-win-by-margin")).toContainText(
-      `(win by ${data.win_by_margin})`
+    await expect(row.getByTestId("preview-victory-points-win")).toContainText(
+      `${data.victory_points_win}`
     );
-    await expect(row.getByTestId("preview-hard-cap")).toContainText(
-      `(hard cap ${data.hard_cap})`
-    );
-    await expect(row.getByTestId("preview-victory-points")).toContainText(
-      `Victory Points - Win: ${data.victory_points_win}, Draw: ${data.victory_points_draw}`
+    await expect(row.getByTestId("preview-victory-points-draw")).toContainText(
+      `${data.victory_points_draw}`
     );
     await expect(row.getByTestId("preview-expected-duration")).toContainText(
-      `Expected Match Duration: ${data.expected_match_duration_minutes} minutes`
+      `~${data.expected_match_duration_minutes} min`
     );
   },
 };

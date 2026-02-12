@@ -7,6 +7,6 @@ use leptos::prelude::*;
 pub trait SportPortWebUi: Send + Sync + SportPort {
     fn render_plugin_selection(&self) -> AnyView;
     fn render_preview(&self, config: &SportConfig) -> AnyView;
-    fn render_dropdown(&self, config: &SportConfig) -> AnyView;
+    fn render_detailed_preview(&self, config: &SportConfig) -> AnyView;
     fn render_configuration(&self) -> AnyView;
 }

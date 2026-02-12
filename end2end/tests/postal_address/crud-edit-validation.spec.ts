@@ -37,12 +37,12 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
 
     // After save, either you land on detail page or back to list.
     await waitForPostalAddressListUrl(page);
-    const row = await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
+    await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
     
     // Extract ID after click on row, because if table is "full", the ID might be removed from URL
     const uuid = extractUuidFromUrl(page.url());
 
-    await expectPreviewShows(row, {
+    await expectPreviewShows(page, {
       name: name,
       street: "Beispielstr. 1",
       postal_code: "10115",
@@ -78,7 +78,7 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
     const uuid_edited = extractUuidFromUrl(page.url());
     test.expect(uuid_edited).toBe(uuid); // same id
     //const new_row = await searchAndOpenByNameOnCurrentPage(page, name); // name unchanged
-    await expectPreviewShows(row, {
+    await expectPreviewShows(page, {
       street: "Beispielstr. 3",
     });
   });

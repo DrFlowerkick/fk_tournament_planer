@@ -66,9 +66,9 @@ test.describe("postal address live update (Preview-only UI)", () => {
       await waitForPostalAddressListUrl(pageA);
 
       // Ensure the preview shows the initial values and correct version
-      const row = await searchAndOpenByNameOnCurrentPage(pageA, initial.name, "address_id");
-      await expectPreviewShows(row, initial);
-      await expect(row.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("0");
+      await searchAndOpenByNameOnCurrentPage(pageA, initial.name, "address_id");
+      await expectPreviewShows(pageA, initial);
+      await expect(pageA.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("0");
       
       // Extract ID after click on row, because if table is "full", the ID might be removed from URL
       const urlA = pageA.url();
@@ -87,9 +87,9 @@ test.describe("postal address live update (Preview-only UI)", () => {
 
       // ----------------------- Assert (A updates via SSE) --------------------
       // wait for new version
-      await expect(row.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("1");
+      await expect(pageA.getByTestId(POSTAL_IDS.list.preview.version)).toHaveText("1");
       // A's preview should reflect the edited name.
-      await expect(row.getByTestId(POSTAL_IDS.list.preview.name)).toHaveText(edited.name);
+      await expect(PA_A.list.entryName(id)).toHaveText(edited.name);
 
       // Optional sanity check: A did not navigate away (no hard reload).
       await expect(pageA).toHaveURL(urlA);

@@ -10,7 +10,6 @@ export const POSTAL_IDS = {
     preview: {
       id: "preview-address-id",
       version: "preview-address-version",
-      name: "preview-address-name",
       street: "preview-street",
       postalLocality: "preview-postal_locality",
       postalCode: "preview-postal_code",

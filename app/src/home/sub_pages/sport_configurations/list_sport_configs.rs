@@ -247,45 +247,69 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                                     each=move || { sport_config_list_ctx.object_list.get() }
                                                                     key=|sc| sc.get_id()
                                                                     children=move |sc| {
-                                                                        let sc_id = sc.get_id();
+                                                                        let sc = StoredValue::new(sc);
                                                                         let is_selected = move || {
-                                                                            sport_config_list_ctx.selected_id.get() == Some(sc_id)
+                                                                            sport_config_list_ctx.selected_id.get()
+                                                                                == Some(sc.read_value().get_id())
                                                                         };
                                                                         let topic = Signal::derive(move || {
-                                                                            Some(CrTopic::SportConfig(sc_id))
+                                                                            Some(CrTopic::SportConfig(sc.read_value().get_id()))
                                                                         });
                                                                         let version = Signal::derive({
-                                                                            let sc = sc.clone();
-                                                                            move || { sc.get_version().unwrap_or_default() }
+                                                                            move || {
+                                                                                sc.read_value().get_version().unwrap_or_default()
+                                                                            }
                                                                         });
                                                                         use_client_registry_socket(topic, version, refetch);
                                                                         view! {
                                                                             <tr
                                                                                 class="hover cursor-pointer"
                                                                                 class:bg-base-200=is_selected
-                                                                                data-testid=format!("table-entry-row-{}", sc_id)
+                                                                                data-testid=format!(
+                                                                                    "table-entry-row-{}",
+                                                                                    sc.read_value().get_id(),
+                                                                                )
                                                                                 on:click=move |_| {
-                                                                                    if sport_config_list_ctx.selected_id.get() == Some(sc_id) {
+                                                                                    if sport_config_list_ctx.selected_id.get()
+                                                                                        == Some(sc.read_value().get_id())
+                                                                                    {
                                                                                         sport_config_list_ctx.set_selected_id.run(None);
                                                                                     } else {
-                                                                                        sport_config_list_ctx.set_selected_id.run(Some(sc_id));
+                                                                                        sport_config_list_ctx
+                                                                                            .set_selected_id
+                                                                                            .run(Some(sc.read_value().get_id()));
                                                                                     }
                                                                                 }
                                                                             >
                                                                                 <td
                                                                                     class="font-bold"
-                                                                                    data-testid=format!("table-entry-name-{}", sc_id)
+                                                                                    data-testid=format!(
+                                                                                        "table-entry-name-{}",
+                                                                                        sc.read_value().get_id(),
+                                                                                    )
                                                                                 >
-                                                                                    {sc.get_name().to_string()}
+                                                                                    {sc.read_value().get_name().to_string()}
                                                                                 </td>
                                                                                 <td data-testid=format!(
                                                                                     "table-entry-preview-{}",
-                                                                                    sc_id,
-                                                                                )>{move || { sp.get_value().render_preview(&sc) }}</td>
+                                                                                    sc.read_value().get_id(),
+                                                                                )>
+                                                                                    {move || {
+                                                                                        sp.get_value().render_preview(sc.read_value().as_borrowed())
+                                                                                    }}
+                                                                                </td>
                                                                             </tr>
                                                                             <Show when=is_selected>
                                                                                 <tr>
-                                                                                    <td colspan="4" class="p-0">
+                                                                                    <td colspan="2" class="p-0">
+                                                                                        {move || {
+                                                                                            sp.get_value()
+                                                                                                .render_detailed_preview(sc.read_value().as_borrowed())
+                                                                                        }}
+                                                                                    </td>
+                                                                                </tr>
+                                                                                <tr>
+                                                                                    <td colspan="2" class="p-0">
                                                                                         <div
                                                                                             class="flex gap-2 justify-end p-2 bg-base-200"
                                                                                             data-testid="row-actions"

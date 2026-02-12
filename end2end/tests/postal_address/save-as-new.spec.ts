@@ -50,17 +50,14 @@ test.describe('"Save as new" functionality', () => {
     // We should be on the view page of the *new* address
     await waitForPostalAddressListUrl(page);
 
-    // The preview should show the new name
-    const newRow = await searchAndOpenByNameOnCurrentPage(page, newName, "address_id");
-    await expect(newRow.getByTestId(POSTAL_IDS.list.preview.name)).toHaveText(
-      newName,
-    );
-
+    // The row should show the new name
+    await searchAndOpenByNameOnCurrentPage(page, newName, "address_id");
     // Extract ID after click on row, because if table is "full", the ID might be removed from URL
     const newId = extractUuidFromUrl(page.url());
-
     // The new ID must be different from the original one
     expect(newId).not.toEqual(originalId);
+
+    await expect(PA.list.entryName(newId)).toHaveText(newName);
 
     // -------------------- Assert: Original address is unchanged --------------------
     await openEditForm(page, originalId);
