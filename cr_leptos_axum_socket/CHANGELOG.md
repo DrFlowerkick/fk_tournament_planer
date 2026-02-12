@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_leptos_axum_socket-v0.10.0...cr_leptos_axum_socket-v0.11.0) (2026-02-12)
+
+
+### Miscellaneous Chores
+
+* **cr_leptos_axum_socket:** Synchronize fk_tournament versions
+
 ## [0.10.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/cr_leptos_axum_socket-v0.9.0...cr_leptos_axum_socket-v0.10.0) (2026-02-06)
 
 
