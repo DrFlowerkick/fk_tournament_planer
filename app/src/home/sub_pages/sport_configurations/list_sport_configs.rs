@@ -1,7 +1,9 @@
 //! listing, creating and modifying sport configurations
 
-use app_core::CrTopic;
+use app_core::{CrTopic, SportConfig};
 use app_utils::{
+    components::inputs::EnumSelectFilter,
+    enum_utils::FilterLimit,
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error},
@@ -13,18 +15,21 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{ParamQuery, SportIdQuery},
+    params::{FilterLimitQuery, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::list_sport_configs,
     state::{
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
-        sport_config::SportConfigListContext,
+        object_table_list::ObjectListContext,
     },
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
-use leptos_router::{components::A, nested_router::Outlet};
+use leptos_router::{
+    components::{A, Form},
+    nested_router::Outlet,
+};
 use reactive_stores::Store;
 use uuid::Uuid;
 
@@ -59,15 +64,13 @@ pub fn ListSportConfigurations() -> impl IntoView {
     };
 
     // --- local context ---
-    let sport_config_list_ctx = SportConfigListContext::new();
+    let sport_config_list_ctx = ObjectListContext::<SportConfig, SportConfigIdQuery>::new();
     provide_context(sport_config_list_ctx);
 
     // Signals for Filters
-    // ToDo: consider using query search params as described in
-    // https://book.leptos.dev/router/20_form.html
-    // This would allow users to share filtered views via URL and preserve filter state on page reloads.
-    let (search_term, set_search_term) = signal("".to_string());
-    let (limit, set_limit) = signal(10usize);
+    let sport_config_id = SportConfigIdQuery::use_param_query();
+    let search_term = FilterNameQuery::use_param_query();
+    let limit = FilterLimitQuery::use_param_query();
 
     // Resource that fetches data when filters change
     let sport_configs_data = Resource::new(
@@ -84,7 +87,12 @@ pub fn ListSportConfigurations() -> impl IntoView {
                 activity_tracker
                     .track_activity_wrapper(
                         component_id.get_value(),
-                        list_sport_configs(s_id, term, Some(lim)),
+                        list_sport_configs(
+                            s_id,
+                            term.unwrap_or_default(),
+                            lim.or_else(|| Some(FilterLimit::default()))
+                                .map(|l| l as usize),
+                        ),
                     )
                     .await
             } else {
@@ -126,43 +134,52 @@ pub fn ListSportConfigurations() -> impl IntoView {
                 </div>
 
                 // --- Filter Bar ---
-                <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
-                    // Text Search
-                    <div class="form-control w-full max-w-xs">
-                        <label class="label">
-                            <span class="label-text">"Search Name"</span>
-                        </label>
-                        <input
-                            type="text"
-                            placeholder="Type to search for name..."
-                            class="input input-bordered w-full"
-                            data-testid="filter-name-search"
-                            on:input=move |ev| set_search_term.set(event_target_value(&ev))
-                            prop:value=move || search_term.get()
-                        />
-                    </div>
-
-                    // Limit Selector
-                    <div class="form-control">
-                        <label class="label">
-                            <span class="label-text">"Limit"</span>
-                        </label>
-                        <select
-                            class="select select-bordered"
-                            data-testid="filter-limit-select"
-                            on:change=move |ev| {
-                                if let Ok(val) = event_target_value(&ev).parse::<usize>() {
-                                    set_limit.set(val);
-                                }
-                            }
-                            prop:value=move || limit.get().to_string()
+                <Form method="GET" action="" noscroll=true replace=true>
+                    // Hidden input to keep sport_id and sport_config_id in query string
+                    <input
+                        type="hidden"
+                        name=SportIdQuery::key()
+                        prop:value=move || {
+                            sport_id.get().map(|id| id.to_string()).unwrap_or_default()
+                        }
+                    />
+                    <input
+                        type="hidden"
+                        name=SportConfigIdQuery::key()
+                        prop:value=move || {
+                            sport_config_id.get().map(|id| id.to_string()).unwrap_or_default()
+                        }
+                    />
+                    <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                        // Text Search
+                        <div class="form-control w-full max-w-xs">
+                            <label class="label">
+                                <span class="label-text">"Search Name"</span>
+                            </label>
+                            <input
+                                type="text"
+                                name=FilterNameQuery::key()
+                                placeholder="Type to search for name..."
+                                class="input input-bordered w-full"
+                                data-testid="filter-name-search"
+                                prop:value=move || search_term.get()
+                                oninput="this.form.requestSubmit()"
+                            />
+                        </div>
+                        // Limit Selector
+                        <div class="w-full max-w-xs">
+                            <EnumSelectFilter<
+                            FilterLimit,
                         >
-                            <option value="10">"10"</option>
-                            <option value="25">"25"</option>
-                            <option value="50">"50"</option>
-                        </select>
+                                name=FilterLimitQuery::key()
+                                label="Limit"
+                                value=limit
+                                data_testid="filter-limit-select"
+                                clear_label=FilterLimit::default().to_string()
+                            />
+                        </div>
                     </div>
-                </div>
+                </Form>
 
                 // --- Table Area ---
                 <div class="overflow-x-auto">
@@ -194,20 +211,17 @@ pub fn ListSportConfigurations() -> impl IntoView {
                             {move || {
                                 sport_configs_data
                                     .and_then(|data| {
-                                        if let Some(selected_id) = sport_config_list_ctx
-                                            .selected_id
-                                            .get_untracked()
-                                            && !data.iter().any(|t| t.get_id() == selected_id)
-                                        {
-                                            sport_config_list_ctx.set_selected_id.run(None);
-                                        }
-                                        let data = StoredValue::new(data.clone());
+                                        sport_config_list_ctx.object_list.set(data.clone());
                                         sport_plugin()
                                             .map(|sp| {
                                                 let sp = StoredValue::new(sp);
                                                 view! {
                                                     <Show
-                                                        when=move || data.with_value(|val| !val.is_empty())
+                                                        when=move || {
+                                                            sport_config_list_ctx
+                                                                .object_list
+                                                                .with(|val| !val.is_empty())
+                                                        }
                                                         fallback=|| {
                                                             view! {
                                                                 <div
@@ -230,7 +244,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                             </thead>
                                                             <tbody>
                                                                 <For
-                                                                    each=move || data.read_value().clone()
+                                                                    each=move || { sport_config_list_ctx.object_list.get() }
                                                                     key=|sc| sc.get_id()
                                                                     children=move |sc| {
                                                                         let sc_id = sc.get_id();

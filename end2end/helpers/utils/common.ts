@@ -26,7 +26,7 @@ export async function searchAndOpenByNameOnCurrentPage(
 ): Promise<Locator> {
   const list = selectors(page).list;
   await expect(list.filterName).toBeVisible();
-  await list.filterName.fill(name);
+  await fillAndBlur(list.filterName, name);
 
   // Find the interactive entry by name
   const entry = list.previewByName(name);

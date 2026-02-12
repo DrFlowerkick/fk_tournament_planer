@@ -2,20 +2,23 @@
 
 use crate::{
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
-    params::ParamQuery,
+    params::ParamQueryId,
 };
 use app_core::utils::traits::ObjectIdVersion;
 use leptos::prelude::*;
-use leptos_router::{NavigateOptions, hooks::use_navigate};
+use leptos_router::{
+    NavigateOptions,
+    hooks::{use_navigate, use_query},
+};
 use uuid::Uuid;
 
 pub struct ObjectListContext<O, Q>
 where
     O: ObjectIdVersion + Send + Sync + 'static,
-    Q: ParamQuery<Uuid>,
+    Q: ParamQueryId,
 {
-    /// StoredValue for the list of objects to be displayed in the table
-    pub object_list: StoredValue<Vec<O>>,
+    /// RwSignal for the list of objects to be displayed in the table
+    pub object_list: RwSignal<Vec<O>>,
     /// Read slice for the currently selected object id
     pub selected_id: Signal<Option<Uuid>>,
     /// Callback for updating the currently selected object id
@@ -31,7 +34,7 @@ where
 impl<O, Q> Clone for ObjectListContext<O, Q>
 where
     O: ObjectIdVersion + Send + Sync + 'static,
-    Q: ParamQuery<Uuid>,
+    Q: ParamQueryId,
 {
     fn clone(&self) -> Self {
         *self
@@ -41,14 +44,14 @@ where
 impl<O, Q> Copy for ObjectListContext<O, Q>
 where
     O: ObjectIdVersion + Send + Sync + 'static,
-    Q: ParamQuery<Uuid>,
+    Q: ParamQueryId,
 {
 }
 
 impl<O, Q> ObjectListContext<O, Q>
 where
     O: ObjectIdVersion + Send + Sync + 'static,
-    Q: ParamQuery<Uuid>,
+    Q: ParamQueryId,
 {
     pub fn new() -> Self {
         let UseQueryNavigationReturn {
@@ -58,8 +61,21 @@ where
         } = use_query_navigation();
         let navigate = use_navigate();
 
-        let object_list = StoredValue::new(Vec::new());
-        let selected_id = Q::use_param_query();
+        let object_list = RwSignal::new(Vec::new());
+        let selected_id_query = use_query::<Q>();
+        let selected_id = Signal::derive(move || {
+            selected_id_query.with(|qr| {
+                qr.as_ref().ok().and_then(|q| {
+                    q.get_id().and_then(|id| {
+                        object_list.with(move |ol| {
+                            ol.iter()
+                                .any(|o: &O| o.get_id_version().get_id() == id)
+                                .then_some(id)
+                        })
+                    })
+                })
+            })
+        });
         let set_selected_id = Callback::new({
             let navigate = navigate.clone();
             move |new_id: Option<Uuid>| {
@@ -95,7 +111,7 @@ where
     }
 
     pub fn is_id_in_list(&self, id: Uuid) -> bool {
-        self.object_list.with_value(|list| {
+        self.object_list.with(|list| {
             list.iter()
                 .any(|obj: &O| obj.get_id_version().get_id() == id)
         })

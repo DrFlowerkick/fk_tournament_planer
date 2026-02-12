@@ -2,7 +2,7 @@ use app_utils::{
     hooks::use_query_navigation::{
         MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
     },
-    params::{ParamQuery, SportIdQuery},
+    params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery, TournamentStateQuery},
     state::global_state::{GlobalState, GlobalStateStoreFields},
 };
 use leptos::prelude::*;
@@ -14,6 +14,7 @@ pub fn SportDashboard() -> impl IntoView {
     // get query helpers
     let UseQueryNavigationReturn {
         url_matched_route,
+        url_matched_route_update_query,
         url_matched_route_remove_query,
         ..
     } = use_query_navigation();
@@ -82,7 +83,11 @@ pub fn SportDashboard() -> impl IntoView {
                     // Navigation Links Grid
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mx-auto">
                         <A
-                            href=url_matched_route(MatchedRouteHandler::Extend("tournaments"))
+                            href=url_matched_route_update_query(
+                                TournamentStateQuery::key(),
+                                "Draft",
+                                MatchedRouteHandler::Extend("tournaments"),
+                            )
                             attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
                             attr:data-testid="link-nav-tournaments"
                             scroll=false
@@ -93,7 +98,7 @@ pub fn SportDashboard() -> impl IntoView {
 
                         <A
                             href=url_matched_route_remove_query(
-                                "tournament_id",
+                                TournamentBaseIdQuery::key(),
                                 MatchedRouteHandler::Extend("new-tournament"),
                             )
 

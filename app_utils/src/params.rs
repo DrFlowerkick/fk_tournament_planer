@@ -1,6 +1,7 @@
 //! Parameters module for shared query parameter definitions and utilities.
 
 use crate::enum_utils::FilterLimit;
+use app_core::TournamentState;
 use leptos::prelude::*;
 use leptos_router::{
     hooks::{use_params, use_query},
@@ -8,9 +9,13 @@ use leptos_router::{
 };
 use uuid::Uuid;
 
-pub trait ParamQuery<T: Send + Sync + 'static>: Params {
+pub trait ParamQuery<T: Send + Sync + 'static>: Params + PartialEq + Send + Sync + 'static {
     fn key() -> &'static str;
     fn use_param_query() -> Signal<Option<T>>;
+}
+
+pub trait ParamQueryId: ParamQuery<Uuid> {
+    fn get_id(&self) -> Option<Uuid>;
 }
 
 // ---------------------- Search Filters ----------------------
@@ -45,6 +50,36 @@ impl ParamQuery<FilterLimit> for FilterLimitQuery {
     }
 }
 
+#[derive(Params, Clone, PartialEq, Eq, Debug)]
+pub struct TournamentStateQuery {
+    pub tournament_state: Option<TournamentState>,
+}
+
+impl ParamQuery<TournamentState> for TournamentStateQuery {
+    fn key() -> &'static str {
+        "tournament_state"
+    }
+    fn use_param_query() -> Signal<Option<TournamentState>> {
+        let query = use_query::<Self>();
+        Signal::derive(move || query.get().ok().and_then(|ts| ts.tournament_state))
+    }
+}
+
+#[derive(Params, Clone, PartialEq, Eq, Debug)]
+pub struct IncludeAdhocQuery {
+    pub include_adhoc: Option<bool>,
+}
+
+impl ParamQuery<bool> for IncludeAdhocQuery {
+    fn key() -> &'static str {
+        "include_adhoc"
+    }
+    fn use_param_query() -> Signal<Option<bool>> {
+        let query = use_query::<Self>();
+        Signal::derive(move || query.get().ok().and_then(|ia| ia.include_adhoc))
+    }
+}
+
 // ---------------------- Postal Address ----------------------
 
 #[derive(Params, Clone, PartialEq, Eq, Debug)]
@@ -59,6 +94,12 @@ impl ParamQuery<Uuid> for AddressIdQuery {
     fn use_param_query() -> Signal<Option<Uuid>> {
         let query = use_query::<Self>();
         Signal::derive(move || query.with(|p| p.as_ref().ok().and_then(|params| params.address_id)))
+    }
+}
+
+impl ParamQueryId for AddressIdQuery {
+    fn get_id(&self) -> Option<Uuid> {
+        self.address_id
     }
 }
 
@@ -79,6 +120,12 @@ impl ParamQuery<Uuid> for SportIdQuery {
     }
 }
 
+impl ParamQueryId for SportIdQuery {
+    fn get_id(&self) -> Option<Uuid> {
+        self.sport_id
+    }
+}
+
 #[derive(Params, Clone, PartialEq, Eq, Debug)]
 pub struct SportConfigIdQuery {
     pub sport_config_id: Option<Uuid>,
@@ -93,6 +140,12 @@ impl ParamQuery<Uuid> for SportConfigIdQuery {
         Signal::derive(move || {
             query.with(|p| p.as_ref().ok().and_then(|params| params.sport_config_id))
         })
+    }
+}
+
+impl ParamQueryId for SportConfigIdQuery {
+    fn get_id(&self) -> Option<Uuid> {
+        self.sport_config_id
     }
 }
 
@@ -112,6 +165,12 @@ impl ParamQuery<Uuid> for TournamentBaseIdQuery {
         Signal::derive(move || {
             query.with(|p| p.as_ref().ok().and_then(|params| params.tournament_id))
         })
+    }
+}
+
+impl ParamQueryId for TournamentBaseIdQuery {
+    fn get_id(&self) -> Option<Uuid> {
+        self.tournament_id
     }
 }
 

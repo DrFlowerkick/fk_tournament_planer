@@ -38,7 +38,7 @@ async fn test_search_postal_address() {
     sleep(Duration::from_millis(10)).await;
 
     // check preview
-    let first_row_id = format!("postal-address-row-{}", ts.entries[0]);
+    let first_row_id = format!("table-entry-row-{}", ts.entries[0]);
     let preview = get_element_by_test_id(&first_row_id)
         .text_content()
         .unwrap();
@@ -80,7 +80,7 @@ async fn test_search_postal_address() {
     assert!(preview_version.contains("0"));
 
     // click table and check URL update
-    let row = get_element_by_test_id(&format!("postal-address-row-{}", ts.entries[0]));
+    let row = get_element_by_test_id(&format!("table-entry-row-{}", ts.entries[0]));
     row.click();
     sleep(Duration::from_millis(10)).await;
 

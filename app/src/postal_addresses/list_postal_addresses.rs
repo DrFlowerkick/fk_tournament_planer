@@ -64,6 +64,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
     provide_context(postal_address_list_ctx);
 
     // Signals for Filters
+    let address_id = AddressIdQuery::use_param_query();
     let search_term = FilterNameQuery::use_param_query();
     let limit = FilterLimitQuery::use_param_query();
 
@@ -122,7 +123,15 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 </div>
 
                 // --- Filter Bar ---
-                <Form method="GET" action="">
+                <Form method="GET" action="" noscroll=true replace=true>
+                    // Hidden input to keep address_id in query string
+                    <input
+                        type="hidden"
+                        name=AddressIdQuery::key()
+                        prop:value=move || {
+                            address_id.get().map(|id| id.to_string()).unwrap_or_default()
+                        }
+                    />
                     <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
                         // Text Search
                         <div class="form-control w-full max-w-xs">
@@ -184,17 +193,14 @@ pub fn ListPostalAddresses() -> impl IntoView {
                             {move || {
                                 postal_addresses_data
                                     .and_then(|data| {
-                                        if let Some(selected_id) = postal_address_list_ctx
-                                            .selected_id
-                                            .get_untracked()
-                                            && !data.iter().any(|t| t.get_id() == selected_id)
-                                        {
-                                            postal_address_list_ctx.set_selected_id.run(None);
-                                        }
-                                        let data = StoredValue::new(data.clone());
+                                        postal_address_list_ctx.object_list.set(data.clone());
                                         view! {
                                             <Show
-                                                when=move || data.with_value(|val| !val.is_empty())
+                                                when=move || {
+                                                    postal_address_list_ctx
+                                                        .object_list
+                                                        .with(|val| !val.is_empty())
+                                                }
                                                 fallback=|| {
                                                     view! {
                                                         <div
@@ -217,7 +223,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                     </thead>
                                                     <tbody>
                                                         <For
-                                                            each=move || data.read_value().clone()
+                                                            each=move || { postal_address_list_ctx.object_list.get() }
                                                             key=|pa| pa.get_id()
                                                             children=move |pa| {
                                                                 let pa_id = pa.get_id();

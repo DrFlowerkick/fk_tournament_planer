@@ -2,8 +2,8 @@ use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value, set_url,
 };
 use app::{home::LoadSportConfiguration, provide_global_context};
-use app_core::DbpSportConfig;
-use app_utils::state::sport_config::SportConfigListContext;
+use app_core::{DbpSportConfig, SportConfig};
+use app_utils::{params::SportConfigIdQuery, state::object_table_list::ObjectListContext};
 use generic_sport_plugin::config::GenericSportConfig;
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
@@ -17,7 +17,7 @@ use wasm_bindgen_test::*;
 #[component]
 fn LoadSportConfigurationWrapper() -> impl IntoView {
     // requires Router context
-    provide_context(SportConfigListContext::new());
+    provide_context(ObjectListContext::<SportConfig, SportConfigIdQuery>::new());
 
     view! { <LoadSportConfiguration /> }
 }

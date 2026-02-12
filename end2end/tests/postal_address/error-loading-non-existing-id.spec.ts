@@ -5,6 +5,7 @@ import {
   selectors,
   waitForAppHydration,
 } from "../../helpers";
+import { PA_QUERY_KEYS, PA_ROUTES } from "../../helpers/utils/postal_address";
 
 test.describe("Error loading non-existing postal address ID", () => {
   test("shows error message when navigating to non-existing ID", async ({
@@ -19,7 +20,7 @@ test.describe("Error loading non-existing postal address ID", () => {
 
     // Navigate to a non-existing postal address ID
     const nonExistingId = "00000000-0000-0000-0000-000000000000";
-    await page.goto(`/postal-address/edit?address_id=${nonExistingId}`);
+    await page.goto(`${PA_ROUTES.editAddress}?${PA_QUERY_KEYS.addressId}=${nonExistingId}`);
 
     // add hydration check after raw navigation
     await waitForAppHydration(page);

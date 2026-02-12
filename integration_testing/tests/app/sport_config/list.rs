@@ -39,7 +39,7 @@ async fn test_config_search_renders() {
 
     // check preview
     let preview = get_element_by_test_id(&format!(
-        "sport-configs-preview-{}",
+        "table-entry-preview-{}",
         ts.generic_sport_config_id
     ))
     .text_content()
@@ -48,7 +48,7 @@ async fn test_config_search_renders() {
     assert!(preview.contains("Expected Match Duration: 30 minutes"));
 
     // click table and check URL update
-    let row = get_element_by_test_id(&format!("sport-configs-row-{}", ts.generic_sport_config_id));
+    let row = get_element_by_test_id(&format!("table-entry-row-{}", ts.generic_sport_config_id));
     row.click();
     sleep(Duration::from_millis(10)).await;
 

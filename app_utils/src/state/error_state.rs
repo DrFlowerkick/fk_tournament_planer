@@ -133,7 +133,6 @@ impl ActiveErrorBuilder<NoCancelAction> {
 
     /// Sets the mandatory cancel/dismiss action.
     /// Transitions the builder state from NoCancelAction to HasCancelAction.
-    // ToDo: do we have a test case for this? Check for panic!
     pub fn with_clear_error_on_cancel(
         self,
         label: impl Into<String>,

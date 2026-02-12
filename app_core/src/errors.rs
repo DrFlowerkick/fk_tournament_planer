@@ -34,6 +34,10 @@ pub enum CoreError {
     /// Missing ID where one is required
     #[error("missing ID of: {0}")]
     MissingId(String),
+
+    /// Parsing error for enums of core
+    #[error("parsing error: {0}")]
+    ParsingError(String),
 }
 
 pub type CoreResult<T> = Result<T, CoreError>;

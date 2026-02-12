@@ -84,6 +84,7 @@ pub fn LoadPostalAddress() -> impl IntoView {
             <ErrorBoundary fallback=move |errors| {
                 for (_err_id, err) in errors.get().into_iter() {
                     let e = err.into_inner();
+                    leptos::logging::log!("Error saving Postal Address: {:?}", e);
                     if let Some(app_err) = e.downcast_ref::<AppError>() {
                         handle_read_error(
                             &page_err_ctx,
@@ -176,9 +177,7 @@ pub fn EditPostalAddress(
                 let pa_id = pa.get_id();
                 save_postal_address.clear();
                 toast_ctx.success("Postal Address saved successfully");
-                if postal_address_list_ctx.selected_id.get() == Some(pa_id) {
-                    postal_address_list_ctx.trigger_refetch();
-                } else if postal_address_list_ctx.is_id_in_list(pa_id) {
+                if postal_address_list_ctx.is_id_in_list(pa_id) {
                     let nav_url = url_matched_route_update_query(
                         AddressIdQuery::key(),
                         &pa_id.to_string(),

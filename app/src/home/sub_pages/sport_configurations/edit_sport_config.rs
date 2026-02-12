@@ -16,13 +16,14 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{ParamQuery, SportConfigIdQuery, SportIdQuery},
+    params::{FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
-        sport_config::{SportConfigEditorContext, SportConfigListContext},
+        object_table_list::ObjectListContext,
+        sport_config::SportConfigEditorContext,
         toast_state::ToastContext,
     },
 };
@@ -130,7 +131,9 @@ pub fn EditSportConfiguration(
 ) -> impl IntoView {
     // --- Hooks, Navigation & local and global state ---
     let UseQueryNavigationReturn {
+        get_query,
         url_matched_route_update_query,
+        url_matched_route_update_queries,
         url_is_matched_route,
         ..
     } = use_query_navigation();
@@ -143,7 +146,8 @@ pub fn EditSportConfiguration(
     let page_err_ctx = expect_context::<PageErrorContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
     let activity_tracker = expect_context::<ActivityTracker>();
-    let sport_config_list_ctx = expect_context::<SportConfigListContext>();
+    let sport_config_list_ctx =
+        expect_context::<ObjectListContext<SportConfig, SportConfigIdQuery>>();
 
     // remove errors on unmount
     on_cleanup(move || {
@@ -201,23 +205,33 @@ pub fn EditSportConfiguration(
     // handle save result
     Effect::new(move || match save_sport_config.value().get() {
         Some(Ok(sc)) => {
+            let sc_id = sc.get_id();
             save_sport_config.clear();
             toast_ctx.success("Sport Configuration saved successfully");
-            sport_config_list_ctx.set_selected_id.run(Some(sc.get_id()));
-            sport_config_list_ctx.trigger_refetch();
-            let nav_url = url_matched_route_update_query(
-                "sport_config_id",
-                &sc.get_id().to_string(),
-                MatchedRouteHandler::RemoveSegment(1),
-            );
-            navigate(
-                &nav_url,
-                NavigateOptions {
-                    replace: true,
-                    scroll: false,
-                    ..Default::default()
-                },
-            );
+            if sport_config_list_ctx.is_id_in_list(sc_id) {
+                let nav_url = url_matched_route_update_query(
+                    SportConfigIdQuery::key(),
+                    &sc_id.to_string(),
+                    MatchedRouteHandler::RemoveSegment(1),
+                );
+                navigate(&nav_url, NavigateOptions::default());
+                sport_config_list_ctx.trigger_refetch();
+            } else {
+                let refetch = get_query(FilterNameQuery::key()) != Some(sc.get_name().to_string());
+                let sc_id = sc.get_id().to_string();
+                let key_value = vec![
+                    (SportConfigIdQuery::key(), sc_id.as_str()),
+                    (FilterNameQuery::key(), sc.get_name()),
+                ];
+                let nav_url = url_matched_route_update_queries(
+                    key_value,
+                    MatchedRouteHandler::RemoveSegment(1),
+                );
+                navigate(&nav_url, NavigateOptions::default());
+                if refetch {
+                    sport_config_list_ctx.trigger_refetch();
+                }
+            }
         }
         Some(Err(err)) => {
             save_sport_config.clear();

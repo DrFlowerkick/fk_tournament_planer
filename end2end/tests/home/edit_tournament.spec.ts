@@ -6,6 +6,7 @@ import {
   goToListTournaments,
   fillAndBlur,
   makeUniqueName,
+  searchAndOpenByNameOnCurrentPage,
   selectors,
 } from "../../helpers";
 
@@ -106,13 +107,9 @@ test.describe("Create New Tournament", () => {
 
     // --- Step 2: Go to List and Find it ---
     await goToListTournaments(page);
-    await fillAndBlur(LIST.filterName, initialName);
-
-    const rowCell = page.getByRole("cell", { name: initialName }).first();
-    await expect(rowCell).toBeVisible();
+    await searchAndOpenByNameOnCurrentPage(page, initialName, "tournament_id");
 
     // --- Step 3: Enter Edit Mode ---
-    await rowCell.click();
     const editBtn = page.getByTestId("action-btn-edit");
     await expect(editBtn).toBeVisible();
     await editBtn.click();

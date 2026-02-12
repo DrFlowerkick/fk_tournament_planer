@@ -58,21 +58,6 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       });
 
       await test.step("Edit Config", async () => {
-        /*// After save the row should be selected, when the url contains the sport_config_id of the
-        // created config, and the preview should be visible.
-        const preview = SC.list.previewByName(initialName);
-        
-        // Extract the specific UUID from the data-testid before clicking
-        const testId = await preview.getAttribute("data-testid");
-        const expectedId = testId?.replace(IDS.list.entryPreviewPrefix, "");
-
-        // Wait for the URL to contain exactly the ID of the row we just clicked.
-        // This ensures Leptos has processed the correct navigation.
-        if (expectedId) {
-          await page.waitForURL(
-            (url) => url.searchParams.get("sport_config_id") === expectedId,
-          );
-        }*/
         await waitForNavigationRowSelectionByName(
           page,
           initialName,

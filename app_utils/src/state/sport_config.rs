@@ -1,12 +1,10 @@
 //! sport configuration editor context
 
-use crate::hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation};
 use app_core::{
     SportConfig,
     utils::{id_version::IdVersion, validation::ValidationResult},
 };
 use leptos::prelude::*;
-use leptos_router::{NavigateOptions, hooks::use_navigate};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -113,62 +111,5 @@ impl SportConfigEditorContext {
     pub fn set_sport_config(&self, sc: SportConfig) {
         self.local.set(Some(sc.clone()));
         self.origin.set_value(Some(sc));
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct SportConfigListContext {
-    /// Read slice for the currently selected sport config id
-    pub selected_id: Signal<Option<Uuid>>,
-    /// Callback for updating the currently selected sport config id
-    pub set_selected_id: Callback<Option<Uuid>>,
-    /// Trigger to refetch data from server
-    refetch_trigger: RwSignal<u64>,
-    /// Read slice for getting the current state of the tournament editor
-    pub track_fetch_trigger: Signal<u64>,
-}
-
-impl SportConfigListContext {
-    pub fn new() -> Self {
-        let UseQueryNavigationReturn {
-            url_update_query,
-            url_remove_query,
-            ..
-        } = use_query_navigation();
-        let navigate = use_navigate();
-
-        let selected_id = RwSignal::new(None);
-        let set_selected_id = Callback::new({
-            let navigate = navigate.clone();
-            move |new_id: Option<Uuid>| {
-                selected_id.set(new_id);
-
-                let nav_url = if let Some(t_id) = new_id {
-                    url_update_query("sport_config_id", &t_id.to_string())
-                } else {
-                    url_remove_query("sport_config_id")
-                };
-                navigate(
-                    &nav_url,
-                    NavigateOptions {
-                        replace: true,
-                        scroll: false,
-                        ..Default::default()
-                    },
-                );
-            }
-        });
-        let refetch_trigger = RwSignal::new(0);
-
-        Self {
-            selected_id: selected_id.read_only().into(),
-            set_selected_id,
-            refetch_trigger,
-            track_fetch_trigger: refetch_trigger.read_only().into(),
-        }
-    }
-
-    pub fn trigger_refetch(&self) {
-        self.refetch_trigger.update(|v| *v += 1);
     }
 }

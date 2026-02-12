@@ -26,7 +26,7 @@ test.describe("Cancel button navigation", () => {
     const uuid = extractUuidFromUrl(url);
 
     // Go to list and select the created address to enable the edit button
-    const row = await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
+    await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
     await expect(PA.list.btnEdit).toBeVisible();
 
     // -------------------- Act: Go to edit and click cancel --------------------
@@ -36,7 +36,7 @@ test.describe("Cancel button navigation", () => {
 
     // -------------------- Assert: We are back on the search page with uuid in url--------------------
     // The URL should be the search/list URL, not the edit URL
-    await expect(page).toHaveURL(url);
+    await waitForPostalAddressListUrl(page);
 
     // -------------------- Act: Open edit page directly and cancel --------------------
     await openPostalAddressList(page); // Ensure we have no uuid in current url
