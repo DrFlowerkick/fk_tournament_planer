@@ -2,7 +2,7 @@
 
 use app_core::Stage;
 use app_utils::{
-    components::inputs::NumberInputWithValidation,
+    components::inputs::{InputCommitAction, NumberInput},
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error},
@@ -182,12 +182,14 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                             data-testid="stage-editor-form"
                         >
                             <div class="w-full max-w-md grid grid-cols-1 gap-6">
-                                <NumberInputWithValidation
+                                <NumberInput
                                     label="Number of Groups"
                                     name="stage-num-groups"
                                     data_testid="input-stage-num-groups"
                                     value=tournament_editor_context.stage_num_groups
-                                    set_value=tournament_editor_context.set_stage_num_groups
+                                    action=InputCommitAction::WriteTo(
+                                        tournament_editor_context.set_stage_num_groups,
+                                    )
                                     validation_result=tournament_editor_context.validation_result
                                     min="1".to_string()
                                     object_id=tournament_editor_context.active_stage_id

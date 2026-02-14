@@ -60,7 +60,7 @@ test.describe("Configuration of Tournament Stages", () => {
     // 1. Create Tournament with Swiss System
     await fillAndBlur(FORM.inputs.name, makeUniqueName("Swiss System Test"));
     await fillAndBlur(FORM.inputs.entrants, "16");
-    await FORM.inputs.mode.selectOption({ label: "Swiss System" });
+    await FORM.inputs.mode.selectOption({ label: "Swiss System (0 rounds)" });
     await fillAndBlur(FORM.inputs.num_rounds_swiss, "5");
     await FORM.actions.save.click();
 

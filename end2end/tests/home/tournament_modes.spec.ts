@@ -49,7 +49,7 @@ test.describe("Tournament Mode Configurations", () => {
   test("shows correct configuration links for Swiss System", async ({ page }) => {
     const FORM = selectors(page).home.dashboard.editTournament;
 
-    await FORM.inputs.mode.selectOption({ label: "Swiss System" });
+    await FORM.inputs.mode.selectOption({ label: "Swiss System (0 rounds)" });
 
     // Expect Swiss config link
     await expect(page.getByTestId("link-configure-swiss-system")).toBeVisible();

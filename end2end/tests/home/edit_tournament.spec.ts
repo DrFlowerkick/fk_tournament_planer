@@ -213,7 +213,7 @@ test.describe("Create New Tournament", () => {
       await FORM.inputs.entrants.fill("10");
 
       await expect(FORM.inputs.mode).toBeVisible();
-      await FORM.inputs.mode.selectOption({ label: "Swiss System" });
+      await FORM.inputs.mode.selectOption({ label: "Swiss System (0 rounds)" });
 
       await expect(FORM.inputs.num_rounds_swiss).toBeVisible({
         timeout: 10000,

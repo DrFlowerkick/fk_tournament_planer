@@ -4,7 +4,7 @@ use app_core::SportConfig;
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::sport_config::{SaveSportConfigFormData, save_sport_config_inner};
 use app_utils::{
-    components::inputs::TextInputWithValidation,
+    components::inputs::{InputCommitAction, TextInput},
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error, handle_write_error},
@@ -383,12 +383,12 @@ pub fn EditSportConfiguration(
                                             .to_string()
                                     }
                                 />
-                                <TextInputWithValidation
+                                <TextInput
                                     label="Name"
                                     name="form[name]"
                                     data_testid="input-name"
                                     value=sport_config_editor.name
-                                    set_value=sport_config_editor.set_name
+                                    action=InputCommitAction::WriteTo(sport_config_editor.set_name)
                                     validation_result=sport_config_editor.validation_result
                                     object_id=sport_config_editor.sport_config_id
                                     field="name"

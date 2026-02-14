@@ -2,7 +2,7 @@
 
 use app_core::{CrTopic, PostalAddress};
 use app_utils::{
-    components::inputs::EnumSelectFilter,
+    components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
     enum_utils::FilterLimit,
     error::{
         AppError,
@@ -134,23 +134,22 @@ pub fn ListPostalAddresses() -> impl IntoView {
                     />
                     <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
                         // Text Search
-                        <div class="form-control w-full max-w-xs">
-                            <label class="label">
-                                <span class="label-text">"Search Name"</span>
-                            </label>
-                            <input
-                                type="text"
+                        <div class="w-full max-w-xs">
+                            <TextInput<
+                            String,
+                        >
                                 name=FilterNameQuery::key()
+                                label="Search Name"
                                 placeholder="Type to search for name..."
-                                class="input input-bordered w-full"
-                                data-testid="filter-name-search"
-                                prop:value=move || search_term.get()
-                                oninput="this.form.requestSubmit()"
+                                value=search_term
+                                update_on=InputUpdateStrategy::Input
+                                action=InputCommitAction::SubmitForm
+                                data_testid="filter-name-search"
                             />
                         </div>
                         // Limit Selector
                         <div class="w-full max-w-xs">
-                            <EnumSelectFilter<
+                            <EnumSelect<
                             FilterLimit,
                         >
                                 name=FilterLimitQuery::key()
@@ -158,6 +157,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                 value=limit
                                 data_testid="filter-limit-select"
                                 clear_label=FilterLimit::default().to_string()
+                                action=InputCommitAction::SubmitForm
                             />
                         </div>
                     </div>

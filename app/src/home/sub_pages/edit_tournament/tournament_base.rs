@@ -2,9 +2,7 @@
 
 use app_core::{TournamentBase, TournamentEditor, TournamentMode};
 use app_utils::{
-    components::inputs::{
-        EnumSelectWithValidation, NumberInputWithValidation, TextInputWithValidation,
-    },
+    components::inputs::{EnumSelect, InputCommitAction, NumberInput, TextInput},
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error},
@@ -208,35 +206,41 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                         >
                             <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                                <TextInputWithValidation
+                                <TextInput
                                     label="Tournament Name"
                                     name="tournament-name"
                                     data_testid="input-tournament-name"
                                     value=tournament_editor_context.base_name
-                                    set_value=tournament_editor_context.set_base_name
+                                    action=InputCommitAction::WriteTo(
+                                        tournament_editor_context.set_base_name,
+                                    )
                                     validation_result=tournament_editor_context.validation_result
                                     object_id=tournament_editor_context.base_id
                                     field="name"
                                 />
 
-                                <NumberInputWithValidation
+                                <NumberInput
                                     label="Number of Entrants"
                                     name="tournament-entrants"
                                     data_testid="input-tournament-entrants"
                                     value=tournament_editor_context.base_num_entrants
-                                    set_value=tournament_editor_context.set_base_num_entrants
+                                    action=InputCommitAction::WriteTo(
+                                        tournament_editor_context.set_base_num_entrants,
+                                    )
                                     validation_result=tournament_editor_context.validation_result
                                     object_id=tournament_editor_context.base_id
                                     field="num_entrants"
                                     min="2".to_string()
                                 />
 
-                                <EnumSelectWithValidation
+                                <EnumSelect
                                     label="Mode"
                                     name="tournament-mode"
                                     data_testid="select-tournament-mode"
                                     value=tournament_editor_context.base_mode
-                                    set_value=tournament_editor_context.set_base_mode
+                                    action=InputCommitAction::WriteTo(
+                                        tournament_editor_context.set_base_mode,
+                                    )
                                 />
 
                                 <Show when=move || {
@@ -245,13 +249,14 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                         Some(TournamentMode::SwissSystem { .. })
                                     )
                                 }>
-                                    <NumberInputWithValidation
+                                    <NumberInput
                                         label="Rounds (Swiss System)"
                                         name="tournament-swiss-num_rounds"
                                         data_testid="input-tournament-swiss-num_rounds"
                                         value=tournament_editor_context.base_num_rounds_swiss_system
-                                        set_value=tournament_editor_context
-                                            .set_base_num_rounds_swiss_system
+                                        action=InputCommitAction::WriteTo(
+                                            tournament_editor_context.set_base_num_rounds_swiss_system,
+                                        )
                                         validation_result=tournament_editor_context
                                             .validation_result
                                         object_id=tournament_editor_context.base_id

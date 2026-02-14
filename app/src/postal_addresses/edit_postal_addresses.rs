@@ -4,7 +4,7 @@ use app_core::PostalAddress;
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::postal_address::{SavePostalAddressFormData, save_postal_address_inner};
 use app_utils::{
-    components::inputs::{EnumSelectWithValidation, TextInputWithValidation},
+    components::inputs::{EnumSelect, InputCommitAction, TextInput},
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error, handle_write_error},
@@ -341,62 +341,74 @@ pub fn EditPostalAddress(
                                             .map_or(0, |pa| pa.get_version().unwrap_or_default())
                                     }
                                 />
-                                <TextInputWithValidation
+                                <TextInput
                                     label="Name"
                                     name="form[name]"
                                     data_testid="input-name"
                                     value=postal_address_editor.name
-                                    set_value=postal_address_editor.set_name
+                                    action=InputCommitAction::WriteTo(
+                                        postal_address_editor.set_name,
+                                    )
                                     validation_result=postal_address_editor.validation_result
                                     object_id=postal_address_editor.postal_address_id
                                     field="Name"
                                 />
-                                <TextInputWithValidation
+                                <TextInput
                                     label="Street & number"
                                     name="form[street]"
                                     data_testid="input-street"
                                     value=postal_address_editor.street
-                                    set_value=postal_address_editor.set_street
+                                    action=InputCommitAction::WriteTo(
+                                        postal_address_editor.set_street,
+                                    )
                                     validation_result=postal_address_editor.validation_result
                                     object_id=postal_address_editor.postal_address_id
                                     field="Street"
                                 />
                                 <div class="grid grid-cols-2 gap-4">
-                                    <TextInputWithValidation
+                                    <TextInput
                                         label="Postal code"
                                         name="form[postal_code]"
                                         data_testid="input-postal_code"
                                         value=postal_address_editor.postal_code
-                                        set_value=postal_address_editor.set_postal_code
+                                        action=InputCommitAction::WriteTo(
+                                            postal_address_editor.set_postal_code,
+                                        )
                                         validation_result=postal_address_editor.validation_result
                                         object_id=postal_address_editor.postal_address_id
                                         field="PostalCode"
                                     />
-                                    <TextInputWithValidation
+                                    <TextInput
                                         label="City"
                                         name="form[locality]"
                                         data_testid="input-locality"
                                         value=postal_address_editor.locality
-                                        set_value=postal_address_editor.set_locality
+                                        action=InputCommitAction::WriteTo(
+                                            postal_address_editor.set_locality,
+                                        )
                                         validation_result=postal_address_editor.validation_result
                                         object_id=postal_address_editor.postal_address_id
                                         field="Locality"
                                     />
                                 </div>
-                                <TextInputWithValidation
+                                <TextInput
                                     label="Region"
                                     name="form[region]"
                                     data_testid="input-region"
                                     value=postal_address_editor.region
-                                    set_value=postal_address_editor.set_region
+                                    action=InputCommitAction::WriteTo(
+                                        postal_address_editor.set_region,
+                                    )
                                     optional=true
                                 />
-                                <EnumSelectWithValidation
+                                <EnumSelect
                                     label="Country"
                                     name="form[country]"
                                     data_testid="select-country"
                                     value=postal_address_editor.country
-                                    set_value=postal_address_editor.set_country
+                                    action=InputCommitAction::WriteTo(
+                                        postal_address_editor.set_country,
+                                    )
                                     validation_result=postal_address_editor.validation_result
                                     object_id=postal_address_editor.postal_address_id
                                     field="Country"

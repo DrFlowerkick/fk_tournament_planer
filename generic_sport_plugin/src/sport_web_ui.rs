@@ -8,9 +8,7 @@ use app_core::{
     utils::validation::{ValidationErrors, ValidationResult},
 };
 use app_utils::{
-    components::inputs::{
-        DurationInputUnit, DurationInputWithValidation, NumberInputWithValidation,
-    },
+    components::inputs::{DurationInput, DurationInputUnit, InputCommitAction, NumberInput},
     state::sport_config::SportConfigEditorContext,
 };
 use leptos::prelude::*;
@@ -229,46 +227,46 @@ impl SportPortWebUi for GenericSportPlugin {
 
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">
-                <NumberInputWithValidation
+                <NumberInput
                     label="Sets to Win"
                     name="sets_to_win"
                     data_testid="input-sets_to_win"
                     value=sets_to_win
-                    set_value=set_sets_to_win
+                    action=InputCommitAction::WriteTo(set_sets_to_win)
                     validation_result=validation_result
                     object_id=sport_config_editor.sport_config_id
                     field="sets_to_win"
                     min="1"
                 />
                 <div class="grid grid-cols-3 gap-4">
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Score to Win a Set"
                         name="score_to_win"
                         data_testid="input-score_to_win"
                         value=score_to_win
-                        set_value=set_score_to_win
+                        action=InputCommitAction::WriteTo(set_score_to_win)
                         validation_result=validation_result
                         object_id=sport_config_editor.sport_config_id
                         field="score_to_win"
                         min="1"
                     />
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Win by Margin"
                         name="win_by_margin"
                         data_testid="input-win_by_margin"
                         value=win_by_margin
-                        set_value=set_win_by_margin
+                        action=InputCommitAction::WriteTo(set_win_by_margin)
                         validation_result=validation_result
                         object_id=sport_config_editor.sport_config_id
                         field="win_by_margin"
                         min="1"
                     />
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Hard Cap"
                         name="hard_cap"
                         data_testid="input-hard_cap"
                         value=hard_cap
-                        set_value=set_hard_cap
+                        action=InputCommitAction::WriteTo(set_hard_cap)
                         validation_result=validation_result
                         object_id=sport_config_editor.sport_config_id
                         field="hard_cap"
@@ -276,24 +274,24 @@ impl SportPortWebUi for GenericSportPlugin {
                     />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Victory Points for Win"
                         name="victory_points_win"
                         data_testid="input-victory_points_win"
                         value=victory_points_win
-                        set_value=set_victory_points_win
+                        action=InputCommitAction::WriteTo(set_victory_points_win)
                         validation_result=validation_result
                         object_id=sport_config_editor.sport_config_id
                         field="victory_points_win"
                         min="0"
                         step="0.1"
                     />
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Victory Points for Draw"
                         name="victory_points_draw"
                         data_testid="input-victory_points_draw"
                         value=victory_points_draw
-                        set_value=set_victory_points_draw
+                        action=InputCommitAction::WriteTo(set_victory_points_draw)
                         validation_result=validation_result
                         object_id=sport_config_editor.sport_config_id
                         field="victory_points_draw"
@@ -301,12 +299,12 @@ impl SportPortWebUi for GenericSportPlugin {
                         step="0.1"
                     />
                 </div>
-                <DurationInputWithValidation
+                <DurationInput
                     label="Expected Match Duration"
                     name="expected_match_duration_minutes"
                     data_testid="input-expected_match_duration_minutes"
                     value=expected_match_duration_minutes
-                    set_value=set_expected_match_duration_minutes
+                    action=InputCommitAction::WriteTo(set_expected_match_duration_minutes)
                     validation_result=validation_result
                     object_id=sport_config_editor.sport_config_id
                     field="expected_match_duration_minutes"
