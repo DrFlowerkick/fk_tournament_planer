@@ -27,14 +27,14 @@ pub enum DdcSetCfg {
 impl Display for DdcSetCfg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            DdcSetCfg::BestOf1 => write!(f, "Sets to Win: 1"),
-            DdcSetCfg::BestOf3 => write!(f, "Sets to Win: 2"),
-            DdcSetCfg::BestOf5 => write!(f, "Sets to Win: 3"),
+            DdcSetCfg::BestOf1 => write!(f, "Sets to win: 1"),
+            DdcSetCfg::BestOf3 => write!(f, "Sets to win: 2"),
+            DdcSetCfg::BestOf5 => write!(f, "Sets to win: 3"),
             DdcSetCfg::CustomSetsToWin { sets_to_win } => {
-                write!(f, "Sets to Win: {}", sets_to_win)
+                write!(f, "Custom sets to win: {}", sets_to_win)
             }
             DdcSetCfg::CustomTotalSets { total_sets } => {
-                write!(f, "Total Sets: {}", total_sets)
+                write!(f, "Custom total sets: {}", total_sets)
             }
         }
     }
@@ -42,35 +42,45 @@ impl Display for DdcSetCfg {
 
 impl SelectableOption for DdcSetCfg {
     fn value(&self) -> String {
-        match self {
-            DdcSetCfg::BestOf1 => "BestOf1".to_string(),
-            DdcSetCfg::BestOf3 => "BestOf3".to_string(),
-            DdcSetCfg::BestOf5 => "BestOf5".to_string(),
-            // deliver default values for variants with data
-            DdcSetCfg::CustomSetsToWin { .. } => "CustomSetsToWin".to_string(),
-            DdcSetCfg::CustomTotalSets { .. } => "CustomTotalSets".to_string(),
-        }
+        self.to_string()
     }
 
     fn label(&self) -> String {
+        self.to_string()
+    }
+
+    fn options(&self) -> Vec<Self> {
         match self {
-            DdcSetCfg::BestOf1 => "Sets to Win: 1".to_string(),
-            DdcSetCfg::BestOf3 => "Sets to Win: 2".to_string(),
-            DdcSetCfg::BestOf5 => "Sets to Win: 3".to_string(),
-            DdcSetCfg::CustomSetsToWin { .. } => "Custom: Sets to Win".to_string(),
-            DdcSetCfg::CustomTotalSets { .. } => "Custom: Total Sets".to_string(),
+            DdcSetCfg::CustomSetsToWin { sets_to_win } => vec![
+                DdcSetCfg::BestOf1,
+                DdcSetCfg::BestOf3,
+                DdcSetCfg::BestOf5,
+                DdcSetCfg::CustomSetsToWin {
+                    sets_to_win: *sets_to_win,
+                },
+                DdcSetCfg::CustomTotalSets { total_sets: 0 },
+            ],
+            DdcSetCfg::CustomTotalSets { total_sets } => vec![
+                DdcSetCfg::BestOf1,
+                DdcSetCfg::BestOf3,
+                DdcSetCfg::BestOf5,
+                DdcSetCfg::CustomSetsToWin { sets_to_win: 0 },
+                DdcSetCfg::CustomTotalSets {
+                    total_sets: *total_sets,
+                },
+            ],
+            _ => vec![
+                DdcSetCfg::BestOf1,
+                DdcSetCfg::BestOf3,
+                DdcSetCfg::BestOf5,
+                DdcSetCfg::CustomSetsToWin { sets_to_win: 0 },
+                DdcSetCfg::CustomTotalSets { total_sets: 0 },
+            ],
         }
     }
 
-    fn options() -> Vec<Self> {
-        vec![
-            DdcSetCfg::BestOf1,
-            DdcSetCfg::BestOf3,
-            DdcSetCfg::BestOf5,
-            // deliver default values for custom variants
-            DdcSetCfg::CustomSetsToWin { sets_to_win: 0 },
-            DdcSetCfg::CustomTotalSets { total_sets: 0 },
-        ]
+    fn static_options() -> Vec<Self> {
+        Self::options(&Self::default())
     }
 }
 
@@ -143,13 +153,13 @@ impl Display for DdcSetWinningCfg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             DdcSetWinningCfg::Sw11Hc15M2 => {
-                write!(f, "Score to Win: 11, Hard Cap: 15, Win by Margin: 2")
+                write!(f, "Score: 11 (+2, Cap 15)")
             }
             DdcSetWinningCfg::Sw15Hc21M2 => {
-                write!(f, "Score to Win: 15, Hard Cap: 21, Win by Margin: 2")
+                write!(f, "Score: 15 (+2, Cap 21)")
             }
             DdcSetWinningCfg::Sw21Hc25M2 => {
-                write!(f, "Score to Win: 21, Hard Cap: 25, Win by Margin: 2")
+                write!(f, "Score: 21 (+2, Cap 25)")
             }
             DdcSetWinningCfg::Custom {
                 score_to_win,
@@ -157,8 +167,8 @@ impl Display for DdcSetWinningCfg {
                 hard_cap,
             } => write!(
                 f,
-                "Score to Win: {}, Hard Cap: {}, Win by Margin: {}",
-                score_to_win, hard_cap, win_by_margin
+                "Custom score: {} (+{}, Cap {})",
+                score_to_win, win_by_margin, hard_cap
             ),
         }
     }
@@ -166,42 +176,44 @@ impl Display for DdcSetWinningCfg {
 
 impl SelectableOption for DdcSetWinningCfg {
     fn value(&self) -> String {
-        match self {
-            DdcSetWinningCfg::Sw11Hc15M2 => "Sw11Hc15M2".to_string(),
-            DdcSetWinningCfg::Sw15Hc21M2 => "Sw15Hc21M2".to_string(),
-            DdcSetWinningCfg::Sw21Hc25M2 => "Sw21Hc25M2".to_string(),
-            // deliver default values for variants with data
-            DdcSetWinningCfg::Custom { .. } => "Custom".to_string(),
-        }
+        self.to_string()
     }
 
     fn label(&self) -> String {
+        self.to_string()
+    }
+
+    fn options(&self) -> Vec<Self> {
         match self {
-            DdcSetWinningCfg::Sw11Hc15M2 => {
-                "Score to Win: 11, Hard Cap: 15, Win by Margin: 2".to_string()
-            }
-            DdcSetWinningCfg::Sw15Hc21M2 => {
-                "Score to Win: 15, Hard Cap: 21, Win by Margin: 2".to_string()
-            }
-            DdcSetWinningCfg::Sw21Hc25M2 => {
-                "Score to Win: 21, Hard Cap: 25, Win by Margin: 2".to_string()
-            }
-            DdcSetWinningCfg::Custom { .. } => "Custom Set Winning Configuration".to_string(),
+            DdcSetWinningCfg::Custom {
+                score_to_win,
+                win_by_margin,
+                hard_cap,
+            } => vec![
+                DdcSetWinningCfg::Sw11Hc15M2,
+                DdcSetWinningCfg::Sw15Hc21M2,
+                DdcSetWinningCfg::Sw21Hc25M2,
+                DdcSetWinningCfg::Custom {
+                    score_to_win: *score_to_win,
+                    win_by_margin: *win_by_margin,
+                    hard_cap: *hard_cap,
+                },
+            ],
+            _ => vec![
+                DdcSetWinningCfg::Sw11Hc15M2,
+                DdcSetWinningCfg::Sw15Hc21M2,
+                DdcSetWinningCfg::Sw21Hc25M2,
+                DdcSetWinningCfg::Custom {
+                    score_to_win: 0,
+                    win_by_margin: 0,
+                    hard_cap: 0,
+                },
+            ],
         }
     }
 
-    fn options() -> Vec<Self> {
-        vec![
-            DdcSetWinningCfg::Sw11Hc15M2,
-            DdcSetWinningCfg::Sw15Hc21M2,
-            DdcSetWinningCfg::Sw21Hc25M2,
-            // deliver default values for custom variant
-            DdcSetWinningCfg::Custom {
-                score_to_win: 0,
-                win_by_margin: 0,
-                hard_cap: 0,
-            },
-        ]
+    fn static_options() -> Vec<Self> {
+        Self::options(&Self::default())
     }
 }
 

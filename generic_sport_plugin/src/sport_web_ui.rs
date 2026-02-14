@@ -58,42 +58,12 @@ impl SportPortWebUi for GenericSportPlugin {
                     <span class="hidden sm:inline text-base-content/30">"|"</span>
 
                     <span class="text-base-content/80" data-testid="preview-score-config">
-                        {move || {
-                            match generic_config.score_to_win {
-                                Some(score) => {
-                                    let mut details = Vec::new();
-                                    if let Some(margin) = generic_config.win_by_margin {
-                                        details.push(format!("+{}", margin));
-                                    }
-                                    if let Some(cap) = generic_config.hard_cap {
-                                        details.push(format!("Cap {}", cap));
-                                    }
-                                    let details_str = if details.is_empty() {
-                                        String::new()
-                                    } else {
-                                        format!(" ({})", details.join(", "))
-                                    };
-                                    format!("Score: {}{}", score, details_str)
-                                }
-                                None => "No score limit".to_string(),
-                            }
-                        }}
+                        {move || generic_config.display_score_limit()}
                     </span>
                 </div>
 
                 // 2. Block: Meta Info (Duration & Points)
                 <div class="flex items-center gap-3 ml-auto sm:ml-0">
-                    // Duration
-                    <div
-                        class="flex items-center gap-1 text-xs opacity-70"
-                        title="Expected Match Duration"
-                    >
-                        <span class="icon-[heroicons--clock] w-4 h-4"></span>
-                        <span data-testid="preview-expected-duration">
-                            {format!("~{} min", duration_minutes)}
-                        </span>
-                    </div>
-
                     // Victory Points Badges
                     <div class="flex gap-1">
                         <span
@@ -113,6 +83,17 @@ impl SportPortWebUi for GenericSportPlugin {
                             {generic_config.victory_points_draw}
                         </span>
                     </div>
+
+                    // Duration
+                    <div
+                        class="flex items-center gap-1 text-xs opacity-70"
+                        title="Expected Match Duration"
+                    >
+                        <span class="icon-[heroicons--clock] w-4 h-4"></span>
+                        <span data-testid="preview-expected-duration">
+                            {format!("~{} min", duration_minutes)}
+                        </span>
+                    </div>
                 </div>
             </div>
         }
@@ -125,10 +106,11 @@ impl SportPortWebUi for GenericSportPlugin {
         };
         view! {
             <div class="p-2">
-                <span class="font-medium">{generic_config.sets_to_win.to_string()}</span>
                 <span class="font-medium">
-                    {generic_config.score_to_win.map(|s| s.to_string()).unwrap_or_default()}
+                    {format!("Sets to win: {}", generic_config.sets_to_win)}
                 </span>
+                <span class="hidden sm:inline text-base-content/30">"|"</span>
+                <span class="font-medium">{generic_config.display_score_limit()}</span>
             </div>
         }
         .into_any()

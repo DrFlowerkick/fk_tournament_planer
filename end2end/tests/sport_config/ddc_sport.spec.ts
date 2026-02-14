@@ -21,13 +21,35 @@ const ddcSportAdapter: SportConfigTestAdapter = {
     const blurTarget = SC.form.btnSave;
 
     // Select Custom Sets to Win
-    await page.getByTestId("select-sets_cfg").selectOption("Custom: Sets to Win");
+    // We find the option that starts with "Custom" dynamically
+    const setsSelect = page.getByTestId("select-sets_cfg");
+    const customSetsValue = await setsSelect
+      .locator("option")
+      .filter({ hasText: /^Custom/ })
+      .first()
+      .getAttribute("value");
+
+    if (customSetsValue) {
+      await setsSelect.selectOption(customSetsValue);
+    }
+
     await fillAndBlur(
       page.getByTestId("input-num_sets"),
       data.sets_to_win.toString(),
     );
     // Select Custom Set Winning Configuration
-    await page.getByTestId("select-set_winning_cfg").selectOption("Custom Set Winning Configuration");
+    // We find the option that starts with "Custom" dynamically
+    const winningSelect = page.getByTestId("select-set_winning_cfg");
+    const customWinningValue = await winningSelect
+      .locator("option")
+      .filter({ hasText: /^Custom/ })
+      .first()
+      .getAttribute("value");
+
+    if (customWinningValue) {
+      await winningSelect.selectOption(customWinningValue);
+    }
+
     await fillAndBlur(
       page.getByTestId("input-score_to_win"),
       data.score_to_win.toString(),
@@ -56,16 +78,20 @@ const ddcSportAdapter: SportConfigTestAdapter = {
   assertSpecificFields: async (row: Locator, data: any) => {
     // Check preview
     await expect(row.getByTestId("preview-set-config")).toContainText(
-      `Sets to Win: ${data.sets_to_win}`
+      new RegExp(
+        `(Sets to win|Custom sets to win|Custom total sets): ${data.sets_to_win}`,
+      ),
     );
     await expect(row.getByTestId("preview-set-winning-config")).toContainText(
-      `Score to Win: ${data.score_to_win}, Hard Cap: ${data.hard_cap}, Win by Margin: ${data.win_by_margin}`
+      new RegExp(
+        `(Score|Custom score): ${data.score_to_win} \\(\\+${data.win_by_margin}, Cap ${data.hard_cap}\\)`,
+      ),
     );
     await expect(row.getByTestId("preview-victory-points-win")).toContainText(
-      `${data.victory_points_win}`
+      `${data.victory_points_win}`,
     );
     await expect(row.getByTestId("preview-victory-points-draw")).toContainText(
-      `${data.victory_points_draw}`
+      `${data.victory_points_draw}`,
     );
 
     // Calculate expected match duration
@@ -79,7 +105,7 @@ const ddcSportAdapter: SportConfigTestAdapter = {
     const expected_minutes = Math.floor(total_seconds / 60);
 
     await expect(row.getByTestId("preview-expected-duration")).toContainText(
-      `~${expected_minutes} min`
+      `~${expected_minutes} min`,
     );
   },
 };

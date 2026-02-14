@@ -4,7 +4,6 @@ import {
   clickEditSportConfig,
   extractQueryParamFromUrl,
   waitForAppHydration,
-  waitForNavigationRowSelectionByName,
   searchAndOpenByNameOnCurrentPage,
   selectors,
 } from "../../helpers";

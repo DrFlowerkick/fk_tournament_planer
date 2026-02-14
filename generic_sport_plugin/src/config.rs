@@ -37,7 +37,7 @@ use uuid::Uuid;
 ///     "expected_match_duration_minutes": { "secs": 1200, "nanos": 0 }
 /// }
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct GenericSportConfig {
     /// number of sets to win (min 1)
     /// if > 1, score_to_win must be Some()
@@ -199,5 +199,25 @@ impl GenericSportConfig {
             );
         }
         if errs.is_empty() { Ok(()) } else { Err(errs) }
+    }
+    pub fn display_score_limit(&self) -> String {
+        match self.score_to_win {
+            Some(score) => {
+                let mut details = Vec::new();
+                if let Some(margin) = self.win_by_margin {
+                    details.push(format!("+{}", margin));
+                }
+                if let Some(cap) = self.hard_cap {
+                    details.push(format!("Cap {}", cap));
+                }
+                let details_str = if details.is_empty() {
+                    String::new()
+                } else {
+                    format!(" ({})", details.join(", "))
+                };
+                format!("Score: {}{}", score, details_str)
+            }
+            None => "No score limit".to_string(),
+        }
     }
 }

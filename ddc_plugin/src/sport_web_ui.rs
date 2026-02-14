@@ -116,6 +116,7 @@ impl SportPortWebUi for DdcSportPlugin {
         view! {
             <div class="p-2">
                 <span class="font-medium">{generic_config.sets_cfg.to_string()}</span>
+                <span class="hidden sm:inline text-base-content/30">"|"</span>
                 <span class="font-medium">{generic_config.set_winning_cfg.to_string()}</span>
             </div>
         }
@@ -167,52 +168,35 @@ impl SportPortWebUi for DdcSportPlugin {
                 }
             })
         });
-        let set_num_sets = Callback::new(move |num_sets: Option<u16>| {
-            if let Some(mut cfg) = current_config.get() {
-                if let Some(num_sets) = num_sets {
-                    let mut changed = false;
-                    match &mut cfg.sets_cfg {
-                        DdcSetCfg::CustomSetsToWin { sets_to_win } => {
-                            *sets_to_win = num_sets;
-                            changed = true;
-                        }
-                        DdcSetCfg::CustomTotalSets { total_sets } => {
-                            *total_sets = num_sets;
-                            changed = true;
-                        }
-                        _ => {}
-                    }
-                    if changed {
-                        sport_config_editor
-                            .set_config
-                            .set(serde_json::to_value(cfg).unwrap());
-                    }
-                }
-            }
-        });
         let sets_cfg =
             Signal::derive(move || current_config.with(|cfg| cfg.as_ref().map(|c| c.sets_cfg)));
         let set_sets_cfg = Callback::new(move |new_cfg: Option<DdcSetCfg>| {
             if let Some(mut cfg) = current_config.get()
                 && let Some(new_cfg) = new_cfg
             {
-                let new_cfg = match new_cfg {
-                    DdcSetCfg::CustomSetsToWin { .. } => DdcSetCfg::CustomSetsToWin {
-                        sets_to_win: num_sets.get().unwrap_or_default(),
-                    },
-                    DdcSetCfg::CustomTotalSets { .. } => DdcSetCfg::CustomTotalSets {
-                        total_sets: num_sets.get().unwrap_or_default(),
-                    },
-                    _ => {
-                        // reset num_sets if not custom
-                        set_num_sets.run(None);
-                        new_cfg
-                    }
-                };
                 cfg.sets_cfg = new_cfg;
                 sport_config_editor
                     .set_config
                     .set(serde_json::to_value(cfg).unwrap());
+            }
+        });
+        let set_num_sets = Callback::new(move |num_sets: Option<u16>| {
+            if let Some(cfg) = current_config.get()
+                && let Some(num_sets) = num_sets
+            {
+                match cfg.sets_cfg {
+                    DdcSetCfg::CustomSetsToWin { .. } => {
+                        set_sets_cfg.run(Some(DdcSetCfg::CustomSetsToWin {
+                            sets_to_win: num_sets,
+                        }));
+                    }
+                    DdcSetCfg::CustomTotalSets { .. } => {
+                        set_sets_cfg.run(Some(DdcSetCfg::CustomTotalSets {
+                            total_sets: num_sets,
+                        }));
+                    }
+                    _ => {}
+                }
             }
         });
         // configuration of winning a set

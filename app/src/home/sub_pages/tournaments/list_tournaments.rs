@@ -309,7 +309,7 @@ pub fn ListTournaments() -> impl IntoView {
                                                                                     {t.read_value().get_tournament_state().to_string()}
                                                                                 </span>
                                                                                 {format!(
-                                                                                    "{} with {} number of entrants",
+                                                                                    "{} with {} entrants",
                                                                                     t.read_value().get_tournament_mode(),
                                                                                     t.read_value().get_num_entrants(),
                                                                                 )}

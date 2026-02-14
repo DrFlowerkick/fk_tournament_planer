@@ -11,7 +11,7 @@ use crate::{
 };
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
 /// mode of tournament
@@ -24,6 +24,7 @@ pub enum TournamentType {
     Adhoc,
 }
 
+// ToDo: do we need this? If yes, change to FromStr
 impl From<String> for TournamentType {
     fn from(s: String) -> Self {
         match s.as_str() {
@@ -38,7 +39,7 @@ impl From<String> for TournamentType {
 /// If there are Mode specific configuration values, which cannot be placed
 /// in sub structures like Stage, Group, Match, etc., we may need to add them here.
 /// For now, Swiss system needs number of rounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TournamentMode {
     /// Single Stage
     #[default]
@@ -49,6 +50,21 @@ pub enum TournamentMode {
     TwoPoolStagesAndFinalStage,
     /// Swiss System
     SwissSystem { num_rounds: u32 },
+}
+
+impl Display for TournamentMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TournamentMode::SingleStage => write!(f, "Single Stage"),
+            TournamentMode::PoolAndFinalStage => write!(f, "Pool and Final Stage"),
+            TournamentMode::TwoPoolStagesAndFinalStage => {
+                write!(f, "Two Pool Stages and Final Stage")
+            }
+            TournamentMode::SwissSystem { num_rounds } => {
+                write!(f, "Swiss System ({} rounds)", num_rounds)
+            }
+        }
+    }
 }
 
 impl TournamentMode {
@@ -80,7 +96,7 @@ impl TournamentMode {
 }
 
 /// status of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TournamentState {
     /// Draft
     #[default]
@@ -93,6 +109,17 @@ pub enum TournamentState {
     Finished,
 }
 
+impl Display for TournamentState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TournamentState::Draft => write!(f, "Draft"),
+            TournamentState::Published => write!(f, "Published"),
+            TournamentState::ActiveStage(stage) => write!(f, "Running (Stage {})", stage),
+            TournamentState::Finished => write!(f, "Finished"),
+        }
+    }
+}
+
 impl FromStr for TournamentState {
     type Err = CoreError;
 
@@ -100,11 +127,20 @@ impl FromStr for TournamentState {
         match s {
             "Draft" => Ok(TournamentState::Draft),
             "Published" => Ok(TournamentState::Published),
-            "Running" => Ok(TournamentState::ActiveStage(0)),
             "Finished" => Ok(TournamentState::Finished),
-            _ => Err(CoreError::ParsingError(
-                "Invalid tournament state".to_string(),
-            )),
+            _ => {
+                if let Some(stage_str) = s.strip_prefix("Running (Stage ")
+                    && stage_str.ends_with(')')
+                {
+                    let stage_num_str = &stage_str[..stage_str.len() - 1];
+                    if let Ok(stage_num) = stage_num_str.parse::<u32>() {
+                        return Ok(TournamentState::ActiveStage(stage_num));
+                    }
+                }
+                Err(CoreError::ParsingError(
+                    "Invalid tournament state".to_string(),
+                ))
+            }
         }
     }
 }

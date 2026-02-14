@@ -400,11 +400,17 @@ where
                     let new_val = ev.target().value();
                     if new_val.is_empty() || clear_label.get_value().as_deref() == Some(&new_val) {
                         set_value.run(None);
-                    } else if let Some(selected_variant) = E::options()
-                        .into_iter()
-                        .find(|o| o.value() == new_val)
+                    } else if let Some(selected_variant) = value
+                        .with(|v| {
+                            v.as_ref()
+                                .map_or_else(|| E::static_options(), |current| current.options())
+                                .into_iter()
+                                .find(|o| o.value() == new_val)
+                        })
                     {
                         set_value.run(Some(selected_variant));
+                    } else {
+                        set_value.run(None);
                     }
                     set_is_selecting.set(false);
                 }
@@ -414,7 +420,17 @@ where
                         .with_value(|maybe_label| match maybe_label {
                             Some(label) => {
                                 let val = label.clone();
-                                if E::options().into_iter().any(|o| o.value() == val) {
+                                if value
+                                    .with(|v| {
+                                        v.as_ref()
+                                            .map_or_else(
+                                                || E::static_options(),
+                                                |current| current.options(),
+                                            )
+                                            .into_iter()
+                                            .any(|o| o.value() == val)
+                                    })
+                                {
                                     return ().into_any();
                                 }
                                 // Avoid rendering the clear option if its value conflicts
@@ -435,26 +451,30 @@ where
                         })
                 }}
 
-                {E::options()
-                    .into_iter()
-                    .map(|opt| {
-                        let val = opt.value();
-                        let text = opt.label();
-                        // We need to check equality for the "selected" attribute.
-                        // Since E implements PartialEq, we can compare the variant structure directly
-                        // OR compare the value strings if variants with different data are considered "same selection"
-                        view! {
-                            <option
-                                value=val.clone()
-                                selected=move || {
-                                    value.get().map(|v| v.value()).unwrap_or_default() == val
-                                }
-                            >
-                                {text}
-                            </option>
-                        }
-                    })
-                    .collect_view()}
+                {move || {
+                    value
+                        .get()
+                        .map_or_else(|| E::static_options(), |current| current.options())
+                        .into_iter()
+                        .map(|opt| {
+                            let val = opt.value();
+                            let text = opt.label();
+                            // We need to check equality for the "selected" attribute.
+                            // Since E implements PartialEq, we can compare the variant structure directly
+                            // OR compare the value strings if variants with different data are considered "same selection"
+                            view! {
+                                <option
+                                    value=val.clone()
+                                    selected=move || {
+                                        value.get().map(|v| v.value()).unwrap_or_default() == val
+                                    }
+                                >
+                                    {text}
+                                </option>
+                            }
+                        })
+                        .collect_view()
+                }}
             </select>
             // Display error only when not typing and an error exists
             <Show when=show_error>
@@ -815,7 +835,17 @@ where
                         .with_value(|maybe_label| match maybe_label {
                             Some(label) => {
                                 let val = label.clone();
-                                if E::options().into_iter().any(|o| o.value() == val) {
+                                if value
+                                    .with(|v| {
+                                        v.as_ref()
+                                            .map_or_else(
+                                                || E::static_options(),
+                                                |current| current.options(),
+                                            )
+                                            .into_iter()
+                                            .any(|o| o.value() == val)
+                                    })
+                                {
                                     return ().into_any();
                                 }
                                 // Avoid rendering the clear option if its value conflicts
@@ -836,26 +866,30 @@ where
                         })
                 }}
 
-                {E::options()
-                    .into_iter()
-                    .map(|opt| {
-                        let val = opt.value();
-                        let text = opt.label();
-                        // We need to check equality for the "selected" attribute.
-                        // Since E implements PartialEq, we can compare the variant structure directly
-                        // OR compare the value strings if variants with different data are considered "same selection"
-                        view! {
-                            <option
-                                value=val.clone()
-                                selected=move || {
-                                    value.get().map(|v| v.value()).unwrap_or_default() == val
-                                }
-                            >
-                                {text}
-                            </option>
-                        }
-                    })
-                    .collect_view()}
+                {move || {
+                    value
+                        .get()
+                        .map_or_else(|| E::static_options(), |current| current.options())
+                        .into_iter()
+                        .map(|opt| {
+                            let val = opt.value();
+                            let text = opt.label();
+                            // We need to check equality for the "selected" attribute.
+                            // Since E implements PartialEq, we can compare the variant structure directly
+                            // OR compare the value strings if variants with different data are considered "same selection"
+                            view! {
+                                <option
+                                    value=val.clone()
+                                    selected=move || {
+                                        value.get().map(|v| v.value()).unwrap_or_default() == val
+                                    }
+                                >
+                                    {text}
+                                </option>
+                            }
+                        })
+                        .collect_view()
+                }}
             </select>
         </div>
     }
