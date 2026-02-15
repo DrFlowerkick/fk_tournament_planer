@@ -210,18 +210,18 @@ pub fn EditSportConfiguration(
             toast_ctx.success("Sport Configuration saved successfully");
             if sport_config_list_ctx.is_id_in_list(sc_id) {
                 let nav_url = url_matched_route_update_query(
-                    SportConfigIdQuery::key(),
+                    SportConfigIdQuery::KEY,
                     &sc_id.to_string(),
                     MatchedRouteHandler::RemoveSegment(1),
                 );
                 navigate(&nav_url, NavigateOptions::default());
                 sport_config_list_ctx.trigger_refetch();
             } else {
-                let refetch = get_query(FilterNameQuery::key()) != Some(sc.get_name().to_string());
+                let refetch = get_query(FilterNameQuery::KEY) != Some(sc.get_name().to_string());
                 let sc_id = sc.get_id().to_string();
                 let key_value = vec![
-                    (SportConfigIdQuery::key(), sc_id.as_str()),
-                    (FilterNameQuery::key(), sc.get_name()),
+                    (SportConfigIdQuery::KEY, sc_id.as_str()),
+                    (FilterNameQuery::KEY, sc.get_name()),
                 ];
                 let nav_url = url_matched_route_update_queries(
                     key_value,

@@ -111,7 +111,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 <div class="flex flex-col md:flex-row justify-end gap-4">
                     <A
                         href=move || url_matched_route_remove_query(
-                            AddressIdQuery::key(),
+                            AddressIdQuery::KEY,
                             MatchedRouteHandler::Extend("new"),
                         )
                         attr:class="btn btn-sm btn-primary"
@@ -127,7 +127,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                     // Hidden input to keep address_id in query string
                     <input
                         type="hidden"
-                        name=AddressIdQuery::key()
+                        name=AddressIdQuery::KEY
                         prop:value=move || {
                             address_id.get().map(|id| id.to_string()).unwrap_or_default()
                         }
@@ -138,7 +138,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                             <TextInput<
                             String,
                         >
-                                name=FilterNameQuery::key()
+                                name=FilterNameQuery::KEY
                                 label="Search Name"
                                 placeholder="Type to search for name..."
                                 value=search_term
@@ -152,7 +152,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                             <EnumSelect<
                             FilterLimit,
                         >
-                                name=FilterLimitQuery::key()
+                                name=FilterLimitQuery::KEY
                                 label="Limit"
                                 value=limit
                                 data_testid="filter-limit-select"

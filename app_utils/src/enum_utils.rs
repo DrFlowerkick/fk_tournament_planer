@@ -1,6 +1,6 @@
 //! preparing enums for usage as select options
 
-use app_core::{TournamentMode, TournamentState, TournamentType};
+use app_core::{CoreError, TournamentMode, TournamentState, TournamentType};
 use isocountry::CountryCode;
 use std::{num::ParseIntError, str::FromStr};
 
@@ -124,6 +124,7 @@ impl SelectableOption for CountryCode {
     }
 }
 
+/// Filter limits for list views, e.g. tournament list, player list, etc.
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Default, displaydoc::Display)]
 pub enum FilterLimit {
     #[default]
@@ -172,5 +173,30 @@ impl SelectableOption for FilterLimit {
 
     fn static_options() -> Vec<Self> {
         Self::options(&Self::default())
+    }
+}
+
+/// Actions for editing entities, e.g. postal addresses, players, etc.
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Default, displaydoc::Display)]
+pub enum EditAction {
+    /// new
+    New,
+    #[default]
+    /// edit
+    Edit,
+    /// copy
+    Copy,
+}
+
+impl FromStr for EditAction {
+    type Err = CoreError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "new" => Ok(EditAction::New),
+            "edit" => Ok(EditAction::Edit),
+            "copy" => Ok(EditAction::Copy),
+            _ => Err(CoreError::ParsingError("Invalid edit action".to_string())),
+        }
     }
 }

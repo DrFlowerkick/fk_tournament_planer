@@ -309,7 +309,7 @@ where
                 }
                 // USER LEAVES FIELD: Reset draft to sync with core
                 on:blur=move |_| {
-                    if parse_err.get().is_some() {
+                    if parse_err.try_get().flatten().is_some() {
                         set_parse_err.set(None);
                         set_draft.set(None);
                     }
@@ -437,7 +437,7 @@ where
                 }
                 // USER LEAVES FIELD: Reset draft to sync with core
                 on:blur=move |_| {
-                    if parse_err.get().is_some() {
+                    if parse_err.try_get().flatten().is_some() {
                         set_parse_err.set(None);
                         set_draft.set(None);
                     }
@@ -568,7 +568,7 @@ where
                 }
                 // USER LEAVES FIELD: Reset draft to sync with core
                 on:blur=move |_| {
-                    if parse_err.get().is_some() {
+                    if parse_err.try_get().flatten().is_some() {
                         set_parse_err.set(None);
                         set_draft.set(None);
                     }

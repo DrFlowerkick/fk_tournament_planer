@@ -138,14 +138,14 @@ pub fn ListSportConfigurations() -> impl IntoView {
                     // Hidden input to keep sport_id and sport_config_id in query string
                     <input
                         type="hidden"
-                        name=SportIdQuery::key()
+                        name=SportIdQuery::KEY
                         prop:value=move || {
                             sport_id.get().map(|id| id.to_string()).unwrap_or_default()
                         }
                     />
                     <input
                         type="hidden"
-                        name=SportConfigIdQuery::key()
+                        name=SportConfigIdQuery::KEY
                         prop:value=move || {
                             sport_config_id.get().map(|id| id.to_string()).unwrap_or_default()
                         }
@@ -156,7 +156,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                             <TextInput<
                             String,
                         >
-                                name=FilterNameQuery::key()
+                                name=FilterNameQuery::KEY
                                 label="Search Name"
                                 placeholder="Type to search for name..."
                                 value=search_term
@@ -170,7 +170,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                             <EnumSelect<
                             FilterLimit,
                         >
-                                name=FilterLimitQuery::key()
+                                name=FilterLimitQuery::KEY
                                 label="Limit"
                                 value=limit
                                 data_testid="filter-limit-select"

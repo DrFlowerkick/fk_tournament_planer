@@ -80,9 +80,9 @@ where
             let navigate = navigate.clone();
             move |new_id: Option<Uuid>| {
                 let nav_url = if let Some(t_id) = new_id {
-                    url_update_query(Q::key(), &t_id.to_string())
+                    url_update_query(Q::KEY, &t_id.to_string())
                 } else {
-                    url_remove_query(Q::key())
+                    url_remove_query(Q::KEY)
                 };
                 navigate(
                     &nav_url,

@@ -7,6 +7,7 @@ use leptos_router::hooks::{use_matched, use_url};
 pub enum MatchedRouteHandler<'a> {
     Keep,
     RemoveSegment(u32),
+    ReplaceSegment(&'a str),
     Extend(&'a str),
 }
 
@@ -29,9 +30,23 @@ impl<'a> MatchedRouteHandler<'a> {
                 }
                 path
             }
+            MatchedRouteHandler::ReplaceSegment(new_segment) => {
+                let mut path = matched_route.get();
+                if let Some(pos) = path.rfind('/') {
+                    path.truncate(pos);
+                }
+                if path.is_empty() {
+                    return "/".to_string();
+                }
+                if new_segment.is_empty() {
+                    path
+                } else {
+                    format!("{}/{}", path, new_segment)
+                }
+            }
             MatchedRouteHandler::Extend(sub_path) => {
                 let mut mr = matched_route.get();
-                if *sub_path == "" {
+                if sub_path.is_empty() {
                     return mr;
                 }
                 if mr == "/" {
@@ -60,9 +75,23 @@ impl<'a> MatchedRouteHandler<'a> {
                 }
                 path
             }
+            MatchedRouteHandler::ReplaceSegment(new_segment) => {
+                let mut path = matched_route.get_untracked();
+                if let Some(pos) = path.rfind('/') {
+                    path.truncate(pos);
+                }
+                if path.is_empty() {
+                    return "/".to_string();
+                }
+                if new_segment.is_empty() {
+                    path
+                } else {
+                    format!("{}/{}", path, new_segment)
+                }
+            }
             MatchedRouteHandler::Extend(sub_path) => {
                 let mut mr = matched_route.get_untracked();
-                if *sub_path == "" {
+                if sub_path.is_empty() {
                     return mr;
                 }
                 if mr == "/" {

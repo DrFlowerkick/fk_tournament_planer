@@ -1,10 +1,11 @@
 //! Postal Address Edit Module
 
-use app_core::PostalAddress;
+use app_core::{CrTopic, PostalAddress, utils::id_version::IdVersion};
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::postal_address::{SavePostalAddressFormData, save_postal_address_inner};
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, TextInput},
+    enum_utils::EditAction,
     error::{
         AppError,
         strategy::{handle_general_error, handle_read_error, handle_write_error},
@@ -16,7 +17,7 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{AddressIdQuery, FilterNameQuery, ParamQuery},
+    params::{AddressIdQuery, EditActionParams, FilterNameQuery, ParamQuery},
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::{
         activity_tracker::ActivityTracker, error_state::PageErrorContext,
@@ -24,13 +25,11 @@ use app_utils::{
         toast_state::ToastContext,
     },
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
 #[cfg(feature = "test-mock")]
 use leptos::{wasm_bindgen::JsCast, web_sys};
-use leptos_router::{
-    NavigateOptions,
-    hooks::{use_matched, use_navigate},
-};
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
 
 #[component]
@@ -66,6 +65,11 @@ pub fn LoadPostalAddress() -> impl IntoView {
     let refetch = Callback::new(move |()| {
         addr_res.refetch();
     });
+
+    // parallel editing
+    let (topic, set_topic) = signal(None::<CrTopic>);
+    let (version, set_version) = signal(0_u32);
+    use_client_registry_socket(topic.into(), version.into(), refetch);
 
     let on_cancel = use_on_cancel();
 
@@ -110,6 +114,8 @@ pub fn LoadPostalAddress() -> impl IntoView {
                             view! {
                                 <EditPostalAddress
                                     postal_address=may_be_pa.clone()
+                                    set_topic=set_topic
+                                    set_version=set_version
                                     refetch=refetch
                                 />
                             }
@@ -121,20 +127,21 @@ pub fn LoadPostalAddress() -> impl IntoView {
 }
 
 #[component]
-pub fn EditPostalAddress(
-    postal_address: Option<PostalAddress>,
+fn EditPostalAddress(
+    #[prop(into)] postal_address: Signal<Option<PostalAddress>>,
+    set_topic: WriteSignal<Option<CrTopic>>,
+    set_version: WriteSignal<u32>,
     refetch: Callback<()>,
 ) -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
-        get_query,
-        url_matched_route_update_query,
+        url_matched_route,
         url_matched_route_update_queries,
         url_is_matched_route,
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
-    let matched_route = use_matched();
+    let edit_action = EditActionParams::use_param_query();
 
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
@@ -152,17 +159,63 @@ pub fn EditPostalAddress(
     });
 
     let postal_address_editor = PostalAddressEditorContext::new();
-    let (show_form, is_new) = if let Some(pa) = postal_address {
-        postal_address_editor.set_postal_address(pa);
-        (true, false)
-    } else {
-        postal_address_editor.new_postal_address();
-        let is_new = matched_route.get_untracked().ends_with("new");
-        (is_new, is_new)
-    };
-    provide_context(postal_address_editor);
+    // We have the following cases:
+    // 1) postal_address is Some -> an address was loaded
+    // 1a) if last segment of matched route is "edit", we are editing an existing address
+    // 1b) if last segment of matched route is "copy", we are copying an existing address as new
+    // 1c) if last segment of matched route is "new", we navigate to edit
+    // 2) postal_address is None -> no address was loaded
+    // 2a) if last segment of matched route is "new", we are creating a new address
+    // 2b) if last segment of matched route is "edit", we assume that no item was selected in
+    //     the list and we show a message to select an address from the list.
+    // 2c) if last segment of matched route is "copy", we we navigate to edit.
+    let (show_form, set_show_form) = signal(false);
+    Effect::new({
+        let navigate = navigate.clone();
+        move || {
+            if let Some(mut pa) = postal_address.get() {
+                match edit_action.get() {
+                    Some(EditAction::Edit) => {
+                        // set topic and version for parallel editing
+                        set_topic.set(Some(CrTopic::Address(pa.get_id())));
+                        set_version.set(pa.get_version().unwrap_or_default());
+                        // set state
+                        postal_address_editor.set_postal_address(pa);
+                        set_show_form.set(true);
+                    }
+                    Some(EditAction::Copy) => {
+                        pa.set_id_version(IdVersion::new(Uuid::new_v4(), None))
+                            .set_name("");
+                        postal_address_editor.set_postal_address(pa);
+                        set_show_form.set(true);
+                    }
+                    Some(EditAction::New) => {
+                        let nav_url =
+                            url_matched_route(MatchedRouteHandler::ReplaceSegment("edit"));
+                        navigate(&nav_url, NavigateOptions::default());
+                        set_show_form.set(false);
+                    }
+                    None => set_show_form.set(false),
+                }
+            } else {
+                match edit_action.get() {
+                    Some(EditAction::New) => {
+                        postal_address_editor.new_postal_address();
+                        set_show_form.set(true);
+                    }
+                    Some(EditAction::Copy) => {
+                        let nav_url =
+                            url_matched_route(MatchedRouteHandler::ReplaceSegment("edit"));
+                        navigate(&nav_url, NavigateOptions::default());
+                        set_show_form.set(false);
+                    }
+                    Some(EditAction::Edit) | None => set_show_form.set(false),
+                }
+            }
+        }
+    });
 
-    // cancel function for cancel button and error handling
+    // cancel function for cancel button
     let on_cancel = use_on_cancel();
 
     // --- Server Actions ---
@@ -172,73 +225,72 @@ pub fn EditPostalAddress(
 
     // handle save result
     Effect::new(move || {
-        match save_postal_address.value().get() {
-            Some(Ok(pa)) => {
-                let pa_id = pa.get_id();
-                save_postal_address.clear();
-                toast_ctx.success("Postal Address saved successfully");
-                if postal_address_list_ctx.is_id_in_list(pa_id) {
-                    let nav_url = url_matched_route_update_query(
-                        AddressIdQuery::key(),
-                        &pa_id.to_string(),
-                        MatchedRouteHandler::RemoveSegment(1),
-                    );
-                    navigate(&nav_url, NavigateOptions::default());
-                    postal_address_list_ctx.trigger_refetch();
-                } else {
-                    let refetch =
-                        get_query(FilterNameQuery::key()) != Some(pa.get_name().to_string());
-                    let pa_id = pa_id.to_string();
-                    let key_value = vec![
-                        (AddressIdQuery::key(), pa_id.as_str()),
-                        (FilterNameQuery::key(), pa.get_name()),
-                    ];
-                    let nav_url = url_matched_route_update_queries(
-                        key_value,
-                        MatchedRouteHandler::RemoveSegment(1),
-                    );
-                    navigate(&nav_url, NavigateOptions::default());
-                    if refetch {
+        if let Some(spa_result) = save_postal_address.value().get()
+            && let Some(edit_action) = edit_action.get()
+        {
+            save_postal_address.clear();
+            match spa_result {
+                Ok(pa) => match edit_action {
+                    EditAction::New | EditAction::Copy => {
+                        let pa_id = pa.get_id().to_string();
+                        let key_value = vec![
+                            (AddressIdQuery::KEY, pa_id.as_str()),
+                            (FilterNameQuery::KEY, pa.get_name()),
+                        ];
+                        let nav_url = url_matched_route_update_queries(
+                            key_value,
+                            MatchedRouteHandler::ReplaceSegment("edit"),
+                        );
+                        navigate(&nav_url, NavigateOptions::default());
+                    }
+                    EditAction::Edit => {
                         postal_address_list_ctx.trigger_refetch();
                     }
+                },
+                Err(err) => {
+                    leptos::logging::log!("Error saving Postal Address: {:?}", err);
+                    handle_write_error(
+                        &page_err_ctx,
+                        &toast_ctx,
+                        component_id.get_value(),
+                        &err,
+                        refetch,
+                    );
                 }
             }
-            Some(Err(err)) => {
-                leptos::logging::log!("Error saving Postal Address: {:?}", err);
-                save_postal_address.clear();
-                handle_write_error(
-                    &page_err_ctx,
-                    &toast_ctx,
-                    component_id.get_value(),
-                    &err,
-                    refetch,
-                );
-            }
-            None => { /* saving state - do nothing */ }
         }
     });
-
-    // --- Signals for UI state & errors ---
-    let is_disabled = move || save_postal_address_pending.get();
-
-    let is_valid_addr = move || {
-        postal_address_editor
-            .validation_result
-            .with(|vr| vr.is_ok())
-    };
 
     // scroll into view handling
     let scroll_ref = NodeRef::<H2>::new();
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
+        <Show
+            when=move || edit_action.get().is_some()
+            fallback=|| "Page not found.".into_view()
+        >
         <div class="card w-full bg-base-100 shadow-xl">
             <div class="card-body">
-                <h2 class="card-title" node_ref=scroll_ref>
-                    {move || { if is_new { "New Postal Address" } else { "Edit Postal Address" } }}
-                </h2>
+                <div class="flex justify-between items-center">
+                    <h2 class="card-title" node_ref=scroll_ref>
+                        {move || match edit_action.get() {
+                            Some(EditAction::New) => "New Postal Address",
+                            Some(EditAction::Edit) => "Edit Postal Address",
+                            Some(EditAction::Copy) => "Copy Postal Address",
+                            None => "",
+                        }}
+                    </h2>
+                    <button
+                        class="btn btn-square btn-ghost btn-sm"
+                        on:click=move |_| on_cancel.run(())
+                        aria-label="Close"
+                    >
+                        <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                    </button>
+                </div>
                 <Show
-                    when=move || show_form
+                    when=move || show_form.get()
                     fallback=|| {
                         view! {
                             <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
@@ -258,6 +310,10 @@ pub fn EditPostalAddress(
                                 #[cfg(feature = "test-mock")]
                                 {
                                     ev.prevent_default();
+                                    if postal_address_editor.validation_result.with(|vr| vr.is_err()) {
+                                        // prevent submit if invalid data
+                                        return;
+                                    }
                                     let intent = ev
                                         .submitter()
                                         .and_then(|el| {
@@ -311,12 +367,15 @@ pub fn EditPostalAddress(
                                 }
                                 #[cfg(not(feature = "test-mock"))]
                                 {
-                                    let _ = ev;
+                                    if postal_address_editor.validation_result.with(|vr| vr.is_err()) {
+                                        // prevent submit if invalid data
+                                        ev.prevent_default();
+                                    }
                                 }
                             }
                         >
                             // --- Address Form Fields ---
-                            <fieldset class="space-y-4 contents" prop:disabled=is_disabled>
+                            <fieldset class="space-y-4 contents">
                                 // Hidden meta fields the server expects (id / version)
                                 <input
                                     type="hidden"
@@ -341,12 +400,18 @@ pub fn EditPostalAddress(
                                             .map_or(0, |pa| pa.get_version().unwrap_or_default())
                                     }
                                 />
+                                <input
+                                    type="hidden"
+                                    name="form[intent]"
+                                    data-testid="intent"
+                                    prop:value=move || if edit_action.get() == Some(EditAction::Edit) { "update" } else { "create" }
+                                />
                                 <TextInput
                                     label="Name"
                                     name="form[name]"
                                     data_testid="input-name"
                                     value=postal_address_editor.name
-                                    action=InputCommitAction::WriteTo(
+                                    action=InputCommitAction::WriteAndSubmit(
                                         postal_address_editor.set_name,
                                     )
                                     validation_result=postal_address_editor.validation_result
@@ -358,7 +423,7 @@ pub fn EditPostalAddress(
                                     name="form[street]"
                                     data_testid="input-street"
                                     value=postal_address_editor.street
-                                    action=InputCommitAction::WriteTo(
+                                    action=InputCommitAction::WriteAndSubmit(
                                         postal_address_editor.set_street,
                                     )
                                     validation_result=postal_address_editor.validation_result
@@ -371,7 +436,7 @@ pub fn EditPostalAddress(
                                         name="form[postal_code]"
                                         data_testid="input-postal_code"
                                         value=postal_address_editor.postal_code
-                                        action=InputCommitAction::WriteTo(
+                                        action=InputCommitAction::WriteAndSubmit(
                                             postal_address_editor.set_postal_code,
                                         )
                                         validation_result=postal_address_editor.validation_result
@@ -383,7 +448,7 @@ pub fn EditPostalAddress(
                                         name="form[locality]"
                                         data_testid="input-locality"
                                         value=postal_address_editor.locality
-                                        action=InputCommitAction::WriteTo(
+                                        action=InputCommitAction::WriteAndSubmit(
                                             postal_address_editor.set_locality,
                                         )
                                         validation_result=postal_address_editor.validation_result
@@ -396,7 +461,7 @@ pub fn EditPostalAddress(
                                     name="form[region]"
                                     data_testid="input-region"
                                     value=postal_address_editor.region
-                                    action=InputCommitAction::WriteTo(
+                                    action=InputCommitAction::WriteAndSubmit(
                                         postal_address_editor.set_region,
                                     )
                                     optional=true
@@ -406,55 +471,19 @@ pub fn EditPostalAddress(
                                     name="form[country]"
                                     data_testid="select-country"
                                     value=postal_address_editor.country
-                                    action=InputCommitAction::WriteTo(
+                                    action=InputCommitAction::WriteAndSubmit(
                                         postal_address_editor.set_country,
                                     )
                                     validation_result=postal_address_editor.validation_result
                                     object_id=postal_address_editor.postal_address_id
                                     field="Country"
                                 />
-                                <div class="card-actions justify-end mt-4">
-                                    <button
-                                        type="submit"
-                                        name="form[intent]"
-                                        value=move || if is_new { "create" } else { "update" }
-                                        data-testid="btn-save"
-                                        class="btn btn-primary"
-                                        prop:disabled=move || is_disabled() || !is_valid_addr()
-                                    >
-                                        "Save"
-                                    </button>
-
-                                    <button
-                                        type="submit"
-                                        name="form[intent]"
-                                        value="copy_as_new"
-                                        data-testid="btn-save-as-new"
-                                        class="btn btn-secondary"
-                                        prop:disabled=move || {
-                                            is_disabled() || is_new || !is_valid_addr()
-                                        }
-                                        prop:hidden=move || is_new
-                                    >
-                                        "Save as new"
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        name="form[intent]"
-                                        value="cancel"
-                                        data-testid="btn-cancel"
-                                        class="btn btn-ghost"
-                                        on:click=move |_| on_cancel.run(())
-                                    >
-                                        "Cancel"
-                                    </button>
-                                </div>
                             </fieldset>
                         </ActionForm>
                     </div>
                 </Show>
             </div>
         </div>
+        </Show>
     }
 }

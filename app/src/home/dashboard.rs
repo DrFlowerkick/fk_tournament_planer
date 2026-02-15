@@ -84,7 +84,7 @@ pub fn SportDashboard() -> impl IntoView {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mx-auto">
                         <A
                             href=url_matched_route_update_query(
-                                TournamentStateQuery::key(),
+                                TournamentStateQuery::KEY,
                                 "Draft",
                                 MatchedRouteHandler::Extend("tournaments"),
                             )
@@ -98,7 +98,7 @@ pub fn SportDashboard() -> impl IntoView {
 
                         <A
                             href=url_matched_route_remove_query(
-                                TournamentBaseIdQuery::key(),
+                                TournamentBaseIdQuery::KEY,
                                 MatchedRouteHandler::Extend("new-tournament"),
                             )
 

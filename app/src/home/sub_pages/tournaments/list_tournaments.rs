@@ -129,14 +129,14 @@ pub fn ListTournaments() -> impl IntoView {
                     // Hidden input to keep sport_id and sport_config_id in query string
                     <input
                         type="hidden"
-                        name=SportIdQuery::key()
+                        name=SportIdQuery::KEY
                         prop:value=move || {
                             sport_id.get().map(|id| id.to_string()).unwrap_or_default()
                         }
                     />
                     <input
                         type="hidden"
-                        name=TournamentBaseIdQuery::key()
+                        name=TournamentBaseIdQuery::KEY
                         prop:value=move || {
                             tournament_base_id.get().map(|id| id.to_string()).unwrap_or_default()
                         }
@@ -148,7 +148,7 @@ pub fn ListTournaments() -> impl IntoView {
                             <EnumSelect<
                             TournamentState,
                         >
-                                name=TournamentStateQuery::key()
+                                name=TournamentStateQuery::KEY
                                 label="Tournament State"
                                 value=tournament_state
                                 data_testid="filter-tournament-state-select"
@@ -162,7 +162,7 @@ pub fn ListTournaments() -> impl IntoView {
                             <TextInput<
                             String,
                         >
-                                name=FilterNameQuery::key()
+                                name=FilterNameQuery::KEY
                                 label="Search Name"
                                 placeholder="Type to search for name..."
                                 value=search_term
@@ -176,7 +176,7 @@ pub fn ListTournaments() -> impl IntoView {
                             <EnumSelect<
                             FilterLimit,
                         >
-                                name=FilterLimitQuery::key()
+                                name=FilterLimitQuery::KEY
                                 label="Limit"
                                 value=limit
                                 data_testid="filter-limit-select"
@@ -193,7 +193,7 @@ pub fn ListTournaments() -> impl IntoView {
                             <input
                                 type="checkbox"
                                 class="toggle"
-                                name=IncludeAdhocQuery::key()
+                                name=IncludeAdhocQuery::KEY
                                 data-testid="filter-include-adhoc-toggle"
                                 value="true"
                                 prop:checked=move || include_adhoc.get().unwrap_or(false)
