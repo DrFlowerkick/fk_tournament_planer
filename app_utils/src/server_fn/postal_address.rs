@@ -168,12 +168,6 @@ pub async fn save_postal_address_inner(
             mut_pa_core.set_id_version(id_version);
             info!("saving_create");
         }
-        Some("copy_as_new") => {
-            // set to nil id and no version to create a new copy
-            let id_version = IdVersion::new(Uuid::nil(), None);
-            mut_pa_core.set_id_version(id_version);
-            info!("saving_copy_as_new");
-        }
         _ => { /* ToDo: should we return err for unknown intent? Or how do we handle this case? */ }
     }
 

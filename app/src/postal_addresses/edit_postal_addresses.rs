@@ -27,8 +27,6 @@ use app_utils::{
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
-#[cfg(feature = "test-mock")]
-use leptos::{wasm_bindgen::JsCast, web_sys};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
 
@@ -142,6 +140,12 @@ fn EditPostalAddress(
     } = use_query_navigation();
     let navigate = use_navigate();
     let edit_action = EditActionParams::use_param_query();
+    let intent = Signal::derive(move || {
+        edit_action.get().map(|action| match action {
+            EditAction::Edit => "update".to_string(),
+            EditAction::New | EditAction::Copy => "create".to_string(),
+        })
+    });
 
     let toast_ctx = expect_context::<ToastContext>();
     let page_err_ctx = expect_context::<PageErrorContext>();
@@ -314,12 +318,6 @@ fn EditPostalAddress(
                                         // prevent submit if invalid data
                                         return;
                                     }
-                                    let intent = ev
-                                        .submitter()
-                                        .and_then(|el| {
-                                            el.dyn_into::<web_sys::HtmlButtonElement>().ok()
-                                        })
-                                        .map(|btn| btn.value());
                                     let data = SavePostalAddress {
                                         form: SavePostalAddressFormData {
                                             id: postal_address_editor
@@ -349,7 +347,7 @@ fn EditPostalAddress(
                                                 .get()
                                                 .map(|c| c.alpha2().to_string())
                                                 .unwrap_or_default(),
-                                            intent,
+                                            intent: intent.get(),
                                         },
                                     };
                                     let save_action = Action::new(|pa: &SavePostalAddress| {
@@ -404,7 +402,7 @@ fn EditPostalAddress(
                                     type="hidden"
                                     name="form[intent]"
                                     data-testid="intent"
-                                    prop:value=move || if edit_action.get() == Some(EditAction::Edit) { "update" } else { "create" }
+                                    prop:value=move || intent.get()
                                 />
                                 <TextInput
                                     label="Name"
