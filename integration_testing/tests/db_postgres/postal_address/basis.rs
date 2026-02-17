@@ -139,15 +139,16 @@ async fn given_name_filter_and_limit_when_list_then_ordered_and_bounded() -> Res
     let _ = db.save_postal_address(&make_new_address("Charlie")).await?;
 
     // Filter: name contains 'a' (case-insensitive due to citext column)
-    let listed = db.list_postal_addresses(Some("a"), Some(2)).await?;
+    let listed = db.list_postal_address_ids(Some("a"), Some(2)).await?;
     // Expect at most 2 rows
     assert!(listed.len() <= 2, "must respect limit");
 
     // Names are ordered ascending (NULLS LAST)
-    let names: Vec<String> = listed
-        .into_iter()
-        .map(|p| p.get_name().to_string())
-        .collect();
+    let mut names: Vec<String> = Vec::with_capacity(listed.len());
+    for id in &listed {
+        let pa = db.get_postal_address(*id).await?.expect("row present");
+        names.push(pa.get_name().to_string());
+    }
     let mut sorted = names.clone();
     sorted.sort();
     assert_eq!(names, sorted, "expected name-ascending order");

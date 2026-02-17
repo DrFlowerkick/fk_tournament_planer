@@ -16,18 +16,17 @@ use app_utils::{
         use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{AddressIdQuery, FilterLimitQuery, FilterNameQuery, ParamQuery},
-    server_fn::postal_address::list_postal_addresses,
-    state::{
-        activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        object_table_list::ObjectListContext,
-    },
+    server_fn::postal_address::{list_postal_address_ids, load_postal_address},
+    state::{activity_tracker::ActivityTracker, error_state::PageErrorContext},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
 //use cr_single_instance::use_client_registry_sse;
 use isocountry::CountryCode;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
+    NavigateOptions,
     components::{A, Form},
+    hooks::use_navigate,
     nested_router::Outlet,
 };
 use uuid::Uuid;
@@ -42,7 +41,6 @@ fn display_country(country_code: Option<CountryCode>) -> String {
 pub fn ListPostalAddresses() -> impl IntoView {
     // navigation helpers
     let UseQueryNavigationReturn {
-        url_matched_route,
         url_is_matched_route,
         url_matched_route_remove_query,
         ..
@@ -59,29 +57,19 @@ pub fn ListPostalAddresses() -> impl IntoView {
         activity_tracker.remove_component(component_id.get_value());
     });
 
-    // --- local context ---
-    let postal_address_list_ctx = ObjectListContext::<PostalAddress, AddressIdQuery>::new();
-    provide_context(postal_address_list_ctx);
-
     // Signals for Filters
     let address_id = AddressIdQuery::use_param_query();
     let search_term = FilterNameQuery::use_param_query();
     let limit = FilterLimitQuery::use_param_query();
 
     // Resource that fetches data when filters change
-    let postal_addresses_data = Resource::new(
-        move || {
-            (
-                search_term.get(),
-                limit.get(),
-                postal_address_list_ctx.track_fetch_trigger.get(),
-            )
-        },
-        move |(term, lim, _refetch_trigger)| async move {
+    let postal_address_ids = Resource::new(
+        move || (search_term.get(), limit.get()),
+        move |(term, lim)| async move {
             activity_tracker
                 .track_activity_wrapper(
                     component_id.get_value(),
-                    list_postal_addresses(
+                    list_postal_address_ids(
                         term.unwrap_or_default(),
                         lim.or_else(|| Some(FilterLimit::default()))
                             .map(|l| l as usize),
@@ -92,7 +80,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
     );
 
     // Refetch function for errors
-    let refetch = Callback::new(move |()| postal_addresses_data.refetch());
+    let refetch = Callback::new(move |()| postal_address_ids.refetch());
 
     // on_cancel handler
     let on_cancel = use_on_cancel();
@@ -191,16 +179,12 @@ pub fn ListPostalAddresses() -> impl IntoView {
                             }
                         }>
                             {move || {
-                                postal_addresses_data
-                                    .and_then(|data| {
-                                        postal_address_list_ctx.object_list.set(data.clone());
+                                postal_address_ids
+                                    .and_then(|pa_ids| {
+                                        let pa_ids = StoredValue::new(pa_ids.clone());
                                         view! {
                                             <Show
-                                                when=move || {
-                                                    postal_address_list_ctx
-                                                        .object_list
-                                                        .with(|val| !val.is_empty())
-                                                }
+                                                when=move || { pa_ids.with_value(|val| !val.is_empty()) }
                                                 fallback=|| {
                                                     view! {
                                                         <div
@@ -223,153 +207,10 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                     </thead>
                                                     <tbody>
                                                         <For
-                                                            each=move || { postal_address_list_ctx.object_list.get() }
-                                                            key=|pa| pa.get_id()
-                                                            children=move |pa| {
-                                                                let pa = StoredValue::new(pa);
-                                                                let is_selected = move || {
-                                                                    postal_address_list_ctx.selected_id.get()
-                                                                        == Some(pa.read_value().get_id())
-                                                                };
-                                                                let topic = Signal::derive(move || {
-                                                                    Some(CrTopic::Address(pa.get_value().get_id()))
-                                                                });
-                                                                let version = Signal::derive({
-                                                                    let pa = pa.clone();
-                                                                    move || {
-                                                                        pa.read_value().get_version().unwrap_or_default()
-                                                                    }
-                                                                });
-                                                                use_client_registry_socket(topic, version, refetch);
-
-                                                                view! {
-                                                                    <tr
-                                                                        class="hover cursor-pointer"
-                                                                        class:bg-base-200=is_selected
-                                                                        data-testid=format!(
-                                                                            "table-entry-row-{}",
-                                                                            pa.read_value().get_id(),
-                                                                        )
-                                                                        on:click=move |_| {
-                                                                            if postal_address_list_ctx.selected_id.get()
-                                                                                == Some(pa.read_value().get_id())
-                                                                            {
-                                                                                postal_address_list_ctx.set_selected_id.run(None);
-                                                                            } else {
-                                                                                postal_address_list_ctx
-                                                                                    .set_selected_id
-                                                                                    .run(Some(pa.read_value().get_id()));
-                                                                            }
-                                                                        }
-                                                                    >
-                                                                        <td
-                                                                            class="font-bold"
-                                                                            data-testid=format!(
-                                                                                "table-entry-name-{}",
-                                                                                pa.read_value().get_id(),
-                                                                            )
-                                                                        >
-                                                                            {pa.read_value().get_name().to_string()}
-                                                                        </td>
-                                                                        <td data-testid=format!(
-                                                                            "table-entry-preview-{}",
-                                                                            pa.read_value().get_id(),
-                                                                        )>
-                                                                            {format!(
-                                                                                "{} - {}",
-                                                                                pa.read_value().get_locality(),
-                                                                                pa
-                                                                                    .read_value()
-                                                                                    .get_country()
-                                                                                    .map(|c| c.name())
-                                                                                    .unwrap_or_default(),
-                                                                            )}
-                                                                        </td>
-                                                                    </tr>
-                                                                    <Show when=is_selected>
-                                                                        <tr>
-                                                                            <td colspan="2" class="p-0">
-                                                                                <div
-                                                                                    class="flex flex-wrap items-baseline gap-x-2 gap-y-1 p-4 bg-base-200 text-sm"
-                                                                                    data-testid="table-entry-detailed-preview"
-                                                                                >
-                                                                                    <span data-testid="preview-street" class="font-medium">
-                                                                                        {pa.read_value().get_street().to_string()}
-                                                                                    </span>
-
-                                                                                    <span class="opacity-50 hidden sm:inline">"•"</span>
-
-                                                                                    <span data-testid="preview-postal_locality">
-                                                                                        <span data-testid="preview-postal_code">
-                                                                                            {pa.read_value().get_postal_code().to_string()}
-                                                                                        </span>
-                                                                                        " "
-                                                                                        <span data-testid="preview-locality">
-                                                                                            {pa.read_value().get_locality().to_string()}
-                                                                                        </span>
-                                                                                    </span>
-
-                                                                                    <Show when=move || pa.read_value().get_region().is_some()>
-                                                                                        <span class="opacity-50 hidden sm:inline">"•"</span>
-                                                                                        <span data-testid="preview-region">
-                                                                                            {pa
-                                                                                                .read_value()
-                                                                                                .get_region()
-                                                                                                .map(|r| r.to_string())
-                                                                                                .unwrap_or_default()}
-                                                                                        </span>
-                                                                                    </Show>
-
-                                                                                    <span class="opacity-50 hidden sm:inline">"•"</span>
-
-                                                                                    <span
-                                                                                        data-testid="preview-country"
-                                                                                        class="text-base-content/70"
-                                                                                    >
-                                                                                        {display_country(pa.read_value().get_country())}
-                                                                                    </span>
-
-                                                                                    // Hidden technical fields
-                                                                                    <span class="hidden" data-testid="preview-address-id">
-                                                                                        {pa.read_value().get_id().to_string()}
-                                                                                    </span>
-                                                                                    <span class="hidden" data-testid="preview-address-version">
-                                                                                        {pa.read_value().get_version().unwrap_or_default()}
-                                                                                    </span>
-                                                                                </div>
-                                                                            </td>
-                                                                        </tr>
-                                                                        <tr>
-                                                                            <td colspan="2" class="p-0">
-                                                                                <div
-                                                                                    class="flex gap-2 justify-end p-2 bg-base-200"
-                                                                                    data-testid="row-actions"
-                                                                                >
-                                                                                    <A
-                                                                                        href=move || url_matched_route(
-                                                                                            MatchedRouteHandler::Extend("edit"),
-                                                                                        )
-                                                                                        attr:class="btn btn-sm btn-primary"
-                                                                                        attr:data-testid="action-btn-edit"
-                                                                                        scroll=false
-                                                                                    >
-                                                                                        "Edit"
-                                                                                    </A>
-                                                                                    <A
-                                                                                        href=move || url_matched_route(
-                                                                                            MatchedRouteHandler::Extend("copy"),
-                                                                                        )
-                                                                                        attr:class="btn btn-sm btn-ghost"
-                                                                                        attr:data-testid="action-btn-copy"
-                                                                                        scroll=false
-                                                                                    >
-                                                                                        "Copy"
-                                                                                    </A>
-                                                                                </div>
-                                                                            </td>
-                                                                        </tr>
-                                                                    </Show>
-                                                                }
+                                                            each=move || { pa_ids.get_value() }
+                                                            key=|id| *id
+                                                            children=move |id| {
+                                                                view! { <LoadPostalAddressTableRow id=id /> }
                                                             }
                                                         />
                                                     </tbody>
@@ -386,5 +227,222 @@ pub fn ListPostalAddresses() -> impl IntoView {
         </div>
         <div class="my-4"></div>
         <Outlet />
+    }
+}
+
+#[component]
+fn LoadPostalAddressTableRow(id: Uuid) -> impl IntoView {
+    // --- global state ---
+    let page_err_ctx = expect_context::<PageErrorContext>();
+    let activity_tracker = expect_context::<ActivityTracker>();
+    let component_id = StoredValue::new(Uuid::new_v4());
+    // remove errors on unmount
+    on_cleanup(move || {
+        page_err_ctx.clear_all_for_component(component_id.get_value());
+        activity_tracker.remove_component(component_id.get_value());
+    });
+
+    // resource to load postal address
+    let addr_res = Resource::new(
+        move || id,
+        move |id| async move {
+            match activity_tracker
+                .track_activity_wrapper(component_id.get_value(), load_postal_address(id))
+                .await
+            {
+                Ok(Some(pa)) => Ok(pa),
+                Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
+                Err(err) => Err(err),
+            }
+        },
+    );
+
+    let refetch = Callback::new(move |()| {
+        addr_res.refetch();
+    });
+
+    let on_cancel = use_on_cancel();
+
+    let topic = Signal::derive(move || Some(CrTopic::Address(id)));
+    let (version, set_version) = signal(0_u32);
+    use_client_registry_socket(topic, version.into(), refetch);
+
+    view! {
+        <Transition fallback=move || {
+            // Fallback must render a <tr> inside <tbody>, not a <div>.
+            view! {
+                <tr>
+                    <td colspan="2" class="text-center p-4">
+                        <span class="loading loading-spinner loading-md"></span>
+                    </td>
+                </tr>
+            }
+        }>
+            <ErrorBoundary fallback=move |errors| {
+                for (_err_id, err) in errors.get().into_iter() {
+                    let e = err.into_inner();
+                    leptos::logging::log!("Error saving Postal Address: {:?}", e);
+                    if let Some(app_err) = e.downcast_ref::<AppError>() {
+                        handle_read_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            app_err,
+                            refetch,
+                            on_cancel,
+                        );
+                    } else {
+                        handle_general_error(
+                            &page_err_ctx,
+                            component_id.get_value(),
+                            "An unexpected error occurred.",
+                            None,
+                            on_cancel,
+                        );
+                    }
+                }
+            }>
+                {move || {
+                    addr_res
+                        .and_then(|pa| {
+                            set_version.set(pa.get_version().unwrap_or_default());
+                            view! { <ShowPostalAddressTableRow id=id pa=pa.clone() /> }
+                        })
+                }}
+            </ErrorBoundary>
+        </Transition>
+    }
+}
+
+#[component]
+fn ShowPostalAddressTableRow(id: Uuid, pa: PostalAddress) -> impl IntoView {
+    let pa = StoredValue::new(pa);
+
+    assert_eq!(id, pa.read_value().get_id(), "Loaded Postal Address ID does not match the expected ID");
+
+    // navigation helpers
+    let UseQueryNavigationReturn {
+        url_update_query,
+        url_remove_query,
+        url_matched_route,
+        ..
+    } = use_query_navigation();
+    let navigate = use_navigate();
+
+    let address_id = AddressIdQuery::use_param_query();
+    let is_selected = move || address_id.get() == Some(id);
+
+    // Callback for updating the selected postal address id, which updates the query string and thus the URL
+    let set_selected_id = Callback::new(move |new_id: Option<Uuid>| {
+        let nav_url = if let Some(t_id) = new_id {
+            url_update_query(AddressIdQuery::KEY, &t_id.to_string())
+        } else {
+            url_remove_query(AddressIdQuery::KEY)
+        };
+        navigate(
+            &nav_url,
+            NavigateOptions {
+                replace: true,
+                scroll: false,
+                ..Default::default()
+            },
+        );
+    });
+
+    view! {
+        <tr
+            class="hover cursor-pointer"
+            class:bg-base-200=is_selected
+            data-testid=format!("table-entry-row-{}", pa.read_value().get_id())
+            on:click=move |_| {
+                if address_id.get() == Some(pa.read_value().get_id()) {
+                    set_selected_id.run(None);
+                } else {
+                    set_selected_id.run(Some(pa.read_value().get_id()));
+                }
+            }
+        >
+            <td class="font-bold" data-testid=format!("table-entry-name-{}", pa.read_value().get_id())>
+                {pa.read_value().get_name().to_string()}
+            </td>
+            <td data-testid=format!(
+                "table-entry-preview-{}",
+                pa.read_value().get_id(),
+            )>
+                {format!(
+                    "{} - {}",
+                    pa.read_value().get_locality(),
+                    pa.read_value().get_country().map(|c| c.name()).unwrap_or_default(),
+                )}
+            </td>
+        </tr>
+        <Show when=is_selected>
+            <tr>
+                <td colspan="2" class="p-0">
+                    <div
+                        class="flex flex-wrap items-baseline gap-x-2 gap-y-1 p-4 bg-base-200 text-sm"
+                        data-testid="table-entry-detailed-preview"
+                    >
+                        <span data-testid="preview-street" class="font-medium">
+                            {pa.read_value().get_street().to_string()}
+                        </span>
+
+                        <span class="opacity-50 hidden sm:inline">"•"</span>
+
+                        <span data-testid="preview-postal_locality">
+                            <span data-testid="preview-postal_code">
+                                {pa.read_value().get_postal_code().to_string()}
+                            </span>
+                            " "
+                            <span data-testid="preview-locality">
+                                {pa.read_value().get_locality().to_string()}
+                            </span>
+                        </span>
+
+                        <Show when=move || pa.read_value().get_region().is_some()>
+                            <span class="opacity-50 hidden sm:inline">"•"</span>
+                            <span data-testid="preview-region">
+                                {pa.read_value().get_region().map(|r| r.to_string()).unwrap_or_default()}
+                            </span>
+                        </Show>
+
+                        <span class="opacity-50 hidden sm:inline">"•"</span>
+
+                        <span data-testid="preview-country" class="text-base-content/70">
+                            {display_country(pa.read_value().get_country())}
+                        </span>
+
+                        // Hidden technical fields
+                        <span class="hidden" data-testid="preview-address-id">
+                            {pa.read_value().get_id().to_string()}
+                        </span>
+                        <span class="hidden" data-testid="preview-address-version">
+                            {pa.read_value().get_version().unwrap_or_default()}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" class="p-0">
+                    <div class="flex gap-2 justify-end p-2 bg-base-200" data-testid="row-actions">
+                        <A
+                            href=move || url_matched_route(MatchedRouteHandler::Extend("edit"))
+                            attr:class="btn btn-sm btn-primary"
+                            attr:data-testid="action-btn-edit"
+                            scroll=false
+                        >
+                            "Edit"
+                        </A>
+                        <A
+                            href=move || url_matched_route(MatchedRouteHandler::Extend("copy"))
+                            attr:class="btn btn-sm btn-ghost"
+                            attr:data-testid="action-btn-copy"
+                            scroll=false
+                        >
+                            "Copy"
+                        </A>
+                    </div>
+                </td>
+            </tr>
+        </Show>
     }
 }

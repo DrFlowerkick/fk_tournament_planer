@@ -21,11 +21,11 @@ pub trait DatabasePort:
 pub trait DbpPostalAddress: Send + Sync {
     async fn get_postal_address(&self, id: Uuid) -> DbResult<Option<PostalAddress>>;
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress>;
-    async fn list_postal_addresses(
+    async fn list_postal_address_ids(
         &self,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<PostalAddress>>;
+    ) -> DbResult<Vec<Uuid>>;
 }
 
 /// database port trait for sport config

@@ -59,11 +59,11 @@ impl DbpPostalAddress for FakeDatabasePort {
         Ok(new)
     }
 
-    async fn list_postal_addresses(
+    async fn list_postal_address_ids(
         &self,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<PostalAddress>> {
+    ) -> DbResult<Vec<Uuid>> {
         let mut guard = self.fail_next_list_pa.lock().unwrap();
         if *guard {
             *guard = false;
@@ -94,6 +94,6 @@ impl DbpPostalAddress for FakeDatabasePort {
         if let Some(l) = limit {
             rows.truncate(l);
         }
-        Ok(rows)
+        Ok(rows.into_iter().map(|a| a.get_id()).collect())
     }
 }

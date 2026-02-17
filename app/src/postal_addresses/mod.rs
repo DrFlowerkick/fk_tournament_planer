@@ -10,7 +10,8 @@ use app_utils::params::{EditActionParams, ParamQuery};
 use leptos::prelude::*;
 #[allow(unused_imports)]
 use leptos_router::MatchNestedRoutes;
-use leptos_router::{ParamSegment,
+use leptos_router::{
+    ParamSegment,
     any_nested_route::IntoAnyNestedRoute,
     components::{ParentRoute, Route},
     path,

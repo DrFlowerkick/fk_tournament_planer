@@ -1,6 +1,6 @@
 //! Parameters module for shared query parameter definitions and utilities.
 
-use crate::enum_utils::{FilterLimit, EditAction};
+use crate::enum_utils::{EditAction, FilterLimit};
 use app_core::TournamentState;
 use leptos::prelude::*;
 use leptos_router::{
@@ -198,6 +198,8 @@ impl ParamQuery<EditAction> for EditActionParams {
     const KEY: &'static str = "edit_action";
     fn use_param_query() -> Signal<Option<EditAction>> {
         let query = use_params::<Self>();
-        Signal::derive(move || query.with(|p| p.as_ref().ok().and_then(|params| params.edit_action)))
+        Signal::derive(move || {
+            query.with(|p| p.as_ref().ok().and_then(|params| params.edit_action))
+        })
     }
 }

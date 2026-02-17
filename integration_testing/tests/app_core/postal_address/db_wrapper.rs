@@ -162,15 +162,24 @@ async fn given_filter_and_limit_when_list_addresses_then_db_fake_results_are_for
 
     // Act
     let got = core
-        .list_addresses(Some("ma"), Some(2))
+        .list_address_ids(Some("ma"), Some(2))
         .await
         .expect("db ok");
 
     // Assert: exactly 2 with names containing "ma" (case-insensitive)
     assert_eq!(got.len(), 2);
-    let names: Vec<_> = got.iter().map(|x| x.get_name()).collect();
-    assert!(names.contains(&"Mara"));
-    assert!(names.contains(&"Max"));
+    let mut names: Vec<String> = Vec::with_capacity(got.len());
+    for id in &got {
+        let pa = core
+            .load(*id)
+            .await
+            .expect("load ok")
+            .expect("id from list should exist in DB");
+        assert_eq!(pa.get_id(), *id);
+        names.push(pa.get_name().to_string());
+    }
+    assert!(names.contains(&String::from("Mara")));
+    assert!(names.contains(&String::from("Max")));
 }
 
 /// 7) list_addresses(): only limit
@@ -184,7 +193,7 @@ async fn given_only_limit_when_list_addresses_then_limit_is_respected() {
         core.save().await.expect("seed save");
     }
 
-    let got = core.list_addresses(None, Some(3)).await.expect("db ok");
+    let got = core.list_address_ids(None, Some(3)).await.expect("db ok");
     assert_eq!(got.len(), 3);
 }
 
@@ -197,7 +206,7 @@ async fn given_db_fake_failure_when_list_addresses_then_error_propagates() {
     db_fake.fail_list_pa_once();
 
     let err = core
-        .list_addresses(None, None)
+        .list_address_ids(None, None)
         .await
         .expect_err("expected DB error");
 
