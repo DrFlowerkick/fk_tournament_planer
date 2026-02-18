@@ -2,9 +2,7 @@ import { test } from "@playwright/test";
 import {
   openNewForm,
   fillAllRequiredValid,
-  expectSavesDisabled,
-  expectSavesEnabled,
-  clickSave,
+  closeForm,
   clickEditPostalAddress,
   expectPreviewShows,
   waitForPostalAddressListUrl,
@@ -32,11 +30,10 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
     const name = `E2E Test Address ${ts}`;
     await openNewForm(page);
     await fillAllRequiredValid(page, name);
-    await expectSavesEnabled(page);
-    await clickSave(page);
+    await closeForm(page);
 
     // After save, either you land on detail page or back to list.
-    await waitForPostalAddressListUrl(page);
+    await waitForPostalAddressListUrl(page, true);
     await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
     
     // Extract ID after click on row, because if table is "full", the ID might be removed from URL
@@ -61,23 +58,20 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
      */
     await fillAndBlur(PA.form.inputStreet, "");
     await expectFieldValidity(PA.form.inputStreet, "", /*invalid*/ true);
-    await expectSavesDisabled(page);
 
-    // Step 4: Fix invalid field, then save
+    // Step 4: Fix invalid field, which will be automatically saved
     await fillAndBlur(PA.form.inputStreet, "   Beispielstr.    3   ");
     await expectFieldValidity(
       PA.form.inputStreet,
       "Beispielstr. 3",
       /*invalid*/ false,
     );
-    await expectSavesEnabled(page);
-    await clickSave(page);
+    await closeForm(page);
 
     // Step 5: Verify that edited address is displayed with updated values
-    await waitForPostalAddressListUrl(page);
+    await waitForPostalAddressListUrl(page, true);
     const uuid_edited = extractUuidFromUrl(page.url());
     test.expect(uuid_edited).toBe(uuid); // same id
-    //const new_row = await searchAndOpenByNameOnCurrentPage(page, name); // name unchanged
     await expectPreviewShows(page, {
       street: "Beispielstr. 3",
     });

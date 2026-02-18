@@ -274,7 +274,7 @@ pub fn ListTournaments() -> impl IntoView {
                                                                 });
                                                                 let version = Signal::derive({
                                                                     let t = t.clone();
-                                                                    move || { t.read_value().get_version().unwrap_or_default() }
+                                                                    move || { t.read_value().get_version() }
                                                                 });
                                                                 use_client_registry_socket(topic, version, refetch);
 

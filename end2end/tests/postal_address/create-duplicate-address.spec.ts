@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 import {
   openNewForm,
   fillFields,
-  clickSave,
+  closeForm,
   waitForPostalAddressListUrl,
   selectors,
 } from "../../helpers";
@@ -32,8 +32,8 @@ test.describe("Uniqueness constraint violation", () => {
 
     await openNewForm(page);
     await fillFields(page, initial);
-    await clickSave(page);
-    await waitForPostalAddressListUrl(page);
+    await closeForm(page);
+    await waitForPostalAddressListUrl(page, true);
 
     // -------------------- Act: Try to create duplicate --------------------
     await openNewForm(page);
@@ -46,7 +46,6 @@ test.describe("Uniqueness constraint violation", () => {
       country: "DE",
     };
     await fillFields(page, duplicate);
-    await clickSave(page);
 
     // -------------------- Assert: Duplicate error Toast appears --------------------
     // A toast should appear

@@ -2,11 +2,12 @@
 import { test, expect } from "@playwright/test";
 import {
   openNewForm,
-  openPostalAddressList,
   fillAllRequiredValid,
-  extractQueryParamFromUrl,
+  waitForPostalAddressListUrl,
   selectors,
+  waitForAppHydration,
 } from "../../helpers/";
+import { PA_ROUTES } from "../../helpers/utils/postal_address";
 
 test.describe("Generic error handling saving address", () => {
   test("shows a generic error banner on 500 server error", async ({ page }) => {
@@ -28,7 +29,6 @@ test.describe("Generic error handling saving address", () => {
     // -------------------- Act: Try to save a new address --------------------
     await openNewForm(page);
     await fillAllRequiredValid(page, `E2E GenericError ${Date.now()}`);
-    await PA.form.btnSave.click();
     await page.waitForLoadState("domcontentloaded");
 
     // -------------------- Assert: toast error is shown --------------------
@@ -48,13 +48,6 @@ test.describe("Generic error handling loading address", () => {
     const PA = selectors(page).postalAddress;
     const BA = selectors(page).banners;
 
-    // ---------------- Arrange: get ID of existing address -------------------
-    await openPostalAddressList(page);
-    const FIRST_ROW = await PA.list.anyRow.first();
-    FIRST_ROW.click();
-    await expect(PA.list.btnEdit).toBeVisible();
-    const addressId = extractQueryParamFromUrl(page.url(), "address_id");
-
     // ---------------- Arrange: Intercept server response --------------------
     await page.route(/\/api\/load_postal_address/, (route) => {
       route.fulfill({
@@ -67,9 +60,11 @@ test.describe("Generic error handling loading address", () => {
       });
     });
 
-    // -------------------- Act: Try to load the address --------------------
-    await PA.list.btnEdit.click();
-    await page.waitForLoadState("domcontentloaded");
+    // -------------------- Act: Try to load the address list --------------------
+    // Navigate to "list" route and assert elements exist
+      await page.goto(PA_ROUTES.list);
+      // strict hydration check
+      await waitForAppHydration(page);
 
     // -------------------- Assert: error banner is shown --------------------
     await expect(BA.globalErrorBanner.root).toBeVisible();
@@ -89,9 +84,6 @@ test.describe("Generic error handling loading address", () => {
 
     // Now the retry should succeed, the banner should disappear, and the form should render.
     await expect(BA.globalErrorBanner.root).toBeHidden();
-    await expect(page.url()).toContain(
-      `/postal-address/edit?address_id=${addressId}`,
-    );
-    await expect(PA.form.root).toBeVisible();
+    await waitForPostalAddressListUrl(page, false);
   });
 });

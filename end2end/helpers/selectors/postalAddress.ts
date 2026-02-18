@@ -28,9 +28,7 @@ export const POSTAL_IDS = {
     inputLocality: "input-locality",
     inputRegion: "input-region",
     inputCountry: "select-country",
-    btnSave: "btn-save",
-    btnSaveAsNew: "btn-save-as-new",
-    btnCancel: "btn-cancel",
+    btnClose: "action-btn-close",
   },
 } as const;
 
@@ -52,9 +50,7 @@ export function getPostalSelectors(page: Page) {
       inputLocality: page.getByTestId(POSTAL_IDS.form.inputLocality),
       inputRegion: page.getByTestId(POSTAL_IDS.form.inputRegion),
       inputCountry: page.getByTestId(POSTAL_IDS.form.inputCountry),
-      btnSave: page.getByTestId(POSTAL_IDS.form.btnSave),
-      btnSaveAsNew: page.getByTestId(POSTAL_IDS.form.btnSaveAsNew),
-      btnCancel: page.getByTestId(POSTAL_IDS.form.btnCancel),
+      btnClose: page.getByTestId(POSTAL_IDS.form.btnClose),
     },
   };
 }

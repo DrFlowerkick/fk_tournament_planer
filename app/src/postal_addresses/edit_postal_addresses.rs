@@ -1,15 +1,11 @@
 //! Postal Address Edit Module
 
-use app_core::{CrTopic, PostalAddress, utils::id_version::IdVersion};
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::postal_address::{SavePostalAddressFormData, save_postal_address_inner};
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, TextInput},
     enum_utils::EditAction,
-    error::{
-        AppError,
-        strategy::{handle_general_error, handle_read_error, handle_write_error},
-    },
+    error::strategy::handle_write_error,
     hooks::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{
@@ -18,123 +14,21 @@ use app_utils::{
         use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{AddressIdQuery, EditActionParams, FilterNameQuery, ParamQuery},
-    server_fn::postal_address::{SavePostalAddress, load_postal_address},
+    server_fn::postal_address::SavePostalAddress,
     state::{
         activity_tracker::ActivityTracker, error_state::PageErrorContext,
         postal_address::PostalAddressEditorContext, toast_state::ToastContext,
     },
 };
-use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
 
 #[component]
-pub fn LoadPostalAddress() -> impl IntoView {
-    // --- global state ---
-    let page_err_ctx = expect_context::<PageErrorContext>();
-    let activity_tracker = expect_context::<ActivityTracker>();
-    let component_id = StoredValue::new(Uuid::new_v4());
-    // remove errors on unmount
-    on_cleanup(move || {
-        page_err_ctx.clear_all_for_component(component_id.get_value());
-        activity_tracker.remove_component(component_id.get_value());
-    });
-
-    // --- Server Resources ---
-    let postal_address_id = AddressIdQuery::use_param_query();
-    let addr_res = Resource::new(
-        move || postal_address_id.get(),
-        move |maybe_id| async move {
-            match maybe_id {
-                Some(id) => match activity_tracker
-                    .track_activity_wrapper(component_id.get_value(), load_postal_address(id))
-                    .await
-                {
-                    Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
-                    load_result => load_result,
-                },
-                None => Ok(None),
-            }
-        },
-    );
-
-    let refetch = Callback::new(move |()| {
-        addr_res.refetch();
-    });
-
-    // parallel editing
-    let (topic, set_topic) = signal(None::<CrTopic>);
-    let (version, set_version) = signal(0_u32);
-    use_client_registry_socket(topic.into(), version.into(), refetch);
-
-    let on_cancel = use_on_cancel();
-
-    view! {
-        <Transition fallback=move || {
-            view! {
-                <div class="card w-full bg-base-100 shadow-xl">
-                    <div class="card-body">
-                        <div class="flex justify-center items-center p-4">
-                            <span class="loading loading-spinner loading-lg"></span>
-                        </div>
-                    </div>
-                </div>
-            }
-        }>
-            <ErrorBoundary fallback=move |errors| {
-                for (_err_id, err) in errors.get().into_iter() {
-                    let e = err.into_inner();
-                    leptos::logging::log!("Error saving Postal Address: {:?}", e);
-                    if let Some(app_err) = e.downcast_ref::<AppError>() {
-                        handle_read_error(
-                            &page_err_ctx,
-                            component_id.get_value(),
-                            app_err,
-                            refetch,
-                            on_cancel,
-                        );
-                    } else {
-                        handle_general_error(
-                            &page_err_ctx,
-                            component_id.get_value(),
-                            "An unexpected error occurred.",
-                            None,
-                            on_cancel,
-                        );
-                    }
-                }
-            }>
-                {move || {
-                    addr_res
-                        .and_then(|may_be_pa| {
-                            view! {
-                                <EditPostalAddress
-                                    postal_address=may_be_pa.clone()
-                                    set_topic=set_topic
-                                    version=version
-                                    set_version=set_version
-                                    refetch=refetch
-                                />
-                            }
-                        })
-                }}
-            </ErrorBoundary>
-        </Transition>
-    }
-}
-
-#[component]
-fn EditPostalAddress(
-    #[prop(into)] postal_address: Signal<Option<PostalAddress>>,
-    set_topic: WriteSignal<Option<CrTopic>>,
-    version: ReadSignal<u32>,
-    set_version: WriteSignal<u32>,
-    refetch: Callback<()>,
-) -> impl IntoView {
+pub fn EditPostalAddress() -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
-        url_matched_route,
+        url_matched_route_update_query,
         url_matched_route_update_queries,
         url_is_matched_route,
         ..
@@ -160,7 +54,13 @@ fn EditPostalAddress(
         activity_tracker.remove_component(component_id.get_value());
     });
 
-    let postal_address_editor = PostalAddressEditorContext::new();
+    // selected address id from url query, if any
+    let address_id = AddressIdQuery::use_param_query();
+
+    // --- local state ---
+    let postal_address_editor = expect_context::<PostalAddressEditorContext>();
+
+    // --- state initialization & effects ---
     // We have the following cases:
     // 1) postal_address is Some -> an address was loaded
     // 1a) if last segment of matched route is "edit", we are editing an existing address
@@ -170,49 +70,85 @@ fn EditPostalAddress(
     // 2a) if last segment of matched route is "new", we are creating a new address
     // 2b) if last segment of matched route is "edit", we assume that no item was selected in
     //     the list and we show a message to select an address from the list.
-    // 2c) if last segment of matched route is "copy", we we navigate to edit.
+    // 2c) if last segment of matched route is "copy", we show the message to select an address
+    // from the list, because copy only makes sense if an address is selected.
     let (show_form, set_show_form) = signal(false);
     Effect::new({
         let navigate = navigate.clone();
         move || {
-            if let Some(mut pa) = postal_address.get() {
-                match edit_action.get() {
-                    Some(EditAction::Edit) => {
-                        // set topic and version for parallel editing
-                        set_topic.set(Some(CrTopic::Address(pa.get_id())));
-                        set_version.set(pa.get_version().unwrap_or_default());
-                        // set state
-                        postal_address_editor.set_postal_address(pa);
+            match edit_action.get() {
+                Some(EditAction::Edit) => {
+                    // show form, if an address is loaded
+                    set_show_form
+                        .set(postal_address_editor.has_origin() && address_id.get().is_some());
+                }
+                Some(EditAction::Copy) => {
+                    if let Some(id) = address_id.get() {
+                        // if the user selected a table entry, we navigate to edit with the selected id
+                        let nav_url = url_matched_route_update_query(
+                            AddressIdQuery::KEY,
+                            id.to_string().as_str(),
+                            MatchedRouteHandler::ReplaceSegment(
+                                EditAction::Edit.to_string().as_str(),
+                            ),
+                        );
+                        navigate(
+                            &nav_url,
+                            NavigateOptions {
+                                replace: true,
+                                scroll: false,
+                                ..Default::default()
+                            },
+                        );
+                    } else if postal_address_editor.has_origin() {
+                        // prepare copy in editor
+                        postal_address_editor.prepare_copy();
                         set_show_form.set(true);
-                    }
-                    Some(EditAction::Copy) => {
-                        pa.set_id_version(IdVersion::new(Uuid::new_v4(), None))
-                            .set_name("");
-                        postal_address_editor.set_postal_address(pa);
+                    } else if postal_address_editor.id.with(|id| id.is_some()) && show_form.get() {
+                        // No origin, id is present, form is shown -> everything is set
+                    } else if postal_address_editor.id.with(|id| id.is_some()) {
+                        // No origin, id is present, form is not shown -> show form
                         set_show_form.set(true);
-                    }
-                    Some(EditAction::New) => {
-                        let nav_url =
-                            url_matched_route(MatchedRouteHandler::ReplaceSegment("edit"));
-                        navigate(&nav_url, NavigateOptions::default());
+                    } else {
+                        // if there is no id, it means that no address was loaded, so we show the message to select an address from the list.
                         set_show_form.set(false);
                     }
-                    None => set_show_form.set(false),
                 }
-            } else {
-                match edit_action.get() {
-                    Some(EditAction::New) => {
+                Some(EditAction::New) => {
+                    if let Some(id) = address_id.get() {
+                        // if the user selected a table entry, we navigate to edit with the selected id
+                        let nav_url = url_matched_route_update_query(
+                            AddressIdQuery::KEY,
+                            id.to_string().as_str(),
+                            MatchedRouteHandler::ReplaceSegment(
+                                EditAction::Edit.to_string().as_str(),
+                            ),
+                        );
+                        navigate(
+                            &nav_url,
+                            NavigateOptions {
+                                replace: true,
+                                scroll: false,
+                                ..Default::default()
+                            },
+                        );
+                    } else if postal_address_editor.has_origin()
+                        || postal_address_editor.id.with(|id| id.is_none())
+                    {
+                        // if there is an origin or no id is set, create new postal address in editor and show form
                         postal_address_editor.new_postal_address();
                         set_show_form.set(true);
-                    }
-                    Some(EditAction::Copy) => {
-                        let nav_url =
-                            url_matched_route(MatchedRouteHandler::ReplaceSegment("edit"));
-                        navigate(&nav_url, NavigateOptions::default());
+                    } else if postal_address_editor.id.with(|id| id.is_some()) && show_form.get() {
+                        // No origin, id is present, form is shown -> everything is set
+                    } else if postal_address_editor.id.with(|id| id.is_some()) {
+                        // No origin, id is present, form is not shown -> show form
+                        set_show_form.set(true);
+                    } else {
+                        // if there is no id, it means that no address was loaded, so we show the message to select an address from the list.
                         set_show_form.set(false);
                     }
-                    Some(EditAction::Edit) | None => set_show_form.set(false),
                 }
+                None => set_show_form.set(false),
             }
         }
     });
@@ -225,6 +161,9 @@ fn EditPostalAddress(
     let save_postal_address_pending = save_postal_address.pending();
     activity_tracker.track_pending_memo(component_id.get_value(), save_postal_address_pending);
 
+    // ToDo: with auto save and parallel editing, refetch is done automatically. Delete this dummy refetch.
+    let refetch = Callback::new(move |_| {});
+
     // handle save result
     Effect::new(move || {
         if let Some(spa_result) = save_postal_address.value().get()
@@ -232,44 +171,48 @@ fn EditPostalAddress(
         {
             save_postal_address.clear();
             match spa_result {
-                Ok(pa) => match edit_action {
-                    EditAction::New | EditAction::Copy => {
-                        let pa_id = pa.get_id().to_string();
-                        let key_value = vec![
-                            (AddressIdQuery::KEY, pa_id.as_str()),
-                            (FilterNameQuery::KEY, pa.get_name()),
-                        ];
-                        let nav_url = url_matched_route_update_queries(
-                            key_value,
-                            MatchedRouteHandler::ReplaceSegment("edit"),
-                        );
-                        navigate(&nav_url, NavigateOptions::default());
-                    }
-                    EditAction::Edit => {
-                        if let Some(current_version) = pa.get_version()
-                            && current_version != version.get()
-                        {
-                            // version mismatch, likely due to parallel editing
-                            // this should not happen, because version mismatch should be caught
-                            // by the server and returned as error, but we handle it here just in case
-                            leptos::logging::log!(
-                                "Version mismatch after saving Postal Address. Expected version: {}, actual version: {}. This might be caused by parallel editing.",
-                                version.get(),
-                                current_version
+                Ok(pa) => {
+                    match edit_action {
+                        EditAction::New | EditAction::Copy => {
+                            let pa_id = pa.get_id().to_string();
+                            let key_value = vec![
+                                (AddressIdQuery::KEY, pa_id.as_str()),
+                                (FilterNameQuery::KEY, pa.get_name()),
+                            ];
+                            let nav_url = url_matched_route_update_queries(
+                                key_value,
+                                MatchedRouteHandler::ReplaceSegment(
+                                    EditAction::Edit.to_string().as_str(),
+                                ),
                             );
-                            refetch.run(());
+                            navigate(
+                                &nav_url,
+                                NavigateOptions {
+                                    replace: true,
+                                    scroll: false,
+                                    ..Default::default()
+                                },
+                            );
+                        }
+                        EditAction::Edit => {
+                            if !postal_address_editor.check_optimistic_version(pa.get_version()) {
+                                // version mismatch, likely due to parallel editing
+                                // this should not happen, because version mismatch should be caught
+                                // by the server and returned as error, but we handle it here just in case
+                                leptos::logging::log!(
+                                    "Version mismatch after saving Postal Address. Expected version: {:?}, actual version: {:?}. This might be caused by parallel editing.",
+                                    postal_address_editor.version.get(),
+                                    pa.get_version()
+                                );
+                            }
                         }
                     }
-                },
+                    postal_address_editor.set_postal_address(pa);
+                }
                 Err(err) => {
                     leptos::logging::log!("Error saving Postal Address: {:?}", err);
                     // version reset for parallel editing
-                    set_version.set(postal_address.with(|maybe_pa| {
-                        maybe_pa
-                            .as_ref()
-                            .and_then(|pa| pa.get_version())
-                            .unwrap_or_default()
-                    }));
+                    postal_address_editor.reset_version_to_origin();
                     handle_write_error(
                         &page_err_ctx,
                         &toast_ctx,
@@ -303,6 +246,7 @@ fn EditPostalAddress(
                             class="btn btn-square btn-ghost btn-sm"
                             on:click=move |_| on_cancel.run(())
                             aria-label="Close"
+                            data-testid="action-btn-close"
                         >
                             <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
                         </button>
@@ -336,12 +280,9 @@ fn EditPostalAddress(
                                         }
                                         let data = SavePostalAddress {
                                             form: SavePostalAddressFormData {
-                                                id: postal_address_editor
-                                                    .postal_address_id
-                                                    .get()
-                                                    .unwrap_or(Uuid::nil()),
+                                                id: postal_address_editor.id.get().unwrap_or(Uuid::nil()),
                                                 version: postal_address_editor
-                                                    .postal_address_version
+                                                    .version
                                                     .get()
                                                     .unwrap_or_default(),
                                                 name: postal_address_editor.name.get().unwrap_or_default(),
@@ -387,7 +328,7 @@ fn EditPostalAddress(
                                         {
                                             ev.prevent_default();
                                         } else {
-                                            set_version.update(|v| *v += 1);
+                                            postal_address_editor.increment_version();
                                         }
                                     }
                                 }
@@ -395,29 +336,31 @@ fn EditPostalAddress(
                                 // --- Address Form Fields ---
                                 <fieldset class="space-y-4 contents">
                                     // Hidden meta fields the server expects (id / version)
-                                    <input
-                                        type="hidden"
-                                        name="form[id]"
-                                        data-testid="hidden-id"
-                                        prop:value=move || {
-                                            postal_address_editor
-                                                .postal_address_id
-                                                .get()
-                                                .unwrap_or(Uuid::nil())
-                                                .to_string()
-                                        }
-                                    />
-                                    <input
-                                        type="hidden"
-                                        name="form[version]"
-                                        data-testid="hidden-version"
-                                        prop:value=move || {
-                                            postal_address_editor
-                                                .local_readonly
-                                                .get()
-                                                .map_or(0, |pa| pa.get_version().unwrap_or_default())
-                                        }
-                                    />
+                                    <div class="flex flex-col gap-2">
+                                        <input
+                                            type="text"
+                                            class="text-primary"
+                                            name="form[id]"
+                                            data-testid="hidden-id"
+                                            prop:value=move || {
+                                                postal_address_editor
+                                                    .id
+                                                    .get()
+                                                    .unwrap_or(Uuid::nil())
+                                                    .to_string()
+                                            }
+                                        />
+                                        <input
+                                            type="text"
+                                            class="text-secondary"
+                                            name="form[version]"
+                                            data-testid="hidden-version"
+                                            readonly
+                                            prop:value=move || {
+                                                postal_address_editor.version.get().unwrap_or_default()
+                                            }
+                                        />
+                                    </div>
                                     <input
                                         type="hidden"
                                         name="form[intent]"
@@ -433,7 +376,7 @@ fn EditPostalAddress(
                                             postal_address_editor.set_name,
                                         )
                                         validation_result=postal_address_editor.validation_result
-                                        object_id=postal_address_editor.postal_address_id
+                                        object_id=postal_address_editor.id
                                         field="Name"
                                     />
                                     <TextInput
@@ -445,7 +388,7 @@ fn EditPostalAddress(
                                             postal_address_editor.set_street,
                                         )
                                         validation_result=postal_address_editor.validation_result
-                                        object_id=postal_address_editor.postal_address_id
+                                        object_id=postal_address_editor.id
                                         field="Street"
                                     />
                                     <div class="grid grid-cols-2 gap-4">
@@ -458,7 +401,7 @@ fn EditPostalAddress(
                                                 postal_address_editor.set_postal_code,
                                             )
                                             validation_result=postal_address_editor.validation_result
-                                            object_id=postal_address_editor.postal_address_id
+                                            object_id=postal_address_editor.id
                                             field="PostalCode"
                                         />
                                         <TextInput
@@ -470,7 +413,7 @@ fn EditPostalAddress(
                                                 postal_address_editor.set_locality,
                                             )
                                             validation_result=postal_address_editor.validation_result
-                                            object_id=postal_address_editor.postal_address_id
+                                            object_id=postal_address_editor.id
                                             field="Locality"
                                         />
                                     </div>
@@ -493,7 +436,7 @@ fn EditPostalAddress(
                                             postal_address_editor.set_country,
                                         )
                                         validation_result=postal_address_editor.validation_result
-                                        object_id=postal_address_editor.postal_address_id
+                                        object_id=postal_address_editor.id
                                         field="Country"
                                     />
                                 </fieldset>

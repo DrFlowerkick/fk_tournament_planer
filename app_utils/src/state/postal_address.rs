@@ -12,21 +12,21 @@ use uuid::Uuid;
 pub struct PostalAddressEditorContext {
     // --- state & derived signals ---
     /// The local editable postal address.
-    local: RwSignal<Option<PostalAddress>>,
+    pub local: RwSignal<Option<PostalAddress>>,
     /// The original postal address loaded from storage.
-    origin: StoredValue<Option<PostalAddress>>,
-    /// Read slice for accessing the local postal address
-    pub local_readonly: Signal<Option<PostalAddress>>,
+    origin: RwSignal<Option<PostalAddress>>,
     /// Read slice for checking if there are unsaved changes
     pub is_changed: Signal<bool>,
     /// Read slice for accessing the validation result of the postal address
     pub validation_result: Signal<ValidationResult<()>>,
 
     // --- Signals, Slices & Callbacks for form fields ---
-    /// Signal slice for the postal_address_id field
-    pub postal_address_id: Signal<Option<Uuid>>,
-    /// Signal slice for the postal_address_version field
-    pub postal_address_version: Signal<Option<u32>>,
+    /// Signal slice for the id field
+    pub id: Signal<Option<Uuid>>,
+    /// Signal slice for the version field
+    pub version: Signal<Option<u32>>,
+    /// RwSignal for optimistic version handling
+    set_version: StoredValue<Option<RwSignal<Option<u32>>>>,
     /// Signal slice for the name field
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
@@ -57,9 +57,9 @@ impl PostalAddressEditorContext {
     /// Create a new `PostalAddressEditorContext`.
     pub fn new() -> Self {
         let local = RwSignal::new(None::<PostalAddress>);
-        let origin = StoredValue::new(None);
+        let origin = RwSignal::new(None::<PostalAddress>);
 
-        let is_changed = Signal::derive(move || local.get() != origin.get_value());
+        let is_changed = Signal::derive(move || local.get() != origin.get());
         let validation_result = Signal::derive(move || {
             local.with(|local| {
                 if let Some(pa) = local {
@@ -70,10 +70,9 @@ impl PostalAddressEditorContext {
             })
         });
 
-        let postal_address_id =
-            create_read_slice(local, move |local| local.as_ref().map(|pa| pa.get_id()));
+        let id = create_read_slice(local, move |local| local.as_ref().map(|pa| pa.get_id()));
 
-        let postal_address_version = create_read_slice(local, move |local| {
+        let version = create_read_slice(local, move |local| {
             local.as_ref().and_then(|pa| pa.get_version())
         });
         let (name, set_name) = create_slice(
@@ -155,11 +154,11 @@ impl PostalAddressEditorContext {
         PostalAddressEditorContext {
             local,
             origin,
-            local_readonly: local.read_only().into(),
             is_changed,
             validation_result,
-            postal_address_id,
-            postal_address_version,
+            id,
+            version,
+            set_version: StoredValue::new(None),
             name,
             set_name,
             street,
@@ -175,18 +174,80 @@ impl PostalAddressEditorContext {
         }
     }
 
+    /// Check if there is an original postal address loaded in the editor context.
+    pub fn has_origin(&self) -> bool {
+        self.origin.with(|o| o.is_some())
+    }
+
     /// Create a new postal address in the editor context.
     pub fn new_postal_address(&self) {
         let id_version = IdVersion::new(Uuid::new_v4(), None);
         let pa = PostalAddress::new(id_version);
 
         self.local.set(Some(pa.clone()));
-        self.origin.set_value(None);
+        self.origin.set(None);
     }
 
     /// Set an existing postal address in the editor context.
     pub fn set_postal_address(&self, pa: PostalAddress) {
         self.local.set(Some(pa.clone()));
-        self.origin.set_value(Some(pa));
+        self.origin.set(Some(pa));
+    }
+
+    /// Clear the postal address in the editor context.
+    pub fn clear(&self) {
+        self.local.set(None);
+        self.origin.set(None);
+    }
+
+    /// Prepare the postal address in the editor context for copying by clearing the id and version.
+    pub fn prepare_copy(&self) {
+        if let Some(mut pa) = self.origin.get() {
+            pa.set_id_version(IdVersion::new(Uuid::new_v4(), None))
+                .set_name("");
+            self.local.set(Some(pa));
+            self.origin.set(None);
+        }
+    }
+
+    // --- optimistic version to prevent unneeded server round after save
+    /// Provide an RwSignal for the version field to optimistically handle version updates after saving.
+    pub fn set_version_signal(&self, signal: Option<RwSignal<Option<u32>>>) {
+        self.set_version.set_value(signal);
+    }
+
+    /// Increment the version in the editor context to optimistically handle version updates after saving.
+    pub fn increment_version(&self) {
+        if let Some(set_version) = self.set_version.get_value() {
+            set_version.update(|version| {
+                if let Some(v) = version {
+                    *v += 1;
+                } else {
+                    *version = Some(0);
+                }
+            });
+        }
+    }
+
+    /// If save fails, we need to reset the version to the original version to prevent version mismatch on next save attempt.
+    pub fn reset_version_to_origin(&self) {
+        if let Some(set_version) = self.set_version.get_value() {
+            let origin_version = self
+                .origin
+                .with(|o| o.as_ref().and_then(|pa| pa.get_version()));
+            {
+                set_version.set(origin_version);
+            }
+        }
+    }
+
+    pub fn check_optimistic_version(&self, server_version: Option<u32>) -> bool {
+        if let Some(set_version) = self.set_version.get_value() {
+            let local_version = set_version.get();
+            local_version == server_version
+        } else {
+            // If no optimistic version is set, we assume the versions are in sync.
+            true
+        }
     }
 }

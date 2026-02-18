@@ -174,3 +174,26 @@ pub fn init_test_state() -> InitialTestState {
         generic_sport_config_id,
     }
 }
+
+// Helper function to log the current HTML of the test root for debugging purposes.
+pub fn _log_current_html() {
+    let document = leptos::web_sys::window().unwrap().document().unwrap();
+
+    // Nimm den Body oder das Test-Root Element
+    if let Some(body) = document.body() {
+        let html = body.inner_html();
+
+        // Rudimentäres Pretty-Printing für bessere Lesbarkeit
+        let pretty_html = html.replace("><", ">\n<").replace("div>", "div>\n");
+
+        leptos::web_sys::console::log_1(
+            &format!(
+                "\n--- DOM SNAPSHOT ---\n{}\n--------------------",
+                pretty_html
+            )
+            .into(),
+        );
+    } else {
+        leptos::web_sys::console::log_1(&"Body element not found".into());
+    }
+}

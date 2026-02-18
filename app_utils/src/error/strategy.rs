@@ -12,6 +12,7 @@ use uuid::Uuid;
 /// Evaluates a save/action error (Write).
 /// - Known critical errors -> PageErrorContext (Banner)
 /// - Transient/Technical errors -> ToastContext (Popup)
+// ToDo: remove unnecessary inputs after all calling Components have been refactored.
 pub fn handle_write_error(
     page_ctx: &PageErrorContext,
     toast_ctx: &ToastContext,
@@ -19,36 +20,19 @@ pub fn handle_write_error(
     error: &AppError,
     retry_fn: Callback<()>,
 ) {
-    let key = ErrorKey::Write;
-
     match error {
-        // 1. Optimistic Lock Conflict -> Banner
-        // The local data is stale compared to the server. A reload is mandatory to sync state.
+        // 1. Optimistic Lock Conflict -> Toast
+        // The client registry and auto saving ensures, that always the latest version is loaded. If a version mismatch
+        // occurs during saving, it means that parallel editing is happening. In this case, we still reload "automatically"
+        // the current version. Therefore a manual reload by the user is not necessary
+        // We inform the user about the parallel editing via a toast.
+        // This should not happen often.
         AppError::Core(CoreError::Db(DbError::OptimisticLockConflict)) => {
-            let builder = ActiveError::builder(
-                component_id,
-                key.clone(),
-                "The record has been modified in the meantime. Please reload. Any unsaved changes will be lost.",
-            )
-            .with_retry("Reload", retry_fn)
-            .with_clear_error_on_cancel("Cancel");
-
-            page_ctx.report_error(builder.build());
+            let msg = format!("{error}");
+            toast_ctx.error(msg);
         }
 
-        // 2. ForeignKey Violation -> Banner
-        // Usually implies referencing data that was deleted/changed elsewhere (Stale State).
-        // This is a system consistency issue requiring data refresh.
-        AppError::Core(CoreError::Db(DbError::ForeignKeyViolation(_))) => {
-            let builder =
-                ActiveError::builder(component_id, key.clone(), "Inconsistent data operation.")
-                    .with_retry("Refresh Data", retry_fn)
-                    .with_clear_error_on_cancel("Close");
-
-            page_ctx.report_error(builder.build());
-        }
-
-        // 3. Unique Violation -> Toast
+        // 2. Unique Violation -> Toast
         // Validation error: Input needs correction (e.g. "Name already taken").
         AppError::Core(CoreError::Db(DbError::UniqueViolation(field_opt))) => {
             let msg = field_opt
@@ -59,7 +43,7 @@ pub fn handle_write_error(
             toast_ctx.error(msg);
         }
 
-        // 4. Check Violation -> Toast
+        // 3. Check Violation -> Toast
         // Validation error: Database constraint failed (e.g. "age >= 0").
         // Treated like UniqueViolation: The user must correct the input.
         AppError::Core(CoreError::Db(DbError::CheckViolation(constraint_opt))) => {
@@ -71,7 +55,7 @@ pub fn handle_write_error(
             toast_ctx.error(msg);
         }
 
-        // 5. Everything else -> TOAST
+        // 4. Everything else -> TOAST
         _ => {
             // "Fire & Forget" Toast
             // AppError implements Display via thiserror, so error.to_string() works fine.

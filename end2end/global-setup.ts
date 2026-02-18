@@ -7,10 +7,8 @@ import {
   openHomePage,
   selectSportPluginByName,
   goToNewTournament,
-  expectSavesDisabled,
-  expectSavesEnabled,
   fillFields,
-  clickSave,
+  closeForm,
   waitForPostalAddressListUrl,
   fillAndBlur,
 } from "./helpers";
@@ -68,7 +66,6 @@ async function seedPostalAddresses(page: Page) {
 
   for (const name of names) {
     console.log(`🌱 Seeding Postal Address: ${name}`);
-    await expectSavesDisabled(page);
     await fillFields(page, {
       name: `E2E Nav ${name}`,
       street: "Teststr. 1",
@@ -77,9 +74,8 @@ async function seedPostalAddresses(page: Page) {
       region: "",
       country: "DE",
     });
-    await expectSavesEnabled(page);
-    await clickSave(page);
-    await waitForPostalAddressListUrl(page);
+    await closeForm(page);
+    await waitForPostalAddressListUrl(page, true);
     // Navigate back for the next one
     await page.goto(NEW_PA_URL);
   }

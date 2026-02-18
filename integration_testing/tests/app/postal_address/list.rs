@@ -111,6 +111,6 @@ async fn test_search_postal_address() {
         .dyn_into::<HtmlAnchorElement>()
         .unwrap();
     let href = copy_button.href();
-    assert!(href.ends_with(&format!("copy?address_id={}", ts.entries[0])));
+    assert!(href.ends_with("copy"));
     assert_eq!(copy_button.text_content().unwrap(), "Copy");
 }

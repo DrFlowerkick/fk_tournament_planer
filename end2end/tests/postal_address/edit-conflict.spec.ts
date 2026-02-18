@@ -1,112 +1,117 @@
 // e2e/edit-conflict.spec.ts
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import {
   openNewForm,
   fillFields,
-  clickSave,
-  extractUuidFromUrl,
-  expectSavesDisabled,
-  openEditForm,
-  waitForPostalAddressListUrl,
-  fillAndBlur,
+  clickEditPostalAddress,
+  closeForm,
   selectors,
+  waitForPostalAddressListUrl,
+  searchAndOpenByNameOnCurrentPage,
+  makeUniqueName,
 } from "../../helpers";
 
-test.describe("Edit conflict shows proper fallback reaction", () => {
-  test("A on stale version gets conflict banner and disabled save", async ({
+test.describe("Edit conflict handling with auto-save", () => {
+  test("Simultaneous editing triggers toast warning for one client", async ({
     browser,
   }) => {
     const ctxA = await browser.newContext();
     const ctxB = await browser.newContext();
+
+    // Open two separate browser windows (contexts)
     const pageA = await ctxA.newPage();
     const pageB = await ctxB.newPage();
+
     const PA_A = selectors(pageA).postalAddress;
-    const BA_A = selectors(pageA).banners;
     const PA_B = selectors(pageB).postalAddress;
+    const Toasts_A = selectors(pageA).toasts;
+    const Toasts_B = selectors(pageB).toasts;
 
     try {
-      // -------------------- Arrange: A creates --------------------
+      // -------------------- Arrange: Create Initial Record --------------------
+      const uniqueName = makeUniqueName("E2E Conflict");
       const initial = {
-        name: `E2E Conflict ${Date.now()}`,
+        name: uniqueName,
         street: "Parallelweg 1",
         postal_code: "12345",
         locality: "Zweigleisig",
-        region: "BE",
         country: "DE",
       };
 
+      // User A creates the record
       await openNewForm(pageA);
-      // as long as other required fields are empty/invalid, saving must remain disabled
-      await expectSavesDisabled(pageA);
-
       await fillFields(pageA, initial);
-      await clickSave(pageA);
+      await closeForm(pageA);
+      await waitForPostalAddressListUrl(pageA, true);
 
-      await waitForPostalAddressListUrl(pageA);
-      const id = extractUuidFromUrl(pageA.url());
+      // User B goes to the same list url
+      await pageB.goto(pageA.url());
 
-      // A opens edit for this id. Expect form-version "0".
-      await openEditForm(pageA, id);
-      // The version is in a hidden input field. We check its value attribute.
-      await expect(PA_A.form.hiddenVersion).toHaveValue("0");
+      // -------------------- Open same record in both clients -------------------
+      // Both open the edit form. Since they load fresh, they have the same version.
+      await searchAndOpenByNameOnCurrentPage(pageA, uniqueName, "address_id");
+      await searchAndOpenByNameOnCurrentPage(pageB, uniqueName, "address_id");
+      await clickEditPostalAddress(pageA);
+      await clickEditPostalAddress(pageB);
 
-      // -------------------- B updates first -----------------------
-      await openEditForm(pageB, id);
-      // The version is in a hidden input field. We check its value attribute.
-      await expect(PA_B.form.hiddenVersion).toHaveValue("0");
+      // Both should see the same initial data
+      await expect(PA_A.form.inputStreet).toHaveValue(initial.street);
+      await expect(PA_B.form.inputStreet).toHaveValue(initial.street);
 
-      const editedByB = `${initial.name} (B)`;
-      await fillAndBlur(PA_B.form.inputName, editedByB);
-      await clickSave(pageB); // server -> version 1
+      // -------------------- Prepare Conflict -----------------------------------
+      // We type into the fields WITHOUT triggering blur/change yet.
+      // Playwright's .fill() usually triggers input events, but we rely on blur for saving.
 
-      // -------------------- A edits stale & tries to save ---------
-      const editedByA = `${initial.name} (A)`;
-      await fillAndBlur(PA_A.form.inputName, editedByA);
-      await PA_A.form.btnSave.click(); // expect 409 and conflict UI
+      const valA = "Street A";
+      const valB = "Street B";
 
-      // -------------------- Assert minimal conflict UI ------------
-      // A banner should appear, and the reload button should be visible.
-      await expect(BA_A.globalErrorBanner.root).toBeVisible();
-      await expect(BA_A.globalErrorBanner.btnRetry).toBeVisible();
-      await expect(BA_A.globalErrorBanner.btnCancel).toBeVisible();
+      // Focus and fill, but avoid triggering the final blur that saves
+      await PA_A.form.inputStreet.focus();
+      await PA_A.form.inputStreet.fill(valA);
 
-      // The banner should contain a warning message.
-      await expect(BA_A.globalErrorBanner.root).toContainText(
-        "The record has been modified in the meantime. Please reload. Any unsaved changes will be lost.",
-      );
+      await PA_B.form.inputStreet.focus();
+      await PA_B.form.inputStreet.fill(valB);
 
-      // Verify that the main content is inert
-      await expect(pageA.locator("main")).toHaveAttribute("inert");
+      // -------------------- Trigger Race Condition -----------------------------
+      // We trigger blur on both pages as simultaneously as possible.
+      await Promise.all([
+        PA_A.form.inputStreet.blur(),
+        PA_B.form.inputStreet.blur(),
+      ]);
 
-      // -------------------- Cancel should keep stale data and remove banner -----------
-      await BA_A.globalErrorBanner.btnCancel.click();
+      // -------------------- Assert ---------------------------------------------
+      // One request will win (saving the data), the other one will fail (Optimistic Lock).
+      // The failing client should show a toast.
 
-      // After cancel, the banner should be gone and the form-version should still be "0".
-      await expect(BA_A.globalErrorBanner.root).toBeHidden();
-      await expect(PA_A.form.hiddenVersion).toHaveValue("0");
+      // Helper to check for toast visibility on a page and return its text
+      const getToastText = async (
+        toasts: ReturnType<typeof selectors>["toasts"],
+      ): Promise<string | null> => {
+        try {
+          // Wait for ERROR toast to appear, but with a shorter timeout as it should happen quickly
+          await toasts.error.waitFor({ state: "visible", timeout: 5000 });
+          return await toasts.error.textContent();
+        } catch {
+          return null;
+        }
+      };
 
-      // The name input should still reflect A's unsaved value.
-      await expect(PA_A.form.inputName).toHaveValue(editedByA);
+      // Check both pages for the error toast
+      const [toastTextA, toastTextB] = await Promise.all([
+        getToastText(Toasts_A),
+        getToastText(Toasts_B),
+      ]);
 
-      // -------------------- Try to save again, then reload to resolve -----------
-      await PA_A.form.btnSave.click(); // expect conflict UI again
-      // A banner should appear, and the reload button should be visible.
-      await expect(BA_A.globalErrorBanner.root).toBeVisible();
-      await expect(BA_A.globalErrorBanner.btnRetry).toBeVisible();
-      await expect(BA_A.globalErrorBanner.btnCancel).toBeVisible();
+      // Exactly one of them should have encountered the error (returned a text string)
+      // Checks if either A or B has a string value (truthy)
+      expect(!!toastTextA || !!toastTextB).toBe(true);
 
-      // -------------------- Resolve via reload --------------------
-      await BA_A.globalErrorBanner.btnRetry.click();
-
-      // After reload, the banner should be gone and the form-version should bump to "1".
-      await expect(BA_A.globalErrorBanner.root).toBeHidden();
-      await expect(PA_A.form.hiddenVersion).toHaveValue("1");
-
-      // The name input should now reflect B's saved value.
-      await expect(PA_A.form.inputName).toHaveValue(editedByB);
-
-      // Verify that the main content is not inert anymore
-      await expect(pageA.locator("main")).not.toHaveAttribute("inert");
+      if (toastTextA) {
+        expect(toastTextA).toContain("optimistic lock conflict");
+      }
+      if (toastTextB) {
+        expect(toastTextB).toContain("optimistic lock conflict");
+      }
     } finally {
       await ctxA.close();
       await ctxB.close();

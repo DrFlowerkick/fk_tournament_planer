@@ -256,9 +256,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                                             Some(CrTopic::SportConfig(sc.read_value().get_id()))
                                                                         });
                                                                         let version = Signal::derive({
-                                                                            move || {
-                                                                                sc.read_value().get_version().unwrap_or_default()
-                                                                            }
+                                                                            move || { sc.read_value().get_version() }
                                                                         });
                                                                         use_client_registry_socket(topic, version, refetch);
                                                                         view! {

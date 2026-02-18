@@ -41,6 +41,7 @@ export const LIST_IDS = {
   header: "table-list-header",
   btnNew: "action-btn-new",
   btnEdit: "action-btn-edit",
+  btnCopy: "action-btn-copy",
   entryNamePrefix: "table-entry-name-",
   entryPreviewPrefix: "table-entry-preview-",
   detailedPreview: "table-entry-detailed-preview",
@@ -54,6 +55,7 @@ export function getListSelectors(page: Page) {
     header: page.getByTestId(ids.header),
     btnNew: page.getByTestId(ids.btnNew),
     btnEdit: page.getByTestId(ids.btnEdit),
+    btnCopy: page.getByTestId(ids.btnCopy),
     detailedPreview: page.getByTestId(ids.detailedPreview),
     entryName: (id: string) => page.getByTestId(`${ids.entryNamePrefix}${id}`),
     // Dynamic row/preview selectors

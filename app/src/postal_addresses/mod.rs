@@ -27,7 +27,7 @@ pub fn PostalAddressRoutes() -> impl MatchNestedRoutes + Clone {
                     view! {}
                 }
             />
-            <Route path=ParamSegment(EditActionParams::KEY) view=LoadPostalAddress />
+            <Route path=ParamSegment(EditActionParams::KEY) view=EditPostalAddress />
         </ParentRoute>
     }
     .into_inner()

@@ -39,14 +39,24 @@ export async function openPostalAddressList(page: Page) {
 
 /**
  * Wait for navigation to a postal address detail page (UUID URL).
+ * @param page Playwright Page object
+ * @param shouldHaveId If true (default), expects a valid address_id in query. If false, expects NO address_id.
  */
-export async function waitForPostalAddressListUrl(page: Page) {
+export async function waitForPostalAddressListUrl(
+  page: Page,
+  shouldHaveId: boolean,
+) {
   const PA = selectors(page).postalAddress;
-  // Wait for URL path /postal-address and valid address_id query param
+  // Wait for URL path /postal-address and address_id query param according to option
   await page.waitForURL((url) => {
     const isCorrectPath = url.pathname === PA_ROUTES.list;
     const addressId = url.searchParams.get(PA_QUERY_KEYS.addressId);
-    return isCorrectPath && !!addressId && UUID_REGEX.test(addressId);
+
+    if (shouldHaveId) {
+      return isCorrectPath && !!addressId && UUID_REGEX.test(addressId);
+    } else {
+      return isCorrectPath && !addressId;
+    }
   });
 
   // strict hydration check
@@ -78,8 +88,6 @@ export async function openNewForm(page: Page) {
   await waitForAppHydration(page);
 
   await expect(PA.form.root).toBeVisible();
-  await expect(PA.form.btnSave).toBeVisible();
-  await expect(PA.form.btnSaveAsNew).toBeHidden();
 }
 
 /**
@@ -123,30 +131,15 @@ export async function waitForPostalAddressEditUrl(page: Page) {
   await waitForAppHydration(page);
 
   await expect(PA.form.root).toBeVisible();
-  await expect(PA.form.btnSave).toBeVisible();
-  await expect(PA.form.btnSaveAsNew).toBeVisible();
 }
 
 /**
- * Expect that save actions are gated (disabled) while the form is invalid.
+ * Close the form by clicking the "Close" button (if available).
  */
-export async function expectSavesDisabled(page: Page) {
+export async function closeForm(page: Page) {
   const PA = selectors(page).postalAddress;
-  await expect(PA.form.btnSave).toBeDisabled();
-  if (await PA.form.btnSaveAsNew.isVisible()) {
-    await expect(PA.form.btnSaveAsNew).toBeDisabled();
-  }
-}
-
-/**
- * Expect that save actions are allowed (enabled) when the form is valid.
- */
-export async function expectSavesEnabled(page: Page) {
-  const PA = selectors(page).postalAddress;
-  await expect(PA.form.btnSave).toBeEnabled();
-  if (await PA.form.btnSaveAsNew.isVisible()) {
-    await expect(PA.form.btnSaveAsNew).toBeEnabled();
-  }
+  await expect(PA.form.btnClose).toBeVisible();
+  await PA.form.btnClose.click();
 }
 
 /**
@@ -164,6 +157,11 @@ export async function fillFields(
   },
 ) {
   const PA = selectors(page).postalAddress;
+  // we start with region, since it is not part of validation
+  if (fields.region !== undefined) {
+    await fillAndBlur(PA.form.inputRegion, fields.region);
+  }
+
   // Name
   if (fields.name !== undefined) {
     await fillAndBlur(PA.form.inputName, fields.name);
@@ -188,11 +186,6 @@ export async function fillFields(
   if (fields.locality !== undefined) {
     await fillAndBlur(PA.form.inputLocality, fields.locality);
   }
-
-  // region
-  if (fields.region !== undefined) {
-    await fillAndBlur(PA.form.inputRegion, fields.region);
-  }
 }
 
 /**
@@ -207,24 +200,6 @@ export async function fillAllRequiredValid(page: Page, name: string) {
     region: "",
     country: "DE",
   });
-}
-
-/**
- * Save and expect we leave the form or see some Error message.
- */
-export async function clickSave(page: Page) {
-  const PA = selectors(page).postalAddress;
-  await expectSavesEnabled(page);
-  await PA.form.btnSave.click();
-}
-/**
- * Save and expect we leave the form or see some Error message.
- */
-export async function clickSaveAsNew(page: Page) {
-  const PA = selectors(page).postalAddress;
-  await expect(PA.form.btnSaveAsNew).toBeVisible();
-  await expectSavesEnabled(page);
-  await PA.form.btnSaveAsNew.click();
 }
 
 // mapping of countries used in tests

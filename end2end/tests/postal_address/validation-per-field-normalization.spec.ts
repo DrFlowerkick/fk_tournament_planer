@@ -1,8 +1,6 @@
 import { test } from "@playwright/test";
 import {
   openNewForm,
-  expectSavesDisabled,
-  expectSavesEnabled,
   fillAllRequiredValid,
   fillAndBlur,
   selectThenBlur,
@@ -27,9 +25,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectFieldValidity(PA.form.inputPostalCode, "", /*invalid*/ true);
     await expectFieldValidity(PA.form.inputLocality, "", /*invalid*/ true);
     await expectFieldValidity(PA.form.inputCountry, "", /*invalid*/ true);
-
-    // Save actions must be gated (disabled).
-    await expectSavesDisabled(page);
   });
 
   test("Name: trim & collapse spaces on blur; then validate field", async ({
@@ -40,9 +35,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
     // -------------------- Arrange & Act --------------------
     await openNewForm(page);
 
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
-
     // focus → type → blur -> normalize -> validate
     await fillAndBlur(PA.form.inputName, "   Müller   GmbH   ");
 
@@ -52,9 +44,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
       "Müller GmbH",
       /*invalid*/ false,
     );
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
   });
 
   test("Street: trim & collapse spaces on blur; then validate field", async ({
@@ -64,9 +53,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
 
     // -------------------- Arrange & Act --------------------
     await openNewForm(page);
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
 
     // focus → type → blur -> normalize -> validate
     await fillAndBlur(
@@ -78,9 +64,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
       "Main Street 42",
       /*invalid*/ false,
     );
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
   });
 
   test("Locality: trim & collapse spaces on blur; then validate field", async ({
@@ -91,9 +74,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
     // -------------------- Arrange & Act --------------------
     await openNewForm(page);
 
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
-
     // focus → type → blur -> normalize -> validate
     await fillAndBlur(PA.form.inputLocality, "   Berlin   Mitte  ");
     await expectFieldValidity(
@@ -101,9 +81,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
       "Berlin Mitte",
       /*invalid*/ false,
     );
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
   });
 
   test("Country: uppercase on blur; then validate field", async ({ page }) => {
@@ -112,17 +89,11 @@ test.describe("Per-field normalization → validation + gated save", () => {
     // -------------------- Arrange & Act --------------------
     await openNewForm(page);
 
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
-
     // blur path
     // Note: "uppercase on blur" is no longer relevant for a select field
     // as the values are predefined ISO codes.
     await selectThenBlur(PA.form.inputCountry, "DE");
     await expectFieldValidity(PA.form.inputCountry, "DE", /*invalid*/ false);
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
   });
 
   test("Postal code (DE-specific rule): strip spaces/non-digits; validate length=5; gate while invalid", async ({
@@ -132,9 +103,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
 
     // -------------------- Arrange & Act --------------------
     await openNewForm(page);
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
 
     /**
      * NOTE (DE-specific):
@@ -170,9 +138,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
       "1234A",
       /*invalid*/ true,
     );
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
   });
 
   test("Postal code (DE-specific rule): set invalid postal_code before country -> first valid, after setting country invalid", async ({
@@ -182,9 +147,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
 
     // -------------------- Arrange & Act --------------------
     await openNewForm(page);
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
 
     /**
      * NOTE (DE-specific):
@@ -210,9 +172,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
       "1011",
       /*now invalid*/ true,
     );
-
-    // as long as other required fields are empty/invalid, saving must remain disabled
-    await expectSavesDisabled(page);
   });
 
   test("Entering valid input for all required fields enables save buttons", async ({
@@ -222,9 +181,6 @@ test.describe("Per-field normalization → validation + gated save", () => {
 
     // -------------------- Arrange & Act --------------------
     await openNewForm(page);
-
-    // Initially: empty form → invalid → save disabled
-    await expectSavesDisabled(page);
 
     // fill all fields with valid values
     const name = `E2E Valid Test Address`;
@@ -236,8 +192,5 @@ test.describe("Per-field normalization → validation + gated save", () => {
     await expectFieldValidity(PA.form.inputCountry, "DE", false);
     await expectFieldValidity(PA.form.inputPostalCode, "10115", false);
     await expectFieldValidity(PA.form.inputLocality, "Berlin Mitte", false);
-
-    // All required fields are now valid → save buttons should be enabled
-    await expectSavesEnabled(page);
   });
 });

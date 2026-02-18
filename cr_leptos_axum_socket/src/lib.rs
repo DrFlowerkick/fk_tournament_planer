@@ -62,7 +62,7 @@ pub async fn connect_to_websocket(
 // client registry subscription hook for leptos components
 pub fn use_client_registry_socket(
     topic: Signal<Option<CrTopic>>,
-    version: Signal<u32>,
+    version: Signal<Option<u32>>,
     refetch: Callback<()>,
 ) {
     let socket = expect_socket_context();
@@ -73,8 +73,8 @@ pub fn use_client_registry_socket(
         move |topic: CrTopic, refetch: Callback<()>| {
             let version = version.get_untracked();
             let socket_handler = move |msg: &CrSocketMsg| {
-                if msg.msg.version() > version {
-                    refetch.run(());
+                if version.is_none() || Some(msg.msg.version()) > version {
+                    refetch.try_run(());
                 }
             };
             socket.subscribe(topic, socket_handler);

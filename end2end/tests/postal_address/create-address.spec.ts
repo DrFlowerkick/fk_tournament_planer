@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
 import {
   fillFields,
-  clickSave,
+  closeForm,
   expectPreviewShows,
   openPostalAddressList,
   searchAndOpenByNameOnCurrentPage,
-  waitForAppHydration,
+  extractUuidFromUrl,
   selectors
 } from "../../helpers";
 
@@ -35,13 +35,8 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
     await fillFields(page, initial);
   });
 
-  await test.step('Save with "save-as-new"', async () => {
-    await clickSave(page);
-    // The app may stay on the form or navigate; we normalize by going to search.
-    await page.goto("/postal-address");
-
-    // Wait for hydration after raw navigation
-    await waitForAppHydration(page);
+  await test.step('Close form after automatic save', async () => {
+    await closeForm(page);
 
     await expect(PA.list.btnNew).toBeVisible();
   });
