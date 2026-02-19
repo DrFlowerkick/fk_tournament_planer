@@ -1,17 +1,17 @@
-//!
+//! web ui for adding and modifying sport configurations
 
-pub mod copy_sport_config;
 pub mod edit_sport_config;
 pub mod list_sport_configs;
 
-pub use copy_sport_config::*;
 pub use edit_sport_config::*;
 pub use list_sport_configs::*;
 
+use app_utils::params::{EditActionParams, ParamQuery};
 use leptos::prelude::*;
 #[allow(unused_imports)]
 use leptos_router::MatchNestedRoutes;
 use leptos_router::{
+    ParamSegment,
     any_nested_route::IntoAnyNestedRoute,
     components::{ParentRoute, Route},
     path,
@@ -27,9 +27,7 @@ pub fn SportConfigRoutes() -> impl MatchNestedRoutes + Clone {
                     view! {}
                 }
             />
-            <Route path=path!("new") view=LoadSportConfiguration />
-            <Route path=path!("edit") view=LoadSportConfiguration />
-            <Route path=path!("copy") view=CopySportConfiguration />
+            <Route path=ParamSegment(EditActionParams::KEY) view=EditSportConfiguration />
         </ParentRoute>
     }
     .into_inner()

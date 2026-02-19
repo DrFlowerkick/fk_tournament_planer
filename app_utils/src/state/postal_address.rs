@@ -1,5 +1,6 @@
 //! postal address editor context
 
+use crate::state::EditorContext;
 use app_core::{
     PostalAddress,
     utils::{id_version::IdVersion, validation::ValidationResult},
@@ -53,6 +54,35 @@ pub struct PostalAddressEditorContext {
     pub set_country: Callback<Option<CountryCode>>,
 }
 
+impl EditorContext for PostalAddressEditorContext {
+    fn has_origin(&self) -> Signal<bool> {
+        let origin = self.origin;
+        Signal::derive(move || origin.with(|o| o.is_some()))
+    }
+
+    fn has_id(&self) -> Signal<bool> {
+        let id = self.id;
+        Signal::derive(move || id.with(|id| id.is_some()))
+    }
+
+    fn prepare_copy(&self) {
+        if let Some(mut pa) = self.origin.get() {
+            pa.set_id_version(IdVersion::new(Uuid::new_v4(), None))
+                .set_name("");
+            self.local.set(Some(pa));
+            self.origin.set(None);
+        }
+    }
+
+    fn new_object(&self) {
+        let id_version = IdVersion::new(Uuid::new_v4(), None);
+        let pa = PostalAddress::new(id_version);
+
+        self.local.set(Some(pa.clone()));
+        self.origin.set(None);
+    }
+}
+
 impl PostalAddressEditorContext {
     /// Create a new `PostalAddressEditorContext`.
     pub fn new() -> Self {
@@ -71,7 +101,6 @@ impl PostalAddressEditorContext {
         });
 
         let id = create_read_slice(local, move |local| local.as_ref().map(|pa| pa.get_id()));
-
         let version = create_read_slice(local, move |local| {
             local.as_ref().and_then(|pa| pa.get_version())
         });
@@ -174,20 +203,6 @@ impl PostalAddressEditorContext {
         }
     }
 
-    /// Check if there is an original postal address loaded in the editor context.
-    pub fn has_origin(&self) -> bool {
-        self.origin.with(|o| o.is_some())
-    }
-
-    /// Create a new postal address in the editor context.
-    pub fn new_postal_address(&self) {
-        let id_version = IdVersion::new(Uuid::new_v4(), None);
-        let pa = PostalAddress::new(id_version);
-
-        self.local.set(Some(pa.clone()));
-        self.origin.set(None);
-    }
-
     /// Set an existing postal address in the editor context.
     pub fn set_postal_address(&self, pa: PostalAddress) {
         self.local.set(Some(pa.clone()));
@@ -198,16 +213,6 @@ impl PostalAddressEditorContext {
     pub fn clear(&self) {
         self.local.set(None);
         self.origin.set(None);
-    }
-
-    /// Prepare the postal address in the editor context for copying by clearing the id and version.
-    pub fn prepare_copy(&self) {
-        if let Some(mut pa) = self.origin.get() {
-            pa.set_id_version(IdVersion::new(Uuid::new_v4(), None))
-                .set_name("");
-            self.local.set(Some(pa));
-            self.origin.set(None);
-        }
     }
 
     // --- optimistic version to prevent unneeded server round after save

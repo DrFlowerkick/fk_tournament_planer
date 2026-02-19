@@ -348,7 +348,7 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                     let pa = RwSignal::new(pa.clone());
                     Effect::new(move || {
                         if is_selected.get() {
-                            postal_address_editor.set_postal_address(pa.get().clone());
+                            postal_address_editor.set_postal_address(pa.get());
                         }
                     });
                     view! {
@@ -427,17 +427,10 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                         </span>
 
                                         // Hidden technical fields
-
-                                        // ToDo: debug, delete this
-
-                                        <span class="text-primary" data-testid="preview-address-id">
+                                        <span class="hidden" data-testid="preview-address-id">
                                             {pa.read().get_id().to_string()}
                                         </span>
-
-                                        <span
-                                            class="text-secondary"
-                                            data-testid="preview-address-version"
-                                        >
+                                        <span class="hidden" data-testid="preview-address-version">
                                             {pa.read().get_version().unwrap_or_default()}
                                         </span>
                                     </div>

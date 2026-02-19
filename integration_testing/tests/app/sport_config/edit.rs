@@ -1,9 +1,9 @@
 use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value, set_url,
 };
-use app::{home::LoadSportConfiguration, provide_global_context};
-use app_core::{DbpSportConfig, SportConfig};
-use app_utils::{params::SportConfigIdQuery, state::object_table_list::ObjectListContext};
+use app::{home::EditSportConfiguration, provide_global_context};
+use app_core::DbpSportConfig;
+use app_utils::state::sport_config::SportConfigEditorContext;
 use generic_sport_plugin::config::GenericSportConfig;
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
@@ -13,14 +13,6 @@ use leptos_router::{
 };
 use std::time::Duration;
 use wasm_bindgen_test::*;
-
-#[component]
-fn LoadSportConfigurationWrapper() -> impl IntoView {
-    // requires Router context
-    provide_context(ObjectListContext::<SportConfig, SportConfigIdQuery>::new());
-
-    view! { <LoadSportConfiguration /> }
-}
 
 #[wasm_bindgen_test]
 async fn test_new_sport_config() {
@@ -39,10 +31,11 @@ async fn test_new_sport_config() {
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
+        provide_context(SportConfigEditorContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/new") view=LoadSportConfigurationWrapper />
+                    <Route path=path!("/wasm_testing/:edit_action") view=EditSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -62,11 +55,19 @@ async fn test_new_sport_config() {
 
     let new_configs = ts
         .db
-        .list_sport_configs(ts.generic_sport_id, Some("New"), None)
+        .list_sport_config_ids(ts.generic_sport_id, Some("New"), None)
         .await
         .unwrap();
     assert_eq!(new_configs.len(), 1);
-    assert_eq!(new_configs[0].get_name(), "New Sport Config");
+    assert_eq!(
+        ts.db
+            .get_sport_config(new_configs[0])
+            .await
+            .unwrap()
+            .unwrap()
+            .get_name(),
+        "New Sport Config"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -81,15 +82,24 @@ async fn test_edit_sport_config() {
         "/wasm_testing/edit?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
+    let sc = ts
+        .db
+        .get_sport_config(ts.generic_sport_config_id)
+        .await
+        .unwrap()
+        .unwrap();
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
+        let sport_config_editor = SportConfigEditorContext::new();
+        provide_context(sport_config_editor);
+        sport_config_editor.set_sport_config(sc);
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfigurationWrapper />
+                    <Route path=path!("/wasm_testing/:edit_action") view=EditSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -124,7 +134,7 @@ async fn test_edit_sport_config() {
 }
 
 #[wasm_bindgen_test]
-async fn test_save_as_new_sport_config() {
+async fn test_copy_new_sport_config() {
     // Acquire lock and clean DOM.
     let _guard = lock_test().await;
 
@@ -132,18 +142,27 @@ async fn test_save_as_new_sport_config() {
 
     // 1. Set URL with sport_id
     set_url(&format!(
-        "/wasm_testing/edit?sport_id={}&sport_config_id={}",
+        "/wasm_testing/copy?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     ));
+    let sc = ts
+        .db
+        .get_sport_config(ts.generic_sport_config_id)
+        .await
+        .unwrap()
+        .unwrap();
 
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
+        let sport_config_editor = SportConfigEditorContext::new();
+        provide_context(sport_config_editor);
+        sport_config_editor.set_sport_config(sc);
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/wasm_testing/edit") view=LoadSportConfigurationWrapper />
+                    <Route path=path!("/wasm_testing/:edit_action") view=EditSportConfiguration />
                 </Routes>
             </Router>
         }
@@ -168,10 +187,27 @@ async fn test_save_as_new_sport_config() {
     sleep(Duration::from_millis(10)).await;
     let cloned_configs = ts
         .db
-        .list_sport_configs(ts.generic_sport_id, Some("Cloned"), None)
+        .list_sport_config_ids(ts.generic_sport_id, Some("Cloned"), None)
         .await
         .unwrap();
     assert_eq!(cloned_configs.len(), 1);
-    assert_eq!(cloned_configs[0].get_name(), "Cloned Config");
-    assert_eq!(cloned_configs[0].get_version().unwrap(), 0);
+    assert_eq!(
+        ts.db
+            .get_sport_config(cloned_configs[0])
+            .await
+            .unwrap()
+            .unwrap()
+            .get_name(),
+        "Cloned Config"
+    );
+    assert_eq!(
+        ts.db
+            .get_sport_config(cloned_configs[0])
+            .await
+            .unwrap()
+            .unwrap()
+            .get_version()
+            .unwrap(),
+        0
+    );
 }

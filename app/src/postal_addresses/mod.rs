@@ -1,4 +1,4 @@
-// web ui for adding and modifying postal addresses
+//! web ui for adding and modifying postal addresses
 
 mod edit_postal_addresses;
 mod list_postal_addresses;

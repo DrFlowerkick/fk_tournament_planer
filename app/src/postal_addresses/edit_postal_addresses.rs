@@ -7,6 +7,7 @@ use app_utils::{
     enum_utils::EditAction,
     error::strategy::handle_write_error,
     hooks::{
+        set_up_editor_form::set_up_editor_form,
         use_on_cancel::use_on_cancel,
         use_query_navigation::{
             MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
@@ -28,7 +29,6 @@ use uuid::Uuid;
 pub fn EditPostalAddress() -> impl IntoView {
     // --- Hooks, Navigation & global state ---
     let UseQueryNavigationReturn {
-        url_matched_route_update_query,
         url_matched_route_update_queries,
         url_is_matched_route,
         ..
@@ -54,104 +54,12 @@ pub fn EditPostalAddress() -> impl IntoView {
         activity_tracker.remove_component(component_id.get_value());
     });
 
-    // selected address id from url query, if any
-    let address_id = AddressIdQuery::use_param_query();
-
     // --- local state ---
     let postal_address_editor = expect_context::<PostalAddressEditorContext>();
 
     // --- state initialization & effects ---
-    // We have the following cases:
-    // 1) postal_address is Some -> an address was loaded
-    // 1a) if last segment of matched route is "edit", we are editing an existing address
-    // 1b) if last segment of matched route is "copy", we are copying an existing address as new
-    // 1c) if last segment of matched route is "new", we navigate to edit
-    // 2) postal_address is None -> no address was loaded
-    // 2a) if last segment of matched route is "new", we are creating a new address
-    // 2b) if last segment of matched route is "edit", we assume that no item was selected in
-    //     the list and we show a message to select an address from the list.
-    // 2c) if last segment of matched route is "copy", we show the message to select an address
-    // from the list, because copy only makes sense if an address is selected.
-    let (show_form, set_show_form) = signal(false);
-    Effect::new({
-        let navigate = navigate.clone();
-        move || {
-            match edit_action.get() {
-                Some(EditAction::Edit) => {
-                    // show form, if an address is loaded
-                    set_show_form
-                        .set(postal_address_editor.has_origin() && address_id.get().is_some());
-                }
-                Some(EditAction::Copy) => {
-                    if let Some(id) = address_id.get() {
-                        // if the user selected a table entry, we navigate to edit with the selected id
-                        let nav_url = url_matched_route_update_query(
-                            AddressIdQuery::KEY,
-                            id.to_string().as_str(),
-                            MatchedRouteHandler::ReplaceSegment(
-                                EditAction::Edit.to_string().as_str(),
-                            ),
-                        );
-                        navigate(
-                            &nav_url,
-                            NavigateOptions {
-                                replace: true,
-                                scroll: false,
-                                ..Default::default()
-                            },
-                        );
-                    } else if postal_address_editor.has_origin() {
-                        // prepare copy in editor
-                        postal_address_editor.prepare_copy();
-                        set_show_form.set(true);
-                    } else if postal_address_editor.id.with(|id| id.is_some()) && show_form.get() {
-                        // No origin, id is present, form is shown -> everything is set
-                    } else if postal_address_editor.id.with(|id| id.is_some()) {
-                        // No origin, id is present, form is not shown -> show form
-                        set_show_form.set(true);
-                    } else {
-                        // if there is no id, it means that no address was loaded, so we show the message to select an address from the list.
-                        set_show_form.set(false);
-                    }
-                }
-                Some(EditAction::New) => {
-                    if let Some(id) = address_id.get() {
-                        // if the user selected a table entry, we navigate to edit with the selected id
-                        let nav_url = url_matched_route_update_query(
-                            AddressIdQuery::KEY,
-                            id.to_string().as_str(),
-                            MatchedRouteHandler::ReplaceSegment(
-                                EditAction::Edit.to_string().as_str(),
-                            ),
-                        );
-                        navigate(
-                            &nav_url,
-                            NavigateOptions {
-                                replace: true,
-                                scroll: false,
-                                ..Default::default()
-                            },
-                        );
-                    } else if postal_address_editor.has_origin()
-                        || postal_address_editor.id.with(|id| id.is_none())
-                    {
-                        // if there is an origin or no id is set, create new postal address in editor and show form
-                        postal_address_editor.new_postal_address();
-                        set_show_form.set(true);
-                    } else if postal_address_editor.id.with(|id| id.is_some()) && show_form.get() {
-                        // No origin, id is present, form is shown -> everything is set
-                    } else if postal_address_editor.id.with(|id| id.is_some()) {
-                        // No origin, id is present, form is not shown -> show form
-                        set_show_form.set(true);
-                    } else {
-                        // if there is no id, it means that no address was loaded, so we show the message to select an address from the list.
-                        set_show_form.set(false);
-                    }
-                }
-                None => set_show_form.set(false),
-            }
-        }
-    });
+    let show_form =
+        set_up_editor_form::<AddressIdQuery, PostalAddressEditorContext>(postal_address_editor);
 
     // cancel function for cancel button
     let on_cancel = use_on_cancel();
@@ -195,6 +103,7 @@ pub fn EditPostalAddress() -> impl IntoView {
                             );
                         }
                         EditAction::Edit => {
+                            // ToDo: after some more testing we ca probably remove this
                             if !postal_address_editor.check_optimistic_version(pa.get_version()) {
                                 // version mismatch, likely due to parallel editing
                                 // this should not happen, because version mismatch should be caught
@@ -336,31 +245,27 @@ pub fn EditPostalAddress() -> impl IntoView {
                                 // --- Address Form Fields ---
                                 <fieldset class="space-y-4 contents">
                                     // Hidden meta fields the server expects (id / version)
-                                    <div class="flex flex-col gap-2">
-                                        <input
-                                            type="text"
-                                            class="text-primary"
-                                            name="form[id]"
-                                            data-testid="hidden-id"
-                                            prop:value=move || {
-                                                postal_address_editor
-                                                    .id
-                                                    .get()
-                                                    .unwrap_or(Uuid::nil())
-                                                    .to_string()
-                                            }
-                                        />
-                                        <input
-                                            type="text"
-                                            class="text-secondary"
-                                            name="form[version]"
-                                            data-testid="hidden-version"
-                                            readonly
-                                            prop:value=move || {
-                                                postal_address_editor.version.get().unwrap_or_default()
-                                            }
-                                        />
-                                    </div>
+                                    <input
+                                        type="hidden"
+                                        name="form[id]"
+                                        data-testid="hidden-id"
+                                        prop:value=move || {
+                                            postal_address_editor
+                                                .id
+                                                .get()
+                                                .unwrap_or(Uuid::nil())
+                                                .to_string()
+                                        }
+                                    />
+                                    <input
+                                        type="hidden"
+                                        name="form[version]"
+                                        data-testid="hidden-version"
+                                        readonly
+                                        prop:value=move || {
+                                            postal_address_editor.version.get().unwrap_or_default()
+                                        }
+                                    />
                                     <input
                                         type="hidden"
                                         name="form[intent]"

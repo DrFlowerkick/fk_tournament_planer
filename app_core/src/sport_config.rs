@@ -1,13 +1,14 @@
 // configuration and handling of sport specific settings
 
 use crate::{
-    Core, CoreError, CoreResult, CrMsg, CrTopic, SportError,
+    Core, CoreError, CoreResult, CrMsg, CrTopic, SportError, SportPort,
     utils::{
         id_version::IdVersion, normalize::normalize_ws, traits::ObjectIdVersion, validation::*,
     },
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::Arc;
 use uuid::Uuid;
 
 /// `SportConfig` represents the configuration for a specific sport.
@@ -106,7 +107,7 @@ impl SportConfig {
     /// Validate the sport configuration.
     /// At this level we can only validate the name.
     /// Sport-specific validation must be done in the SportPort implementation.
-    pub fn validate(&self) -> ValidationResult<()> {
+    pub fn validate(&self, sport_plugin: Arc<dyn SportPort>) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
         let object_id = self.get_id();
 
@@ -119,10 +120,7 @@ impl SportConfig {
                     .build(),
             );
         }
-        if !errs.is_empty() {
-            return Err(errs);
-        }
-        Ok(())
+        sport_plugin.validate_config_values(self, errs)
     }
 }
 
@@ -151,11 +149,7 @@ impl Core<SportConfigState> {
         let Some(sport_plugin) = self.sport_plugins.get(&config.sport_id) else {
             return Err(CoreError::from(SportError::UnknownSportId(config.sport_id)));
         };
-        let err = match config.validate() {
-            Ok(_) => ValidationErrors::new(),
-            Err(e) => e,
-        };
-        sport_plugin.validate_config_values(config, err)?;
+        config.validate(sport_plugin)?;
         Ok(())
     }
     pub async fn load(&mut self, id: Uuid) -> CoreResult<Option<&SportConfig>> {
@@ -188,19 +182,16 @@ impl Core<SportConfigState> {
         Ok(self.get())
     }
 
-    pub async fn list_sport_configs(
+    pub async fn list_sport_config_ids(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> CoreResult<Vec<SportConfig>> {
+    ) -> CoreResult<Vec<Uuid>> {
         let list = self
             .database
-            .list_sport_configs(sport_id, name_filter, limit)
+            .list_sport_config_ids(sport_id, name_filter, limit)
             .await?;
-        for config in &list {
-            self.validate(config)?;
-        }
         Ok(list)
     }
 }

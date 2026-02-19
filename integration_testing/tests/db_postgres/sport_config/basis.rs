@@ -144,21 +144,36 @@ async fn given_name_filter_and_limit_when_list_then_ordered_and_bounded() -> Res
         .await?;
 
     // Filter: name contains 'a' (case-insensitive)
-    let listed = db.list_sport_configs(sport_id, Some("a"), Some(2)).await?;
+    let listed = db
+        .list_sport_config_ids(sport_id, Some("a"), Some(2))
+        .await?;
 
     // Expect at most 2 rows, and only from sport_id
     assert!(listed.len() <= 2, "must respect limit");
 
     // All should belong to sport_id
     for item in &listed {
-        assert_eq!(item.get_sport_id(), sport_id);
+        let item_sport_id = db
+            .get_sport_config(*item)
+            .await?
+            .expect("id from list should exist")
+            .get_sport_id();
+        assert_eq!(
+            item_sport_id, sport_id,
+            "listed item must belong to queried sport_id"
+        );
     }
 
     // Names are ordered ascending (NULLS LAST)
-    let names: Vec<String> = listed
-        .into_iter()
-        .map(|p| p.get_name().to_string())
-        .collect();
+    let mut names: Vec<String> = Vec::with_capacity(listed.len());
+    for id in &listed {
+        let pa = db
+            .get_sport_config(*id)
+            .await?
+            .expect("id from list should exist in DB");
+        assert_eq!(pa.get_id(), *id);
+        names.push(pa.get_name().to_string());
+    }
     let mut sorted = names.clone();
     sorted.sort();
     assert_eq!(names, sorted, "expected name-ascending order");

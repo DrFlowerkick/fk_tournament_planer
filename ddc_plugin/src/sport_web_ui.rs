@@ -137,7 +137,7 @@ impl SportPortWebUi for DdcSportPlugin {
         });
 
         let validation_result = Signal::derive(move || {
-            if let Some(object_id) = sport_config_editor.sport_config_id.get()
+            if let Some(object_id) = sport_config_editor.id.get()
                 && let Some(cfg) = current_config.get()
             {
                 cfg.validate(object_id, ValidationErrors::new())
@@ -362,7 +362,7 @@ impl SportPortWebUi for DdcSportPlugin {
                     name="sets_cfg"
                     data_testid="select-sets_cfg"
                     value=sets_cfg
-                    action=InputCommitAction::WriteTo(set_sets_cfg)
+                    action=InputCommitAction::WriteAndSubmit(set_sets_cfg)
                 />
                 {move || {
                     match sets_cfg.get() {
@@ -373,9 +373,9 @@ impl SportPortWebUi for DdcSportPlugin {
                                     name="num_sets"
                                     data_testid="input-num_sets"
                                     value=num_sets
-                                    action=InputCommitAction::WriteTo(set_num_sets)
+                                    action=InputCommitAction::WriteAndSubmit(set_num_sets)
                                     validation_result=validation_result
-                                    object_id=sport_config_editor.sport_config_id
+                                    object_id=sport_config_editor.id
                                     field="sets_cfg"
                                     min="1"
                                 />
@@ -389,9 +389,9 @@ impl SportPortWebUi for DdcSportPlugin {
                                     name="num_sets"
                                     data_testid="input-num_sets"
                                     value=num_sets
-                                    action=InputCommitAction::WriteTo(set_num_sets)
+                                    action=InputCommitAction::WriteAndSubmit(set_num_sets)
                                     validation_result=validation_result
-                                    object_id=sport_config_editor.sport_config_id
+                                    object_id=sport_config_editor.id
                                     field="sets_cfg"
                                     min="1"
                                 />
@@ -406,7 +406,7 @@ impl SportPortWebUi for DdcSportPlugin {
                     name="set_winning_cfg"
                     data_testid="select-set_winning_cfg"
                     value=winning_cfg
-                    action=InputCommitAction::WriteTo(set_winning_cfg)
+                    action=InputCommitAction::WriteAndSubmit(set_winning_cfg)
                 />
                 {move || {
                     match winning_cfg.get() {
@@ -418,9 +418,9 @@ impl SportPortWebUi for DdcSportPlugin {
                                         name="score_to_win"
                                         data_testid="input-score_to_win"
                                         value=score_to_win
-                                        action=InputCommitAction::WriteTo(set_score_to_win)
+                                        action=InputCommitAction::WriteAndSubmit(set_score_to_win)
                                         validation_result=validation_result
-                                        object_id=sport_config_editor.sport_config_id
+                                        object_id=sport_config_editor.id
                                         field="score_to_win"
                                         min="1"
                                     />
@@ -429,9 +429,9 @@ impl SportPortWebUi for DdcSportPlugin {
                                         name="win_by_margin"
                                         data_testid="input-win_by_margin"
                                         value=win_by_margin
-                                        action=InputCommitAction::WriteTo(set_win_by_margin)
+                                        action=InputCommitAction::WriteAndSubmit(set_win_by_margin)
                                         validation_result=validation_result
-                                        object_id=sport_config_editor.sport_config_id
+                                        object_id=sport_config_editor.id
                                         field="win_by_margin"
                                         min="1"
                                     />
@@ -440,9 +440,9 @@ impl SportPortWebUi for DdcSportPlugin {
                                         name="hard_cap"
                                         data_testid="input-hard_cap"
                                         value=hard_cap
-                                        action=InputCommitAction::WriteTo(set_hard_cap)
+                                        action=InputCommitAction::WriteAndSubmit(set_hard_cap)
                                         validation_result=validation_result
-                                        object_id=sport_config_editor.sport_config_id
+                                        object_id=sport_config_editor.id
                                         field="hard_cap"
                                         min="1"
                                     />
@@ -459,9 +459,9 @@ impl SportPortWebUi for DdcSportPlugin {
                         name="victory_points_win"
                         data_testid="input-victory_points_win"
                         value=victory_points_win
-                        action=InputCommitAction::WriteTo(set_victory_points_win)
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_win)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="victory_points_win"
                         min="0"
                         step="0.1"
@@ -471,9 +471,9 @@ impl SportPortWebUi for DdcSportPlugin {
                         name="victory_points_draw"
                         data_testid="input-victory_points_draw"
                         value=victory_points_draw
-                        action=InputCommitAction::WriteTo(set_victory_points_draw)
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_draw)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="victory_points_draw"
                         min="0"
                         step="0.1"
@@ -484,10 +484,10 @@ impl SportPortWebUi for DdcSportPlugin {
                     name="expected_rally_duration_seconds"
                     data_testid="input-expected_rally_duration_seconds"
                     value=expected_rally_duration_seconds
-                    action=InputCommitAction::WriteTo(set_expected_rally_duration_seconds)
+                    action=InputCommitAction::WriteAndSubmit(set_expected_rally_duration_seconds)
                     unit=DurationInputUnit::Seconds
                     validation_result=validation_result
-                    object_id=sport_config_editor.sport_config_id
+                    object_id=sport_config_editor.id
                     field="expected_rally_duration_seconds"
                 />
                 <div class="form-control w-full">

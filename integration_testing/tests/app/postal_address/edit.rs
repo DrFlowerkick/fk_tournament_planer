@@ -125,7 +125,7 @@ async fn test_edit_postal_address() {
 }
 
 #[wasm_bindgen_test]
-async fn test_save_as_new_postal_address() {
+async fn test_copy_new_postal_address() {
     // Acquire lock and clean DOM.
     let _guard = lock_test().await;
 

@@ -9,8 +9,10 @@ pub mod sport_web_ui;
 use app_core::{
     Match, SportConfig, SportError, SportResult,
     utils::{
-        id_version::IdVersion, namespace::project_namespace, traits::ObjectIdVersion,
-        validation::ValidationErrors,
+        id_version::IdVersion,
+        namespace::project_namespace,
+        traits::ObjectIdVersion,
+        validation::{FieldError, ValidationErrors, ValidationResult},
     },
 };
 use config::DdcSportConfig;
@@ -33,11 +35,30 @@ impl DdcSportPlugin {
         &self,
         config: &SportConfig,
         errs: ValidationErrors,
-    ) -> SportResult<DdcSportConfig> {
+    ) -> ValidationResult<DdcSportConfig> {
         if config.get_sport_id() != self.id() {
-            return Err(SportError::InvalidSportId(config.get_sport_id(), self.id()));
+            let err = FieldError::builder()
+                .set_field("sport_id")
+                .add_message(format!(
+                    "Sport ID does not match DdcSportPlugin id: expected {}, got {}",
+                    self.id(),
+                    config.get_sport_id()
+                ))
+                .set_object_id(config.get_id())
+                .build();
+            return Err(err.into());
         }
-        let generic_config = DdcSportConfig::parse_config(config.get_config().clone())?;
+        let generic_config = match DdcSportConfig::parse_config(config.get_config().clone()) {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                let err = FieldError::builder()
+                    .set_field("sport_config_json")
+                    .add_message(format!("Invalid sport configuration JSON: {}", e))
+                    .set_object_id(config.get_id())
+                    .build();
+                return Err(err.into());
+            }
+        };
         generic_config.validate(config.get_id(), errs)?;
         Ok(generic_config)
     }
