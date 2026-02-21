@@ -15,6 +15,7 @@ const UUID_REGEX =
 export const PA_ROUTES = {
   newAddress: "/postal-address/new",
   editAddress: "/postal-address/edit",
+  copyAddress: "/postal-address/copy",
   list: "/postal-address",
 };
 
@@ -77,17 +78,15 @@ export function extractUuidFromUrl(url: string): string {
 }
 
 /**
- * Open the "New Postal Address" form directly.
+ * Enter new mode from a detail page (if you have a dedicated new button).
+ * Assumes you're already on a page with the new button visible (e.g., after clicking on row from the list).
  */
-export async function openNewForm(page: Page) {
+export async function clickNewPostalAddress(page: Page) {
   const PA = selectors(page).postalAddress;
-  // Navigate to "new_pa" route and assert the form exists
-  await page.goto(PA_ROUTES.newAddress);
-
-  // strict hydration check
-  await waitForAppHydration(page);
-
-  await expect(PA.form.root).toBeVisible();
+  await expect(PA.list.btnNew).toBeVisible();
+  await PA.list.btnNew.click();
+  // Assert the form is shown again
+  await waitForPostalAddressNewUrl(page);
 }
 
 /**
@@ -103,16 +102,33 @@ export async function clickEditPostalAddress(page: Page) {
 }
 
 /**
- * Enter edit mode directly by navigating to the edit URL.
+ * Enter copy mode from a detail page (if you have a dedicated copy button).
+ * Assumes you're already on a page with the copy button visible (e.g., after clicking on row from the list).
  */
-export async function openEditForm(page: Page, id: string) {
-  await page.goto(`${PA_ROUTES.editAddress}?${PA_QUERY_KEYS.addressId}=${id}`);
+export async function clickCopyPostalAddress(page: Page) {
+  const PA = selectors(page).postalAddress;
+  await expect(PA.list.btnCopy).toBeVisible();
+  await PA.list.btnCopy.click();
   // Assert the form is shown again
+  await waitForPostalAddressCopyUrl(page);
+}
 
-  // Note: waitForPostalAddressEditUrl internally waits for URL AND hydration
-  // so we don't need an explicit wait here, but the original code had it.
-  // The function call below handles the timing.
-  await waitForPostalAddressEditUrl(page);
+/**
+ * Wait for navigation to create a new postal address page (UUID URL).
+ */
+export async function waitForPostalAddressNewUrl(page: Page) {
+  const PA = selectors(page).postalAddress;
+  // Wait for URL path /postal-address/new and valid address_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === PA_ROUTES.newAddress;
+    const addressId = url.searchParams.get(PA_QUERY_KEYS.addressId);
+    return isCorrectPath && !!addressId && UUID_REGEX.test(addressId);
+  });
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
+  await expect(PA.form.root).toBeVisible();
 }
 
 /**
@@ -123,6 +139,24 @@ export async function waitForPostalAddressEditUrl(page: Page) {
   // Wait for URL path /postal-address/edit and valid address_id query param
   await page.waitForURL((url) => {
     const isCorrectPath = url.pathname === PA_ROUTES.editAddress;
+    const addressId = url.searchParams.get(PA_QUERY_KEYS.addressId);
+    return isCorrectPath && !!addressId && UUID_REGEX.test(addressId);
+  });
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
+  await expect(PA.form.root).toBeVisible();
+}
+
+/**
+ * Wait for navigation to a copy postal address page (UUID URL).
+ */
+export async function waitForPostalAddressCopyUrl(page: Page) {
+  const PA = selectors(page).postalAddress;
+  // Wait for URL path /postal-address/copy and valid address_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === PA_ROUTES.copyAddress;
     const addressId = url.searchParams.get(PA_QUERY_KEYS.addressId);
     return isCorrectPath && !!addressId && UUID_REGEX.test(addressId);
   });

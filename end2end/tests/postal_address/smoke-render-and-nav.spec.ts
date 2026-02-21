@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openPostalAddressList, openNewForm, selectors } from "../../helpers";
+import { openPostalAddressList, clickNewPostalAddress, selectors } from "../../helpers";
 
 test("Smoke: Search → New → Close", async ({ page }) => {
   const PA = selectors(page).postalAddress;
@@ -9,7 +9,7 @@ test("Smoke: Search → New → Close", async ({ page }) => {
   });
 
   await test.step("Navigate to New form", async () => {
-    await openNewForm(page);
+    await clickNewPostalAddress(page);
   });
 
   await test.step("Close form and return back to search/detail context", async () => {

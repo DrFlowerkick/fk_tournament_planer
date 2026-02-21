@@ -1,6 +1,7 @@
 import { test } from "@playwright/test";
 import {
-  openNewForm,
+  openPostalAddressList,
+  clickNewPostalAddress,
   fillAllRequiredValid,
   closeForm,
   clickEditPostalAddress,
@@ -28,7 +29,8 @@ test.describe("Create → Edit → Invalid forbids save → Fix → Save → Ver
     // Step 1: Create new valid address and save
     const ts = Date.now();
     const name = `E2E Test Address ${ts}`;
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
     await fillAllRequiredValid(page, name);
     await closeForm(page);
 

@@ -1,12 +1,14 @@
 // e2e/edit-conflict.spec.ts
 import { test, expect, Page } from "@playwright/test";
 import {
-  openNewForm,
+  openPostalAddressList,
+  clickNewPostalAddress,
   fillFields,
   clickEditPostalAddress,
   closeForm,
   selectors,
   waitForPostalAddressListUrl,
+  waitForAppHydration,
   searchAndOpenByNameOnCurrentPage,
   makeUniqueName,
 } from "../../helpers";
@@ -39,13 +41,15 @@ test.describe("Edit conflict handling with auto-save", () => {
       };
 
       // User A creates the record
-      await openNewForm(pageA);
+      await openPostalAddressList(pageA);
+      await clickNewPostalAddress(pageA);
       await fillFields(pageA, initial);
       await closeForm(pageA);
       await waitForPostalAddressListUrl(pageA, true);
 
       // User B goes to the same list url
       await pageB.goto(pageA.url());
+      await waitForAppHydration(pageB);
 
       // -------------------- Open same record in both clients -------------------
       // Both open the edit form. Since they load fresh, they have the same version.

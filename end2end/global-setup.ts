@@ -11,6 +11,8 @@ import {
   closeForm,
   waitForPostalAddressListUrl,
   fillAndBlur,
+  waitForAppHydration,
+  clickNewPostalAddress,
 } from "./helpers";
 
 const PLUGINS = {
@@ -59,13 +61,18 @@ async function seedTournaments(page: Page) {
 }
 
 async function seedPostalAddresses(page: Page) {
-  const NEW_PA_URL = "/postal-address/new";
+  const NEW_PA_URL = "/postal-address";
   await page.goto(NEW_PA_URL);
+  await waitForAppHydration(page);
 
   const names = ["Alpha", "Beta", "Gamma"];
 
   for (const name of names) {
     console.log(`🌱 Seeding Postal Address: ${name}`);
+    // Click "New" button to open the form
+    await clickNewPostalAddress(page);
+
+    // Fill form fields (using helper for consistency)
     await fillFields(page, {
       name: `E2E Nav ${name}`,
       street: "Teststr. 1",
@@ -76,8 +83,6 @@ async function seedPostalAddresses(page: Page) {
     });
     await closeForm(page);
     await waitForPostalAddressListUrl(page, true);
-    // Navigate back for the next one
-    await page.goto(NEW_PA_URL);
   }
 }
 

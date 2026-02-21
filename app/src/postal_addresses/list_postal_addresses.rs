@@ -18,12 +18,12 @@ use app_utils::{
     params::{AddressIdQuery, FilterLimitQuery, FilterNameQuery, ParamQuery},
     server_fn::postal_address::{list_postal_address_ids, load_postal_address},
     state::{
-        activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        postal_address::PostalAddressEditorContext,
+        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        object_table::ObjectEditorMapContext, postal_address::PostalAddressEditorContext,
+        toast_state::ToastContext,
     },
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
-//use cr_single_instance::use_client_registry_sse;
 use isocountry::CountryCode;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
@@ -45,12 +45,14 @@ pub fn ListPostalAddresses() -> impl IntoView {
     // navigation helpers
     let UseQueryNavigationReturn {
         url_is_matched_route,
-        url_matched_route_remove_query,
+        url_matched_route,
+        url_matched_route_update_query,
         ..
     } = use_query_navigation();
 
     // --- global context and state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
+    let toast_ctx = expect_context::<ToastContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
     let activity_tracker = expect_context::<ActivityTracker>();
 
@@ -61,8 +63,9 @@ pub fn ListPostalAddresses() -> impl IntoView {
     });
 
     // --- local context ---
-    let postal_address_editor = PostalAddressEditorContext::new();
-    provide_context(postal_address_editor);
+    let postal_address_editor_map =
+        ObjectEditorMapContext::<PostalAddressEditorContext, AddressIdQuery>::new();
+    provide_context(postal_address_editor_map);
 
     // Signals for Filters
     let address_id = AddressIdQuery::use_param_query();
@@ -71,8 +74,14 @@ pub fn ListPostalAddresses() -> impl IntoView {
 
     // Resource that fetches data when filters change
     let postal_address_ids = Resource::new(
-        move || (search_term.get(), limit.get()),
-        move |(term, lim)| async move {
+        move || {
+            (
+                search_term.get(),
+                limit.get(),
+                postal_address_editor_map.track_fetch_trigger.get(),
+            )
+        },
+        move |(term, lim, _)| async move {
             activity_tracker
                 .track_activity_wrapper(
                     component_id.get_value(),
@@ -147,20 +156,6 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                         <h2 class="card-title" node_ref=scroll_ref>
                                             "Search Postal Address"
                                         </h2>
-                                        // --- Action Bar ---
-                                        <div class="flex flex-col md:flex-row justify-end gap-4">
-                                            <A
-                                                href=move || url_matched_route_remove_query(
-                                                    AddressIdQuery::KEY,
-                                                    MatchedRouteHandler::Extend("new"),
-                                                )
-                                                attr:class="btn btn-sm btn-primary"
-                                                attr:data-testid="action-btn-new"
-                                                scroll=false
-                                            >
-                                                "Create New Postal Address"
-                                            </A>
-                                        </div>
 
                                         // --- Filter Bar ---
                                         <Form method="GET" action="" noscroll=true replace=true>
@@ -240,7 +235,82 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                     </tbody>
                                                 </table>
                                             </Show>
-
+                                        </div>
+                                        // --- Action Bar ---
+                                        <div class="flex flex-col md:flex-row justify-end gap-4">
+                                            <div class:hidden=move || {
+                                                postal_address_editor_map.selected_id.get().is_none()
+                                            }>
+                                                <A
+                                                    href=move || url_matched_route(
+                                                        MatchedRouteHandler::Extend("edit"),
+                                                    )
+                                                    attr:class="btn btn-sm btn-secondary"
+                                                    attr:data-testid="action-btn-edit"
+                                                    scroll=false
+                                                >
+                                                    "Edit selected Postal Address"
+                                                </A>
+                                            </div>
+                                            <button
+                                                class="btn btn-sm btn-secondary-content"
+                                                class:hidden=move || {
+                                                    postal_address_editor_map.selected_id.get().is_none()
+                                                }
+                                                data-testid="action-btn-copy"
+                                                on:click=move |_| {
+                                                    let navigate = use_navigate();
+                                                    if let Some(new_id) = postal_address_editor_map
+                                                        .copy_editor
+                                                        .run(())
+                                                    {
+                                                        let nav_url = url_matched_route_update_query(
+                                                            AddressIdQuery::KEY,
+                                                            &new_id.to_string(),
+                                                            MatchedRouteHandler::Extend("copy"),
+                                                        );
+                                                        navigate(
+                                                            &nav_url,
+                                                            NavigateOptions {
+                                                                scroll: false,
+                                                                ..Default::default()
+                                                            },
+                                                        );
+                                                    } else {
+                                                        toast_ctx.warning("Failed to copy object");
+                                                    }
+                                                }
+                                            >
+                                                "Copy selected Postal Address"
+                                            </button>
+                                            <button
+                                                class="btn btn-sm btn-primary"
+                                                data-testid="action-btn-new"
+                                                on:click=move |_| {
+                                                    let navigate = use_navigate();
+                                                    if let Some(new_id) = postal_address_editor_map
+                                                        .new_editor
+                                                        .run(())
+                                                    {
+                                                        let nav_url = url_matched_route_update_query(
+                                                            AddressIdQuery::KEY,
+                                                            &new_id.to_string(),
+                                                            MatchedRouteHandler::Extend("new"),
+                                                        );
+                                                        navigate(
+                                                            &nav_url,
+                                                            NavigateOptions {
+                                                                scroll: false,
+                                                                ..Default::default()
+                                                            },
+                                                        );
+                                                    } else {
+                                                        toast_ctx.warning("Failed to create a new postal address");
+                                                    }
+                                                }
+                                            >
+                                                "Create new Postal Address"
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -256,37 +326,12 @@ pub fn ListPostalAddresses() -> impl IntoView {
 
 #[component]
 fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
-    // navigation helpers
-    let UseQueryNavigationReturn {
-        url_update_query,
-        url_remove_query,
-        url_matched_route,
-        url_matched_route_remove_query,
-        ..
-    } = use_query_navigation();
-    let navigate = use_navigate();
-    let address_id = AddressIdQuery::use_param_query();
-    let is_selected = Memo::new(move |_| address_id.get() == Some(id.get()));
-
     // --- local context ---
-    let postal_address_editor = expect_context::<PostalAddressEditorContext>();
-
-    // Callback for updating the selected postal address id, which updates the query string and thus the URL
-    let set_selected_id = Callback::new(move |selected_id: Option<Uuid>| {
-        let nav_url = if let Some(id) = selected_id {
-            url_update_query(AddressIdQuery::KEY, &id.to_string())
-        } else {
-            url_remove_query(AddressIdQuery::KEY)
-        };
-        navigate(
-            &nav_url,
-            NavigateOptions {
-                replace: true,
-                scroll: false,
-                ..Default::default()
-            },
-        );
-    });
+    let postal_address_editor_map =
+        expect_context::<ObjectEditorMapContext<PostalAddressEditorContext, AddressIdQuery>>();
+    let postal_address_editor = PostalAddressEditorContext::new();
+    postal_address_editor_map.insert_editor(id.get(), postal_address_editor);
+    let address_id = AddressIdQuery::use_param_query();
 
     // --- global state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
@@ -334,56 +379,55 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
     });
 
     let topic = Signal::derive(move || Some(CrTopic::Address(id.get())));
-    let version = RwSignal::new(None::<u32>);
     let refetch = Callback::new(move |()| {
         list_entry_addr_res.refetch();
     });
-    use_client_registry_socket(topic, version.into(), refetch);
+    use_client_registry_socket(topic, postal_address_editor.optimistic_version, refetch);
 
     view! {
         {move || {
             list_entry_addr_res
                 .and_then(|pa| {
-                    version.set(pa.get_version());
-                    let pa = RwSignal::new(pa.clone());
-                    Effect::new(move || {
-                        if is_selected.get() {
-                            postal_address_editor.set_postal_address(pa.get());
-                        }
-                    });
+                    postal_address_editor_map.update_object_in_editor(pa);
                     view! {
                         <tr
                             class="hover cursor-pointer"
-                            class:bg-base-200=move || is_selected.get()
-                            data-testid=format!("table-entry-row-{}", pa.read().get_id())
+                            class:bg-base-200=move || {
+                                postal_address_editor_map.is_selected(id.get())
+                            }
+                            data-testid=format!("table-entry-row-{}", id.get())
                             on:click=move |_| {
-                                if address_id.get() == Some(pa.read().get_id()) {
-                                    set_selected_id.run(None);
-                                    postal_address_editor.set_version_signal(None);
+                                if address_id.get() == Some(id.get()) {
+                                    postal_address_editor_map.set_selected_id.run(None);
                                 } else {
-                                    set_selected_id.run(Some(pa.read().get_id()));
-                                    postal_address_editor.set_version_signal(Some(version));
+                                    postal_address_editor_map.set_selected_id.run(Some(id.get()));
                                 }
                             }
                         >
                             <td
                                 class="font-bold"
-                                data-testid=format!("table-entry-name-{}", pa.read().get_id())
+                                data-testid=format!("table-entry-name-{}", id.get())
                             >
-                                {pa.read().get_name().to_string()}
+                                {move || postal_address_editor.name.get()}
                             </td>
                             <td data-testid=format!(
                                 "table-entry-preview-{}",
-                                pa.read().get_id(),
+                                id.get(),
                             )>
-                                {format!(
-                                    "{} - {}",
-                                    pa.read().get_locality(),
-                                    pa.read().get_country().map(|c| c.name()).unwrap_or_default(),
-                                )}
+                                {move || {
+                                    format!(
+                                        "{} - {}",
+                                        postal_address_editor.locality.get().unwrap_or_default(),
+                                        postal_address_editor
+                                            .country
+                                            .get()
+                                            .map(|c| c.name())
+                                            .unwrap_or_default(),
+                                    )
+                                }}
                             </td>
                         </tr>
-                        <Show when=move || is_selected.get()>
+                        <Show when=move || postal_address_editor_map.is_selected(id.get())>
                             <tr>
                                 <td colspan="2" class="p-0">
                                     <div
@@ -391,29 +435,33 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                         data-testid="table-entry-detailed-preview"
                                     >
                                         <span data-testid="preview-street" class="font-medium">
-                                            {pa.read().get_street().to_string()}
+                                            {move || postal_address_editor.street.get()}
                                         </span>
 
                                         <span class="opacity-50 hidden sm:inline">"•"</span>
 
                                         <span data-testid="preview-postal_locality">
                                             <span data-testid="preview-postal_code">
-                                                {pa.read().get_postal_code().to_string()}
+                                                {move || postal_address_editor.postal_code.get()}
                                             </span>
                                             " "
                                             <span data-testid="preview-locality">
-                                                {pa.read().get_locality().to_string()}
+                                                {move || postal_address_editor.locality.get()}
                                             </span>
                                         </span>
 
-                                        <Show when=move || pa.read().get_region().is_some()>
+                                        <Show when=move || {
+                                            postal_address_editor.region.get().is_some()
+                                        }>
                                             <span class="opacity-50 hidden sm:inline">"•"</span>
                                             <span data-testid="preview-region">
-                                                {pa
-                                                    .read()
-                                                    .get_region()
-                                                    .map(|r| r.to_string())
-                                                    .unwrap_or_default()}
+                                                {move || {
+                                                    postal_address_editor
+                                                        .region
+                                                        .get()
+                                                        .map(|r| r.to_string())
+                                                        .unwrap_or_default()
+                                                }}
                                             </span>
                                         </Show>
 
@@ -423,15 +471,25 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                             data-testid="preview-country"
                                             class="text-base-content/70"
                                         >
-                                            {display_country(pa.read().get_country())}
+                                            {move || display_country(
+                                                postal_address_editor.country.get(),
+                                            )}
                                         </span>
 
                                         // Hidden technical fields
                                         <span class="hidden" data-testid="preview-address-id">
-                                            {pa.read().get_id().to_string()}
+                                            {move || {
+                                                postal_address_editor
+                                                    .id
+                                                    .get()
+                                                    .map(|id| id.to_string())
+                                                    .unwrap_or_default()
+                                            }}
                                         </span>
                                         <span class="hidden" data-testid="preview-address-version">
-                                            {pa.read().get_version().unwrap_or_default()}
+                                            {move || {
+                                                postal_address_editor.version.get().unwrap_or_default()
+                                            }}
                                         </span>
                                     </div>
                                 </td>
@@ -441,29 +499,7 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                     <div
                                         class="flex gap-2 justify-end p-2 bg-base-200"
                                         data-testid="row-actions"
-                                    >
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("edit"),
-                                            )
-                                            attr:class="btn btn-sm btn-primary"
-                                            attr:data-testid="action-btn-edit"
-                                            scroll=false
-                                        >
-                                            "Edit"
-                                        </A>
-                                        <A
-                                            href=move || url_matched_route_remove_query(
-                                                AddressIdQuery::KEY,
-                                                MatchedRouteHandler::Extend("copy"),
-                                            )
-                                            attr:class="btn btn-sm btn-ghost"
-                                            attr:data-testid="action-btn-copy"
-                                            scroll=false
-                                        >
-                                            "Copy"
-                                        </A>
-                                    </div>
+                                    ></div>
                                 </td>
                             </tr>
                         </Show>

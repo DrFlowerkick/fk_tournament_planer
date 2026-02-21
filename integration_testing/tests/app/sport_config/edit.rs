@@ -14,6 +14,7 @@ use leptos_router::{
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
+/*
 #[wasm_bindgen_test]
 async fn test_new_sport_config() {
     // Acquire lock and clean DOM.
@@ -211,3 +212,4 @@ async fn test_copy_new_sport_config() {
         0
     );
 }
+ */

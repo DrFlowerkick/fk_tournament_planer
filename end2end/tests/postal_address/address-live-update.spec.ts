@@ -1,17 +1,15 @@
 import { test, expect, Page } from "@playwright/test";
 import {
-  openNewForm,
+  clickNewPostalAddress,
   fillFields,
   expectPreviewShows,
   extractUuidFromUrl,
-  openEditForm,
   clickEditPostalAddress,
   openPostalAddressList,
   closeForm,
   waitForPostalAddressListUrl,
   makeUniqueName,
   fillAndBlur,
-  waitForAppHydration,
   selectors,
   searchAndOpenByNameOnCurrentPage,
 } from "../../helpers";
@@ -51,13 +49,9 @@ test.describe("postal address live update (Preview-only UI)", () => {
 
     try {
       // -------------------- Arrange (A creates address) ----------------------
-      await pageA.goto("/"); // baseURL is assumed to be configured in Playwright config.
-
-      // Wait for hydration after raw navigation
-      await waitForAppHydration(pageA);
-
       // Open and create a new, valid address.
-      await openNewForm(pageA);
+      await openPostalAddressList(pageA);
+      await clickNewPostalAddress(pageA);
       await fillFields(pageA, initial);
 
       // close form to return to list view

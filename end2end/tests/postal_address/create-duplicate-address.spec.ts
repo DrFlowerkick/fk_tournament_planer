@@ -1,7 +1,8 @@
 // e2e/create-duplicate-address.spec.ts
 import { test, expect } from "@playwright/test";
 import {
-  openNewForm,
+  openPostalAddressList,
+  clickNewPostalAddress,
   fillFields,
   closeForm,
   waitForPostalAddressListUrl,
@@ -30,13 +31,14 @@ test.describe("Uniqueness constraint violation", () => {
       country: "DE",
     };
 
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
     await fillFields(page, initial);
     await closeForm(page);
     await waitForPostalAddressListUrl(page, true);
 
     // -------------------- Act: Try to create duplicate --------------------
-    await openNewForm(page);
+    await clickNewPostalAddress(page);
     const duplicate = {
       name: uniqueData.name, // Same name
       street: "Nebenstrasse 2", // Different street

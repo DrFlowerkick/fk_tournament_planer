@@ -22,7 +22,9 @@ use app_utils::{
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
+        object_table::ObjectEditorMapContext,
         sport_config::SportConfigEditorContext,
+        toast_state::ToastContext,
     },
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
@@ -41,14 +43,17 @@ pub fn ListSportConfigurations() -> impl IntoView {
     // navigation and query handling Hook
     let UseQueryNavigationReturn {
         url_is_matched_route,
-        url_matched_route_remove_query,
+        url_matched_route,
+        url_matched_route_update_query,
         ..
     } = use_query_navigation();
 
     // --- global context and state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
+    let toast_ctx = expect_context::<ToastContext>();
     let component_id = StoredValue::new(Uuid::new_v4());
     let activity_tracker = expect_context::<ActivityTracker>();
+
     // remove errors on unmount
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
@@ -56,22 +61,9 @@ pub fn ListSportConfigurations() -> impl IntoView {
     });
 
     // --- local context ---
-    let sport_config_editor = SportConfigEditorContext::new();
-    provide_context(sport_config_editor);
-    let origin = move || {
-        if sport_config_editor.has_origin().get() {
-            "Has Origin".to_string()
-        } else {
-            "No Origin".to_string()
-        }
-    };
-    let direct_origin = move || {
-        if sport_config_editor.origin.get().is_some() {
-            "Has direct Origin".to_string()
-        } else {
-            "No direct Origin".to_string()
-        }
-    };
+    let sport_config_editor_map =
+        ObjectEditorMapContext::<SportConfigEditorContext, SportConfigIdQuery>::new();
+    provide_context(sport_config_editor_map);
 
     // Signals for Filters and Resource
     let sport_id = SportIdQuery::use_param_query();
@@ -81,8 +73,15 @@ pub fn ListSportConfigurations() -> impl IntoView {
 
     // Resource that fetches data when filters change
     let sport_config_ids = Resource::new(
-        move || (sport_id.get(), search_term.get(), limit.get()),
-        move |(maybe_sport_id, term, lim)| async move {
+        move || {
+            (
+                sport_id.get(),
+                search_term.get(),
+                limit.get(),
+                sport_config_editor_map.track_fetch_trigger.get(),
+            )
+        },
+        move |(maybe_sport_id, term, lim, _)| async move {
             if let Some(s_id) = maybe_sport_id {
                 activity_tracker
                     .track_activity_wrapper(
@@ -113,7 +112,16 @@ pub fn ListSportConfigurations() -> impl IntoView {
 
     view! {
         <Transition fallback=move || {
-            view! { <span class="loading loading-spinner loading-lg"></span> }
+            view! {
+                <div class="card w-full bg-base-100 shadow-xl" data-testid="sport-config-list-root">
+                    <div class="card-body">
+                        <h2 class="card-title" node_ref=scroll_ref>
+                            "Sport Configurations"
+                        </h2>
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                </div>
+            }
         }>
             <ErrorBoundary fallback=move |errors| {
                 for (_err_id, err) in errors.get().into_iter() {
@@ -141,7 +149,6 @@ pub fn ListSportConfigurations() -> impl IntoView {
                     sport_config_ids
                         .and_then(|sc_ids| {
                             let sc_ids = StoredValue::new(sc_ids.clone());
-
                             view! {
                                 <div
                                     class="card w-full bg-base-100 shadow-xl"
@@ -151,23 +158,6 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                         <h2 class="card-title" node_ref=scroll_ref>
                                             "Sport Configurations"
                                         </h2>
-                                        <p class="text-primary">{move || origin()}</p>
-                                        <p class="text-secondary">{move || direct_origin()}</p>
-
-                                        // --- Action Bar ---
-                                        <div class="flex flex-col md:flex-row justify-end gap-4">
-                                            <A
-                                                href=move || url_matched_route_remove_query(
-                                                    "sport_config_id",
-                                                    MatchedRouteHandler::Extend("new"),
-                                                )
-                                                attr:class="btn btn-sm btn-primary"
-                                                attr:data-testid="action-btn-new"
-                                                scroll=false
-                                            >
-                                                "Create New Configuration"
-                                            </A>
-                                        </div>
 
                                         // --- Filter Bar ---
                                         <Form method="GET" action="" noscroll=true replace=true>
@@ -255,7 +245,83 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                     </tbody>
                                                 </table>
                                             </Show>
-
+                                        </div>
+                                        // --- Action Bar ---
+                                        <div class="flex flex-col md:flex-row justify-end gap-4">
+                                            <div class:hidden=move || {
+                                                sport_config_editor_map.selected_id.get().is_none()
+                                            }>
+                                                <A
+                                                    href=move || url_matched_route(
+                                                        MatchedRouteHandler::Extend("edit"),
+                                                    )
+                                                    attr:class="btn btn-sm btn-secondary"
+                                                    attr:data-testid="action-btn-edit"
+                                                    scroll=false
+                                                >
+                                                    "Edit selected Sport Configuration"
+                                                </A>
+                                            </div>
+                                            <button
+                                                class="btn btn-sm btn-secondary-content"
+                                                class:hidden=move || {
+                                                    sport_config_editor_map.selected_id.get().is_none()
+                                                }
+                                                data-testid="action-btn-copy"
+                                                on:click=move |_| {
+                                                    let navigate = use_navigate();
+                                                    if let Some(new_id) = sport_config_editor_map
+                                                        .copy_editor
+                                                        .run(())
+                                                    {
+                                                        let nav_url = url_matched_route_update_query(
+                                                            SportConfigIdQuery::KEY,
+                                                            &new_id.to_string(),
+                                                            MatchedRouteHandler::Extend("copy"),
+                                                        );
+                                                        navigate(
+                                                            &nav_url,
+                                                            NavigateOptions {
+                                                                scroll: false,
+                                                                ..Default::default()
+                                                            },
+                                                        );
+                                                    } else {
+                                                        toast_ctx.warning("Failed to copy Sport Configuration");
+                                                    }
+                                                }
+                                            >
+                                                "Copy selected Sport Configuration"
+                                            </button>
+                                            <button
+                                                class="btn btn-sm btn-primary"
+                                                data-testid="action-btn-new"
+                                                on:click=move |_| {
+                                                    let navigate = use_navigate();
+                                                    if let Some(new_id) = sport_config_editor_map
+                                                        .new_editor
+                                                        .run(())
+                                                    {
+                                                        let nav_url = url_matched_route_update_query(
+                                                            SportConfigIdQuery::KEY,
+                                                            &new_id.to_string(),
+                                                            MatchedRouteHandler::Extend("new"),
+                                                        );
+                                                        navigate(
+                                                            &nav_url,
+                                                            NavigateOptions {
+                                                                scroll: false,
+                                                                ..Default::default()
+                                                            },
+                                                        );
+                                                    } else {
+                                                        toast_ctx
+                                                            .warning("Failed to create a new Sport Configuration");
+                                                    }
+                                                }
+                                            >
+                                                "Create new Sport Configuration"
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -271,18 +337,6 @@ pub fn ListSportConfigurations() -> impl IntoView {
 
 #[component]
 fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
-    // navigation helpers
-    let UseQueryNavigationReturn {
-        url_update_query,
-        url_remove_query,
-        url_matched_route,
-        url_matched_route_remove_query,
-        ..
-    } = use_query_navigation();
-    let navigate = use_navigate();
-    let sport_config_id = SportConfigIdQuery::use_param_query();
-    let is_selected = Memo::new(move |_| sport_config_id.get() == Some(id.get()));
-
     // sport id and plugin manager
     let sport_id = SportIdQuery::use_param_query();
     let state = expect_context::<Store<GlobalState>>();
@@ -294,24 +348,11 @@ fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
     };
 
     // --- local context ---
-    let sport_config_editor = expect_context::<SportConfigEditorContext>();
-
-    // Callback for updating the selected sport config id, which updates the query string and thus the URL
-    let set_selected_id = Callback::new(move |selected_id: Option<Uuid>| {
-        let nav_url = if let Some(id) = selected_id {
-            url_update_query(SportConfigIdQuery::KEY, &id.to_string())
-        } else {
-            url_remove_query(SportConfigIdQuery::KEY)
-        };
-        navigate(
-            &nav_url,
-            NavigateOptions {
-                replace: true,
-                scroll: false,
-                ..Default::default()
-            },
-        );
-    });
+    let sport_config_editor_map =
+        expect_context::<ObjectEditorMapContext<SportConfigEditorContext, SportConfigIdQuery>>();
+    let sport_config_editor = SportConfigEditorContext::new();
+    sport_config_editor_map.insert_editor(id.get(), sport_config_editor);
+    let sport_config_id = SportConfigIdQuery::use_param_query();
 
     // --- global state ---
     let page_err_ctx = expect_context::<PageErrorContext>();
@@ -359,99 +400,68 @@ fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
     });
 
     let topic = Signal::derive(move || Some(CrTopic::SportConfig(id.get())));
-    let version = RwSignal::new(None::<u32>);
     let refetch = Callback::new(move |()| {
         list_entry_sport_config_res.refetch();
     });
-    use_client_registry_socket(topic, version.into(), refetch);
+    use_client_registry_socket(topic, sport_config_editor.optimistic_version, refetch);
 
     view! {
         {move || {
             list_entry_sport_config_res
                 .and_then(|sc| {
-                    version.set(sc.get_version());
-                    let sc = RwSignal::new(sc.clone());
-                    /*Effect::new(move || {
-                        if is_selected.get() {
-                            leptos::logging::log!("Setting Object {} with id {} in editor context", sc.read().get_name(), sc.read().get_id());
-                        } else {
-                            leptos::logging::log!("Object {} with id {} is not selected, skipping setting editor context", sc.read().get_name(), sc.read().get_id());
-                        }
-                    });*/
+                    sport_config_editor_map.update_object_in_editor(sc);
                     sport_plugin()
                         .map(|sp| {
                             let sp = StoredValue::new(sp);
+
                             view! {
                                 <tr
                                     class="hover cursor-pointer"
-                                    class:bg-base-200=move || is_selected.get()
-                                    data-testid=format!("table-entry-row-{}", sc.read().get_id())
+                                    class:bg-base-200=move || {
+                                        sport_config_editor_map.is_selected(id.get())
+                                    }
+                                    data-testid=format!("table-entry-row-{}", id.get())
                                     on:click=move |_| {
-                                        if sport_config_id.get() == Some(sc.read().get_id()) {
-                                            set_selected_id.run(None);
-                                            sport_config_editor.set_version_signal(None);
+                                        if sport_config_id.get() == Some(id.get()) {
+                                            sport_config_editor_map.set_selected_id.run(None);
                                         } else {
-                                            set_selected_id.run(Some(sc.read().get_id()));
-                                            sport_config_editor.set_version_signal(Some(version));
-                                            sport_config_editor.set_sport_config(sc.get());
+                                            sport_config_editor_map.set_selected_id.run(Some(id.get()));
                                         }
                                     }
                                 >
                                     <td
                                         class="font-bold"
-                                        data-testid=format!(
-                                            "table-entry-name-{}",
-                                            sc.read().get_id(),
-                                        )
+                                        data-testid=format!("table-entry-name-{}", id.get())
                                     >
-                                        {sc.read().get_name().to_string()}
+                                        {move || sport_config_editor.name.get()}
                                     </td>
                                     <td data-testid=format!(
                                         "table-entry-preview-{}",
-                                        sc.read().get_id(),
+                                        id.get(),
                                     )>
                                         {move || {
-                                            sp.get_value().render_preview(sc.read().as_borrowed())
+                                            sport_config_editor
+                                                .local_read_only
+                                                .with(|local| {
+                                                    local
+                                                        .as_ref()
+                                                        .map(|sc| { sp.get_value().render_preview(sc) })
+                                                })
                                         }}
                                     </td>
                                 </tr>
-                                <Show when=move || is_selected.get()>
+                                <Show when=move || sport_config_editor_map.is_selected(id.get())>
                                     <tr>
                                         <td colspan="2" class="p-0">
                                             {move || {
-                                                sp.get_value()
-                                                    .render_detailed_preview(sc.read().as_borrowed())
+                                                sport_config_editor
+                                                    .local_read_only
+                                                    .with(|local| {
+                                                        local
+                                                            .as_ref()
+                                                            .map(|sc| { sp.get_value().render_detailed_preview(sc) })
+                                                    })
                                             }}
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="2" class="p-0">
-                                            <div
-                                                class="flex gap-2 justify-end p-2 bg-base-200"
-                                                data-testid="row-actions"
-                                            >
-                                                <A
-                                                    href=move || url_matched_route(
-                                                        MatchedRouteHandler::Extend("edit"),
-                                                    )
-                                                    attr:class="btn btn-sm btn-primary"
-                                                    attr:data-testid="action-btn-edit"
-                                                    scroll=false
-                                                >
-                                                    "Edit"
-                                                </A>
-                                                <A
-                                                    href=move || url_matched_route_remove_query(
-                                                        SportConfigIdQuery::KEY,
-                                                        MatchedRouteHandler::Extend("copy"),
-                                                    )
-                                                    attr:class="btn btn-sm btn-ghost"
-                                                    attr:data-testid="action-btn-copy"
-                                                    scroll=false
-                                                >
-                                                    "Copy"
-                                                </A>
-                                            </div>
                                         </td>
                                     </tr>
                                 </Show>

@@ -146,12 +146,6 @@ impl SportPortWebUi for DdcSportPlugin {
             }
         });
 
-        Effect::new(move || {
-            sport_config_editor
-                .set_is_valid_json
-                .set(validation_result.with(|vr| vr.is_ok()));
-        });
-
         // --- Signals for form fields ---
         // configuration of sets
         let num_sets = Signal::derive(move || {

@@ -1,10 +1,12 @@
 // e2e/tests/save-as-new.spec.ts
 import { test, expect } from "@playwright/test";
 import {
-  openNewForm,
   fillFields,
   extractUuidFromUrl,
-  openEditForm,
+  openPostalAddressList,
+  clickNewPostalAddress,
+  clickEditPostalAddress,
+  clickCopyPostalAddress,
   waitForPostalAddressListUrl,
   waitForPostalAddressEditUrl,
   closeForm,
@@ -12,8 +14,6 @@ import {
   selectors,
   searchAndOpenByNameOnCurrentPage,
 } from "../../helpers";
-import { POSTAL_IDS } from "../../helpers/selectors/postalAddress";
-import exp from "constants";
 
 test.describe('"Copy address" functionality', () => {
   test("creates a new address by copying an existing one", async ({ page }) => {
@@ -29,7 +29,8 @@ test.describe('"Copy address" functionality', () => {
       country: "DE",
     };
 
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
     await fillFields(page, initial);
     await closeForm(page);
 
@@ -40,15 +41,14 @@ test.describe('"Copy address" functionality', () => {
     // The row should show the new name
     await searchAndOpenByNameOnCurrentPage(page, initial.name, "address_id");
 
-    await expect(PA.list.btnCopy).toBeVisible();
-    await PA.list.btnCopy.click();
+    await clickCopyPostalAddress(page);
 
     // Ensure we are on the edit page for the original address but with new id and empty name
     await expect(PA.form.hiddenId).not.toHaveValue(originalId);
     await expect(PA.form.inputStreet).toHaveValue(initial.street);
     await expect(PA.form.inputName).toHaveValue("");
 
-    // Change the name and click "Copy address"
+    // Change the name
     const newName = `E2E CopyAddress Copy ${Date.now()}`;
     await fillAndBlur(PA.form.inputName, newName);
 
@@ -72,7 +72,8 @@ test.describe('"Copy address" functionality', () => {
     await expect(PA.list.entryName(newId)).toHaveText(newName);
 
     // -------------------- Assert: Original address is unchanged --------------------
-    await openEditForm(page, originalId);
+    await searchAndOpenByNameOnCurrentPage(page, initial.name, "address_id");
+    await clickEditPostalAddress(page);
     await expect(PA.form.inputName).toHaveValue(initial.name);
   });
 });

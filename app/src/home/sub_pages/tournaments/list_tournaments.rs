@@ -22,7 +22,7 @@ use app_utils::{
     server_fn::tournament_base::list_tournament_bases,
     state::{
         activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        object_table_list::ObjectListContext,
+        object_table::ObjectListContext,
     },
 };
 use cr_leptos_axum_socket::use_client_registry_socket;

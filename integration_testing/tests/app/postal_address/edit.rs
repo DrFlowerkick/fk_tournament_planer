@@ -3,8 +3,15 @@ use crate::common::{
     set_select_value, set_url,
 };
 use app::{postal_addresses::EditPostalAddress, provide_global_context};
-use app_core::DbpPostalAddress;
-use app_utils::state::postal_address::PostalAddressEditorContext;
+use app_core::{DbpPostalAddress, PostalAddress};
+use app_utils::{
+    enum_utils::EditAction,
+    params::AddressIdQuery,
+    state::{
+        EditorContext, object_table::ObjectEditorMapContext,
+        postal_address::PostalAddressEditorContext,
+    },
+};
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
 use leptos_router::{
@@ -14,6 +21,43 @@ use leptos_router::{
 use std::time::Duration;
 use wasm_bindgen_test::*;
 
+#[component]
+fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
+    let postal_address_editor_map =
+        ObjectEditorMapContext::<PostalAddressEditorContext, AddressIdQuery>::new();
+    let editor = PostalAddressEditorContext::new();
+    let existing_id = pa.get_id();
+    postal_address_editor_map.insert_editor(existing_id, editor);
+    postal_address_editor_map
+        .set_selected_id
+        .run(Some(existing_id));
+
+    match edit_action {
+        EditAction::New => {
+            let new_id = postal_address_editor_map
+                .new_editor
+                .run(())
+                .expect("Failed to create new postal address object");
+            postal_address_editor_map.set_selected_id.run(Some(new_id));
+        }
+        EditAction::Edit => {
+            postal_address_editor_map.update_object_in_editor(&pa);
+        }
+        EditAction::Copy => {
+            postal_address_editor_map.update_object_in_editor(&pa);
+            let editor = PostalAddressEditorContext::new();
+            editor.set_object(pa.clone());
+            let new_id = editor
+                .copy_object(pa)
+                .expect("Failed to copy postal address object");
+            postal_address_editor_map.insert_editor(new_id, editor);
+            postal_address_editor_map.set_selected_id.run(Some(new_id));
+        }
+    }
+    provide_context(postal_address_editor_map);
+    view! { <EditPostalAddress /> }
+}
+
 #[wasm_bindgen_test]
 async fn test_new_postal_address() {
     // Acquire lock and clean DOM.
@@ -21,24 +65,41 @@ async fn test_new_postal_address() {
 
     let ts = init_test_state();
 
-    // 1. Set initial URL for creating a new address
+    // 1. Get an existing address from the fake database
+    let existing_id = ts.entries[0];
+    let pa = ts
+        .db
+        .get_postal_address(existing_id)
+        .await
+        .unwrap()
+        .unwrap();
+
+    // 2. Set initial URL for creating a new address
     set_url("/postal-address/new");
 
+    // 3. Mount the component with router and context
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        provide_context(PostalAddressEditorContext::new());
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/:edit_action") view=EditPostalAddress />
+                    <Route
+                        path=path!("/postal-address/:edit_action")
+                        view=move || {
+                            view! { <PrepareTest edit_action=EditAction::New pa=pa.clone() /> }
+                        }
+                    />
                 </Routes>
             </Router>
         }
     });
 
     sleep(Duration::from_millis(10)).await;
+
+    // Check form is visible
+    let _form = get_element_by_test_id("form-address");
 
     // create a new address by filling the form
     set_input_value("input-name", "New Name");
@@ -74,7 +135,7 @@ async fn test_edit_postal_address() {
 
     let ts = init_test_state();
 
-    // 1. Set initial URL for creating a new address
+    // 1. Get an existing address from the fake database to edit
     let existing_id = ts.entries[0];
     let pa = ts
         .db
@@ -82,19 +143,23 @@ async fn test_edit_postal_address() {
         .await
         .unwrap()
         .unwrap();
-    set_url(&format!("/postal-address/edit?address_id={}", existing_id));
+    // 2. Set initial URL for editing an existing address
+    set_url("/postal-address/edit");
 
+    // 3. Mount the component with router and context
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        let postal_address_editor = PostalAddressEditorContext::new();
-        provide_context(postal_address_editor);
-        postal_address_editor.set_postal_address(pa);
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/:edit_action") view=EditPostalAddress />
+                    <Route
+                        path=path!("/postal-address/:edit_action")
+                        view=move || {
+                            view! { <PrepareTest edit_action=EditAction::Edit pa=pa.clone() /> }
+                        }
+                    />
                 </Routes>
             </Router>
         }
@@ -131,7 +196,7 @@ async fn test_copy_new_postal_address() {
 
     let ts = init_test_state();
 
-    // 1. Set initial URL for creating a new address
+    // 1. Get an existing address from the fake database to copy
     let existing_id = ts.entries[0];
     let pa = ts
         .db
@@ -139,19 +204,23 @@ async fn test_copy_new_postal_address() {
         .await
         .unwrap()
         .unwrap();
+    // 2. Set initial URL for editing an existing address
     set_url("/postal-address/copy");
 
+    // 3. Mount the component with router and context
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
         provide_global_context();
-        let postal_address_editor = PostalAddressEditorContext::new();
-        provide_context(postal_address_editor);
-        postal_address_editor.set_postal_address(pa);
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/:edit_action") view=EditPostalAddress />
+                    <Route
+                        path=path!("/postal-address/:edit_action")
+                        view=move || {
+                            view! { <PrepareTest edit_action=EditAction::Copy pa=pa.clone() /> }
+                        }
+                    />
                 </Routes>
             </Router>
         }

@@ -1,6 +1,7 @@
 import { test } from "@playwright/test";
 import {
-  openNewForm,
+  openPostalAddressList,
+  clickNewPostalAddress,
   fillAllRequiredValid,
   fillAndBlur,
   selectThenBlur,
@@ -17,7 +18,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     // All required fields should be invalid at start (empty form).
     await expectFieldValidity(PA.form.inputName, "", /*invalid*/ true);
@@ -33,7 +35,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     // focus → type → blur -> normalize -> validate
     await fillAndBlur(PA.form.inputName, "   Müller   GmbH   ");
@@ -52,7 +55,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     // focus → type → blur -> normalize -> validate
     await fillAndBlur(
@@ -72,7 +76,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     // focus → type → blur -> normalize -> validate
     await fillAndBlur(PA.form.inputLocality, "   Berlin   Mitte  ");
@@ -87,7 +92,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     // blur path
     // Note: "uppercase on blur" is no longer relevant for a select field
@@ -102,7 +108,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     /**
      * NOTE (DE-specific):
@@ -146,7 +153,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     /**
      * NOTE (DE-specific):
@@ -180,7 +188,8 @@ test.describe("Per-field normalization → validation + gated save", () => {
     const PA = selectors(page).postalAddress;
 
     // -------------------- Arrange & Act --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
 
     // fill all fields with valid values
     const name = `E2E Valid Test Address`;

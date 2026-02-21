@@ -1,7 +1,8 @@
 // e2e/tests/generic-error.spec.ts
 import { test, expect } from "@playwright/test";
 import {
-  openNewForm,
+  openPostalAddressList,
+  clickNewPostalAddress,
   fillAllRequiredValid,
   waitForPostalAddressListUrl,
   selectors,
@@ -27,7 +28,8 @@ test.describe("Generic error handling saving address", () => {
     });
 
     // -------------------- Act: Try to save a new address --------------------
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
     await fillAllRequiredValid(page, `E2E GenericError ${Date.now()}`);
     await page.waitForLoadState("domcontentloaded");
 

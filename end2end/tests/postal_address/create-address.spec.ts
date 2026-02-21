@@ -2,10 +2,11 @@ import { test, expect } from "@playwright/test";
 import {
   fillFields,
   closeForm,
+  clickNewPostalAddress,
   expectPreviewShows,
   openPostalAddressList,
+  waitForPostalAddressListUrl,
   searchAndOpenByNameOnCurrentPage,
-  extractUuidFromUrl,
   selectors
 } from "../../helpers";
 
@@ -27,8 +28,7 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
 
   await test.step("Open search and navigate to New", async () => {
     await openPostalAddressList(page);
-    await PA.list.btnNew.click();
-    await expect(PA.form.root).toBeVisible();
+    await clickNewPostalAddress(page);
   });
 
   await test.step("Fill form", async () => {
@@ -37,8 +37,7 @@ test("Create Address (happy path): New → Fill → Save → Verify in search", 
 
   await test.step('Close form after automatic save', async () => {
     await closeForm(page);
-
-    await expect(PA.list.btnNew).toBeVisible();
+    await waitForPostalAddressListUrl(page, true);
   });
 
   await test.step("Find the created address via table and verify preview", async () => {
