@@ -52,24 +52,14 @@ pub fn SportDashboard() -> impl IntoView {
                 <div class="card-body">
                     // Header Section
                     <div class="text-center mb-8 max-w-2xl mx-auto">
-                        <A
-                            href=move || {
-                                format!("/?sport_id={}", sport_id.get().unwrap_or_default())
-                            }
-                            attr:class="no-underline text-inherit"
+                        <h1
+                            class="card-title text-4xl md:text-5xl font-bold mb-4 hover:opacity-80 transition-opacity"
+                            data-testid="sport-dashboard-title"
                         >
-                            <h1
-                                class="card-title text-4xl md:text-5xl font-bold mb-4 hover:opacity-80 transition-opacity"
-                                data-testid="sport-dashboard-title"
-                            >
-                                {move || {
-                                    format!(
-                                        "{} Tournament Planer",
-                                        sport_name().unwrap_or_default(),
-                                    )
-                                }}
-                            </h1>
-                        </A>
+                            {move || {
+                                format!("{} Tournament Planer", sport_name().unwrap_or_default())
+                            }}
+                        </h1>
                         <p class="text-xl text-base-content/70" data-testid="sport-dashboard-desc">
                             {move || {
                                 format!(

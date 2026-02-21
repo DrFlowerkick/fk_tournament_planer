@@ -2,15 +2,33 @@
 
 use app_core::{SportPluginManagerPort, utils::traits::ObjectIdVersion};
 use app_utils::state::global_state::{GlobalState, GlobalStateStoreFields};
-use leptos::prelude::*;
+use leptos::{leptos_dom::helpers::window, prelude::*};
 use leptos_router::components::A;
+use leptos_router::hooks::use_navigate;
 use reactive_stores::Store;
+use uuid::Uuid;
+
+const STORAGE_KEY_SPORT_ID: &str = "selected_sport_id";
 
 #[component]
 pub fn SelectSportPlugin() -> impl IntoView {
     // get global state and sport plugin manager
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
+    let navigate = use_navigate();
+
+    // Effect to check for stored sport ID on mount
+    Effect::new(move |_| {
+        // Only run on client side
+        if let Ok(Some(storage)) = window().local_storage()
+            && let Ok(Some(stored_id)) = storage.get_item(STORAGE_KEY_SPORT_ID)
+            && let Ok(stored_id) = Uuid::parse_str(&stored_id)
+            && sport_plugin_manager.get().get(&stored_id).is_some()
+        {
+            // Redirect to the stored sport
+            navigate(&format!("?sport_id={}", stored_id), Default::default());
+        }
+    });
 
     let sport_list = Signal::derive(move || {
         let mut list = sport_plugin_manager.get().list();
@@ -37,9 +55,11 @@ pub fn SelectSportPlugin() -> impl IntoView {
                     key=|plugin| plugin.get_id_version().get_id()
                     children=move |plugin| {
                         let id = plugin.get_id_version().get_id();
+                        let save_id = id.clone();
                         let web_ui_plugin = sport_plugin_manager.get().get_web_ui(&id);
                         let plugin_name = plugin.name();
                         let test_id_suffix = plugin_name.replace(" ", "");
+                        // Clone id for the closure
                         // Generate a stable test ID from the name (remove whitespace)
                         // e.g. "Double Disc Court (DDC)" -> "DoubleDiscCourt(DDC)"
 
@@ -58,6 +78,13 @@ pub fn SelectSportPlugin() -> impl IntoView {
                                             // Accessibility label
                                             attr:aria-label=plugin_name
                                             prop:replace=true
+                                            // Save to local storage on click
+                                            on:click=move |_| {
+                                                if let Ok(Some(storage)) = window().local_storage() {
+                                                    let _ = storage
+                                                        .set_item(STORAGE_KEY_SPORT_ID, &save_id.to_string());
+                                                }
+                                            }
                                         >
                                             // The plugin renders its own representation inside our wrapper button
                                             {ui.render_plugin_selection()}
