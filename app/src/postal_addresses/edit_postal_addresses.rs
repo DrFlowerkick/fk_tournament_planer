@@ -55,6 +55,16 @@ pub fn EditPostalAddress() -> impl IntoView {
         }
     });
 
+    // remove unsaved editor (no origin) on unmount
+    on_cleanup(move || {
+        if let Some(id) = address_id.get_untracked()
+            && let Some(editor) = postal_address_editor_map.get_editor_untracked(id)
+            && editor.get_origin().is_none()
+        {
+            postal_address_editor_map.remove_editor(id);
+        }
+    });
+
     // cancel function for close / cancel button
     let on_cancel = use_on_cancel();
 
@@ -166,42 +176,27 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
             save_postal_address.clear();
             match spa_result {
                 Ok(pa) => {
-                    match edit_action {
-                        EditAction::New | EditAction::Copy => {
-                            let pa_id = pa.get_id().to_string();
-                            let key_value = vec![
-                                (AddressIdQuery::KEY, pa_id.as_str()),
-                                (FilterNameQuery::KEY, pa.get_name()),
-                            ];
-                            let nav_url = url_matched_route_update_queries(
-                                key_value,
-                                MatchedRouteHandler::ReplaceSegment(
-                                    EditAction::Edit.to_string().as_str(),
-                                ),
-                            );
-                            navigate(
-                                &nav_url,
-                                NavigateOptions {
-                                    scroll: false,
-                                    ..Default::default()
-                                },
-                            );
-                        }
-                        EditAction::Edit => {
-                            // ToDo: after some more testing we ca probably remove this
-                            if postal_address_editor.optimistic_version.get() != pa.get_version() {
-                                // version mismatch, likely due to parallel editing
-                                // this should not happen, because version mismatch should be caught
-                                // by the server and returned as error, but we handle it here just in case
-                                leptos::logging::log!(
-                                    "Version mismatch after saving Postal Address. Expected version: {:?}, actual version: {:?}. This might be caused by parallel editing.",
-                                    postal_address_editor.optimistic_version.get(),
-                                    pa.get_version()
-                                );
-                            }
-                        }
+                    postal_address_editor.set_object(pa.clone());
+                    if matches!(edit_action, EditAction::New | EditAction::Copy) {
+                        let pa_id = pa.get_id().to_string();
+                        let key_value = vec![
+                            (AddressIdQuery::KEY, pa_id.as_str()),
+                            (FilterNameQuery::KEY, pa.get_name()),
+                        ];
+                        let nav_url = url_matched_route_update_queries(
+                            key_value,
+                            MatchedRouteHandler::ReplaceSegment(
+                                EditAction::Edit.to_string().as_str(),
+                            ),
+                        );
+                        navigate(
+                            &nav_url,
+                            NavigateOptions {
+                                scroll: false,
+                                ..Default::default()
+                            },
+                        );
                     }
-                    postal_address_editor.set_object(pa);
                 }
                 Err(err) => {
                     // version reset for parallel editing

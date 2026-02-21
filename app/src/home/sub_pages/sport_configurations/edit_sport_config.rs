@@ -81,6 +81,16 @@ pub fn EditSportConfiguration() -> impl IntoView {
         }
     });
 
+    // remove unsaved editor (no origin) on unmount
+    on_cleanup(move || {
+        if let Some(id) = sport_config_id.get_untracked()
+            && let Some(editor) = sport_config_editor_map.get_editor_untracked(id)
+            && editor.get_origin().is_none()
+        {
+            sport_config_editor_map.remove_editor(id);
+        }
+    });
+
     // cancel function for cancel button and error handling
     let on_cancel = use_on_cancel();
 

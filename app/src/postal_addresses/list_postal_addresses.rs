@@ -347,6 +347,7 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
     on_cleanup(move || {
         page_err_ctx.clear_all_for_component(component_id.get_value());
         activity_tracker.remove_component(component_id.get_value());
+        postal_address_editor_map.remove_editor(id.get());
     });
 
     // resource to load postal address

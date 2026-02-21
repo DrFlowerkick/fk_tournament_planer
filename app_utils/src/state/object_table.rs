@@ -255,6 +255,10 @@ where
         self.editor_map.with(|em| em.get(&id).copied())
     }
 
+    pub fn get_editor_untracked(&self, id: Uuid) -> Option<OE> {
+        self.editor_map.with_untracked(|em| em.get(&id).copied())
+    }
+
     pub fn is_selected(&self, id: Uuid) -> bool {
         self.selected_id
             .with(|selected_id| selected_id == &Some(id))
@@ -273,6 +277,12 @@ where
                     editor.set_object(object.clone());
                 }
             }
+        });
+    }
+
+    pub fn remove_editor(&self, id: Uuid) {
+        self.editor_map.update(|em| {
+            em.remove(&id);
         });
     }
 
