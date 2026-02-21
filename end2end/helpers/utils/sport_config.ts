@@ -13,6 +13,7 @@ const UUID_REGEX =
 export const SC_ROUTES = {
   newConfig: "/sport-configurations/new",
   editConfig: "/sport-configurations/edit",
+  copyConfig: "/sport-configurations/copy",
   list: "/sport-configurations",
 };
 
@@ -90,6 +91,18 @@ export async function clickEditSportConfig(page: Page) {
 }
 
 /**
+ * Enter edit mode from a detail page.
+ * For this to work, a row has to be clicked first to show the edit button (as in the current UI).
+ */
+export async function clickCopySportConfig(page: Page) {
+  const SC = selectors(page).sportConfig;
+  await expect(SC.list.btnCopy).toBeVisible();
+  await SC.list.btnCopy.click();
+  // Assert the form is shown again
+  await waitForSportConfigCopyUrl(page);
+}
+
+/**
  * Wait for navigation to a edit sport configuration page (UUID URL).
  */
 export async function waitForSportConfigNewUrl(page: Page) {
@@ -105,8 +118,6 @@ export async function waitForSportConfigNewUrl(page: Page) {
   await waitForAppHydration(page);
 
   await expect(SC.form.root).toBeVisible();
-  await expect(SC.form.btnSave).toBeVisible();
-  await expect(SC.form.btnSaveAsNew).not.toBeVisible();
 }
 
 /**
@@ -132,6 +143,29 @@ export async function waitForSportConfigEditUrl(page: Page) {
   await waitForAppHydration(page);
 
   await expect(SC.form.root).toBeVisible();
-  await expect(SC.form.btnSave).toBeVisible();
-  await expect(SC.form.btnSaveAsNew).toBeVisible();
+}
+
+/**
+ * Wait for navigation to a copy sport configuration page (UUID URL).
+ */
+export async function waitForSportConfigCopyUrl(page: Page) {
+  const SC = selectors(page).sportConfig;
+  // Wait for URL path /sport-configurations/copy and valid sport_config_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === SC_ROUTES.copyConfig;
+    const sportId = url.searchParams.get(SC_QUERY_KEYS.sportId);
+    const sportConfigId = url.searchParams.get(SC_QUERY_KEYS.sportConfigId);
+    return (
+      isCorrectPath &&
+      !!sportId &&
+      UUID_REGEX.test(sportId) &&
+      !!sportConfigId &&
+      UUID_REGEX.test(sportConfigId)
+    );
+  });
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
+  await expect(SC.form.root).toBeVisible();
 }

@@ -10,9 +10,7 @@ export const SPORT_IDS = {
     hiddenId: "hidden-id",
     hiddenVersion: "hidden-version",
     inputName: "input-name",
-    btnSave: "btn-save",
-    btnSaveAsNew: "btn-save-as-new",
-    btnCancel: "btn-cancel",
+    btnClose: "action-btn-close",
   },
 } as const;
 
@@ -27,9 +25,7 @@ export function getSportSelectors(page: Page) {
       hiddenId: page.getByTestId(SPORT_IDS.form.hiddenId),
       hiddenVersion: page.getByTestId(SPORT_IDS.form.hiddenVersion),
       inputName: page.getByTestId(SPORT_IDS.form.inputName),
-      btnSave: page.getByTestId(SPORT_IDS.form.btnSave),
-      btnSaveAsNew: page.getByTestId(SPORT_IDS.form.btnSaveAsNew),
-      btnCancel: page.getByTestId(SPORT_IDS.form.btnCancel),
+      btnClose: page.getByTestId(SPORT_IDS.form.btnClose),
     },
   };
 }

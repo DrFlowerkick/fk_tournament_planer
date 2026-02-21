@@ -29,7 +29,7 @@ test("Smoke: Select Plugin -> Search Config -> New -> Cancel", async ({
   await expect(SC.form.inputName).toBeVisible();
 
   // 6. Cancel back to search context
-  await SC.form.btnCancel.click();
+  await SC.form.btnClose.click();
 
   // 7. Verify we are back at the list and sport_id is preserved
   const { pathname } = new URL(page.url());

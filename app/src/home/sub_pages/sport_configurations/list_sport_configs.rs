@@ -148,7 +148,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                 {move || {
                     sport_config_ids
                         .and_then(|sc_ids| {
-                            let sc_ids = StoredValue::new(sc_ids.clone());
+                            sport_config_editor_map.visible_ids_list.set(sc_ids.clone());
                             view! {
                                 <div
                                     class="card w-full bg-base-100 shadow-xl"
@@ -213,7 +213,11 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                         // --- Table Area ---
                                         <div class="overflow-x-auto">
                                             <Show
-                                                when=move || { sc_ids.with_value(|val| !val.is_empty()) }
+                                                when=move || {
+                                                    sport_config_editor_map
+                                                        .visible_ids_list
+                                                        .with(|val| !val.is_empty())
+                                                }
                                                 fallback=|| {
                                                     view! {
                                                         <div
@@ -236,7 +240,9 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                     </thead>
                                                     <tbody>
                                                         <For
-                                                            each=move || { sc_ids.get_value().into_iter() }
+                                                            each=move || {
+                                                                sport_config_editor_map.visible_ids_list.get().into_iter()
+                                                            }
                                                             key=|id| *id
                                                             children=move |id| {
                                                                 view! { <SportConfigTableRow id=id /> }

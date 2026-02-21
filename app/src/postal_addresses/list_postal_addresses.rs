@@ -146,7 +146,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 {move || {
                     postal_address_ids
                         .and_then(|pa_ids| {
-                            let pa_ids = StoredValue::new(pa_ids.clone());
+                            postal_address_editor_map.visible_ids_list.set(pa_ids.clone());
                             view! {
                                 <div
                                     class="card w-full bg-base-100 shadow-xl"
@@ -203,7 +203,11 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                         // --- Table Area ---
                                         <div class="overflow-x-auto">
                                             <Show
-                                                when=move || { pa_ids.with_value(|val| !val.is_empty()) }
+                                                when=move || {
+                                                    postal_address_editor_map
+                                                        .visible_ids_list
+                                                        .with(|val| !val.is_empty())
+                                                }
                                                 fallback=|| {
                                                     view! {
                                                         <div
@@ -226,7 +230,9 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                     </thead>
                                                     <tbody>
                                                         <For
-                                                            each=move || { pa_ids.get_value().into_iter() }
+                                                            each=move || {
+                                                                postal_address_editor_map.visible_ids_list.get().into_iter()
+                                                            }
                                                             key=|id| *id
                                                             children=move |id| {
                                                                 view! { <PostalAddressTableRow id=id /> }

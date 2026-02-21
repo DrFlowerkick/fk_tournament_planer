@@ -42,7 +42,7 @@ impl SportPluginManagerMap {
     /// #   utils::{
     /// #       id_version::IdVersion,
     /// #       traits::ObjectIdVersion,
-    /// #       validation::ValidationErrors,
+    /// #       validation::{ValidationErrors, ValidationResult},
     /// #   }
     /// # };
     /// # use std::{sync::Arc, time::Duration};
@@ -59,7 +59,7 @@ impl SportPluginManagerMap {
     /// # impl SportPort for MockSport {
     /// #     fn name(&self) -> &'static str { self.name }
     /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
-    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> SportResult<()> { Ok(()) }
+    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> ValidationResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
     /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
     /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
@@ -116,7 +116,7 @@ impl SportPluginManagerMap {
     /// #   utils::{
     /// #       id_version::IdVersion,
     /// #       traits::ObjectIdVersion,
-    /// #       validation::ValidationErrors,
+    /// #       validation::{ValidationErrors, ValidationResult},
     /// #   }
     /// # };
     /// # use std::{sync::Arc, time::Duration};
@@ -133,7 +133,7 @@ impl SportPluginManagerMap {
     /// # impl SportPort for MockSport {
     /// #     fn name(&self) -> &'static str { self.name }
     /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
-    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> SportResult<()> { Ok(()) }
+    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> ValidationResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
     /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
     /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
@@ -188,7 +188,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #   utils::{
     /// #       id_version::IdVersion,
     /// #       traits::ObjectIdVersion,
-    /// #       validation::ValidationErrors,
+    /// #       validation::{ValidationErrors, ValidationResult},
     /// #   }
     /// # };
     /// # use std::{sync::Arc, time::Duration};
@@ -205,7 +205,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # impl SportPort for MockSport {
     /// #     fn name(&self) -> &'static str { self.name }
     /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
-    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> SportResult<()> { Ok(()) }
+    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> ValidationResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
     /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
     /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {
@@ -260,7 +260,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// #   utils::{
     /// #       id_version::IdVersion,
     /// #       traits::ObjectIdVersion,
-    /// #       validation::ValidationErrors,
+    /// #       validation::{ValidationErrors, ValidationResult},
     /// #   }
     /// # };
     /// # use std::{sync::Arc, time::Duration};
@@ -277,7 +277,7 @@ impl SportPluginManagerPort for SportPluginManagerMap {
     /// # impl SportPort for MockSport {
     /// #     fn name(&self) -> &'static str { self.name }
     /// #     fn get_default_config(&self) -> serde_json::Value { serde_json::json!({}) }
-    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> SportResult<()> { Ok(()) }
+    /// #     fn validate_config_values(&self, _config: &SportConfig, _err: ValidationErrors) -> ValidationResult<()> { Ok(()) }
     /// #     fn estimate_match_duration(&self, _config: &SportConfig) -> SportResult<Duration> { Ok(Duration::from_secs(0)) }
     /// #     fn validate_final_score(&self, _config: &SportConfig, _score: &Match) -> SportResult<()> { Ok(()) }
     /// #     fn get_entrant_group_score(&self, _config: &SportConfig, group_id: Uuid, entrant_id: Uuid, _all_matches: &[Match]) -> SportResult<EntrantGroupScore> {

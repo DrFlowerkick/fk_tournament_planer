@@ -18,7 +18,6 @@ const ddcSportAdapter: SportConfigTestAdapter = {
   },
   fillSpecificFields: async (page: Page, data: any) => {
     const SC = selectors(page).sportConfig;
-    const blurTarget = SC.form.btnSave;
 
     // Select Custom Sets to Win
     // We find the option that starts with "Custom" dynamically

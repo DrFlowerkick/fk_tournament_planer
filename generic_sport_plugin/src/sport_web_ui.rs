@@ -226,7 +226,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     name="sets_to_win"
                     data_testid="input-sets_to_win"
                     value=sets_to_win
-                    action=InputCommitAction::WriteTo(set_sets_to_win)
+                    action=InputCommitAction::WriteAndSubmit(set_sets_to_win)
                     validation_result=validation_result
                     object_id=sport_config_editor.id
                     field="sets_to_win"
@@ -238,7 +238,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="score_to_win"
                         data_testid="input-score_to_win"
                         value=score_to_win
-                        action=InputCommitAction::WriteTo(set_score_to_win)
+                        action=InputCommitAction::WriteAndSubmit(set_score_to_win)
                         validation_result=validation_result
                         object_id=sport_config_editor.id
                         field="score_to_win"
@@ -249,7 +249,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="win_by_margin"
                         data_testid="input-win_by_margin"
                         value=win_by_margin
-                        action=InputCommitAction::WriteTo(set_win_by_margin)
+                        action=InputCommitAction::WriteAndSubmit(set_win_by_margin)
                         validation_result=validation_result
                         object_id=sport_config_editor.id
                         field="win_by_margin"
@@ -260,7 +260,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="hard_cap"
                         data_testid="input-hard_cap"
                         value=hard_cap
-                        action=InputCommitAction::WriteTo(set_hard_cap)
+                        action=InputCommitAction::WriteAndSubmit(set_hard_cap)
                         validation_result=validation_result
                         object_id=sport_config_editor.id
                         field="hard_cap"
@@ -273,7 +273,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="victory_points_win"
                         data_testid="input-victory_points_win"
                         value=victory_points_win
-                        action=InputCommitAction::WriteTo(set_victory_points_win)
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_win)
                         validation_result=validation_result
                         object_id=sport_config_editor.id
                         field="victory_points_win"
@@ -285,7 +285,7 @@ impl SportPortWebUi for GenericSportPlugin {
                         name="victory_points_draw"
                         data_testid="input-victory_points_draw"
                         value=victory_points_draw
-                        action=InputCommitAction::WriteTo(set_victory_points_draw)
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_draw)
                         validation_result=validation_result
                         object_id=sport_config_editor.id
                         field="victory_points_draw"
@@ -298,7 +298,7 @@ impl SportPortWebUi for GenericSportPlugin {
                     name="expected_match_duration_minutes"
                     data_testid="input-expected_match_duration_minutes"
                     value=expected_match_duration_minutes
-                    action=InputCommitAction::WriteTo(set_expected_match_duration_minutes)
+                    action=InputCommitAction::WriteAndSubmit(set_expected_match_duration_minutes)
                     validation_result=validation_result
                     object_id=sport_config_editor.id
                     field="expected_match_duration_minutes"
