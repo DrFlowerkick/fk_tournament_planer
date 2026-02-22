@@ -17,6 +17,7 @@ use app_utils::{
     params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery},
     server_fn::tournament_base::load_tournament_base,
     state::{
+        EditorContext,
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
@@ -153,7 +154,8 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     };
 
     // --- Initialize context for creating and editing tournaments ---
-    let tournament_editor_context = TournamentEditorContext::new(tournament_editor);
+    let tournament_editor_context = TournamentEditorContext::new();
+
     provide_context(tournament_editor_context);
 
     // --- Hooks & Navigation ---

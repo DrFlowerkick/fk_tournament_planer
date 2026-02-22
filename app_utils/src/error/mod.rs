@@ -2,7 +2,7 @@
 
 pub mod strategy;
 
-use app_core::CoreError;
+use app_core::{CoreError, DbError, utils::validation::FieldError};
 use leptos::prelude::*;
 use serde::{Deserialize, Serialize};
 use server_fn::codec::JsonEncoding;
@@ -54,3 +54,25 @@ impl From<serde_json::Error> for AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+pub fn map_db_unique_violation_to_field_error(
+    err: &AppError,
+    object_id: Uuid,
+    field_name: &str,
+) -> Option<FieldError> {
+    if let AppError::Core(CoreError::Db(DbError::UniqueViolation(field_opt))) = err {
+        let message = if let Some(field) = field_opt {
+            format!("Unique constraint violation on field: {}", field)
+        } else {
+            "Unique constraint violation".to_string()
+        };
+        let field_error = FieldError::builder()
+            .set_field(field_name)
+            .add_message(message)
+            .set_object_id(object_id)
+            .build();
+
+        return Some(field_error);
+    }
+    None
+}

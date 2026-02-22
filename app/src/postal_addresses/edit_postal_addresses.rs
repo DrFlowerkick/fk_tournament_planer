@@ -5,7 +5,7 @@ use app_utils::server_fn::postal_address::{SavePostalAddressFormData, save_posta
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, TextInput},
     enum_utils::EditAction,
-    error::strategy::handle_write_error,
+    error::{map_db_unique_violation_to_field_error, strategy::handle_write_error},
     hooks::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{
@@ -200,13 +200,23 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                 Err(err) => {
                     // version reset for parallel editing
                     postal_address_editor.reset_version_to_origin();
-                    handle_write_error(
-                        &page_err_ctx,
-                        &toast_ctx,
-                        component_id.get_value(),
-                        &err,
-                        refetch,
-                    );
+                    // transform unique violation error into Validation Error for name, if any
+                    if let Some(object_id) = postal_address_editor.id.get()
+                        && let Some(field_error) =
+                            map_db_unique_violation_to_field_error(&err, object_id, "name")
+                    {
+                        postal_address_editor
+                            .set_unique_violation_error
+                            .set(Some(field_error));
+                    } else {
+                        handle_write_error(
+                            &page_err_ctx,
+                            &toast_ctx,
+                            component_id.get_value(),
+                            &err,
+                            refetch,
+                        );
+                    }
                 }
             }
         }
@@ -301,7 +311,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         action=InputCommitAction::WriteAndSubmit(postal_address_editor.set_name)
                         validation_result=postal_address_editor.validation_result
                         object_id=postal_address_editor.id
-                        field="Name"
+                        field="name"
                     />
                     <TextInput
                         label="Street & number"
@@ -311,7 +321,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         action=InputCommitAction::WriteAndSubmit(postal_address_editor.set_street)
                         validation_result=postal_address_editor.validation_result
                         object_id=postal_address_editor.id
-                        field="Street"
+                        field="street"
                     />
                     <div class="grid grid-cols-2 gap-4">
                         <TextInput
@@ -324,7 +334,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                             )
                             validation_result=postal_address_editor.validation_result
                             object_id=postal_address_editor.id
-                            field="PostalCode"
+                            field="postal_code"
                         />
                         <TextInput
                             label="City"
@@ -336,7 +346,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                             )
                             validation_result=postal_address_editor.validation_result
                             object_id=postal_address_editor.id
-                            field="Locality"
+                            field="locality"
                         />
                     </div>
                     <TextInput
@@ -355,7 +365,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         action=InputCommitAction::WriteAndSubmit(postal_address_editor.set_country)
                         validation_result=postal_address_editor.validation_result
                         object_id=postal_address_editor.id
-                        field="Country"
+                        field="country"
                     />
                 </fieldset>
             </ActionForm>

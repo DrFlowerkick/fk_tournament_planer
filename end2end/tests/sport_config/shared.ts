@@ -6,6 +6,7 @@ import {
   clickEditSportConfig,
   clickCopySportConfig,
   extractQueryParamFromUrl,
+  expectFieldValidity,
   waitForAppHydration,
   searchAndOpenByNameOnCurrentPage,
   selectors,
@@ -84,8 +85,13 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       await test.step("Copy Config", async () => {
         await clickCopySportConfig(page);
 
+        // First check for duplicate error
+        await fillAndBlur(SC.form.inputName, updatedName);
+        await expectFieldValidity(SC.form.inputName, updatedName, true);
+
         // Update name field
         await fillAndBlur(SC.form.inputName, copiedName);
+        await expectFieldValidity(SC.form.inputName, copiedName, false);
 
         await SC.form.btnClose.click();
         await expect(SC.form.root).toBeHidden();

@@ -5,7 +5,7 @@ use app_utils::server_fn::sport_config::save_sport_config_inner;
 use app_utils::{
     components::inputs::{InputCommitAction, TextInput},
     enum_utils::EditAction,
-    error::strategy::handle_write_error,
+    error::{map_db_unique_violation_to_field_error, strategy::handle_write_error},
     hooks::{
         //set_up_editor_form::set_up_editor_form,
         use_on_cancel::use_on_cancel,
@@ -226,53 +226,47 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
             save_sport_config.clear();
             match ssc_result {
                 Ok(sc) => {
-                    match edit_action {
-                        EditAction::New | EditAction::Copy => {
-                            let sc_id = sc.get_id().to_string();
-                            let key_value = vec![
-                                (SportConfigIdQuery::KEY, sc_id.as_str()),
-                                (FilterNameQuery::KEY, sc.get_name()),
-                            ];
-                            let nav_url = url_matched_route_update_queries(
-                                key_value,
-                                MatchedRouteHandler::ReplaceSegment(
-                                    EditAction::Edit.to_string().as_str(),
-                                ),
-                            );
-                            navigate(
-                                &nav_url,
-                                NavigateOptions {
-                                    scroll: false,
-                                    ..Default::default()
-                                },
-                            );
-                        }
-                        EditAction::Edit => {
-                            // ToDo: after some more testing we ca probably remove this
-                            if sport_config_editor.optimistic_version.get() != sc.get_version() {
-                                // version mismatch, likely due to parallel editing
-                                // this should not happen, because version mismatch should be caught
-                                // by the server and returned as error, but we handle it here just in case
-                                leptos::logging::log!(
-                                    "Version mismatch after saving Sport Config. Expected version: {:?}, actual version: {:?}. This might be caused by parallel editing.",
-                                    sport_config_editor.optimistic_version.get(),
-                                    sc.get_version()
-                                );
-                            }
-                        }
+                    sport_config_editor.set_object(sc.clone());
+                    if matches!(edit_action, EditAction::New | EditAction::Copy) {
+                        let sc_id = sc.get_id().to_string();
+                        let key_value = vec![
+                            (SportConfigIdQuery::KEY, sc_id.as_str()),
+                            (FilterNameQuery::KEY, sc.get_name()),
+                        ];
+                        let nav_url = url_matched_route_update_queries(
+                            key_value,
+                            MatchedRouteHandler::ReplaceSegment(
+                                EditAction::Edit.to_string().as_str(),
+                            ),
+                        );
+                        navigate(
+                            &nav_url,
+                            NavigateOptions {
+                                scroll: false,
+                                ..Default::default()
+                            },
+                        );
                     }
-                    sport_config_editor.set_object(sc);
                 }
                 Err(err) => {
                     // version reset for parallel editing
                     sport_config_editor.reset_version_to_origin();
-                    handle_write_error(
-                        &page_err_ctx,
-                        &toast_ctx,
-                        component_id.get_value(),
-                        &err,
-                        refetch,
-                    );
+                    if let Some(object_id) = sport_config_editor.id.get()
+                        && let Some(field_error) =
+                            map_db_unique_violation_to_field_error(&err, object_id, "name")
+                    {
+                        sport_config_editor
+                            .set_unique_violation_error
+                            .set(Some(field_error));
+                    } else {
+                        handle_write_error(
+                            &page_err_ctx,
+                            &toast_ctx,
+                            component_id.get_value(),
+                            &err,
+                            refetch,
+                        );
+                    }
                 }
             }
         }

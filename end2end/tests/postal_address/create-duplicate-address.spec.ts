@@ -4,6 +4,7 @@ import {
   openPostalAddressList,
   clickNewPostalAddress,
   fillFields,
+  expectFieldValidity,
   closeForm,
   waitForPostalAddressListUrl,
   selectors,
@@ -49,12 +50,8 @@ test.describe("Uniqueness constraint violation", () => {
     };
     await fillFields(page, duplicate);
 
-    // -------------------- Assert: Duplicate error Toast appears --------------------
-    // A toast should appear
-    await expect(TOAST.error).toBeVisible();
-
-    // The toast should contain a warning message.
-    await expect(TOAST.error).toContainText(`A unique value is already in use`);
+    // -------------------- Assert: Duplicate validation error appears --------------------
+    await expectFieldValidity(PA.form.inputName, duplicate.name, /*invalid*/ true);
 
     // The form should still be open with the duplicate data (not navigated away)
     await expect(PA.form.inputName).toHaveValue(duplicate.name);
@@ -64,7 +61,5 @@ test.describe("Uniqueness constraint violation", () => {
     await expect(PA.form.inputRegion).toHaveValue(duplicate.region);
     await expect(PA.form.inputCountry).toHaveValue(duplicate.country);
 
-    // Toast should disappear after some time
-    await expect(TOAST.error).toBeHidden({ timeout: 10000 });
   });
 });

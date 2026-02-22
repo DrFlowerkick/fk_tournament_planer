@@ -7,6 +7,7 @@ import {
   selectThenBlur,
   expectFieldValidity,
   selectors,
+  makeUniqueName,
 } from "../../helpers";
 
 const NEW_ROUTE = "/postal-address/new";
@@ -193,10 +194,11 @@ test.describe("Per-field normalization → validation + gated save", () => {
 
     // fill all fields with valid values
     const name = `E2E Valid Test Address`;
-    await fillAllRequiredValid(page, name);
+    const uniqueName = makeUniqueName(name);
+    await fillAllRequiredValid(page, uniqueName);
 
     // expect all fields are valid (values taken from ..helpers/form.ts)
-    await expectFieldValidity(PA.form.inputName, name, false);
+    await expectFieldValidity(PA.form.inputName, uniqueName, false);
     await expectFieldValidity(PA.form.inputStreet, "Beispielstr. 1", false);
     await expectFieldValidity(PA.form.inputCountry, "DE", false);
     await expectFieldValidity(PA.form.inputPostalCode, "10115", false);

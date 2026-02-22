@@ -1,9 +1,12 @@
 //! postal address editor context
 
-use crate::state::{EditorContextWithObjectIdVersion, EditorContext};
+use crate::state::{EditorContext, EditorContextWithObjectIdVersion};
 use app_core::{
     PostalAddress,
-    utils::{id_version::IdVersion, validation::ValidationResult},
+    utils::{
+        id_version::IdVersion,
+        validation::{FieldError, ValidationResult},
+    },
 };
 use isocountry::CountryCode;
 use leptos::prelude::*;
@@ -22,6 +25,8 @@ pub struct PostalAddressEditorContext {
     pub is_changed: Signal<bool>,
     /// Read slice for accessing the validation result of the postal address
     pub validation_result: Signal<ValidationResult<()>>,
+    /// WriteSignal for setting a unique violation error on the name field, if any
+    pub set_unique_violation_error: WriteSignal<Option<FieldError>>,
 
     // --- Signals, Slices & Callbacks for form fields ---
     /// Signal slice for the id field
@@ -71,14 +76,25 @@ impl EditorContext for PostalAddressEditorContext {
         let origin = RwSignal::new(None::<PostalAddress>);
 
         let is_changed = Signal::derive(move || local.get() != origin.get());
+        let (unique_violation_error, set_unique_violation_error) = signal(None::<FieldError>);
         let validation_result = Signal::derive(move || {
-            local.with(|local| {
+            let vr = local.with(|local| {
                 if let Some(pa) = local {
                     pa.validate()
                 } else {
                     ValidationResult::Ok(())
                 }
-            })
+            });
+            if let Some(unique_err) = unique_violation_error.get() {
+                if let Err(mut validation_errors) = vr {
+                    validation_errors.add(unique_err);
+                    Err(validation_errors)
+                } else {
+                    Err(unique_err.into())
+                }
+            } else {
+                vr
+            }
         });
 
         let id = create_read_slice(local, move |local| local.as_ref().map(|pa| pa.get_id()));
@@ -89,9 +105,11 @@ impl EditorContext for PostalAddressEditorContext {
         let (name, set_name) = create_slice(
             local,
             |local| local.as_ref().map(|pa| pa.get_name().to_string()),
-            |local, name: String| {
+            move |local, name: String| {
                 if let Some(pa) = local {
                     pa.set_name(name);
+                    // Clear unique violation error on name change, if any
+                    set_unique_violation_error.set(None);
                 }
             },
         );
@@ -168,6 +186,7 @@ impl EditorContext for PostalAddressEditorContext {
             origin_read_only: origin.into(),
             is_changed,
             validation_result,
+            set_unique_violation_error,
             id,
             version,
             optimistic_version: set_optimistic_version.into(),

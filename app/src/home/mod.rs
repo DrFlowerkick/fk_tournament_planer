@@ -12,9 +12,9 @@ use app_utils::{
     params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery},
     state::{
         global_state::{GlobalState, GlobalStateStoreFields},
+        object_table::ObjectEditorMapContext,
         toast_state::ToastContext,
         tournament_editor::TournamentEditorContext,
-        object_table::ObjectEditorMapContext,
     },
 };
 use leptos::prelude::*;
@@ -37,7 +37,7 @@ pub fn HomePage() -> impl IntoView {
     let tournament_editor_map =
         ObjectEditorMapContext::<TournamentEditorContext, TournamentBaseIdQuery>::new();
     provide_context(tournament_editor_map);
-    
+
     // navigation hooks
     let navigate = use_navigate();
     let url = use_url();

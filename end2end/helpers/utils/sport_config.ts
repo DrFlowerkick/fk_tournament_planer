@@ -4,6 +4,7 @@ import {
   openHomePage,
   selectSportPluginByName,
   waitForAppHydration,
+  expectFieldValidity,
   selectors,
 } from "../../helpers";
 
@@ -100,6 +101,7 @@ export async function clickCopySportConfig(page: Page) {
   await SC.list.btnCopy.click();
   // Assert the form is shown again
   await waitForSportConfigCopyUrl(page);
+  await expectFieldValidity(SC.form.inputName, "", true);
 }
 
 /**

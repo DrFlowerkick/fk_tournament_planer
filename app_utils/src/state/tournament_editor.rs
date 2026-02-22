@@ -17,7 +17,7 @@ use crate::{
 };
 use app_core::{
     Stage, TournamentBase, TournamentEditor, TournamentMode, TournamentState,
-    utils::{validation::ValidationResult, id_version::IdVersion},
+    utils::{id_version::IdVersion, validation::ValidationResult},
 };
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, hooks::use_navigate};
@@ -416,9 +416,9 @@ impl EditorContext for TournamentEditorContext {
 
     /// If save fails, we need to reset the version to the original version to prevent version mismatch on next save attempt.
     fn reset_version_to_origin(&self) {
-        let origin_version = self.inner.with(|editor| {
-            editor.get_origin_base().and_then(|b| b.get_version())
-        });
+        let origin_version = self
+            .inner
+            .with(|editor| editor.get_origin_base().and_then(|b| b.get_version()));
         self.set_optimistic_version.set(origin_version);
     }
 
