@@ -175,7 +175,6 @@ pub fn EditTournamentStage(stage: Option<Stage>) -> impl IntoView {
                         <fieldset
                             disabled=move || {
                                 tournament_editor_context.is_disabled_stage_editing.get()
-                                    || tournament_editor_context.is_busy.get()
                                     || !tournament_editor_context.is_stage_initialized.get()
                             }
                             class="space-y-4 contents"

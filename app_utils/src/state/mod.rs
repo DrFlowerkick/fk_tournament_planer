@@ -14,7 +14,7 @@ use leptos::prelude::*;
 use uuid::Uuid;
 
 pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
-    type ObjectType;
+    type ObjectType: ObjectIdVersion + Clone;
 
     /// Create a new instance of the editor context, initializing all necessary state.
     fn new() -> Self;
@@ -43,8 +43,3 @@ pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
     fn get_optimistic_version(&self) -> Signal<Option<u32>>;
 }
 
-pub trait EditorContextWithObjectIdVersion:
-    EditorContext<ObjectType = Self::ObjectTypeWithIdVersion>
-{
-    type ObjectTypeWithIdVersion: ObjectIdVersion + Clone;
-}

@@ -1,6 +1,6 @@
 //! postal address editor context
 
-use crate::state::{EditorContext, EditorContextWithObjectIdVersion};
+use crate::state::{EditorContext};
 use app_core::{
     PostalAddress,
     utils::{
@@ -21,8 +21,6 @@ pub struct PostalAddressEditorContext {
     origin: RwSignal<Option<PostalAddress>>,
     /// Read slice of origin
     pub origin_read_only: Signal<Option<PostalAddress>>,
-    /// Read slice for checking if there are unsaved changes
-    pub is_changed: Signal<bool>,
     /// Read slice for accessing the validation result of the postal address
     pub validation_result: Signal<ValidationResult<()>>,
     /// WriteSignal for setting a unique violation error on the name field, if any
@@ -63,10 +61,6 @@ pub struct PostalAddressEditorContext {
     pub set_country: Callback<Option<CountryCode>>,
 }
 
-impl EditorContextWithObjectIdVersion for PostalAddressEditorContext {
-    type ObjectTypeWithIdVersion = PostalAddress;
-}
-
 impl EditorContext for PostalAddressEditorContext {
     type ObjectType = PostalAddress;
 
@@ -74,8 +68,6 @@ impl EditorContext for PostalAddressEditorContext {
     fn new() -> Self {
         let local = RwSignal::new(None::<PostalAddress>);
         let origin = RwSignal::new(None::<PostalAddress>);
-
-        let is_changed = Signal::derive(move || local.get() != origin.get());
         let (unique_violation_error, set_unique_violation_error) = signal(None::<FieldError>);
         let validation_result = Signal::derive(move || {
             let vr = local.with(|local| {
@@ -184,7 +176,6 @@ impl EditorContext for PostalAddressEditorContext {
             local,
             origin,
             origin_read_only: origin.into(),
-            is_changed,
             validation_result,
             set_unique_violation_error,
             id,

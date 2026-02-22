@@ -16,15 +16,16 @@ use crate::{
     },
 };
 use app_core::{
-    Stage, TournamentBase, TournamentEditor, TournamentMode, TournamentState,
-    utils::{id_version::IdVersion, validation::ValidationResult},
+    Stage, Tournament, TournamentBase, TournamentMode, TournamentState,
+    utils::{
+        id_version::IdVersion,
+        validation::{FieldError, ValidationResult},
+    },
 };
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
 
-/// Context wrapper for `TournamentEditor`.
-///
 /// This context provides efficient access to the tournament editor state
 /// via `RwSignal`, along with various read slices and callbacks for
 /// interacting with the editor.
@@ -33,16 +34,16 @@ use uuid::Uuid;
 #[derive(Clone, Copy)]
 pub struct TournamentEditorContext {
     // --- state & derived signals ---
-    /// Tournament editor core state
-    inner: RwSignal<TournamentEditor>,
-    /// Read slice for checking if the editor is busy (saving/loading)
-    pub is_busy: Signal<bool>,
-    /// Read slice for checking if there are unsaved changes
-    pub is_changed: Signal<bool>,
+    /// The local editable tournament
+    local: RwSignal<Option<Tournament>>,
+    /// The original tournament loaded from storage.
+    origin: RwSignal<Option<Tournament>>,
+    /// Read slice of origin
+    pub origin_read_only: Signal<Option<Tournament>>,
     /// Read slice for accessing the validation result of the tournament
     pub validation_result: Signal<ValidationResult<()>>,
-    /// Currently active stage number from URL, if any
-    pub active_stage_number: Signal<Option<u32>>,
+    /// WriteSignal for setting a unique violation error on the name field, if any
+    pub set_unique_violation_error: WriteSignal<Option<FieldError>>,
 
     // --- Actions and Resources ---
     /// Action for saving tournament editor diffs
@@ -79,6 +80,8 @@ pub struct TournamentEditorContext {
     pub set_base_num_rounds_swiss_system: Callback<Option<u32>>,
 
     // --- Signals, Slices & Callbacks for Current Stage ---
+    /// Currently active stage number from URL, if any
+    pub active_stage_number: Signal<Option<u32>>,
     /// Read slice for checking if stage is initialized
     pub is_stage_initialized: Signal<bool>,
     /// Read slice for checking if stage editor is hidden
@@ -93,16 +96,19 @@ pub struct TournamentEditorContext {
     pub set_stage_num_groups: Callback<Option<u32>>,
 
     // --- Signals, Slices & Callbacks for Current Group ---
+    /// Currently active group number from URL, if any
+    pub active_group_number: Signal<Option<u32>>,
     /// Read slice for checking if stage is initialized
     pub is_group_initialized: Signal<bool>,
 }
 
 impl EditorContext for TournamentEditorContext {
-    type ObjectType = TournamentBase;
+    type ObjectType = Tournament;
 
     /// Creates a new, empty context.
     fn new() -> Self {
         // --- refetch context ---
+        // ToDo: we probably do not need this anymore
         let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
         // --- navigation and globale state context ---
@@ -123,12 +129,31 @@ impl EditorContext for TournamentEditorContext {
         });
 
         // --- core signals ---
-        let inner = RwSignal::new(TournamentEditor::new());
-        let base_state = create_read_slice(inner, |inner| {
-            inner.get_base().map(|b| b.get_tournament_state())
+        let local = RwSignal::new(None::<Tournament>);
+        let origin = RwSignal::new(None::<Tournament>);
+        let base_state = create_read_slice(local, |local| {
+            local.as_ref().map(|t| t.get_base().get_tournament_state())
         });
-        let is_changed = create_read_slice(inner, |inner| inner.is_changed());
-        let validation_result = create_read_slice(inner, |inner| inner.validation());
+        let (unique_violation_error, set_unique_violation_error) = signal(None::<FieldError>);
+        let validation_result = Signal::derive(move || {
+            let vr = local.with(|local| {
+                if let Some(t) = local {
+                    t.validate()
+                } else {
+                    ValidationResult::Ok(())
+                }
+            });
+            if let Some(unique_err) = unique_violation_error.get() {
+                if let Err(mut validation_errors) = vr {
+                    validation_errors.add(unique_err);
+                    Err(validation_errors)
+                } else {
+                    Err(unique_err.into())
+                }
+            } else {
+                vr
+            }
+        });
         let set_optimistic_version = RwSignal::new(None);
 
         // --- url parameters & queries & validation ---
@@ -137,13 +162,15 @@ impl EditorContext for TournamentEditorContext {
         let active_group_number = GroupNumberParams::use_param_query();
 
         let valid_object_numbers = Memo::new(move |_| {
-            inner.with(|state| {
-                state.validate_object_numbers(
-                    active_stage_number.get(),
-                    active_group_number.get(),
-                    None,
-                    None,
-                )
+            local.with(|may_be_t| {
+                may_be_t.as_ref().and_then(|t| {
+                    t.validate_object_numbers(
+                        active_stage_number.get(),
+                        active_group_number.get(),
+                        None,
+                        None,
+                    )
+                })
             })
         });
         // Effect to update URL if invalid object numbers are detected
@@ -176,9 +203,6 @@ impl EditorContext for TournamentEditorContext {
         let save_diff = ServerAction::<SaveTournamentEditorDiff>::new();
         let save_diff_pending = save_diff.pending();
         activity_tracker.track_pending_memo(component_id.get_value(), save_diff_pending);
-
-        // server action & resource activity tracking
-        let is_busy = Signal::derive(move || save_diff.pending().get());
 
         // --- effects for server action and resource results ---
         // retry function for error handling
@@ -226,9 +250,9 @@ impl EditorContext for TournamentEditorContext {
         });
 
         // --- Create slices for base ---
-        let is_base_initialized = create_read_slice(inner, |inner| inner.get_base().is_some());
-        let base_tournament_state = create_read_slice(inner, |inner| {
-            inner.get_base().map(|b| b.get_tournament_state())
+        let is_base_initialized = create_read_slice(local, |local| local.is_some());
+        let base_tournament_state = create_read_slice(local, |local| {
+            local.as_ref().map(|t| t.get_base().get_tournament_state())
         });
         let is_disabled_base_editing = Signal::derive(move || {
             matches!(
@@ -236,32 +260,39 @@ impl EditorContext for TournamentEditorContext {
                 Some(TournamentState::ActiveStage(_)) | Some(TournamentState::Finished)
             )
         });
-        let base_id = create_read_slice(inner, |inner| inner.get_base().map(|b| b.get_id()));
+        let base_id =
+            create_read_slice(local, |local| local.as_ref().map(|t| t.get_base().get_id()));
         let (base_name, set_base_name) = create_slice(
-            inner,
-            |inner| inner.get_base().map(|b| b.get_name().to_string()),
-            |inner, name: String| {
-                inner.get_local_mut().set_base_name(name);
+            local,
+            |local| local.as_ref().map(|t| t.get_base().get_name().to_string()),
+            |local, name: String| {
+                if let Some(t) = local {
+                    t.set_base_name(name);
+                }
             },
         );
         let set_base_name = Callback::new(move |name: Option<String>| {
             set_base_name.set(name.unwrap_or_default());
         });
         let (base_num_entrants, set_base_num_entrants) = create_slice(
-            inner,
-            |inner| inner.get_base().map(|b| b.get_num_entrants()),
-            |inner, num_entrants: u32| {
-                inner.get_local_mut().set_base_num_entrants(num_entrants);
+            local,
+            |local| local.as_ref().map(|t| t.get_base().get_num_entrants()),
+            |local, num_entrants: u32| {
+                if let Some(t) = local {
+                    t.set_base_num_entrants(num_entrants);
+                }
             },
         );
         let set_base_num_entrants = Callback::new(move |num_entrants: Option<u32>| {
             set_base_num_entrants.set(num_entrants.unwrap_or_default());
         });
         let (base_mode, set_base_mode) = create_slice(
-            inner,
-            |inner| inner.get_base().map(|b| b.get_tournament_mode()),
-            |inner, mode: TournamentMode| {
-                inner.get_local_mut().set_base_mode(mode);
+            local,
+            |local| local.as_ref().map(|t| t.get_base().get_tournament_mode()),
+            |local, mode: TournamentMode| {
+                if let Some(t) = local {
+                    t.set_base_mode(mode);
+                }
             },
         );
         let set_base_mode = Callback::new(move |mode: Option<TournamentMode>| {
@@ -270,16 +301,16 @@ impl EditorContext for TournamentEditorContext {
             }
         });
         let (base_num_rounds_swiss_system, set_base_num_rounds_swiss_system) = create_slice(
-            inner,
-            |inner| {
-                inner
-                    .get_base()
-                    .and_then(|b| b.get_num_rounds_swiss_system())
+            local,
+            |local| {
+                local
+                    .as_ref()
+                    .and_then(|t| t.get_base().get_num_rounds_swiss_system())
             },
-            |inner, num_rounds_swiss: u32| {
-                inner
-                    .get_local_mut()
-                    .set_base_num_rounds_swiss_system(num_rounds_swiss);
+            |local, num_rounds_swiss: u32| {
+                if let Some(t) = local {
+                    t.set_base_num_rounds_swiss_system(num_rounds_swiss);
+                }
             },
         );
         let set_base_num_rounds_swiss_system =
@@ -288,9 +319,12 @@ impl EditorContext for TournamentEditorContext {
             });
 
         // --- Create slices for stage ---
-        let is_stage_initialized = create_read_slice(inner, move |inner| {
+        let is_stage_initialized = create_read_slice(local, move |local| {
             if let Some(sn) = active_stage_number.get() {
-                inner.get().get_stage_by_number(sn).is_some()
+                local
+                    .as_ref()
+                    .and_then(|t| t.get_stage_by_number(sn))
+                    .is_some()
             } else {
                 false
             }
@@ -315,15 +349,24 @@ impl EditorContext for TournamentEditorContext {
                 false
             }
         });
-        let active_stage_id = create_read_slice(inner, |inner| inner.get_active_stage_id());
+        let active_stage_id = create_read_slice(local, move |local| {
+            active_stage_number
+                .get()
+                .and_then(|sn| local.as_ref().and_then(|t| t.get_stage_by_number(sn)))
+                .map(|stage| stage.get_id())
+        });
         let (stage_num_groups, set_stage_num_groups) = create_slice(
-            inner,
-            |inner| inner.get_active_stage().map(|s| s.get_num_groups()),
-            |inner, num_groups: u32| {
-                if let Some(stage_id) = inner.get_active_stage_id() {
-                    inner
-                        .get_local_mut()
-                        .set_stage_number_of_groups(stage_id, num_groups);
+            local,
+            move |local| {
+                active_stage_number
+                    .get()
+                    .and_then(|sn| local.as_ref().and_then(|t| t.get_stage_by_number(sn)))
+                    .map(|stage| stage.get_num_groups())
+            },
+            move |local, num_groups: u32| {
+                if let Some(id) = active_stage_id.get() &&
+                    let Some(t) = local.as_mut() {
+                    t.set_stage_number_of_groups(id, num_groups);
                 }
             },
         );
@@ -332,11 +375,12 @@ impl EditorContext for TournamentEditorContext {
         });
 
         // --- Create slices for group ---
-        let is_group_initialized = create_read_slice(inner, move |inner| {
+        let is_group_initialized = create_read_slice(local, move |local| {
             if let Some(sn) = active_stage_number.get()
                 && let Some(gn) = active_group_number.get()
+                && let Some(t) = local.as_ref()
             {
-                inner.get().get_group_by_number(sn, gn).is_some()
+                t.get_group_by_number(sn, gn).is_some()
             } else {
                 false
             }
@@ -344,14 +388,13 @@ impl EditorContext for TournamentEditorContext {
 
         Self {
             // core signals
-            inner,
-            is_busy,
-            is_changed,
+            local,
+            origin,
+            origin_read_only: origin.into(),
             validation_result,
+            set_unique_violation_error,
             optimistic_version: set_optimistic_version.into(),
             set_optimistic_version,
-            // url parameters & queries
-            active_stage_number,
             // actions and resources
             save_diff,
             // base slices
@@ -367,6 +410,7 @@ impl EditorContext for TournamentEditorContext {
             base_num_rounds_swiss_system,
             set_base_num_rounds_swiss_system,
             // stage slices
+            active_stage_number,
             is_stage_initialized,
             is_hiding_stage_editor,
             is_disabled_stage_editing,
@@ -374,32 +418,30 @@ impl EditorContext for TournamentEditorContext {
             stage_num_groups,
             set_stage_num_groups,
             // group slices
+            active_group_number,
             is_group_initialized,
         }
     }
 
-    /// Get the original postal address currently loaded in the editor context, if any.
-    fn get_origin(&self) -> Option<TournamentBase> {
-        self.inner.with(|editor| editor.get_origin_base().cloned())
+    /// Get the original tournament currently loaded in the editor context, if any.
+    fn get_origin(&self) -> Option<Tournament> {
+        self.origin.with(|editor| editor.as_ref().map(|t| t.clone()))
     }
 
-    /// Set the current tournament base in the editor context, updating all relevant state accordingly.
-    fn set_object(&self, base: TournamentBase) {
-        self.set_optimistic_version.set(base.get_version());
-        self.inner.update(|editor| {
-            editor.set_base(base);
-        });
+    /// Set the current tournament in the editor context, updating all relevant state accordingly.
+    fn set_object(&self, tournament: Tournament) {
+        self.set_optimistic_version.set(tournament.get_base().get_version());
+        self.local.set(Some(tournament.clone()));
+        self.origin.set(Some(tournament));
     }
 
-    /// Create a new tournament base object in the editor context, returning its unique identifier.
+    /// Create a new tournament object in the editor context, returning its unique identifier.
     fn new_object(&self) -> Option<Uuid> {
-        let id = Uuid::new_v4();
-        let id_version = IdVersion::new(id, None);
-        let base = TournamentBase::new(id_version);
+        let tournament = Tournament::new();
+        let id = tournament.get_base().get_id();
         self.set_optimistic_version.set(None);
-        self.inner.update(|editor| {
-            editor.set_base(base);
-        });
+        self.local.set(Some(tournament.clone()));
+        self.origin.set(None);
         Some(id)
     }
 
@@ -417,8 +459,8 @@ impl EditorContext for TournamentEditorContext {
     /// If save fails, we need to reset the version to the original version to prevent version mismatch on next save attempt.
     fn reset_version_to_origin(&self) {
         let origin_version = self
-            .inner
-            .with(|editor| editor.get_origin_base().and_then(|b| b.get_version()));
+            .origin
+            .with(|origin| origin.as_ref().and_then(|t| t.get_base().get_version()));
         self.set_optimistic_version.set(origin_version);
     }
 
@@ -430,20 +472,24 @@ impl EditorContext for TournamentEditorContext {
 
 impl TournamentEditorContext {
     pub fn new_stage(&self, stage_number: u32) {
-        self.inner.update(|te| {
-            te.new_stage(stage_number);
+        self.local.update(|te| {
+            if let Some(t) = te.as_mut() {
+                t.new_stage(stage_number);
+            }
         });
     }
 
     pub fn set_stage(&self, stage: Stage) {
-        self.inner.update(|te| {
-            te.set_stage(stage);
+        self.local.update(|te| {
+            if let Some(t) = te.as_mut() {
+                t.set_stage(stage);
+            }
         });
     }
 
     // Save diff
     pub fn save_diff(&self) {
-        if let Some(base_id) = self.base_id.get() {
+        /*if let Some(base_id) = self.base_id.get() {
             self.inner.with_untracked(|te| {
                 self.save_diff.dispatch(SaveTournamentEditorDiff {
                     base_id,
@@ -451,7 +497,7 @@ impl TournamentEditorContext {
                     stages_diff: te.collect_stages_diff(),
                 });
             })
-        }
+        }*/
     }
 }
 

@@ -200,7 +200,6 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                         <fieldset
                             disabled=move || {
                                 tournament_editor_context.is_disabled_base_editing.get()
-                                    || tournament_editor_context.is_busy.get()
                                     || !tournament_editor_context.is_base_initialized.get()
                             }
                             class="contents"
@@ -405,7 +404,6 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 class="btn btn-ghost"
                                 data-testid="btn-tournament-cancel"
                                 on:click=move |_| on_cancel.run(())
-                                disabled=move || tournament_editor_context.is_busy.get()
                             >
                                 "Cancel"
                             </button>
@@ -417,23 +415,11 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 data-testid="btn-tournament-save"
                                 on:click=move |_| tournament_editor_context.save_diff()
                                 disabled=move || {
-                                    !tournament_editor_context.is_changed.get()
-                                        || tournament_editor_context
+                                        tournament_editor_context
                                             .validation_result
                                             .with(|res| res.is_err())
-                                        || tournament_editor_context.is_busy.get()
                                 }
                             >
-                                <Show
-                                    when=move || !tournament_editor_context.is_busy.get()
-                                    fallback=|| {
-                                        view! {
-                                            <span class="loading loading-spinner">"Saving..."</span>
-                                        }
-                                    }
-                                >
-                                    <span>"Save Tournament"</span>
-                                </Show>
                             </button>
                         </div>
                     </div>

@@ -207,7 +207,7 @@ pub enum DependencyType {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Tournament {
     /// base of tournament
-    pub base: Option<TournamentBase>,
+    pub base: TournamentBase,
     /// map of tournament dependencies
     pub structure: DiGraphMap<Uuid, DependencyType>,
     /// stages associated with the tournament
@@ -216,10 +216,17 @@ pub struct Tournament {
     pub groups: HashMap<Uuid, Group>,
 }
 
+// tournament id and version are determined by the tournament base.
+impl ObjectIdVersion for Tournament {
+    fn get_id_version(&self) -> IdVersion {
+        self.base.get_id_version()
+    }
+}
+
 impl Tournament {
     pub fn new() -> Self {
         Tournament {
-            base: None,
+            base: TournamentBase::default(),
             structure: DiGraphMap::new(),
             stages: HashMap::new(),
             groups: HashMap::new(),
@@ -228,13 +235,11 @@ impl Tournament {
 
     // --- Generators for new Tournament Objects ---
 
-    /// Creates a new tournament base with a new ID and adds it to the tournament.
-    /// If a base is already present, it is replaced and old base is returned.
-    pub fn new_base(&mut self, sport_id: Uuid) -> Option<TournamentBase> {
-        let mut base = TournamentBase::new(IdVersion::new(Uuid::new_v4(), None));
+    /// Creates a new tournament base with a new ID and default settings.
+    pub fn new_base(&mut self, sport_id: Uuid) {
+        let mut base = TournamentBase::default();
         base.set_sport_id(sport_id);
-        // unwrap is safe here, as we just created a valid base with ID
-        self.set_base(base)
+        self.set_base(base);
     }
 
     /// Creates a new stage with a new ID and adds it to the tournament.
@@ -246,12 +251,8 @@ impl Tournament {
             // stage with this number already exists
             return true;
         }
-        let Some(tournament) = self.base.as_ref() else {
-            // cannot add stage without tournament base
-            return true;
-        };
-        let tournament_id = tournament.get_id();
-        let mut stage = Stage::new(IdVersion::new(Uuid::new_v4(), None));
+        let tournament_id = self.base.get_id();
+        let mut stage = Stage::default();
         // set required fields
         stage
             .set_number(stage_number)
@@ -262,58 +263,35 @@ impl Tournament {
     // ---- Setters for Tournament Objects after loading from database ----
 
     /// Setter for the tournament base.
-    /// If a base is already present, it is replaced and old base is returned.
-    pub fn set_base(&mut self, base: TournamentBase) -> Option<TournamentBase> {
-        let new_id = base.get_id_version().get_id();
+    pub fn set_base(&mut self, base: TournamentBase) {
+        let new_id = base.get_id();
 
         // Ensure Graph Node exists
         self.structure.add_node(new_id);
 
         // Set base
-        let old_base = self.clear_base();
-        self.base = Some(base);
+        self.base = base;
 
         // Validation: Check if changes invalidate child objects (e.g. Mode change -> fewer stages)
-        self.unlink_excess_stages(new_id);
-        old_base
-    }
-
-    /// Removes and returns the current tournament base, if any.
-    pub fn clear_base(&mut self) -> Option<TournamentBase> {
-        self.base.take()
+        self.unlink_excess_stages();
     }
 
     /// Sets the name of the tournament base.
-    /// Returns true if no base is present.
-    pub fn set_base_name(&mut self, name: impl Into<String>) -> bool {
-        let Some(base) = self.base.as_mut() else {
-            return true;
-        };
-        base.set_name(name);
-        false
+    pub fn set_base_name(&mut self, name: impl Into<String>) {
+        self.base.set_name(name);
     }
 
     /// Sets the number of entrants of the tournament base.
-    /// Returns true if no base is present.
-    pub fn set_base_num_entrants(&mut self, num_entrants: u32) -> bool {
-        let Some(base) = self.base.as_mut() else {
-            return true;
-        };
-        base.set_num_entrants(num_entrants);
-        false
+    pub fn set_base_num_entrants(&mut self, num_entrants: u32) {
+        self.base.set_num_entrants(num_entrants);
     }
 
     /// Sets the tournament mode of the tournament base.
-    /// Returns true if no base is present.
-    pub fn set_base_mode(&mut self, mode: TournamentMode) -> bool {
-        let Some(base) = self.base.as_mut() else {
-            return true;
-        };
-        base.set_tournament_mode(mode);
-        let base_id = base.get_id();
+    pub fn set_base_mode(&mut self, mode: TournamentMode) {
+        self.base.set_tournament_mode(mode);
 
         if matches!(
-            base.get_tournament_mode(),
+            self.base.get_tournament_mode(),
             TournamentMode::SingleStage | TournamentMode::SwissSystem { num_rounds: _ }
         ) {
             // Single stage tournament -> set number of groups as 1 for stage 0, if exists
@@ -323,25 +301,16 @@ impl Tournament {
         }
 
         // Validation: Check if changes invalidate child objects (e.g. Mode change -> fewer stages)
-        self.unlink_excess_stages(base_id);
-
-        false
+        self.unlink_excess_stages();
     }
 
-    pub fn set_base_num_rounds_swiss_system(&mut self, num_rounds_swiss: u32) -> bool {
-        let Some(base) = self.base.as_mut() else {
-            return true;
-        };
-        if !matches!(
-            base.get_tournament_mode(),
+    pub fn set_base_num_rounds_swiss_system(&mut self, num_rounds_swiss: u32) {
+        if matches!(
+            self.base.get_tournament_mode(),
             TournamentMode::SwissSystem { .. }
         ) {
-            // not in swiss mode
-            return true;
+            self.base.set_num_rounds_swiss_system(num_rounds_swiss);
         }
-        base.set_num_rounds_swiss_system(num_rounds_swiss);
-
-        false
     }
 
     /// Sets a stage to the state and links it to the tournament.
@@ -349,10 +318,6 @@ impl Tournament {
     /// it is not replaced and new stage is not added.
     /// Returns false if set was successful, true otherwise.
     pub fn set_stage(&mut self, stage: Stage) -> bool {
-        let Some(tournament) = self.base.as_ref() else {
-            // cannot add stage without tournament base
-            return true;
-        };
         // check for existing stage with same number but different ID
         let stage_id = stage.get_id();
         if let Some(stage) = self.get_stage_by_number(stage.get_number())
@@ -362,9 +327,9 @@ impl Tournament {
         }
 
         // Link to tournament root, which although adds the node if missing
-        let tournament_id = tournament.get_id();
+        let base_id = self.base.get_id();
         self.structure
-            .add_edge(tournament_id, stage_id, DependencyType::Stage);
+            .add_edge(base_id, stage_id, DependencyType::Stage);
 
         // Add to stages map
         self.stages.insert(stage_id, stage);
@@ -398,14 +363,12 @@ impl Tournament {
     }
 
     // --- Getters for keeping state of new tournament & dependencies ---
-    pub fn get_base(&self) -> Option<&TournamentBase> {
-        self.base.as_ref()
+    pub fn get_base(&self) -> &TournamentBase {
+        &self.base
     }
 
     pub fn get_stage_by_number(&self, stage_number: u32) -> Option<&Stage> {
-        let Some(start) = self.get_root_id() else {
-            return None;
-        };
+        let start = self.base.get_id();
         self.structure
             .edges_directed(start, Direction::Outgoing)
             .find_map(|(_source, target, edge)| {
@@ -446,12 +409,8 @@ impl Tournament {
 
     // --- Diff Collectors for Saving ---
 
-    pub fn collect_base_diff<'a>(
-        &'a self,
-        origin: &'a Tournament,
-    ) -> <Option<&'a TournamentBase> as Diffable<&'a TournamentBase>>::Diff {
-        // Option diffing ignores the filter
-        self.get_base().get_diff(&origin.get_base(), None)
+    pub fn collect_base_diff<'a>(&'a self, origin: &'a Tournament) -> Option<&'a TournamentBase> {
+        (self.get_base() != origin.get_base()).then(|| self.get_base())
     }
 
     /// Returns modified or new stages that are currently linked in the graph structure.
@@ -481,9 +440,7 @@ impl Tournament {
 
     /// Checks if there are any changes compared to the origin state.
     pub fn is_changed(&self, origin: &Tournament) -> bool {
-        let Some(start) = self.get_root_id() else {
-            return false;
-        };
+        let start = self.base.get_id();
 
         // Check root
         if self.get_base() != origin.get_base() {
@@ -522,20 +479,15 @@ impl Tournament {
     /// Validates the entire tournament structure.
     /// Returns Ok(()) if the entire structure represents a valid state that could be saved/started.
     /// Else returns all validation errors found.
-    pub fn validation(&self) -> ValidationResult<()> {
-        // 1. Root Tournament Check
-        let Some(tournament) = self.get_base() else {
-            return Ok(());
-        };
-
+    pub fn validate(&self) -> ValidationResult<()> {
         let mut errs = ValidationErrors::new();
 
-        // Assuming TournamentBase has a validate() method returning Result
-        if let Err(err) = tournament.validate() {
+        // 1. Root Tournament Check
+        if let Err(err) = self.base.validate() {
             errs.append(err);
         }
 
-        let start = tournament.get_id();
+        let start = self.base.get_id();
 
         // Traverse structure
         let mut bfs = Bfs::new(&self.structure, start);
@@ -547,7 +499,7 @@ impl Tournament {
                     DependencyType::Stage => {
                         // Stage needs Tournament context for validation (e.g. strict entrant limits)
                         if let Some(stage) = self.stages.get(&target)
-                            && let Err(err) = stage.validate(tournament)
+                            && let Err(err) = stage.validate(&self.base)
                         {
                             errs.append(err);
                         };
@@ -577,12 +529,7 @@ impl Tournament {
         _round_number: Option<u32>,
         _match_number: Option<u32>,
     ) -> Option<Vec<u32>> {
-        let Some(tournament) = self.get_base() else {
-            return None;
-        };
-        let Some(start) = self.get_root_id() else {
-            return None;
-        };
+        let start = self.base.get_id();
         let mut is_invalid = false;
         let mut valid_numbers = Vec::new();
         let mut queue: VecDeque<(Uuid, DependencyType)> = VecDeque::new();
@@ -596,7 +543,7 @@ impl Tournament {
                         break;
                     };
                     // check if stage number is valid
-                    if tournament.get_tournament_mode().get_num_of_stages() <= sn {
+                    if self.base.get_tournament_mode().get_num_of_stages() <= sn {
                         is_invalid = true;
                         break;
                     }
@@ -630,16 +577,14 @@ impl Tournament {
 
     // --- Helpers ---
 
-    /// Returns the root tournament ID, returning None if base is not set.
-    fn get_root_id(&self) -> Option<Uuid> {
-        self.get_base().map(|t| t.get_id())
+    /// Returns the root tournament ID.
+    fn get_id(&self) -> Uuid {
+        self.base.get_id()
     }
 
     /// Collects all valid IDs reachable from the root of structure.
     fn collect_ids_in_structure(&self) -> HashSet<Uuid> {
-        let Some(start) = self.get_root_id() else {
-            return HashSet::new();
-        };
+        let start = self.get_id();
 
         // Use BFS to traverse the entire dependency graph starting from root
         let bfs = Bfs::new(&self.structure, start);
@@ -647,33 +592,36 @@ impl Tournament {
     }
 
     /// Checks if the new tournament configuration requires removing stages.
-    fn unlink_excess_stages(&mut self, root_id: Uuid) {
-        if let Some(tournament) = self.get_base() {
-            let num_expected = tournament.get_tournament_mode().get_num_of_stages();
+    fn unlink_excess_stages(&mut self) {
+        let root_id = self.base.get_id();
+        let num_expected = self.base.get_tournament_mode().get_num_of_stages();
 
-            let excess_ids =
-                self.collect_excess_ids(root_id, DependencyType::Stage, &self.stages, num_expected);
+        let excess_ids =
+            self.collect_excess_ids(root_id, DependencyType::Stage, &self.stages, num_expected);
 
-            for stage_id in excess_ids {
-                // We only remove the graph edge. The object remains in the Map until strictly cleared,
-                // or we could remove it here. Removing edge hides it from the UI traversal.
-                self.structure.remove_edge(root_id, stage_id);
-            }
+        for stage_id in excess_ids {
+            // We only remove the graph edge. The object remains in the Map until strictly cleared,
+            // or we could remove it here. Removing edge hides it from the UI traversal.
+            self.structure.remove_edge(root_id, stage_id);
         }
     }
 
-    /// Checks if the new tournament configuration requires removing stages.
-    fn unlink_excess_groups(&mut self, root_id: Uuid) {
-        if let Some(stage) = self.stages.get(&root_id) {
+    /// Checks if the new tournament configuration requires removing groups.
+    fn unlink_excess_groups(&mut self, stage_id: Uuid) {
+        if let Some(stage) = self.stages.get(&stage_id) {
             let num_expected = stage.get_num_groups();
 
-            let excess_ids =
-                self.collect_excess_ids(root_id, DependencyType::Group, &self.groups, num_expected);
+            let excess_ids = self.collect_excess_ids(
+                stage_id,
+                DependencyType::Group,
+                &self.groups,
+                num_expected,
+            );
 
             for group_id in excess_ids {
                 // We only remove the graph edge. The object remains in the Map until strictly cleared,
                 // or we could remove it here. Removing edge hides it from the UI traversal.
-                self.structure.remove_edge(root_id, group_id);
+                self.structure.remove_edge(stage_id, group_id);
             }
         }
     }

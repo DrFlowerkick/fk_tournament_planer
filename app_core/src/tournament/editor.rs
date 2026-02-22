@@ -41,19 +41,17 @@ impl TournamentEditor {
     /// Returns the old origin base if any.
     pub fn new_base(&mut self, sport_id: Uuid) -> Option<TournamentBase> {
         // store old origin
-        let old_origin = self.origin.clear_base();
+        //let old_origin = self.origin.clear_base();
         // reset self
         *self = TournamentEditor::new();
         // create new base in local
         self.local.new_base(sport_id);
-        old_origin
+        //old_origin
+        None
     }
 
     pub fn new_stage(&mut self, stage_number: u32) -> bool {
-        let Some(base_id) = self.local.get_base().map(|b| b.get_id()) else {
-            // cannot create stage without base
-            return false;
-        };
+        let base_id = self.local.get_id();
         if let Some(origin_stage) = self.origin.get_stage_by_number(stage_number)
             && origin_stage.get_tournament_id() == base_id
         {
@@ -80,7 +78,8 @@ impl TournamentEditor {
     /// Returns the old origin base if any.
     pub fn set_base(&mut self, base: TournamentBase) -> Option<TournamentBase> {
         self.local.set_base(base.clone());
-        self.origin.set_base(base)
+        self.origin.set_base(base);
+        None
     }
 
     pub fn set_stage(&mut self, stage: Stage) -> bool {
@@ -105,11 +104,11 @@ impl TournamentEditor {
     }
 
     pub fn get_base(&self) -> Option<&TournamentBase> {
-        self.local.get_base()
+        Some(self.local.get_base())
     }
 
     pub fn get_origin_base(&self) -> Option<&TournamentBase> {
-        self.origin.get_base()
+        Some(self.origin.get_base())
     }
 
     pub fn get_active_stage_id(&self) -> Option<Uuid> {
@@ -153,7 +152,7 @@ impl TournamentEditor {
     pub fn validation(&self) -> ValidationResult<()> {
         // we only validate the local tournament, since origin stems
         // from the DB and is assumed valid
-        self.local.validation()
+        self.local.validate()
     }
 
     pub fn validate_object_numbers(
@@ -203,10 +202,10 @@ mod tests {
 
         // Assert
         assert!(
-            state.origin.get_base().is_some(),
+            state.get_base().is_some(),
             "Tournament should be set"
         );
-        assert!(state.origin.get_base().is_some(), "Origin should be set");
+        assert!(state.get_origin_base().is_some(), "Origin should be set");
         assert_eq!(
             state.local.get_base(),
             state.origin.get_base(),
@@ -300,11 +299,11 @@ mod tests {
             "State should be clean after syncing with server response"
         );
         assert_eq!(
-            state.origin.get_base().unwrap().get_name(),
+            state.get_origin_base().unwrap().get_name(),
             "Version 2 Draft"
         );
         assert_eq!(
-            state.local.get_base().unwrap().get_name(),
+            state.get_base().unwrap().get_name(),
             "Version 2 Draft"
         );
     }
