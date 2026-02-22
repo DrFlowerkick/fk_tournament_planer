@@ -42,7 +42,6 @@ pub fn EditPostalAddress() -> impl IntoView {
     let show_form = Signal::derive(move || {
         if let Some(id) = address_id.get()
             && let Some(editor) = postal_address_editor_map.get_editor(id)
-            && editor.local.try_get().flatten().is_some()
         {
             match edit_action.get() {
                 Some(EditAction::Edit) => editor.get_origin().is_some(),

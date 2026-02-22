@@ -1,6 +1,6 @@
 //! postal address editor context
 
-use crate::state::EditorContext;
+use crate::state::{EditorContextWithObjectIdVersion, EditorContext};
 use app_core::{
     PostalAddress,
     utils::{id_version::IdVersion, validation::ValidationResult},
@@ -13,7 +13,7 @@ use uuid::Uuid;
 pub struct PostalAddressEditorContext {
     // --- state & derived signals ---
     /// The local editable postal address.
-    pub local: RwSignal<Option<PostalAddress>>,
+    local: RwSignal<Option<PostalAddress>>,
     /// The original postal address loaded from storage.
     origin: RwSignal<Option<PostalAddress>>,
     /// Read slice of origin
@@ -56,6 +56,10 @@ pub struct PostalAddressEditorContext {
     pub country: Signal<Option<CountryCode>>,
     /// Callback for updating the country field
     pub set_country: Callback<Option<CountryCode>>,
+}
+
+impl EditorContextWithObjectIdVersion for PostalAddressEditorContext {
+    type ObjectTypeWithIdVersion = PostalAddress;
 }
 
 impl EditorContext for PostalAddressEditorContext {

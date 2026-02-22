@@ -11,11 +11,13 @@ use crate::{
     params::{GroupNumberParams, ParamQuery, StageNumberParams, TournamentBaseIdQuery},
     server_fn::tournament_editor::SaveTournamentEditorDiff,
     state::{
-        activity_tracker::ActivityTracker, error_state::PageErrorContext, toast_state::ToastContext,
+        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        toast_state::ToastContext,
     },
 };
 use app_core::{
-    Stage, TournamentEditor, TournamentMode, TournamentState, utils::validation::ValidationResult,
+    Stage, TournamentBase, TournamentEditor, TournamentMode, TournamentState,
+    utils::{validation::ValidationResult, id_version::IdVersion},
 };
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, hooks::use_navigate};
@@ -45,6 +47,12 @@ pub struct TournamentEditorContext {
     // --- Actions and Resources ---
     /// Action for saving tournament editor diffs
     save_diff: ServerAction<SaveTournamentEditorDiff>,
+
+    // --- Optimistic version handling for tournament ---
+    /// Signal for optimistic version handling to prevent unneeded server round after save
+    pub optimistic_version: Signal<Option<u32>>,
+    /// WriteSignal for optimistic version handling to prevent unneeded server round after save
+    set_optimistic_version: RwSignal<Option<u32>>,
 
     // --- Signals, Slices & Callbacks for Tournament Base ---
     /// Read slice for checking if base is initialized
@@ -89,9 +97,11 @@ pub struct TournamentEditorContext {
     pub is_group_initialized: Signal<bool>,
 }
 
-impl TournamentEditorContext {
+impl EditorContext for TournamentEditorContext {
+    type ObjectType = TournamentBase;
+
     /// Creates a new, empty context.
-    pub fn new(initialized_tournament_editor: TournamentEditor) -> Self {
+    fn new() -> Self {
         // --- refetch context ---
         let refetch_trigger = expect_context::<TournamentRefetchContext>();
 
@@ -113,12 +123,13 @@ impl TournamentEditorContext {
         });
 
         // --- core signals ---
-        let inner = RwSignal::new(initialized_tournament_editor);
+        let inner = RwSignal::new(TournamentEditor::new());
         let base_state = create_read_slice(inner, |inner| {
             inner.get_base().map(|b| b.get_tournament_state())
         });
         let is_changed = create_read_slice(inner, |inner| inner.is_changed());
         let validation_result = create_read_slice(inner, |inner| inner.validation());
+        let set_optimistic_version = RwSignal::new(None);
 
         // --- url parameters & queries & validation ---
         let tournament_id = TournamentBaseIdQuery::use_param_query();
@@ -337,6 +348,8 @@ impl TournamentEditorContext {
             is_busy,
             is_changed,
             validation_result,
+            optimistic_version: set_optimistic_version.into(),
+            set_optimistic_version,
             // url parameters & queries
             active_stage_number,
             // actions and resources
@@ -365,6 +378,57 @@ impl TournamentEditorContext {
         }
     }
 
+    /// Get the original postal address currently loaded in the editor context, if any.
+    fn get_origin(&self) -> Option<TournamentBase> {
+        self.inner.with(|editor| editor.get_origin_base().cloned())
+    }
+
+    /// Set the current tournament base in the editor context, updating all relevant state accordingly.
+    fn set_object(&self, base: TournamentBase) {
+        self.set_optimistic_version.set(base.get_version());
+        self.inner.update(|editor| {
+            editor.set_base(base);
+        });
+    }
+
+    /// Create a new tournament base object in the editor context, returning its unique identifier.
+    fn new_object(&self) -> Option<Uuid> {
+        let id = Uuid::new_v4();
+        let id_version = IdVersion::new(id, None);
+        let base = TournamentBase::new(id_version);
+        self.set_optimistic_version.set(None);
+        self.inner.update(|editor| {
+            editor.set_base(base);
+        });
+        Some(id)
+    }
+
+    /// Increment the optimistic version in the editor context to optimistically handle version updates after saving.
+    fn increment_optimistic_version(&self) {
+        self.set_optimistic_version.update(|v| {
+            if let Some(current_version) = v {
+                *current_version += 1
+            } else {
+                *v = Some(0)
+            }
+        });
+    }
+
+    /// If save fails, we need to reset the version to the original version to prevent version mismatch on next save attempt.
+    fn reset_version_to_origin(&self) {
+        let origin_version = self.inner.with(|editor| {
+            editor.get_origin_base().and_then(|b| b.get_version())
+        });
+        self.set_optimistic_version.set(origin_version);
+    }
+
+    /// Get the current optimistic version signal from the editor context, if any.
+    fn get_optimistic_version(&self) -> Signal<Option<u32>> {
+        self.optimistic_version
+    }
+}
+
+impl TournamentEditorContext {
     pub fn new_stage(&self, stage_number: u32) {
         self.inner.update(|te| {
             te.new_stage(stage_number);

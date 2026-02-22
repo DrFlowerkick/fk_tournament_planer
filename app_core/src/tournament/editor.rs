@@ -1,7 +1,9 @@
 //! editor module for tournament
 
-use super::*;
+//use super::*;
+use crate::{Group, Stage, Tournament, TournamentBase, utils::validation::ValidationResult};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// TournamentEditor holds the local editable tournament and the origin tournament for change tracking.
 /// This allows tracking changes made to the tournament during editing.
@@ -106,6 +108,10 @@ impl TournamentEditor {
         self.local.get_base()
     }
 
+    pub fn get_origin_base(&self) -> Option<&TournamentBase> {
+        self.origin.get_base()
+    }
+
     pub fn get_active_stage_id(&self) -> Option<Uuid> {
         self.active_stage_id
     }
@@ -167,8 +173,7 @@ impl TournamentEditor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::id_version::IdVersion;
-    use uuid::Uuid;
+    use crate::{TournamentMode, TournamentState, TournamentType, utils::id_version::IdVersion};
 
     /// Helper to create a valid tournament instance for testing using public API.
     fn create_test_tournament(name: &str) -> TournamentBase {

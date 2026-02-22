@@ -9,10 +9,12 @@ pub use sub_pages::*;
 use crate::home::dashboard::SportDashboard;
 use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
-    params::{ParamQuery, SportIdQuery},
+    params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery},
     state::{
         global_state::{GlobalState, GlobalStateStoreFields},
         toast_state::ToastContext,
+        tournament_editor::TournamentEditorContext,
+        object_table::ObjectEditorMapContext,
     },
 };
 use leptos::prelude::*;
@@ -28,10 +30,15 @@ use reactive_stores::Store;
 pub fn HomePage() -> impl IntoView {
     // get global state and sport plugin manager
     let toast_context = expect_context::<ToastContext>();
-
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
-    // setup hooks
+
+    // prepare tournament editor context
+    let tournament_editor_map =
+        ObjectEditorMapContext::<TournamentEditorContext, TournamentBaseIdQuery>::new();
+    provide_context(tournament_editor_map);
+    
+    // navigation hooks
     let navigate = use_navigate();
     let url = use_url();
 

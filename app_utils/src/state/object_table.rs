@@ -3,7 +3,7 @@
 use crate::{
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::ParamQueryId,
-    state::EditorContext,
+    state::{EditorContext, EditorContextWithObjectIdVersion},
 };
 use app_core::utils::traits::ObjectIdVersion;
 use leptos::prelude::*;
@@ -264,7 +264,23 @@ where
             .with(|selected_id| selected_id == &Some(id))
     }
 
-    pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
+    pub fn remove_editor(&self, id: Uuid) {
+        self.editor_map.update(|em| {
+            em.remove(&id);
+        });
+    }
+
+    pub fn trigger_refetch(&self) {
+        self.refetch_trigger.update(|v| *v += 1);
+    }
+}
+
+impl<OE, Q> ObjectEditorMapContext<OE, Q>
+where
+    OE: EditorContextWithObjectIdVersion,
+    Q: ParamQueryId,
+{
+    pub fn update_object_in_editor(&self, object: &OE::ObjectTypeWithIdVersion) {
         self.editor_map.with(|em| {
             if let Some(editor) = em.get(&object.get_id_version().get_id()) {
                 let optimistic_version = editor.get_optimistic_version().get();
@@ -280,13 +296,4 @@ where
         });
     }
 
-    pub fn remove_editor(&self, id: Uuid) {
-        self.editor_map.update(|em| {
-            em.remove(&id);
-        });
-    }
-
-    pub fn trigger_refetch(&self) {
-        self.refetch_trigger.update(|v| *v += 1);
-    }
 }

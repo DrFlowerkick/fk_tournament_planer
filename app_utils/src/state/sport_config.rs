@@ -3,7 +3,7 @@
 use crate::{
     params::{ParamQuery, SportIdQuery},
     state::{
-        EditorContext,
+        EditorContext, EditorContextWithObjectIdVersion,
         global_state::{GlobalState, GlobalStateStoreFields},
     },
 };
@@ -47,6 +47,10 @@ pub struct SportConfigEditorContext {
     pub config: Signal<Option<Value>>,
     /// SignalSetter for updating the config field
     pub set_config: SignalSetter<Value>,
+}
+
+impl EditorContextWithObjectIdVersion for SportConfigEditorContext {
+    type ObjectTypeWithIdVersion = SportConfig;
 }
 
 impl EditorContext for SportConfigEditorContext {
