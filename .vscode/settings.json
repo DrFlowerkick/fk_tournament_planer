@@ -126,5 +126,8 @@
     "**/*.lock",
     "LICENSE",
     "./coverage/**"
-  ]
+  ],
+  "[toml]": {
+    "editor.defaultFormatter": "tamasfe.even-better-toml"
+  }
 }

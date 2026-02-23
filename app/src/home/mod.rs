@@ -14,7 +14,7 @@ use app_utils::{
         global_state::{GlobalState, GlobalStateStoreFields},
         object_table::ObjectEditorMapContext,
         toast_state::ToastContext,
-        tournament_editor::TournamentEditorContext,
+        tournament::TournamentEditorContext,
     },
 };
 use leptos::prelude::*;

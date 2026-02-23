@@ -1,11 +1,13 @@
 //! Postal Address Edit Module
 
+use app_core::PostalAddress;
 #[cfg(feature = "test-mock")]
-use app_utils::server_fn::postal_address::{SavePostalAddressFormData, save_postal_address_inner};
+use app_utils::server_fn::postal_address::{
+    SavePostalAddress, SavePostalAddressFormData, save_postal_address_inner,
+};
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, TextInput},
     enum_utils::EditAction,
-    error::{map_db_unique_violation_to_field_error, strategy::handle_write_error},
     hooks::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{
@@ -14,11 +16,9 @@ use app_utils::{
         use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{AddressIdQuery, EditActionParams, FilterNameQuery, ParamQuery},
-    server_fn::postal_address::SavePostalAddress,
     state::{
-        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        object_table::ObjectEditorMapContext, postal_address::PostalAddressEditorContext,
-        toast_state::ToastContext,
+        EditorContext, object_table::ObjectEditorMapContext,
+        postal_address::PostalAddressEditorContext,
     },
 };
 use leptos::{html::H2, prelude::*};
@@ -32,6 +32,7 @@ pub fn EditPostalAddress() -> impl IntoView {
         url_is_matched_route,
         ..
     } = use_query_navigation();
+
     let edit_action = EditActionParams::use_param_query();
     let address_id = AddressIdQuery::use_param_query();
 
@@ -94,13 +95,13 @@ pub fn EditPostalAddress() -> impl IntoView {
                         </button>
                     </div>
                     <Show
-                        when=move || show_form.get()
+                        when=move || show_form.try_get().unwrap_or(false)
                         fallback=move || {
                             view! {
                                 <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
                                     <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
                                     <p class="text-2xl font-bold text-center">
-                                        {move || match edit_action.get() {
+                                        {move || match edit_action.try_get().flatten() {
                                             Some(EditAction::New) => {
                                                 "Press 'New Postal Address' to create a new postal address."
                                             }
@@ -117,13 +118,23 @@ pub fn EditPostalAddress() -> impl IntoView {
                             }
                         }
                     >
-                        {move || {
-                            postal_address_editor_map
-                                .get_editor(address_id.get().unwrap_or_default())
-                                .map(|editor| {
-                                    view! { <PostalAddressForm postal_address_editor=editor /> }
-                                })
-                        }}
+                        // Using For forces the view to be recreated when the id changes
+                        <For
+                            each=move || {
+                                address_id
+                                    .get()
+                                    .and_then(|current_id| {
+                                        postal_address_editor_map
+                                            .get_editor(current_id)
+                                            .map(|editor| (current_id, editor))
+                                    })
+                                    .into_iter()
+                            }
+                            key=|(id, _)| *id
+                            children=move |(_, editor)| {
+                                view! { <PostalAddressForm postal_address_editor=editor /> }
+                            }
+                        />
                     </Show>
                 </div>
             </div>
@@ -139,6 +150,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
+
     let edit_action = EditActionParams::use_param_query();
     let intent = Signal::derive(move || {
         edit_action.get().map(|action| match action {
@@ -147,86 +159,39 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
         })
     });
 
-    // --- global state ---
-    let toast_ctx = expect_context::<ToastContext>();
-    let page_err_ctx = expect_context::<PageErrorContext>();
-    let component_id = StoredValue::new(Uuid::new_v4());
-    let activity_tracker = expect_context::<ActivityTracker>();
-
-    // remove errors on unmount
-    on_cleanup(move || {
-        page_err_ctx.clear_all_for_component(component_id.get_value());
-        activity_tracker.remove_component(component_id.get_value());
-    });
-
-    // --- Server Actions ---
-    let save_postal_address = ServerAction::<SavePostalAddress>::new();
-    let save_postal_address_pending = save_postal_address.pending();
-    activity_tracker.track_pending_memo(component_id.get_value(), save_postal_address_pending);
-
-    // ToDo: with auto save and parallel editing, refetch is done automatically. Delete this dummy refetch.
-    let refetch = Callback::new(move |_| {});
-
-    // handle save result
-    Effect::new(move || {
-        if let Some(spa_result) = save_postal_address.value().get()
-            && let Some(edit_action) = edit_action.get()
+    let post_save_callback = Callback::new(move |pa: PostalAddress| {
+        if let Some(edit_action) = edit_action.get()
+            && matches!(edit_action, EditAction::New | EditAction::Copy)
         {
-            save_postal_address.clear();
-            match spa_result {
-                Ok(pa) => {
-                    postal_address_editor.set_object(pa.clone());
-                    if matches!(edit_action, EditAction::New | EditAction::Copy) {
-                        let pa_id = pa.get_id().to_string();
-                        let key_value = vec![
-                            (AddressIdQuery::KEY, pa_id.as_str()),
-                            (FilterNameQuery::KEY, pa.get_name()),
-                        ];
-                        let nav_url = url_matched_route_update_queries(
-                            key_value,
-                            MatchedRouteHandler::ReplaceSegment(
-                                EditAction::Edit.to_string().as_str(),
-                            ),
-                        );
-                        navigate(
-                            &nav_url,
-                            NavigateOptions {
-                                scroll: false,
-                                ..Default::default()
-                            },
-                        );
-                    }
-                }
-                Err(err) => {
-                    // version reset for parallel editing
-                    postal_address_editor.reset_version_to_origin();
-                    // transform unique violation error into Validation Error for name, if any
-                    if let Some(object_id) = postal_address_editor.id.get()
-                        && let Some(field_error) =
-                            map_db_unique_violation_to_field_error(&err, object_id, "name")
-                    {
-                        postal_address_editor
-                            .set_unique_violation_error
-                            .set(Some(field_error));
-                    } else {
-                        handle_write_error(
-                            &page_err_ctx,
-                            &toast_ctx,
-                            component_id.get_value(),
-                            &err,
-                            refetch,
-                        );
-                    }
-                }
-            }
+            let pa_id = pa.get_id().to_string();
+            let key_value = vec![
+                (AddressIdQuery::KEY, pa_id.as_str()),
+                (FilterNameQuery::KEY, pa.get_name()),
+            ];
+            // we need to use extend here, because the callback is executed in the route of
+            // the list view
+            let nav_url = url_matched_route_update_queries(
+                key_value,
+                MatchedRouteHandler::Extend(EditAction::Edit.to_string().as_str()),
+            );
+            navigate(
+                &nav_url,
+                NavigateOptions {
+                    scroll: false,
+                    ..Default::default()
+                },
+            );
         }
     });
+    postal_address_editor
+        .post_save_callback
+        .set_value(Some(post_save_callback));
 
     view! {
         // --- Address Form ---
         <div data-testid="form-address">
             <ActionForm
-                action=save_postal_address
+                action=postal_address_editor.save_postal_address
                 on:submit:capture=move |ev| {
                     #[cfg(feature = "test-mock")]
                     {

@@ -201,10 +201,7 @@ mod tests {
         state.set_base(t.clone());
 
         // Assert
-        assert!(
-            state.get_base().is_some(),
-            "Tournament should be set"
-        );
+        assert!(state.get_base().is_some(), "Tournament should be set");
         assert!(state.get_origin_base().is_some(), "Origin should be set");
         assert_eq!(
             state.local.get_base(),
@@ -302,10 +299,7 @@ mod tests {
             state.get_origin_base().unwrap().get_name(),
             "Version 2 Draft"
         );
-        assert_eq!(
-            state.get_base().unwrap().get_name(),
-            "Version 2 Draft"
-        );
+        assert_eq!(state.get_base().unwrap().get_name(), "Version 2 Draft");
     }
 
     #[test]

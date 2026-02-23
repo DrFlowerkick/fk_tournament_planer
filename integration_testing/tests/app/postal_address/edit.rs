@@ -25,8 +25,8 @@ use wasm_bindgen_test::*;
 fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
     let postal_address_editor_map =
         ObjectEditorMapContext::<PostalAddressEditorContext, AddressIdQuery>::new();
-    let editor = PostalAddressEditorContext::new();
     let existing_id = pa.get_id();
+    let editor = PostalAddressEditorContext::new(Some(existing_id));
     postal_address_editor_map.insert_editor(existing_id, editor);
     postal_address_editor_map
         .set_selected_id
@@ -36,7 +36,7 @@ fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
         EditAction::New => {
             let new_id = postal_address_editor_map
                 .new_editor
-                .run(())
+                .run(None)
                 .expect("Failed to create new postal address object");
             postal_address_editor_map.set_selected_id.run(Some(new_id));
         }
@@ -45,7 +45,7 @@ fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
         }
         EditAction::Copy => {
             postal_address_editor_map.update_object_in_editor(&pa);
-            let editor = PostalAddressEditorContext::new();
+            let editor = PostalAddressEditorContext::new(None);
             editor.set_object(pa.clone());
             let new_id = editor
                 .copy_object(pa)

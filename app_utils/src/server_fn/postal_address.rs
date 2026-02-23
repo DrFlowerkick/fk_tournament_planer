@@ -146,7 +146,6 @@ pub async fn save_postal_address_inner(
     let mut_pa_core = core.get_mut();
 
     // Interpret intent
-    // ToDo: we have to refactor this when switching to auto save.
     match form.intent.as_deref() {
         Some("update") => {
             // set id and version previously loaded

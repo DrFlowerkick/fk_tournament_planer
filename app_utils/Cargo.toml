@@ -7,13 +7,24 @@ license = "MIT"
 [features]
 default = []
 test-mock = []
-hydrate = ["leptos/hydrate", "sport_plugin_manager/hydrate", "uuid/js"]
-ssr = ["leptos/ssr", "leptos_router/ssr", "sport_plugin_manager/ssr"]
+hydrate = [
+    "leptos/hydrate",
+    "sport_plugin_manager/hydrate",
+    "cr_leptos_axum_socket/hydrate",
+    "uuid/js",
+]
+ssr = [
+    "leptos/ssr",
+    "leptos_router/ssr",
+    "sport_plugin_manager/ssr",
+    "cr_leptos_axum_socket/ssr",
+]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 app_core = { path = "../app_core" }
+cr_leptos_axum_socket = { path = "../cr_leptos_axum_socket" }
 displaydoc.workspace = true
 gloo-timers.workspace = true
 http.workspace = true

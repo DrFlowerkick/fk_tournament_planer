@@ -3,6 +3,8 @@
 //! This module provides a context wrapper around `TournamentEditor` to ensure
 //! efficient state updates via `RwSignal` without unnecessary cloning.
 
+pub mod base;
+
 use crate::{
     error::strategy::handle_write_error,
     hooks::use_query_navigation::{
@@ -104,9 +106,10 @@ pub struct TournamentEditorContext {
 
 impl EditorContext for TournamentEditorContext {
     type ObjectType = Tournament;
+    type NewEditorOptions = ();
 
     /// Creates a new, empty context.
-    fn new() -> Self {
+    fn new(_: ()) -> Self {
         // --- refetch context ---
         // ToDo: we probably do not need this anymore
         let refetch_trigger = expect_context::<TournamentRefetchContext>();
@@ -364,8 +367,9 @@ impl EditorContext for TournamentEditorContext {
                     .map(|stage| stage.get_num_groups())
             },
             move |local, num_groups: u32| {
-                if let Some(id) = active_stage_id.get() &&
-                    let Some(t) = local.as_mut() {
+                if let Some(id) = active_stage_id.get()
+                    && let Some(t) = local.as_mut()
+                {
                     t.set_stage_number_of_groups(id, num_groups);
                 }
             },
@@ -425,12 +429,14 @@ impl EditorContext for TournamentEditorContext {
 
     /// Get the original tournament currently loaded in the editor context, if any.
     fn get_origin(&self) -> Option<Tournament> {
-        self.origin.with(|editor| editor.as_ref().map(|t| t.clone()))
+        self.origin
+            .with(|editor| editor.as_ref().map(|t| t.clone()))
     }
 
     /// Set the current tournament in the editor context, updating all relevant state accordingly.
     fn set_object(&self, tournament: Tournament) {
-        self.set_optimistic_version.set(tournament.get_base().get_version());
+        self.set_optimistic_version
+            .set(tournament.get_base().get_version());
         self.local.set(Some(tournament.clone()));
         self.origin.set(Some(tournament));
     }

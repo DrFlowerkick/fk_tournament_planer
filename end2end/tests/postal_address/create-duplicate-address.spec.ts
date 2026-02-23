@@ -51,7 +51,7 @@ test.describe("Uniqueness constraint violation", () => {
     await fillFields(page, duplicate);
 
     // -------------------- Assert: Duplicate validation error appears --------------------
-    await expectFieldValidity(PA.form.inputName, duplicate.name, /*invalid*/ true);
+    await expectFieldValidity(PA.form.inputName, duplicate.name, true);
 
     // The form should still be open with the duplicate data (not navigated away)
     await expect(PA.form.inputName).toHaveValue(duplicate.name);

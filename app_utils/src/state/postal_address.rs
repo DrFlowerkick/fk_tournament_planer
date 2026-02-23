@@ -1,13 +1,23 @@
 //! postal address editor context
 
-use crate::state::{EditorContext};
+use crate::{
+    error::{
+        AppError, AppResult, map_db_unique_violation_to_field_error, strategy::handle_write_error,
+    },
+    server_fn::postal_address::{SavePostalAddress, load_postal_address},
+    state::{
+        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        toast_state::ToastContext,
+    },
+};
 use app_core::{
-    PostalAddress,
+    CrTopic, PostalAddress,
     utils::{
         id_version::IdVersion,
         validation::{FieldError, ValidationResult},
     },
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use isocountry::CountryCode;
 use leptos::prelude::*;
 use uuid::Uuid;
@@ -59,13 +69,34 @@ pub struct PostalAddressEditorContext {
     pub country: Signal<Option<CountryCode>>,
     /// Callback for updating the country field
     pub set_country: Callback<Option<CountryCode>>,
+
+    // --- Resource & server action state ---
+    /// Resource for loading the postal address based on the given id in the editor options
+    pub load_postal_address: LocalResource<AppResult<Option<PostalAddress>>>,
+    /// Server action for saving the postal address based on the current state of the editor context
+    pub save_postal_address: ServerAction<SavePostalAddress>,
+    /// Callback after successful save to e.g. navigate to the new postal address or show a success toast.
+    pub post_save_callback: StoredValue<Option<Callback<PostalAddress>>>,
 }
 
 impl EditorContext for PostalAddressEditorContext {
     type ObjectType = PostalAddress;
+    type NewEditorOptions = Option<Uuid>;
 
     /// Create a new `PostalAddressEditorContext`.
-    fn new() -> Self {
+    fn new(res_id: Option<Uuid>) -> Self {
+        // ---- global state & context ----
+        let toast_ctx = expect_context::<ToastContext>();
+        let page_err_ctx = expect_context::<PageErrorContext>();
+        let activity_tracker = expect_context::<ActivityTracker>();
+        let component_id = StoredValue::new(Uuid::new_v4());
+        // remove errors on unmount
+        on_cleanup(move || {
+            page_err_ctx.clear_all_for_component(component_id.get_value());
+            activity_tracker.remove_component(component_id.get_value());
+        });
+
+        // ---- signals & slices ----
         let local = RwSignal::new(None::<PostalAddress>);
         let origin = RwSignal::new(None::<PostalAddress>);
         let (unique_violation_error, set_unique_violation_error) = signal(None::<FieldError>);
@@ -93,7 +124,6 @@ impl EditorContext for PostalAddressEditorContext {
         let version = create_read_slice(local, move |local| {
             local.as_ref().and_then(|pa| pa.get_version())
         });
-        let set_optimistic_version = RwSignal::new(None::<u32>);
         let (name, set_name) = create_slice(
             local,
             |local| local.as_ref().map(|pa| pa.get_name().to_string()),
@@ -172,6 +202,105 @@ impl EditorContext for PostalAddressEditorContext {
         let set_country = Callback::new(move |country: Option<CountryCode>| {
             set_country.set(country);
         });
+
+        // ---- address resource ----
+        let (resource_id, set_resource_id) = signal(res_id);
+        let set_optimistic_version = RwSignal::new(None::<u32>);
+
+        // resource to load postal address
+        // since we render PostalAddressTableRow inside the Transition block of ListPostalAddresses,
+        // we do not need to use another Transition block to load the postal address.
+        /*let address_res = Resource::new(
+            move || resource_id.get(),
+            move |maybe_id| async move {
+                if let Some(id) = maybe_id {
+                    match activity_tracker
+                        .track_activity_wrapper(component_id.get_value(), load_postal_address(id))
+                        .await
+                    {
+                        Ok(None) => {
+                            Err(AppError::ResourceNotFound("Postal Address".to_string(), id))
+                        }
+                        res => res,
+                    }
+                } else {
+                    Ok(None)
+                }
+            },
+        );*/
+        // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
+        // errors occur until the page is fully rendered and the app "transformed" into a SPA). For this reason
+        // we use a LocalResource here, which does not cause hydration errors.
+        // ToDo: investigate how to use Resource without hydration errors, since Resource provides better
+        // ergonomics for loading states and error handling.
+        let load_postal_address = LocalResource::new(move || async move {
+            if let Some(id) = resource_id.get() {
+                match activity_tracker
+                    .track_activity_wrapper(component_id.get_value(), load_postal_address(id))
+                    .await
+                {
+                    Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
+                    res => res,
+                }
+            } else {
+                Ok(None)
+            }
+        });
+
+        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::Address(id)));
+        let refetch = Callback::new(move |()| {
+            load_postal_address.refetch();
+        });
+        use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
+
+        // ---- address server action ----
+        let save_postal_address = ServerAction::<SavePostalAddress>::new();
+        let save_postal_address_pending = save_postal_address.pending();
+        activity_tracker.track_pending_memo(component_id.get_value(), save_postal_address_pending);
+
+        let post_save_callback = StoredValue::new(None::<Callback<PostalAddress>>);
+
+        // ToDo: with auto save and parallel editing, refetch is done automatically. Delete this dummy refetch.
+        let refetch = Callback::new(move |_| {});
+
+        // handle save result
+        Effect::new(move || {
+            if let Some(spa_result) = save_postal_address.value().get() {
+                save_postal_address.clear();
+                match spa_result {
+                    Ok(pa) => {
+                        set_resource_id.set(Some(pa.get_id()));
+                        set_optimistic_version.set(pa.get_version());
+                        local.set(Some(pa.clone()));
+                        origin.set(Some(pa.clone()));
+
+                        if let Some(callback) = post_save_callback.get_value() {
+                            callback.run(pa);
+                        }
+                    }
+                    Err(err) => {
+                        // version reset for parallel editing
+                        set_optimistic_version.set(version.get());
+                        // transform unique violation error into Validation Error for name, if any
+                        if let Some(object_id) = id.get()
+                            && let Some(field_error) =
+                                map_db_unique_violation_to_field_error(&err, object_id, "name")
+                        {
+                            set_unique_violation_error.set(Some(field_error));
+                        } else {
+                            handle_write_error(
+                                &page_err_ctx,
+                                &toast_ctx,
+                                component_id.get_value(),
+                                &err,
+                                refetch,
+                            );
+                        }
+                    }
+                }
+            }
+        });
+
         PostalAddressEditorContext {
             local,
             origin,
@@ -194,6 +323,9 @@ impl EditorContext for PostalAddressEditorContext {
             set_region,
             country,
             set_country,
+            load_postal_address,
+            save_postal_address,
+            post_save_callback,
         }
     }
 

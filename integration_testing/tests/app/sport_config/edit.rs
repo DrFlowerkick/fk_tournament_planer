@@ -24,7 +24,7 @@ use wasm_bindgen_test::*;
 fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
     let sport_config_editor_map =
         ObjectEditorMapContext::<SportConfigEditorContext, SportConfigIdQuery>::new();
-    let editor = SportConfigEditorContext::new();
+    let editor = SportConfigEditorContext::new(());
     let existing_id = sc.get_id();
     sport_config_editor_map.insert_editor(existing_id, editor);
     sport_config_editor_map
@@ -44,7 +44,7 @@ fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
         }
         EditAction::Copy => {
             sport_config_editor_map.update_object_in_editor(&sc);
-            let editor = SportConfigEditorContext::new();
+            let editor = SportConfigEditorContext::new(());
             editor.set_object(sc.clone());
             let new_id = editor
                 .copy_object(sc)

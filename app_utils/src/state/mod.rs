@@ -7,7 +7,7 @@ pub mod object_table;
 pub mod postal_address;
 pub mod sport_config;
 pub mod toast_state;
-pub mod tournament_editor;
+pub mod tournament;
 
 use app_core::utils::traits::ObjectIdVersion;
 use leptos::prelude::*;
@@ -15,9 +15,10 @@ use uuid::Uuid;
 
 pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
     type ObjectType: ObjectIdVersion + Clone;
+    type NewEditorOptions;
 
     /// Create a new instance of the editor context, initializing all necessary state.
-    fn new() -> Self;
+    fn new(options: Self::NewEditorOptions) -> Self;
     /// Get the original object currently loaded in the editor context, if any.
     fn get_origin(&self) -> Option<Self::ObjectType>;
     /// Set the current object in the editor context, updating all relevant state accordingly.
@@ -42,4 +43,3 @@ pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
     /// Get the current optimistic version signal from the editor context, if any.
     fn get_optimistic_version(&self) -> Signal<Option<u32>>;
 }
-

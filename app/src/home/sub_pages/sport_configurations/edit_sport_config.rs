@@ -127,13 +127,13 @@ pub fn EditSportConfiguration() -> impl IntoView {
                         </button>
                     </div>
                     <Show
-                        when=move || show_form.get()
+                        when=move || show_form.try_get().unwrap_or(false)
                         fallback=move || {
                             view! {
                                 <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
                                     <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
                                     <p class="text-2xl font-bold text-center">
-                                        {move || match edit_action.get() {
+                                        {move || match edit_action.try_get().flatten() {
                                             Some(EditAction::New) => {
                                                 "Press 'New Sport Configuration' to create a new sport configuration."
                                             }
@@ -150,13 +150,23 @@ pub fn EditSportConfiguration() -> impl IntoView {
                             }
                         }
                     >
-                        {move || {
-                            sport_config_editor_map
-                                .get_editor(sport_config_id.get().unwrap_or_default())
-                                .map(|editor| {
-                                    view! { <SportConfigForm sport_config_editor=editor /> }
-                                })
-                        }}
+                        // Using For forces the view to be recreated when the id changes
+                        <For
+                            each=move || {
+                                sport_config_id
+                                    .get()
+                                    .and_then(|current_id| {
+                                        sport_config_editor_map
+                                            .get_editor(current_id)
+                                            .map(|editor| (current_id, editor))
+                                    })
+                                    .into_iter()
+                            }
+                            key=|(id, _)| *id
+                            children=move |(_, editor)| {
+                                view! { <SportConfigForm sport_config_editor=editor /> }
+                            }
+                        />
                     </Show>
                 </div>
             </div>

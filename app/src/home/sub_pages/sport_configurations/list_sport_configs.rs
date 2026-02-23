@@ -356,7 +356,7 @@ fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
     // --- local context ---
     let sport_config_editor_map =
         expect_context::<ObjectEditorMapContext<SportConfigEditorContext, SportConfigIdQuery>>();
-    let sport_config_editor = SportConfigEditorContext::new();
+    let sport_config_editor = SportConfigEditorContext::new(());
     sport_config_editor_map.insert_editor(id.get(), sport_config_editor);
     let sport_config_id = SportConfigIdQuery::use_param_query();
 

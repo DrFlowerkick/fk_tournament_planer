@@ -20,7 +20,7 @@ use app_utils::{
         EditorContext,
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
-        tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
+        tournament::{TournamentEditorContext, TournamentRefetchContext},
     },
 };
 use leptos::{html::H2, prelude::*};
@@ -154,7 +154,7 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     };
 
     // --- Initialize context for creating and editing tournaments ---
-    let tournament_editor_context = TournamentEditorContext::new();
+    let tournament_editor_context = TournamentEditorContext::new(());
 
     provide_context(tournament_editor_context);
 
@@ -415,12 +415,11 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
                                 data-testid="btn-tournament-save"
                                 on:click=move |_| tournament_editor_context.save_diff()
                                 disabled=move || {
-                                        tournament_editor_context
-                                            .validation_result
-                                            .with(|res| res.is_err())
+                                    tournament_editor_context
+                                        .validation_result
+                                        .with(|res| res.is_err())
                                 }
-                            >
-                            </button>
+                            ></button>
                         </div>
                     </div>
                 </div>

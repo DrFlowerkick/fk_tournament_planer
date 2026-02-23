@@ -134,9 +134,9 @@ where
     /// Callback for updating the currently selected object editor id
     pub set_selected_id: Callback<Option<Uuid>>,
     /// Callback for creating a new object editor
-    pub new_editor: Callback<(), Option<Uuid>>,
+    pub new_editor: Callback<OE::NewEditorOptions, Option<Uuid>>,
     /// Callback for copying the current object editor and selecting the copy
-    pub copy_editor: Callback<(), Option<Uuid>>,
+    pub copy_editor: Callback<OE::NewEditorOptions, Option<Uuid>>,
     /// Trigger to refetch data from server
     refetch_trigger: RwSignal<u64>,
     /// Read slice for getting the current state of the object editor map
@@ -204,8 +204,8 @@ where
                 );
             }
         });
-        let new_editor = Callback::new(move |()| {
-            let editor = OE::new();
+        let new_editor = Callback::new(move |options: OE::NewEditorOptions| {
+            let editor = OE::new(options);
             if let Some(new_id) = editor.new_object() {
                 editor_map.update(|em| {
                     em.insert(new_id, editor);
@@ -215,8 +215,8 @@ where
                 None
             }
         });
-        let copy_editor = Callback::new(move |()| {
-            let editor = OE::new();
+        let copy_editor = Callback::new(move |options: OE::NewEditorOptions| {
+            let editor = OE::new(options);
             if let Some(current_id) = selected_id.get()
                 && let Some(origin) =
                     editor_map.with(|em| em.get(&current_id).and_then(|ed| ed.get_origin()))
@@ -252,7 +252,9 @@ where
     }
 
     pub fn get_editor(&self, id: Uuid) -> Option<OE> {
-        self.editor_map.with(|em| em.get(&id).copied())
+        self.editor_map
+            .try_with(|em| em.get(&id).copied())
+            .flatten()
     }
 
     pub fn get_editor_untracked(&self, id: Uuid) -> Option<OE> {

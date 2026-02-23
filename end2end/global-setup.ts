@@ -101,7 +101,7 @@ export default async () => {
     console.log("✅ Postal Addresses Seeded");
 
     console.log("🌱 Seeding Tournaments...");
-    await seedTournaments(page);
+    //await seedTournaments(page);
     console.log("✅ Tournaments Seeded");
   } catch (e) {
     console.error("❌ Seeding failed:", e);

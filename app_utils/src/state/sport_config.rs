@@ -56,9 +56,10 @@ pub struct SportConfigEditorContext {
 
 impl EditorContext for SportConfigEditorContext {
     type ObjectType = SportConfig;
+    type NewEditorOptions = ();
 
     /// Create a new `SportConfigEditorContext`.
-    fn new() -> Self {
+    fn new(_: ()) -> Self {
         let local = RwSignal::new(None::<SportConfig>);
         let origin = RwSignal::new(None);
 

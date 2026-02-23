@@ -120,6 +120,7 @@ name = "app_utils"
 version = "0.11.0"
 dependencies = [
  "app_core",
+ "cr_leptos_axum_socket",
  "displaydoc",
  "gloo-timers",
  "http",

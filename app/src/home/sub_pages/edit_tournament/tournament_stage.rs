@@ -19,7 +19,7 @@ use app_utils::{
     state::{
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
-        tournament_editor::{TournamentEditorContext, TournamentRefetchContext},
+        tournament::{TournamentEditorContext, TournamentRefetchContext},
     },
 };
 use leptos::{html::H2, prelude::*};
