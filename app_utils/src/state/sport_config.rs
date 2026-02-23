@@ -1,19 +1,27 @@
 //! sport configuration editor context
 
 use crate::{
+    error::{
+        AppError, AppResult, map_db_unique_violation_to_field_error, strategy::handle_write_error,
+    },
     params::{ParamQuery, SportIdQuery},
+    server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
         EditorContext,
+        activity_tracker::ActivityTracker,
+        error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
+        toast_state::ToastContext,
     },
 };
 use app_core::{
-    SportConfig,
+    CrTopic, SportConfig,
     utils::{
         id_version::IdVersion,
         validation::{FieldError, ValidationResult},
     },
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::prelude::*;
 use reactive_stores::Store;
 use serde_json::Value;
@@ -28,8 +36,6 @@ pub struct SportConfigEditorContext {
     origin: RwSignal<Option<SportConfig>>,
     /// Read slice of local sport configuration for use in editor components
     pub local_read_only: Signal<Option<SportConfig>>,
-    /// Read slice for checking if there are unsaved changes
-    pub is_changed: Signal<bool>,
     /// Read slice for accessing the validation result of the tournament
     pub validation_result: Signal<ValidationResult<()>>,
     /// WriteSignal for setting a unique violation error on the name field, if any
@@ -40,10 +46,6 @@ pub struct SportConfigEditorContext {
     pub id: Signal<Option<Uuid>>,
     /// Signal slice for the version field
     pub version: Signal<Option<u32>>,
-    /// Signal for optimistic version handling to prevent unneeded server round after save
-    pub optimistic_version: Signal<Option<u32>>,
-    /// WriteSignal for optimistic version handling to prevent unneeded server round after save
-    set_optimistic_version: RwSignal<Option<u32>>,
     /// Signal slice for the name field
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
@@ -52,18 +54,38 @@ pub struct SportConfigEditorContext {
     pub config: Signal<Option<Value>>,
     /// SignalSetter for updating the config field
     pub set_config: SignalSetter<Value>,
+
+    // --- Resource & server action state ---
+    /// WriteSignal for optimistic version handling to prevent unneeded server round after save
+    set_optimistic_version: RwSignal<Option<u32>>,
+    /// Resource for loading the sport configuration based on the given id in the editor options
+    pub load_sport_config: LocalResource<AppResult<Option<SportConfig>>>,
+    /// Server action for saving the sport configuration based on the current state of the editor context
+    pub save_sport_config: ServerAction<SaveSportConfig>,
+    /// Callback after successful save to e.g. navigate to the new sport configuration or show a success toast.
+    pub post_save_callback: StoredValue<Option<Callback<SportConfig>>>,
 }
 
 impl EditorContext for SportConfigEditorContext {
     type ObjectType = SportConfig;
-    type NewEditorOptions = ();
+    type NewEditorOptions = Option<Uuid>;
 
     /// Create a new `SportConfigEditorContext`.
-    fn new(_: ()) -> Self {
+    fn new(res_id: Option<Uuid>) -> Self {
+        // ---- global state & context ----
+        let toast_ctx = expect_context::<ToastContext>();
+        let page_err_ctx = expect_context::<PageErrorContext>();
+        let activity_tracker = expect_context::<ActivityTracker>();
+        let component_id = StoredValue::new(Uuid::new_v4());
+        // remove errors on unmount
+        on_cleanup(move || {
+            page_err_ctx.clear_all_for_component(component_id.get_value());
+            activity_tracker.remove_component(component_id.get_value());
+        });
+
+        // ---- signals & slices ----
         let local = RwSignal::new(None::<SportConfig>);
         let origin = RwSignal::new(None);
-
-        let is_changed = Signal::derive(move || local.get() != origin.get());
 
         let sport_id = SportIdQuery::use_param_query();
         let state = expect_context::<Store<GlobalState>>();
@@ -100,7 +122,6 @@ impl EditorContext for SportConfigEditorContext {
         let version = create_read_slice(local, move |local| {
             local.as_ref().and_then(|sc| sc.get_version())
         });
-        let set_optimistic_version = RwSignal::new(None::<u32>);
         let (name, set_name) = create_slice(
             local,
             |local| local.as_ref().map(|sc| sc.get_name().to_string()),
@@ -125,27 +146,127 @@ impl EditorContext for SportConfigEditorContext {
             },
         );
 
+        // ---- sport config resource ----
+        let (resource_id, set_resource_id) = signal(res_id);
+        let set_optimistic_version = RwSignal::new(None::<u32>);
+
+        // resource to load sport config
+        // since we render SportConfigTableRow inside the Transition block of ListSportConfigs,
+        // we do not need to use another Transition block to load the sport config.
+        /*let load_sport_config = Resource::new(
+            move || resource_id.get(),
+            move |maybe_id| async move {
+                if let Some(id) = maybe_id {
+                    match activity_tracker
+                        .track_activity_wrapper(component_id.get_value(), load_sport_config(id))
+                        .await
+                    {
+                        Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
+                        res =>res,
+                    }
+                } else {
+                    Ok(None)
+                }
+            },
+        );*/
+        // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
+        // errors occur until the page is fully rendered and the app "transformed" into a SPA). For this reason
+        // we use a LocalResource here, which does not cause hydration errors.
+        // ToDo: investigate how to use Resource without hydration errors, since Resource provides better
+        // ergonomics for loading states and error handling.
+        let load_sport_config = LocalResource::new(move || async move {
+            if let Some(id) = resource_id.get() {
+                match activity_tracker
+                    .track_activity_wrapper(component_id.get_value(), load_sport_config(id))
+                    .await
+                {
+                    Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
+                    res => res,
+                }
+            } else {
+                Ok(None)
+            }
+        });
+
+        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::SportConfig(id)));
+        let refetch = Callback::new(move |()| {
+            load_sport_config.refetch();
+        });
+        use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
+
+        // ---- sport config server action ----
+        let save_sport_config = ServerAction::<SaveSportConfig>::new();
+        let save_sport_config_pending = save_sport_config.pending();
+        activity_tracker.track_pending_memo(component_id.get_value(), save_sport_config_pending);
+
+        let post_save_callback = StoredValue::new(None::<Callback<SportConfig>>);
+
+        // ToDo: with auto save and parallel editing, refetch is done automatically. Delete this dummy refetch.
+        let refetch = Callback::new(move |_| {});
+
+        // handle save result
+        Effect::new(move || {
+            if let Some(ssc_result) = save_sport_config.value().get()
+            {
+                save_sport_config.clear();
+                match ssc_result {
+                    Ok(sc) => {
+                        set_resource_id.set(Some(sc.get_id()));
+                        set_optimistic_version.set(sc.get_version());
+                        local.set(Some(sc.clone()));
+                        origin.set(Some(sc.clone()));
+
+                        if let Some(callback) = post_save_callback.get_value() {
+                            callback.run(sc);
+                        }
+                    }
+                    Err(err) => {
+                        // version reset for parallel editing
+                        set_optimistic_version.set(version.get());
+                        // transform unique violation error into Validation Error for name, if any
+                        if let Some(object_id) = id.get()
+                            && let Some(field_error) =
+                                map_db_unique_violation_to_field_error(&err, object_id, "name")
+                        {
+                            
+                                set_unique_violation_error
+                                .set(Some(field_error));
+                        } else {
+                            handle_write_error(
+                                &page_err_ctx,
+                                &toast_ctx,
+                                component_id.get_value(),
+                                &err,
+                                refetch,
+                            );
+                        }
+                    }
+                }
+            }
+        });
+
         SportConfigEditorContext {
             local,
             origin,
             local_read_only: local.into(),
-            is_changed,
             validation_result,
             set_unique_violation_error,
             id,
             version,
-            optimistic_version: set_optimistic_version.into(),
-            set_optimistic_version,
             name,
             set_name,
             config,
             set_config,
+            set_optimistic_version,
+            load_sport_config,
+            save_sport_config,
+            post_save_callback,
         }
     }
 
     /// Get the original sport config currently loaded in the editor context, if any.
-    fn get_origin(&self) -> Option<Self::ObjectType> {
-        self.origin.get()
+    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>> {
+        self.origin.into()
     }
 
     /// Set an existing sport config in the editor context.
@@ -209,7 +330,7 @@ impl EditorContext for SportConfigEditorContext {
     }
 
     /// Get the current optimistic version signal from the editor context, if any.
-    fn get_optimistic_version(&self) -> Signal<Option<u32>> {
-        self.optimistic_version
+    fn optimistic_version_signal(&self) -> Signal<Option<u32>> {
+        self.set_optimistic_version.into()
     }
 }

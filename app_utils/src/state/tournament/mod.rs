@@ -18,11 +18,8 @@ use crate::{
     },
 };
 use app_core::{
-    Stage, Tournament, TournamentBase, TournamentMode, TournamentState,
-    utils::{
-        id_version::IdVersion,
-        validation::{FieldError, ValidationResult},
-    },
+    Stage, Tournament, TournamentMode, TournamentState,
+    utils::validation::{FieldError, ValidationResult},
 };
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, hooks::use_navigate};
@@ -40,8 +37,6 @@ pub struct TournamentEditorContext {
     local: RwSignal<Option<Tournament>>,
     /// The original tournament loaded from storage.
     origin: RwSignal<Option<Tournament>>,
-    /// Read slice of origin
-    pub origin_read_only: Signal<Option<Tournament>>,
     /// Read slice for accessing the validation result of the tournament
     pub validation_result: Signal<ValidationResult<()>>,
     /// WriteSignal for setting a unique violation error on the name field, if any
@@ -52,8 +47,6 @@ pub struct TournamentEditorContext {
     save_diff: ServerAction<SaveTournamentEditorDiff>,
 
     // --- Optimistic version handling for tournament ---
-    /// Signal for optimistic version handling to prevent unneeded server round after save
-    pub optimistic_version: Signal<Option<u32>>,
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
     set_optimistic_version: RwSignal<Option<u32>>,
 
@@ -394,10 +387,8 @@ impl EditorContext for TournamentEditorContext {
             // core signals
             local,
             origin,
-            origin_read_only: origin.into(),
             validation_result,
             set_unique_violation_error,
-            optimistic_version: set_optimistic_version.into(),
             set_optimistic_version,
             // actions and resources
             save_diff,
@@ -428,9 +419,8 @@ impl EditorContext for TournamentEditorContext {
     }
 
     /// Get the original tournament currently loaded in the editor context, if any.
-    fn get_origin(&self) -> Option<Tournament> {
-        self.origin
-            .with(|editor| editor.as_ref().map(|t| t.clone()))
+    fn origin_signal(&self) -> Signal<Option<Tournament>> {
+        self.origin.into()
     }
 
     /// Set the current tournament in the editor context, updating all relevant state accordingly.
@@ -471,8 +461,8 @@ impl EditorContext for TournamentEditorContext {
     }
 
     /// Get the current optimistic version signal from the editor context, if any.
-    fn get_optimistic_version(&self) -> Signal<Option<u32>> {
-        self.optimistic_version
+    fn optimistic_version_signal(&self) -> Signal<Option<u32>> {
+        self.set_optimistic_version.into()
     }
 }
 

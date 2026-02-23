@@ -45,9 +45,9 @@ pub fn EditPostalAddress() -> impl IntoView {
             && let Some(editor) = postal_address_editor_map.get_editor(id)
         {
             match edit_action.get() {
-                Some(EditAction::Edit) => editor.get_origin().is_some(),
-                Some(EditAction::New) => editor.get_origin().is_none(),
-                Some(EditAction::Copy) => editor.get_origin().is_none(),
+                Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
+                Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
+                Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
                 None => false,
             }
         } else {
@@ -59,7 +59,7 @@ pub fn EditPostalAddress() -> impl IntoView {
     on_cleanup(move || {
         if let Some(id) = address_id.get_untracked()
             && let Some(editor) = postal_address_editor_map.get_editor_untracked(id)
-            && editor.get_origin().is_none()
+            && editor.origin_signal().with(|origin| origin.is_none())
         {
             postal_address_editor_map.remove_editor(id);
         }

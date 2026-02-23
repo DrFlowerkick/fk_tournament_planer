@@ -218,8 +218,8 @@ where
         let copy_editor = Callback::new(move |options: OE::NewEditorOptions| {
             let editor = OE::new(options);
             if let Some(current_id) = selected_id.get()
-                && let Some(origin) =
-                    editor_map.with(|em| em.get(&current_id).and_then(|ed| ed.get_origin()))
+                && let Some(origin) = editor_map
+                    .with(|em| em.get(&current_id).and_then(|ed| ed.origin_signal().get()))
                 && let Some(new_id) = editor.copy_object(origin)
             {
                 editor_map.update(|em| {
@@ -269,7 +269,7 @@ where
     pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
         self.editor_map.with(|em| {
             if let Some(editor) = em.get(&object.get_id_version().get_id()) {
-                let optimistic_version = editor.get_optimistic_version().get();
+                let optimistic_version = editor.optimistic_version_signal().get();
                 if optimistic_version.is_none() {
                     editor.set_object(object.clone());
                 }

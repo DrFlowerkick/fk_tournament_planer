@@ -29,8 +29,6 @@ pub struct PostalAddressEditorContext {
     local: RwSignal<Option<PostalAddress>>,
     /// The original postal address loaded from storage.
     origin: RwSignal<Option<PostalAddress>>,
-    /// Read slice of origin
-    pub origin_read_only: Signal<Option<PostalAddress>>,
     /// Read slice for accessing the validation result of the postal address
     pub validation_result: Signal<ValidationResult<()>>,
     /// WriteSignal for setting a unique violation error on the name field, if any
@@ -41,10 +39,6 @@ pub struct PostalAddressEditorContext {
     pub id: Signal<Option<Uuid>>,
     /// Signal slice for the version field
     pub version: Signal<Option<u32>>,
-    /// Signal for optimistic version handling to prevent unneeded server round after save
-    pub optimistic_version: Signal<Option<u32>>,
-    /// WriteSignal for optimistic version handling to prevent unneeded server round after save
-    set_optimistic_version: RwSignal<Option<u32>>,
     /// Signal slice for the name field
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
@@ -71,6 +65,8 @@ pub struct PostalAddressEditorContext {
     pub set_country: Callback<Option<CountryCode>>,
 
     // --- Resource & server action state ---
+    /// WriteSignal for optimistic version handling to prevent unneeded server round after save
+    set_optimistic_version: RwSignal<Option<u32>>,
     /// Resource for loading the postal address based on the given id in the editor options
     pub load_postal_address: LocalResource<AppResult<Option<PostalAddress>>>,
     /// Server action for saving the postal address based on the current state of the editor context
@@ -210,7 +206,7 @@ impl EditorContext for PostalAddressEditorContext {
         // resource to load postal address
         // since we render PostalAddressTableRow inside the Transition block of ListPostalAddresses,
         // we do not need to use another Transition block to load the postal address.
-        /*let address_res = Resource::new(
+        /*let load_postal_address = Resource::new(
             move || resource_id.get(),
             move |maybe_id| async move {
                 if let Some(id) = maybe_id {
@@ -304,13 +300,10 @@ impl EditorContext for PostalAddressEditorContext {
         PostalAddressEditorContext {
             local,
             origin,
-            origin_read_only: origin.into(),
             validation_result,
             set_unique_violation_error,
             id,
             version,
-            optimistic_version: set_optimistic_version.into(),
-            set_optimistic_version,
             name,
             set_name,
             street,
@@ -323,6 +316,7 @@ impl EditorContext for PostalAddressEditorContext {
             set_region,
             country,
             set_country,
+            set_optimistic_version,
             load_postal_address,
             save_postal_address,
             post_save_callback,
@@ -330,8 +324,8 @@ impl EditorContext for PostalAddressEditorContext {
     }
 
     /// Get the original postal address currently loaded in the editor context, if any.
-    fn get_origin(&self) -> Option<Self::ObjectType> {
-        self.origin.get()
+    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>> {
+        self.origin.into()
     }
 
     /// Set an existing postal address in the editor context.
@@ -380,7 +374,7 @@ impl EditorContext for PostalAddressEditorContext {
     }
 
     /// Get the current optimistic version signal from the editor context, if any.
-    fn get_optimistic_version(&self) -> Signal<Option<u32>> {
-        self.optimistic_version
+    fn optimistic_version_signal(&self) -> Signal<Option<u32>> {
+        self.set_optimistic_version.into()
     }
 }

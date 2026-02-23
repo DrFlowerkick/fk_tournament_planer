@@ -1,13 +1,12 @@
 //! Sport Config Edit Module
 
+use app_core::SportConfig;
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::sport_config::save_sport_config_inner;
 use app_utils::{
     components::inputs::{InputCommitAction, TextInput},
     enum_utils::EditAction,
-    error::{map_db_unique_violation_to_field_error, strategy::handle_write_error},
     hooks::{
-        //set_up_editor_form::set_up_editor_form,
         use_on_cancel::use_on_cancel,
         use_query_navigation::{
             MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
@@ -18,12 +17,9 @@ use app_utils::{
     server_fn::sport_config::{SaveSportConfig, SaveSportConfigFormData},
     state::{
         EditorContext,
-        activity_tracker::ActivityTracker,
-        error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
         object_table::ObjectEditorMapContext,
         sport_config::SportConfigEditorContext,
-        toast_state::ToastContext,
     },
 };
 use leptos::{html::H2, prelude::*};
@@ -71,9 +67,9 @@ pub fn EditSportConfiguration() -> impl IntoView {
             && let Some(editor) = sport_config_editor_map.get_editor(id)
         {
             match edit_action.get() {
-                Some(EditAction::Edit) => editor.get_origin().is_some(),
-                Some(EditAction::New) => editor.get_origin().is_none(),
-                Some(EditAction::Copy) => editor.get_origin().is_none(),
+                Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
+                Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
+                Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
                 None => false,
             }
         } else {
@@ -85,7 +81,7 @@ pub fn EditSportConfiguration() -> impl IntoView {
     on_cleanup(move || {
         if let Some(id) = sport_config_id.get_untracked()
             && let Some(editor) = sport_config_editor_map.get_editor_untracked(id)
-            && editor.get_origin().is_none()
+            && editor.origin_signal().with(|origin| origin.is_none())
         {
             sport_config_editor_map.remove_editor(id);
         }
@@ -182,6 +178,7 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
         ..
     } = use_query_navigation();
     let navigate = use_navigate();
+
     let edit_action = EditActionParams::use_param_query();
     let intent = Signal::derive(move || {
         edit_action.get().map(|action| match action {
@@ -204,89 +201,42 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
             .flatten()
     };
 
-    // --- global state ---
-    let toast_ctx = expect_context::<ToastContext>();
-    let page_err_ctx = expect_context::<PageErrorContext>();
-    let component_id = StoredValue::new(Uuid::new_v4());
-    let activity_tracker = expect_context::<ActivityTracker>();
-
-    // remove errors on unmount
-    on_cleanup(move || {
-        page_err_ctx.clear_all_for_component(component_id.get_value());
-        activity_tracker.remove_component(component_id.get_value());
-    });
-
     // provide local context for web ui plug ins
-    // ToDo: alternative: provide Signal config and Callback set_config as prop
     provide_context(sport_config_editor);
 
-    // --- Server Actions ---
-    let save_sport_config = ServerAction::<SaveSportConfig>::new();
-    let save_sport_config_pending = save_sport_config.pending();
-    activity_tracker.track_pending_memo(component_id.get_value(), save_sport_config_pending);
-
-    // ToDo: with auto save and parallel editing, refetch is done automatically. Delete this dummy refetch.
-    let refetch = Callback::new(move |_| {});
-
-    // handle save result
-    Effect::new(move || {
-        if let Some(ssc_result) = save_sport_config.value().get()
-            && let Some(edit_action) = edit_action.get()
+    let post_save_callback = Callback::new(move |sc: SportConfig| {
+        if let Some(edit_action) = edit_action.get()
+            && matches!(edit_action, EditAction::New | EditAction::Copy)
         {
-            save_sport_config.clear();
-            match ssc_result {
-                Ok(sc) => {
-                    sport_config_editor.set_object(sc.clone());
-                    if matches!(edit_action, EditAction::New | EditAction::Copy) {
-                        let sc_id = sc.get_id().to_string();
-                        let key_value = vec![
-                            (SportConfigIdQuery::KEY, sc_id.as_str()),
-                            (FilterNameQuery::KEY, sc.get_name()),
-                        ];
-                        let nav_url = url_matched_route_update_queries(
-                            key_value,
-                            MatchedRouteHandler::ReplaceSegment(
-                                EditAction::Edit.to_string().as_str(),
-                            ),
-                        );
-                        navigate(
-                            &nav_url,
-                            NavigateOptions {
-                                scroll: false,
-                                ..Default::default()
-                            },
-                        );
-                    }
-                }
-                Err(err) => {
-                    // version reset for parallel editing
-                    sport_config_editor.reset_version_to_origin();
-                    if let Some(object_id) = sport_config_editor.id.get()
-                        && let Some(field_error) =
-                            map_db_unique_violation_to_field_error(&err, object_id, "name")
-                    {
-                        sport_config_editor
-                            .set_unique_violation_error
-                            .set(Some(field_error));
-                    } else {
-                        handle_write_error(
-                            &page_err_ctx,
-                            &toast_ctx,
-                            component_id.get_value(),
-                            &err,
-                            refetch,
-                        );
-                    }
-                }
-            }
+            let sc_id = sc.get_id().to_string();
+            let key_value = vec![
+                (SportConfigIdQuery::KEY, sc_id.as_str()),
+                (FilterNameQuery::KEY, sc.get_name()),
+            ];
+            // we need to use extend here, because the callback is executed in the route of
+            // the list view
+            let nav_url = url_matched_route_update_queries(
+                key_value,
+                MatchedRouteHandler::Extend(EditAction::Edit.to_string().as_str()),
+            );
+            navigate(
+                &nav_url,
+                NavigateOptions {
+                    scroll: false,
+                    ..Default::default()
+                },
+            );
         }
     });
+    sport_config_editor
+        .post_save_callback
+        .set_value(Some(post_save_callback));
 
     view! {
         // --- Sport Config Form ---
         <div data-testid="form-sport-config">
             <ActionForm
-                action=save_sport_config
+                action=sport_config_editor.save_sport_config
                 on:submit:capture=move |ev| {
                     ev.prevent_default();
                     if sport_config_editor.validation_result.with(|vr| vr.is_err()) {
@@ -323,7 +273,7 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
                     }
                     #[cfg(not(feature = "test-mock"))]
                     {
-                        save_sport_config.dispatch(data);
+                        sport_config_editor.save_sport_config.dispatch(data);
                     }
                 }
             >

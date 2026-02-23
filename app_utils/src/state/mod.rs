@@ -14,13 +14,13 @@ use leptos::prelude::*;
 use uuid::Uuid;
 
 pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
-    type ObjectType: ObjectIdVersion + Clone;
+    type ObjectType: ObjectIdVersion + Clone + Send + Sync + 'static;
     type NewEditorOptions;
 
     /// Create a new instance of the editor context, initializing all necessary state.
     fn new(options: Self::NewEditorOptions) -> Self;
     /// Get the original object currently loaded in the editor context, if any.
-    fn get_origin(&self) -> Option<Self::ObjectType>;
+    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>>;
     /// Set the current object in the editor context, updating all relevant state accordingly.
     fn set_object(&self, object: Self::ObjectType);
     /// Create a new object based on the current state of the editor context, returning its unique identifier.
@@ -41,5 +41,5 @@ pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
     /// If save fails, we need to reset the optimistic version to the origin version to prevent version mismatch on next save attempt.
     fn reset_version_to_origin(&self);
     /// Get the current optimistic version signal from the editor context, if any.
-    fn get_optimistic_version(&self) -> Signal<Option<u32>>;
+    fn optimistic_version_signal(&self) -> Signal<Option<u32>>;
 }

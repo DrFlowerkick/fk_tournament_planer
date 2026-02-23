@@ -1,6 +1,5 @@
 //! listing, creating and modifying sport configurations
 
-use app_core::CrTopic;
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
     enum_utils::FilterLimit,
@@ -16,7 +15,7 @@ use app_utils::{
         use_scroll_into_view::use_scroll_h2_into_view,
     },
     params::{FilterLimitQuery, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
-    server_fn::sport_config::{list_sport_config_ids, load_sport_config},
+    server_fn::sport_config::list_sport_config_ids,
     state::{
         EditorContext,
         activity_tracker::ActivityTracker,
@@ -27,7 +26,6 @@ use app_utils::{
         toast_state::ToastContext,
     },
 };
-use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
     NavigateOptions,
@@ -278,7 +276,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                     let navigate = use_navigate();
                                                     if let Some(new_id) = sport_config_editor_map
                                                         .copy_editor
-                                                        .run(())
+                                                        .run(None)
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             SportConfigIdQuery::KEY,
@@ -306,7 +304,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                     let navigate = use_navigate();
                                                     if let Some(new_id) = sport_config_editor_map
                                                         .new_editor
-                                                        .run(())
+                                                        .run(None)
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             SportConfigIdQuery::KEY,
@@ -342,7 +340,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
 }
 
 #[component]
-fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
+fn SportConfigTableRow(id: Uuid) -> impl IntoView {
     // sport id and plugin manager
     let sport_id = SportIdQuery::use_param_query();
     let state = expect_context::<Store<GlobalState>>();
@@ -350,72 +348,26 @@ fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
     let sport_plugin = move || {
         sport_id
             .get()
-            .and_then(|id| sport_plugin_manager.get().get_web_ui(&id))
+            .and_then(|s_id| sport_plugin_manager.get().get_web_ui(&s_id))
     };
 
     // --- local context ---
     let sport_config_editor_map =
         expect_context::<ObjectEditorMapContext<SportConfigEditorContext, SportConfigIdQuery>>();
-    let sport_config_editor = SportConfigEditorContext::new(());
-    sport_config_editor_map.insert_editor(id.get(), sport_config_editor);
+    let sport_config_editor = SportConfigEditorContext::new(Some(id));
+    sport_config_editor_map.insert_editor(id, sport_config_editor);
     let sport_config_id = SportConfigIdQuery::use_param_query();
 
-    // --- global state ---
-    let page_err_ctx = expect_context::<PageErrorContext>();
-    let activity_tracker = expect_context::<ActivityTracker>();
-    let component_id = StoredValue::new(Uuid::new_v4());
-    // remove errors on unmount
+    // remove editor on unmount
     on_cleanup(move || {
-        page_err_ctx.clear_all_for_component(component_id.get_value());
-        activity_tracker.remove_component(component_id.get_value());
-        sport_config_editor_map.remove_editor(id.get());
+        sport_config_editor_map.remove_editor(id);
     });
-
-    // resource to load sport config
-    // since we render SportConfigTableRow inside the Transition block of ListSportConfigs,
-    // we do not need to use another Transition block to load the sport config.
-    /*let list_entry_sport_config_res = Resource::new(
-        move || id.get(),
-        move |id| async move {
-            match activity_tracker
-                .track_activity_wrapper(component_id.get_value(), load_sport_config(id))
-                .await
-            {
-                Ok(Some(sc)) => Ok(sc),
-                Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
-                Err(err) => Err(err),
-            }
-        },
-    );*/
-    // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
-    // errors occur until the page is fully rendered and the app "transformed" into a SPA). For this reason
-    // we use a LocalResource here, which does not cause hydration errors.
-    // ToDo: investigate how to use Resource without hydration errors, since Resource provides better
-    // ergonomics for loading states and error handling.
-    let list_entry_sport_config_res = LocalResource::new(move || async move {
-        match activity_tracker
-            .track_activity_wrapper(component_id.get_value(), load_sport_config(id.get()))
-            .await
-        {
-            Ok(Some(sc)) => Ok(sc),
-            Ok(None) => Err(AppError::ResourceNotFound(
-                "Sport Config".to_string(),
-                id.get(),
-            )),
-            Err(err) => Err(err),
-        }
-    });
-
-    let topic = Signal::derive(move || Some(CrTopic::SportConfig(id.get())));
-    let refetch = Callback::new(move |()| {
-        list_entry_sport_config_res.refetch();
-    });
-    use_client_registry_socket(topic, sport_config_editor.optimistic_version, refetch);
 
     view! {
         {move || {
-            list_entry_sport_config_res
-                .and_then(|sc| {
+            sport_config_editor
+                .load_sport_config
+                .and_then(|maybe_sc| maybe_sc.as_ref().map(|sc| {
                     sport_config_editor_map.update_object_in_editor(sc);
                     sport_plugin()
                         .map(|sp| {
@@ -425,26 +377,26 @@ fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                 <tr
                                     class="hover cursor-pointer"
                                     class:bg-base-200=move || {
-                                        sport_config_editor_map.is_selected(id.get())
+                                        sport_config_editor_map.is_selected(id)
                                     }
-                                    data-testid=format!("table-entry-row-{}", id.get())
+                                    data-testid=format!("table-entry-row-{}", id)
                                     on:click=move |_| {
-                                        if sport_config_id.get() == Some(id.get()) {
+                                        if sport_config_id.get() == Some(id) {
                                             sport_config_editor_map.set_selected_id.run(None);
                                         } else {
-                                            sport_config_editor_map.set_selected_id.run(Some(id.get()));
+                                            sport_config_editor_map.set_selected_id.run(Some(id));
                                         }
                                     }
                                 >
                                     <td
                                         class="font-bold"
-                                        data-testid=format!("table-entry-name-{}", id.get())
+                                        data-testid=format!("table-entry-name-{}", id)
                                     >
                                         {move || sport_config_editor.name.get()}
                                     </td>
                                     <td data-testid=format!(
                                         "table-entry-preview-{}",
-                                        id.get(),
+                                        id,
                                     )>
                                         {move || {
                                             sport_config_editor
@@ -457,7 +409,7 @@ fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                         }}
                                     </td>
                                 </tr>
-                                <Show when=move || sport_config_editor_map.is_selected(id.get())>
+                                <Show when=move || sport_config_editor_map.is_selected(id)>
                                     <tr>
                                         <td colspan="2" class="p-0">
                                             {move || {
@@ -474,7 +426,7 @@ fn SportConfigTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                 </Show>
                             }
                         })
-                })
+                }))
         }}
     }
 }

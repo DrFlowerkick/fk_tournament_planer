@@ -329,17 +329,17 @@ pub fn ListPostalAddresses() -> impl IntoView {
 }
 
 #[component]
-fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
+fn PostalAddressTableRow(id: Uuid) -> impl IntoView {
     // --- local context ---
     let postal_address_editor_map =
         expect_context::<ObjectEditorMapContext<PostalAddressEditorContext, AddressIdQuery>>();
-    let postal_address_editor = PostalAddressEditorContext::new(Some(id.get()));
-    postal_address_editor_map.insert_editor(id.get(), postal_address_editor);
+    let postal_address_editor = PostalAddressEditorContext::new(Some(id));
+    postal_address_editor_map.insert_editor(id, postal_address_editor);
     let address_id = AddressIdQuery::use_param_query();
 
-    // remove errors on unmount
+    // remove editor on unmount
     on_cleanup(move || {
-        postal_address_editor_map.remove_editor(id.get());
+        postal_address_editor_map.remove_editor(id);
     });
 
     view! {
@@ -355,28 +355,26 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                 <tr
                                     class="hover cursor-pointer"
                                     class:bg-base-200=move || {
-                                        postal_address_editor_map.is_selected(id.get())
+                                        postal_address_editor_map.is_selected(id)
                                     }
-                                    data-testid=format!("table-entry-row-{}", id.get())
+                                    data-testid=format!("table-entry-row-{}", id)
                                     on:click=move |_| {
-                                        if address_id.get() == Some(id.get()) {
+                                        if address_id.get() == Some(id) {
                                             postal_address_editor_map.set_selected_id.run(None);
                                         } else {
-                                            postal_address_editor_map
-                                                .set_selected_id
-                                                .run(Some(id.get()));
+                                            postal_address_editor_map.set_selected_id.run(Some(id));
                                         }
                                     }
                                 >
                                     <td
                                         class="font-bold"
-                                        data-testid=format!("table-entry-name-{}", id.get())
+                                        data-testid=format!("table-entry-name-{}", id)
                                     >
                                         {move || postal_address_editor.name.get()}
                                     </td>
                                     <td data-testid=format!(
                                         "table-entry-preview-{}",
-                                        id.get(),
+                                        id,
                                     )>
                                         {move || {
                                             format!(
@@ -391,7 +389,7 @@ fn PostalAddressTableRow(#[prop(into)] id: Signal<Uuid>) -> impl IntoView {
                                         }}
                                     </td>
                                 </tr>
-                                <Show when=move || postal_address_editor_map.is_selected(id.get())>
+                                <Show when=move || postal_address_editor_map.is_selected(id)>
                                     <tr>
                                         <td colspan="2" class="p-0">
                                             <div
