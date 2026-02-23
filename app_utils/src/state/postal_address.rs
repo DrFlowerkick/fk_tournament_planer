@@ -256,9 +256,6 @@ impl EditorContext for PostalAddressEditorContext {
 
         let post_save_callback = StoredValue::new(None::<Callback<PostalAddress>>);
 
-        // ToDo: with auto save and parallel editing, refetch is done automatically. Delete this dummy refetch.
-        let refetch = Callback::new(move |_| {});
-
         // handle save result
         Effect::new(move || {
             if let Some(spa_result) = save_postal_address.value().get() {
@@ -329,7 +326,7 @@ impl EditorContext for PostalAddressEditorContext {
     }
 
     /// Set an existing postal address in the editor context.
-    fn set_object(&self, pa: PostalAddress) {
+    fn set_object(&self, pa: Self::ObjectType) {
         self.local.set(Some(pa.clone()));
         self.set_optimistic_version.set(pa.get_version());
         self.origin.set(Some(pa));
@@ -337,9 +334,8 @@ impl EditorContext for PostalAddressEditorContext {
 
     /// Create a new postal address in the editor context with a new UUID and default values.
     fn new_object(&self) -> Option<Uuid> {
-        let id = Uuid::new_v4();
-        let id_version = IdVersion::new(id, None);
-        let pa = PostalAddress::new(id_version);
+        let pa = PostalAddress::default();
+        let id = pa.get_id();
 
         self.local.set(Some(pa.clone()));
         self.set_optimistic_version.set(None);
@@ -348,7 +344,7 @@ impl EditorContext for PostalAddressEditorContext {
     }
 
     /// Create a new object from a given postal address by copying it and assigning a new UUID, then set it in the editor context.
-    fn copy_object(&self, mut pa: PostalAddress) -> Option<Uuid> {
+    fn copy_object(&self, mut pa: Self::ObjectType) -> Option<Uuid> {
         let id = Uuid::new_v4();
         pa.set_id_version(IdVersion::new(id, None)).set_name("");
         self.local.set(Some(pa));

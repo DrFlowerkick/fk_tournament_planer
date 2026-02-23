@@ -367,66 +367,70 @@ fn SportConfigTableRow(id: Uuid) -> impl IntoView {
         {move || {
             sport_config_editor
                 .load_sport_config
-                .and_then(|maybe_sc| maybe_sc.as_ref().map(|sc| {
-                    sport_config_editor_map.update_object_in_editor(sc);
-                    sport_plugin()
-                        .map(|sp| {
-                            let sp = StoredValue::new(sp);
+                .and_then(|maybe_sc| {
+                    maybe_sc
+                        .as_ref()
+                        .map(|sc| {
+                            sport_config_editor_map.update_object_in_editor(sc);
+                            sport_plugin()
+                                .map(|sp| {
+                                    let sp = StoredValue::new(sp);
 
-                            view! {
-                                <tr
-                                    class="hover cursor-pointer"
-                                    class:bg-base-200=move || {
-                                        sport_config_editor_map.is_selected(id)
+                                    view! {
+                                        <tr
+                                            class="hover cursor-pointer"
+                                            class:bg-base-200=move || {
+                                                sport_config_editor_map.is_selected(id)
+                                            }
+                                            data-testid=format!("table-entry-row-{}", id)
+                                            on:click=move |_| {
+                                                if sport_config_id.get() == Some(id) {
+                                                    sport_config_editor_map.set_selected_id.run(None);
+                                                } else {
+                                                    sport_config_editor_map.set_selected_id.run(Some(id));
+                                                }
+                                            }
+                                        >
+                                            <td
+                                                class="font-bold"
+                                                data-testid=format!("table-entry-name-{}", id)
+                                            >
+                                                {move || sport_config_editor.name.get()}
+                                            </td>
+                                            <td data-testid=format!(
+                                                "table-entry-preview-{}",
+                                                id,
+                                            )>
+                                                {move || {
+                                                    sport_config_editor
+                                                        .local_read_only
+                                                        .with(|local| {
+                                                            local
+                                                                .as_ref()
+                                                                .map(|sc| { sp.get_value().render_preview(sc) })
+                                                        })
+                                                }}
+                                            </td>
+                                        </tr>
+                                        <Show when=move || sport_config_editor_map.is_selected(id)>
+                                            <tr>
+                                                <td colspan="2" class="p-0">
+                                                    {move || {
+                                                        sport_config_editor
+                                                            .local_read_only
+                                                            .with(|local| {
+                                                                local
+                                                                    .as_ref()
+                                                                    .map(|sc| { sp.get_value().render_detailed_preview(sc) })
+                                                            })
+                                                    }}
+                                                </td>
+                                            </tr>
+                                        </Show>
                                     }
-                                    data-testid=format!("table-entry-row-{}", id)
-                                    on:click=move |_| {
-                                        if sport_config_id.get() == Some(id) {
-                                            sport_config_editor_map.set_selected_id.run(None);
-                                        } else {
-                                            sport_config_editor_map.set_selected_id.run(Some(id));
-                                        }
-                                    }
-                                >
-                                    <td
-                                        class="font-bold"
-                                        data-testid=format!("table-entry-name-{}", id)
-                                    >
-                                        {move || sport_config_editor.name.get()}
-                                    </td>
-                                    <td data-testid=format!(
-                                        "table-entry-preview-{}",
-                                        id,
-                                    )>
-                                        {move || {
-                                            sport_config_editor
-                                                .local_read_only
-                                                .with(|local| {
-                                                    local
-                                                        .as_ref()
-                                                        .map(|sc| { sp.get_value().render_preview(sc) })
-                                                })
-                                        }}
-                                    </td>
-                                </tr>
-                                <Show when=move || sport_config_editor_map.is_selected(id)>
-                                    <tr>
-                                        <td colspan="2" class="p-0">
-                                            {move || {
-                                                sport_config_editor
-                                                    .local_read_only
-                                                    .with(|local| {
-                                                        local
-                                                            .as_ref()
-                                                            .map(|sc| { sp.get_value().render_detailed_preview(sc) })
-                                                    })
-                                            }}
-                                        </td>
-                                    </tr>
-                                </Show>
-                            }
+                                })
                         })
-                }))
+                })
         }}
     }
 }

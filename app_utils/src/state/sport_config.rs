@@ -201,13 +201,9 @@ impl EditorContext for SportConfigEditorContext {
 
         let post_save_callback = StoredValue::new(None::<Callback<SportConfig>>);
 
-        // ToDo: with auto save and parallel editing, refetch is done automatically. Delete this dummy refetch.
-        let refetch = Callback::new(move |_| {});
-
         // handle save result
         Effect::new(move || {
-            if let Some(ssc_result) = save_sport_config.value().get()
-            {
+            if let Some(ssc_result) = save_sport_config.value().get() {
                 save_sport_config.clear();
                 match ssc_result {
                     Ok(sc) => {
@@ -228,9 +224,7 @@ impl EditorContext for SportConfigEditorContext {
                             && let Some(field_error) =
                                 map_db_unique_violation_to_field_error(&err, object_id, "name")
                         {
-                            
-                                set_unique_violation_error
-                                .set(Some(field_error));
+                            set_unique_violation_error.set(Some(field_error));
                         } else {
                             handle_write_error(
                                 &page_err_ctx,
