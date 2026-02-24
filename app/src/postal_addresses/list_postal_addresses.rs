@@ -265,8 +265,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
                                                     if let Some(new_id) = postal_address_editor_map
-                                                        .copy_editor
-                                                        .run(None)
+                                                        .copy_editor(None)
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             AddressIdQuery::KEY,
@@ -293,8 +292,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
                                                     if let Some(new_id) = postal_address_editor_map
-                                                        .new_editor
-                                                        .run(None)
+                                                        .new_editor(None)
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             AddressIdQuery::KEY,

@@ -6,8 +6,8 @@ use crate::{
     },
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::{
-        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        toast_state::ToastContext,
+        EditorContext, EditorContextWithResource, activity_tracker::ActivityTracker,
+        error_state::PageErrorContext, toast_state::ToastContext,
     },
 };
 use app_core::{
@@ -342,7 +342,9 @@ impl EditorContext for PostalAddressEditorContext {
         self.origin.set(None);
         Some(id)
     }
+}
 
+impl EditorContextWithResource for PostalAddressEditorContext {
     /// Create a new object from a given postal address by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut pa: Self::ObjectType) -> Option<Uuid> {
         let id = Uuid::new_v4();

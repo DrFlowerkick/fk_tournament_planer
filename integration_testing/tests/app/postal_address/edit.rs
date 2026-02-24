@@ -8,7 +8,7 @@ use app_utils::{
     enum_utils::EditAction,
     params::AddressIdQuery,
     state::{
-        EditorContext, object_table::ObjectEditorMapContext,
+        EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
         postal_address::PostalAddressEditorContext,
     },
 };
@@ -35,8 +35,7 @@ fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
     match edit_action {
         EditAction::New => {
             let new_id = postal_address_editor_map
-                .new_editor
-                .run(None)
+                .new_editor(None)
                 .expect("Failed to create new postal address object");
             postal_address_editor_map.set_selected_id.run(Some(new_id));
         }

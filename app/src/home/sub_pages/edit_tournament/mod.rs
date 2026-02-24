@@ -1,9 +1,11 @@
 //! Edit tournament components
 
+pub mod tournament;
 pub mod tournament_base;
 pub mod tournament_group;
 pub mod tournament_stage;
 
+pub use tournament::*;
 pub use tournament_base::*;
 pub use tournament_group::*;
 pub use tournament_stage::*;
@@ -22,7 +24,7 @@ use leptos_router::{
 #[component(transparent)]
 pub fn NewTournamentRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
-        <ParentRoute path=path!("new-tournament") view=LoadTournament>
+        <ParentRoute path=path!("new-tournament") view=EditTournament>
             <EditSubRoutes />
             <Route
                 path=path!("")
@@ -39,7 +41,7 @@ pub fn NewTournamentRoutes() -> impl MatchNestedRoutes + Clone {
 #[component(transparent)]
 pub fn EditSubRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
-        <ParentRoute path=ParamSegment(StageNumberParams::KEY) view=LoadTournamentStage>
+        <ParentRoute path=ParamSegment(StageNumberParams::KEY) view=EditTournamentStage>
             <Route
                 path=path!("")
                 view={

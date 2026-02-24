@@ -1,18 +1,18 @@
 //! base editor context
 
-use super::TournamentEditorContext;
 use crate::{
     error::{
         AppError, AppResult, map_db_unique_violation_to_field_error, strategy::handle_write_error,
     },
+    params::{ParamQuery, SportIdQuery},
     server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
     state::{
-        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        toast_state::ToastContext,
+        EditorContext, EditorContextWithResource, activity_tracker::ActivityTracker,
+        error_state::PageErrorContext, toast_state::ToastContext,
     },
 };
 use app_core::{
-    CrTopic, Tournament, TournamentBase, TournamentMode, TournamentState,
+    CrTopic, Tournament, TournamentBase, TournamentMode, TournamentState, TournamentType,
     utils::{
         id_version::IdVersion,
         validation::{FieldError, ValidationResult},
@@ -23,14 +23,17 @@ use leptos::prelude::*;
 use uuid::Uuid;
 
 pub struct BaseEditorContextOptions {
-    res_id: Option<Uuid>,
-    tournament_editor_context: TournamentEditorContext,
+    pub res_id: Option<Uuid>,
+    pub local_tournament: RwSignal<Option<Tournament>>,
+    pub origin_tournament: RwSignal<Option<Tournament>>,
 }
 
 #[derive(Clone, Copy)]
 pub struct BaseEditorContext {
     // --- state & derived signals ---
-    /// SignalSetter for setting the local tournament base in the editor context
+    /// The local editable tournament base in the editor context.
+    pub local: Signal<Option<TournamentBase>>,
+    /// SignalSetter for setting the local tournament base in the editor context.
     set_local: SignalSetter<Option<TournamentBase>>,
     /// The original tournament base loaded from storage.
     origin: Signal<Option<TournamentBase>>,
@@ -43,6 +46,8 @@ pub struct BaseEditorContext {
     /// Read slice for checking if the tournament base is in a state where editing is disabled
     /// (e.g. when tournament is active or finished)
     pub is_disabled_base_editing: Signal<bool>,
+    /// Read slice for checking if the stage editor should be skipped based on the tournament mode
+    pub skip_stage_editor: Signal<bool>,
 
     // --- Signals, Slices & Callbacks for form fields ---
     /// Signal slice for the id field
@@ -53,10 +58,14 @@ pub struct BaseEditorContext {
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
     pub set_name: Callback<Option<String>>,
+    /// Signal slice for the sport id field
+    pub sport_id: Signal<Option<Uuid>>,
     /// Read slice for accessing the tournament base number of entrants, if any
     pub num_entrants: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of entrants
     pub set_num_entrants: Callback<Option<u32>>,
+    /// Read slice for accessing the tournament base type, if any
+    pub tournament_type: Signal<Option<TournamentType>>,
     /// Read slice for accessing the tournament base mode, if any
     pub mode: Signal<Option<TournamentMode>>,
     /// Write slice for setting the tournament base mode
@@ -65,10 +74,14 @@ pub struct BaseEditorContext {
     pub num_rounds_swiss_system: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of rounds for Swiss System
     pub set_num_rounds_swiss_system: Callback<Option<u32>>,
+    /// Read slice for accessing the tournament state, if any
+    pub tournament_state: Signal<Option<TournamentState>>,
 
     // --- Resource & server action state ---
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
-    set_optimistic_version: RwSignal<Option<u32>>,
+    pub set_optimistic_version: RwSignal<Option<u32>>,
+    /// WriteSignal for setting the resource id in the editor context, which triggers loading of the tournament base resource
+    set_resource_id: WriteSignal<Option<Uuid>>,
     /// Resource for loading the tournament base based on the given id in the editor options
     pub load_tournament_base: LocalResource<AppResult<Option<TournamentBase>>>,
     /// Server action for saving the tournament base based on the current state of the editor context
@@ -95,7 +108,7 @@ impl EditorContext for BaseEditorContext {
 
         // ---- signals & slices ----
         let (local, set_local) = create_slice(
-            options.tournament_editor_context.local,
+            options.local_tournament,
             |local_tournament| local_tournament.as_ref().map(|t| t.get_base().clone()),
             |local_tournament, new_base: Option<TournamentBase>| {
                 if let Some(new_base) = new_base {
@@ -112,7 +125,7 @@ impl EditorContext for BaseEditorContext {
             },
         );
         let (origin, set_origin) = create_slice(
-            options.tournament_editor_context.origin,
+            options.origin_tournament,
             |origin_tournament| origin_tournament.as_ref().map(|t| t.get_base().clone()),
             |origin_tournament, new_base: Option<TournamentBase>| {
                 if let Some(new_base) = new_base {
@@ -149,34 +162,18 @@ impl EditorContext for BaseEditorContext {
             }
         });
 
-        let tournament_state = create_read_slice(
-            options.tournament_editor_context.local,
-            |local_tournament| {
-                local_tournament
-                    .as_ref()
-                    .map(|t| t.get_base().get_tournament_state())
-            },
-        );
-        let is_disabled_base_editing = Signal::derive(move || {
-            matches!(
-                tournament_state.get(),
-                Some(TournamentState::ActiveStage(_)) | Some(TournamentState::Finished)
-            )
+        let id = create_read_slice(options.local_tournament, |local_tournament| {
+            local_tournament.as_ref().map(|t| t.get_base().get_id())
         });
-        let id = create_read_slice(
-            options.tournament_editor_context.local,
-            |local_tournament| local_tournament.as_ref().map(|t| t.get_base().get_id()),
-        );
-        let version = create_read_slice(
-            options.tournament_editor_context.local,
-            move |local_tournament| {
-                local_tournament
-                    .as_ref()
-                    .and_then(|t| t.get_base().get_version())
-            },
-        );
+        let version = create_read_slice(options.local_tournament, move |local_tournament| {
+            local_tournament
+                .as_ref()
+                .and_then(|t| t.get_base().get_version())
+        });
+        let sport_id = SportIdQuery::use_param_query();
+
         let (name, set_name) = create_slice(
-            options.tournament_editor_context.local,
+            options.local_tournament,
             |local_tournament| {
                 local_tournament
                     .as_ref()
@@ -192,7 +189,7 @@ impl EditorContext for BaseEditorContext {
             set_name.set(name.unwrap_or_default());
         });
         let (num_entrants, set_num_entrants) = create_slice(
-            options.tournament_editor_context.local,
+            options.local_tournament,
             |local_tournament| {
                 local_tournament
                     .as_ref()
@@ -207,8 +204,13 @@ impl EditorContext for BaseEditorContext {
         let set_num_entrants = Callback::new(move |num_entrants: Option<u32>| {
             set_num_entrants.set(num_entrants.unwrap_or_default());
         });
-        let (base_mode, set_base_mode) = create_slice(
-            options.tournament_editor_context.local,
+        let tournament_type = create_read_slice(options.local_tournament, |local_tournament| {
+            local_tournament
+                .as_ref()
+                .map(|t| t.get_base().get_tournament_type())
+        });
+        let (mode, set_mode) = create_slice(
+            options.local_tournament,
             |local_tournament| {
                 local_tournament
                     .as_ref()
@@ -220,13 +222,19 @@ impl EditorContext for BaseEditorContext {
                 }
             },
         );
-        let set_base_mode = Callback::new(move |mode: Option<TournamentMode>| {
+        let set_mode = Callback::new(move |mode: Option<TournamentMode>| {
             if let Some(mode) = mode {
-                set_base_mode.set(mode);
+                set_mode.set(mode);
             }
         });
+        let skip_stage_editor = Signal::derive(move || {
+            matches!(
+                mode.get(),
+                Some(TournamentMode::SingleStage) | Some(TournamentMode::SwissSystem { .. })
+            )
+        });
         let (num_rounds_swiss_system, set_num_rounds_swiss_system) = create_slice(
-            options.tournament_editor_context.local,
+            options.local_tournament,
             |local_tournament| {
                 local_tournament
                     .as_ref()
@@ -240,6 +248,17 @@ impl EditorContext for BaseEditorContext {
         );
         let set_num_rounds_swiss_system = Callback::new(move |num_rounds_swiss: Option<u32>| {
             set_num_rounds_swiss_system.set(num_rounds_swiss.unwrap_or_default());
+        });
+        let tournament_state = create_read_slice(options.local_tournament, |local_tournament| {
+            local_tournament
+                .as_ref()
+                .map(|t| t.get_base().get_tournament_state())
+        });
+        let is_disabled_base_editing = Signal::derive(move || {
+            matches!(
+                tournament_state.get(),
+                Some(TournamentState::ActiveStage(_)) | Some(TournamentState::Finished)
+            )
         });
 
         // ---- tournament base resource ----
@@ -339,6 +358,7 @@ impl EditorContext for BaseEditorContext {
         });
 
         BaseEditorContext {
+            local,
             set_local,
             origin,
             set_origin,
@@ -349,13 +369,18 @@ impl EditorContext for BaseEditorContext {
             version,
             name,
             set_name,
+            sport_id,
             num_entrants,
             set_num_entrants,
-            mode: base_mode,
-            set_mode: set_base_mode,
+            tournament_type,
+            mode,
+            set_mode,
+            skip_stage_editor,
             num_rounds_swiss_system,
             set_num_rounds_swiss_system,
+            tournament_state,
             set_optimistic_version,
+            set_resource_id,
             load_tournament_base,
             save_tournament_base,
             post_save_callback,
@@ -369,26 +394,38 @@ impl EditorContext for BaseEditorContext {
 
     /// Set an existing tournament base in the editor context.
     fn set_object(&self, base: Self::ObjectType) {
+        let id = base.get_id();
         self.set_local.set(Some(base.clone()));
         self.set_optimistic_version.set(base.get_version());
         self.set_origin.set(Some(base));
+        self.set_resource_id.set(Some(id));
     }
 
     /// Create a new tournament base in the editor context with a new UUID and default values.
     fn new_object(&self) -> Option<Uuid> {
-        let base = TournamentBase::default();
-        let id = base.get_id();
+        if let Some(sport_id) = self.sport_id.get() {
+            let mut base = TournamentBase::default();
+            base.set_sport_id(sport_id);
+            let id = base.get_id();
 
-        self.set_local.set(Some(base));
-        self.set_optimistic_version.set(None);
-        self.set_origin.set(None);
-        Some(id)
+            self.set_resource_id.set(None);
+            self.set_local.set(Some(base));
+            self.set_optimistic_version.set(None);
+            self.set_origin.set(None);
+            Some(id)
+        } else {
+            None
+        }
     }
+}
 
+impl EditorContextWithResource for BaseEditorContext {
     /// Create a new object from a given tournament base by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut base: Self::ObjectType) -> Option<Uuid> {
         let id = Uuid::new_v4();
         base.set_id_version(IdVersion::new(id, None)).set_name("");
+
+        self.set_resource_id.set(None);
         self.set_local.set(Some(base));
         self.set_optimistic_version.set(None);
         self.set_origin.set(None);

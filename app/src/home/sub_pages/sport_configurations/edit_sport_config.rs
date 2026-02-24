@@ -16,7 +16,7 @@ use app_utils::{
     params::{EditActionParams, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, SaveSportConfigFormData},
     state::{
-        EditorContext,
+        EditorContext, EditorContextWithResource,
         global_state::{GlobalState, GlobalStateStoreFields},
         object_table::ObjectEditorMapContext,
         sport_config::SportConfigEditorContext,
@@ -137,7 +137,7 @@ pub fn EditSportConfiguration() -> impl IntoView {
                                                 "Please select a sport configuration from the list."
                                             }
                                             Some(EditAction::Copy) => {
-                                                "Press 'Copy' of a selected sport configuration to create a new sport configuration based upon the selected one."
+                                                "Press 'Copy selected Sport Configuration' to create a new sport configuration based upon the selected one."
                                             }
                                             None => "",
                                         }}

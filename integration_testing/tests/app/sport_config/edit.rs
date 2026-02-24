@@ -7,7 +7,8 @@ use app_utils::{
     enum_utils::EditAction,
     params::SportConfigIdQuery,
     state::{
-        EditorContext, object_table::ObjectEditorMapContext, sport_config::SportConfigEditorContext,
+        EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
+        sport_config::SportConfigEditorContext,
     },
 };
 use generic_sport_plugin::config::GenericSportConfig;
@@ -34,8 +35,7 @@ fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
     match edit_action {
         EditAction::New => {
             let new_id = sport_config_editor_map
-                .new_editor
-                .run(None)
+                .new_editor(None)
                 .expect("Failed to create new sport config object");
             sport_config_editor_map.set_selected_id.run(Some(new_id));
         }

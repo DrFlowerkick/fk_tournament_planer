@@ -1,12 +1,9 @@
 //! create or edit a tournament
 
-use app_core::{TournamentBase, TournamentEditor, TournamentMode};
+use app_core::{TournamentBase, TournamentMode};
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, NumberInput, TextInput},
-    error::{
-        AppError,
-        strategy::{handle_general_error, handle_read_error},
-    },
+    enum_utils::EditAction,
     hooks::{
         use_on_cancel::use_on_cancel,
         use_query_navigation::{
@@ -14,158 +11,58 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery},
-    server_fn::tournament_base::load_tournament_base,
+    params::{EditActionParams, FilterNameQuery, ParamQuery, TournamentBaseIdQuery},
+    server_fn::tournament_base::SaveTournamentBase,
     state::{
-        EditorContext,
-        activity_tracker::ActivityTracker,
-        error_state::PageErrorContext,
-        tournament::{TournamentEditorContext, TournamentRefetchContext},
+        EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
+        tournament::TournamentEditorContext,
     },
 };
 use leptos::{html::H2, prelude::*};
-use leptos_router::{components::A, hooks::use_matched, nested_router::Outlet};
+use leptos_router::{NavigateOptions, hooks::use_navigate};
 use uuid::Uuid;
 
 #[component]
-pub fn LoadTournament() -> impl IntoView {
-    // --- global context ---
-    let page_err_ctx = expect_context::<PageErrorContext>();
-    let component_id = StoredValue::new(Uuid::new_v4());
-    let activity_tracker = expect_context::<ActivityTracker>();
-    // remove errors on unmount
-    on_cleanup(move || {
-        page_err_ctx.clear_all_for_component(component_id.get_value());
-        activity_tracker.remove_component(component_id.get_value());
-    });
-    let refetch_trigger = TournamentRefetchContext::new();
-    provide_context(refetch_trigger);
-
-    // --- url queries ---
-    let sport_id = SportIdQuery::use_param_query();
-    let tournament_id = TournamentBaseIdQuery::use_param_query();
-
-    // --- Resource to load tournament base ---
-    let base_res = Resource::new(
-        move || {
-            (
-                tournament_id.get(),
-                sport_id.get(),
-                refetch_trigger.track_fetch_trigger.get(),
-            )
-        },
-        move |(maybe_t_id, maybe_s_id, _track_refetch)| async move {
-            if let Some(t_id) = maybe_t_id
-                && maybe_s_id.is_some()
-            {
-                match activity_tracker
-                    .track_activity_wrapper(component_id.get_value(), load_tournament_base(t_id))
-                    .await
-                {
-                    Ok(None) => Err(AppError::ResourceNotFound(
-                        "Tournament Base".to_string(),
-                        t_id,
-                    )),
-                    load_result => load_result,
-                }
-            } else {
-                Ok(None)
-            }
-        },
-    );
-
-    // retry function for error handling
-    let refetch = Callback::new(move |()| {
-        refetch_trigger.trigger_refetch();
-    });
-
-    // cancel function for cancel button and error handling
-    let on_cancel = use_on_cancel();
-
-    view! {
-        <Transition fallback=move || {
-            view! {
-                <div class="card w-full bg-base-100 shadow-xl">
-                    <div class="card-body">
-                        <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
-                            <span class="loading loading-spinner w-24 h-24 mb-4"></span>
-                            <p class="text-2xl font-bold text-center">
-                                "Loading tournament data..."
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            }
-        }>
-            <ErrorBoundary fallback=move |errors| {
-                for (_err_id, err) in errors.get().into_iter() {
-                    let e = err.into_inner();
-                    if let Some(app_err) = e.downcast_ref::<AppError>() {
-                        handle_read_error(
-                            &page_err_ctx,
-                            component_id.get_value(),
-                            app_err,
-                            refetch,
-                            on_cancel,
-                        );
-                    } else {
-                        handle_general_error(
-                            &page_err_ctx,
-                            component_id.get_value(),
-                            "An unexpected error occurred.",
-                            None,
-                            on_cancel,
-                        );
-                    }
-                }
-            }>
-                // check if we have new or existing tournament
-                // In case of new tournament, initialize editor with new base if
-                // -> no base is present yet
-                // -> an already saved base is in context (meaning a click on New Tournament
-                // while editing an existing one)
-                {move || {
-                    base_res
-                        .and_then(|may_be_t| {
-                            view! { <EditTournament base=may_be_t.clone() /> }
-                        })
-                }}
-            </ErrorBoundary>
-        </Transition>
-    }
-}
-
-#[component]
-pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
-    // --- prepare initial tournament editor state ---
-    let sport_id = SportIdQuery::use_param_query();
-    let matched_route = use_matched();
-
-    let mut tournament_editor = TournamentEditor::new();
-    let (show_form, is_new) = if let Some(b) = base {
-        tournament_editor.set_base(b);
-        (true, false)
-    } else if let Some(s_id) = sport_id.get_untracked() {
-        tournament_editor.new_base(s_id);
-        let is_new = matched_route.get_untracked().ends_with("new-tournament");
-        (is_new, is_new)
-    } else {
-        (false, false)
-    };
-
-    // --- Initialize context for creating and editing tournaments ---
-    let tournament_editor_context = TournamentEditorContext::new(());
-
-    provide_context(tournament_editor_context);
-
+pub fn EditTournamentBase() -> impl IntoView {
     // --- Hooks & Navigation ---
     let UseQueryNavigationReturn {
-        url_matched_route,
         url_is_matched_route,
         ..
     } = use_query_navigation();
 
-    // cancel function for cancel button and error handling
+    let edit_action = EditActionParams::use_param_query();
+    let tournament_id = TournamentBaseIdQuery::use_param_query();
+
+    // --- local state ---
+    let tournament_editor_map =
+        expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
+
+    let show_form = Signal::derive(move || {
+        if let Some(id) = tournament_id.get()
+            && let Some(editor) = tournament_editor_map.get_editor(id)
+        {
+            match edit_action.get() {
+                Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
+                Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
+                Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
+                None => false,
+            }
+        } else {
+            false
+        }
+    });
+
+    // remove unsaved editor (no origin) on unmount
+    on_cleanup(move || {
+        if let Some(id) = tournament_id.get_untracked()
+            && let Some(editor) = tournament_editor_map.get_editor_untracked(id)
+            && editor.origin_signal().with(|origin| origin.is_none())
+        {
+            tournament_editor_map.remove_editor(id);
+        }
+    });
+
+    // cancel function for close button
     let on_cancel = use_on_cancel();
 
     // scroll into view handling
@@ -173,257 +70,348 @@ pub fn EditTournament(base: Option<TournamentBase>) -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <div data-testid="tournament-editor-root">
+        <Show when=move || edit_action.get().is_some() fallback=|| "Page not found.".into_view()>
             <div class="card w-full bg-base-100 shadow-xl">
                 <div class="card-body">
-                    <h2
-                        class="card-title"
-                        data-testid="tournament-editor-title"
-                        node_ref=scroll_ref
-                    >
-                        {move || { if is_new { "Plan New Tournament" } else { "Edit Tournament" } }}
-                    </h2>
+                    <div class="flex justify-between items-center">
+                        <h2 class="card-title" node_ref=scroll_ref>
+                            {move || match edit_action.get() {
+                                Some(EditAction::New) => "New Tournament",
+                                Some(EditAction::Edit) => "Edit Tournament",
+                                Some(EditAction::Copy) => "Copy Tournament",
+                                None => "",
+                            }}
+                        </h2>
+                        <button
+                            class="btn btn-square btn-ghost btn-sm"
+                            on:click=move |_| on_cancel.run(())
+                            aria-label="Close"
+                            data-testid="action-btn-close"
+                        >
+                            <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                        </button>
+                    </div>
                     <Show
-                        when=move || show_form
-                        fallback=|| {
+                        when=move || show_form.try_get().unwrap_or(false)
+                        fallback=move || {
                             view! {
                                 <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
                                     <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
                                     <p class="text-2xl font-bold text-center">
-                                        "Please select a tournament from the list."
+                                        {move || match edit_action.try_get().flatten() {
+                                            Some(EditAction::New) => {
+                                                "Press 'New Tournament' to create a new tournament."
+                                            }
+                                            Some(EditAction::Edit) => {
+                                                "Please select a tournament from the list."
+                                            }
+                                            Some(EditAction::Copy) => {
+                                                "Press 'Copy selected Tournament' to create a new tournament based upon the selected one."
+                                            }
+                                            None => "",
+                                        }}
                                     </p>
                                 </div>
                             }
                         }
                     >
-                        // --- Form Area ---
-                        <fieldset
-                            disabled=move || {
-                                tournament_editor_context.is_disabled_base_editing.get()
-                                    || !tournament_editor_context.is_base_initialized.get()
+                        // Using For forces the view to be recreated when the id changes
+                        <For
+                            each=move || {
+                                tournament_id
+                                    .get()
+                                    .and_then(|current_id| {
+                                        tournament_editor_map
+                                            .get_editor(current_id)
+                                            .map(|editor| (current_id, editor))
+                                    })
+                                    .into_iter()
                             }
-                            class="contents"
-                            data-testid="tournament-editor-form"
-                        >
-                            <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                                <TextInput
-                                    label="Tournament Name"
-                                    name="tournament-name"
-                                    data_testid="input-tournament-name"
-                                    value=tournament_editor_context.base_name
-                                    action=InputCommitAction::WriteTo(
-                                        tournament_editor_context.set_base_name,
-                                    )
-                                    validation_result=tournament_editor_context.validation_result
-                                    object_id=tournament_editor_context.base_id
-                                    field="name"
-                                />
-
-                                <NumberInput
-                                    label="Number of Entrants"
-                                    name="tournament-entrants"
-                                    data_testid="input-tournament-entrants"
-                                    value=tournament_editor_context.base_num_entrants
-                                    action=InputCommitAction::WriteTo(
-                                        tournament_editor_context.set_base_num_entrants,
-                                    )
-                                    validation_result=tournament_editor_context.validation_result
-                                    object_id=tournament_editor_context.base_id
-                                    field="num_entrants"
-                                    min="2".to_string()
-                                />
-
-                                <EnumSelect
-                                    label="Mode"
-                                    name="tournament-mode"
-                                    data_testid="select-tournament-mode"
-                                    value=tournament_editor_context.base_mode
-                                    action=InputCommitAction::WriteTo(
-                                        tournament_editor_context.set_base_mode,
-                                    )
-                                />
-
-                                <Show when=move || {
-                                    matches!(
-                                        tournament_editor_context.base_mode.get(),
-                                        Some(TournamentMode::SwissSystem { .. })
-                                    )
-                                }>
-                                    <NumberInput
-                                        label="Rounds (Swiss System)"
-                                        name="tournament-swiss-num_rounds"
-                                        data_testid="input-tournament-swiss-num_rounds"
-                                        value=tournament_editor_context.base_num_rounds_swiss_system
-                                        action=InputCommitAction::WriteTo(
-                                            tournament_editor_context.set_base_num_rounds_swiss_system,
-                                        )
-                                        validation_result=tournament_editor_context
-                                            .validation_result
-                                        object_id=tournament_editor_context.base_id
-                                        field="mode.num_rounds"
-                                        min="1".to_string()
-                                    />
-                                </Show>
-
-                            </div>
-                        // stages editor links
-                        </fieldset>
-                        {move || match tournament_editor_context.base_mode.get() {
-                            Some(TournamentMode::SingleStage) => {
-                                // set up single stage editor
-                                // with single stage we only have one group in stage
-                                // therefore we "skip" the stage editor and go directly to group editor
-                                view! {
-                                    <div class="w-full mt-6">
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("0/0"),
-                                            )
-                                            attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
-                                            attr:data-testid="link-configure-single-stage"
-                                            scroll=false
-                                        >
-                                            <span class="icon-[heroicons--user-group] w-6 h-6 mr-2"></span>
-                                            "Edit Single Stage"
-                                        </A>
-                                    </div>
-                                }
-                                    .into_any()
+                            key=|(id, _)| *id
+                            children=move |(_, editor)| {
+                                view! { <TournamentBaseForm tournament_editor=editor /> }
                             }
-                            Some(TournamentMode::PoolAndFinalStage) => {
-                                // set up pool and final stage editor
-                                // with pool and final stage we have two stages to configure
-                                view! {
-                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full mt-6">
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("0"),
-                                            )
-                                            attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                            attr:data-testid="link-configure-pool-stage"
-                                            scroll=false
-                                        >
-                                            <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                            "Edit Pool Stage"
-                                        </A>
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("1"),
-                                            )
-                                            attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                            attr:data-testid="link-configure-final-stage"
-                                            scroll=false
-                                        >
-                                            <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                            "Edit Final Stage"
-                                        </A>
-                                    </div>
-                                }
-                                    .into_any()
-                            }
-                            Some(TournamentMode::TwoPoolStagesAndFinalStage) => {
-                                // set up two pool stages and final stage editor
-                                // with pool and final stage we have three stages to configure
-                                view! {
-                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("0"),
-                                            )
-                                            attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                            attr:data-testid="link-configure-first-pool-stage"
-                                            scroll=false
-                                        >
-                                            <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                            "Edit First Pool Stage"
-                                        </A>
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("1"),
-                                            )
-                                            attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                            attr:data-testid="link-configure-second-pool-stage"
-                                            scroll=false
-                                        >
-                                            <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                            "Edit Second Pool Stage"
-                                        </A>
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("2"),
-                                            )
-                                            attr:class="btn btn-primary h-auto min-h-[4rem] text-lg shadow-md"
-                                            attr:data-testid="link-configure-final-stage"
-                                            scroll=false
-                                        >
-                                            <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                            "Edit Final Stage"
-                                        </A>
-                                    </div>
-                                }
-                                    .into_any()
-                            }
-                            Some(TournamentMode::SwissSystem { .. }) => {
-                                // set up swiss system stage editor
-                                // with swiss system we only have one group in stage
-                                // therefore we "skip" the stage editor and go directly to group editor
-                                view! {
-                                    <div class="w-full mt-6">
-                                        <A
-                                            href=move || url_matched_route(
-                                                MatchedRouteHandler::Extend("0/0"),
-                                            )
-                                            attr:class="btn btn-secondary w-full h-auto min-h-[4rem] text-lg shadow-md"
-                                            attr:data-testid="link-configure-swiss-system"
-                                            scroll=false
-                                        >
-                                            <span class="icon-[heroicons--user-group] w-6 h-6 mr-2"></span>
-                                            "Edit Swiss System"
-                                        </A>
-                                    </div>
-                                }
-                                    .into_any()
-                            }
-                            None => ().into_any(),
-                        }}
+                        />
                     </Show>
                 </div>
             </div>
+        </Show>
+    }
+}
 
-            <div class="my-4"></div>
-            <Outlet />
-            <div class="my-4"></div>
+#[component]
+fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoView {
+    // --- Hooks, Navigation & global state ---
+    let UseQueryNavigationReturn {
+        url_matched_route,
+        url_matched_route_update_queries,
+        ..
+    } = use_query_navigation();
+    let navigate = use_navigate();
 
-            <Show when=move || show_form>
-                <div class="card w-full bg-base-100 shadow-xl">
-                    <div class="card-body">
-                        // --- Action Buttons ---
-                        <div class="w-full flex justify-end gap-4">
-                            <button
-                                class="btn btn-ghost"
-                                data-testid="btn-tournament-cancel"
-                                on:click=move |_| on_cancel.run(())
-                            >
-                                "Cancel"
-                            </button>
+    let edit_action = EditActionParams::use_param_query();
+    let intent = Signal::derive(move || {
+        edit_action.get().map(|action| match action {
+            EditAction::Edit => "update".to_string(),
+            EditAction::New | EditAction::Copy => "create".to_string(),
+        })
+    });
+    let show_stage_navigation =
+        Signal::derive(move || matches!(edit_action.get(), Some(EditAction::Edit)));
 
-                            // we have to use try_get here to avoid runtime panics, because
-                            // page_err_ctx "lives" independent of tournament_editor_context
-                            <button
-                                class="btn btn-primary"
-                                data-testid="btn-tournament-save"
-                                on:click=move |_| tournament_editor_context.save_diff()
-                                disabled=move || {
-                                    tournament_editor_context
-                                        .validation_result
-                                        .with(|res| res.is_err())
-                                }
-                            ></button>
-                        </div>
+    let post_save_callback = Callback::new(move |tb: TournamentBase| {
+        if let Some(edit_action) = edit_action.get()
+            && matches!(edit_action, EditAction::New | EditAction::Copy)
+        {
+            let tb_id = tb.get_id().to_string();
+            let key_value = vec![
+                (TournamentBaseIdQuery::KEY, tb_id.as_str()),
+                (FilterNameQuery::KEY, tb.get_name()),
+            ];
+            // we need to use extend here, because the callback is executed in the route of
+            // the list view
+            let nav_url = url_matched_route_update_queries(
+                key_value,
+                MatchedRouteHandler::Extend(EditAction::Edit.to_string().as_str()),
+            );
+            // ToDo: remove this, if nav_url is ok after testing
+            leptos::logging::debug_log!("Navigating to {} after saving tournament base", nav_url);
+            navigate(
+                &nav_url,
+                NavigateOptions {
+                    scroll: false,
+                    ..Default::default()
+                },
+            );
+        }
+    });
+    tournament_editor
+        .base_editor
+        .post_save_callback
+        .set_value(Some(post_save_callback));
+
+    view! {
+        // --- Tournament Base Form ---
+        <div data-testid="tournament-editor-form">
+            <ActionForm
+                action=tournament_editor.base_editor.save_tournament_base
+                on:submit:capture=move |ev| {
+                    ev.prevent_default();
+                    if tournament_editor.base_editor.validation_result.with(|vr| vr.is_err()) {
+                        return;
+                    }
+                    if let Some(base) = tournament_editor.base_editor.local.get() {
+                        tournament_editor.base_editor.increment_optimistic_version();
+                        let save_base = SaveTournamentBase { base };
+                        tournament_editor.base_editor.save_tournament_base.dispatch(save_base);
+                    }
+                }
+            >
+                // --- Tournament Base Form ---
+                <fieldset
+                    class="space-y-4 contents"
+                    disabled=move || {
+                        tournament_editor.base_editor.is_disabled_base_editing.get()
+                    }
+                >
+                    // hidden meta fields; can be used for E2E testing
+                    <input
+                        type="hidden"
+                        name="tournament[id]"
+                        data-testid="hidden-id"
+                        prop:value=move || {
+                            tournament_editor
+                                .base_editor
+                                .id
+                                .get()
+                                .unwrap_or(Uuid::nil())
+                                .to_string()
+                        }
+                    />
+                    <input
+                        type="hidden"
+                        name="tournament[version]"
+                        data-testid="hidden-version"
+                        prop:value=move || {
+                            tournament_editor.base_editor.version.get().unwrap_or_default()
+                        }
+                    />
+                    <input
+                        type="hidden"
+                        name="tournament[sport_id]"
+                        data-testid="hidden-sport-id"
+                        prop:value=move || {
+                            tournament_editor
+                                .base_editor
+                                .sport_id
+                                .get()
+                                .unwrap_or(Uuid::nil())
+                                .to_string()
+                        }
+                    />
+                    <input
+                        type="hidden"
+                        name="tournament[t_type]"
+                        data-testid="hidden-t_type"
+                        prop:value=move || {
+                            tournament_editor
+                                .base_editor
+                                .tournament_type
+                                .get()
+                                .map(|tt| tt.to_string())
+                                .unwrap_or_default()
+                        }
+                    />
+                    <input
+                        type="hidden"
+                        name="tournament[state]"
+                        data-testid="hidden-state"
+                        prop:value=move || {
+                            tournament_editor
+                                .base_editor
+                                .tournament_state
+                                .get()
+                                .map(|ts| ts.to_string())
+                                .unwrap_or_default()
+                        }
+                    />
+                    <input
+                        type="hidden"
+                        name="intent"
+                        data-testid="intent"
+                        prop:value=move || intent.get()
+                    />
+                    <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                        <TextInput
+                            label="Tournament Name"
+                            name="tournament-name"
+                            data_testid="input-tournament-name"
+                            value=tournament_editor.base_editor.name
+                            action=InputCommitAction::WriteTo(
+                                tournament_editor.base_editor.set_name,
+                            )
+                            validation_result=tournament_editor.base_editor.validation_result
+                            object_id=tournament_editor.base_editor.id
+                            field="name"
+                        />
+
+                        <NumberInput
+                            label="Number of Entrants"
+                            name="tournament-entrants"
+                            data_testid="input-tournament-entrants"
+                            value=tournament_editor.base_editor.num_entrants
+                            action=InputCommitAction::WriteTo(
+                                tournament_editor.base_editor.set_num_entrants,
+                            )
+                            validation_result=tournament_editor.base_editor.validation_result
+                            object_id=tournament_editor.base_editor.id
+                            field="num_entrants"
+                            min="2".to_string()
+                        />
+
+                        <EnumSelect
+                            label="Mode"
+                            name="tournament-mode"
+                            data_testid="select-tournament-mode"
+                            value=tournament_editor.base_editor.mode
+                            action=InputCommitAction::WriteTo(
+                                tournament_editor.base_editor.set_mode,
+                            )
+                        />
+
+                        <Show when=move || {
+                            matches!(
+                                tournament_editor.base_editor.mode.get(),
+                                Some(TournamentMode::SwissSystem { .. })
+                            )
+                        }>
+                            <NumberInput
+                                label="Rounds (Swiss System)"
+                                name="tournament-swiss-num_rounds"
+                                data_testid="input-tournament-swiss-num_rounds"
+                                value=tournament_editor.base_editor.num_rounds_swiss_system
+                                action=InputCommitAction::WriteTo(
+                                    tournament_editor.base_editor.set_num_rounds_swiss_system,
+                                )
+                                validation_result=tournament_editor.base_editor.validation_result
+                                object_id=tournament_editor.base_editor.id
+                                field="mode.num_rounds"
+                                min="1".to_string()
+                            />
+                        </Show>
+
                     </div>
-                </div>
-            </Show>
+                </fieldset>
+                <Show when=move || show_stage_navigation.get()>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full mt-6">
+                        <For
+                            each=move || {
+                                0..tournament_editor
+                                    .base_editor
+                                    .mode
+                                    .get()
+                                    .map(|m| m.get_num_of_stages())
+                                    .unwrap_or_default()
+                            }
+                            key=|i| *i
+                            children=move |i| {
+                                let stage_name = move || {
+                                    tournament_editor
+                                        .base_editor
+                                        .mode
+                                        .get()
+                                        .and_then(|m| m.get_stage_name(i))
+                                        .unwrap_or_else(|| format!("Stage {}", i + 1))
+                                };
+                                view! {
+                                    <button
+                                        class="btn btn-sm"
+                                        class:btn-primary=move || {
+                                            !tournament_editor.base_editor.skip_stage_editor.get()
+                                        }
+                                        class:btn-secondary=move || {
+                                            tournament_editor.base_editor.skip_stage_editor.get()
+                                        }
+                                        data-testid=move || {
+                                            format!(
+                                                "action-btn-configure-stage-{}",
+                                                stage_name().to_lowercase().replace(" ", "-"),
+                                            )
+                                        }
+                                        on:click=move |_| {
+                                            let navigate = use_navigate();
+                                            let path = if tournament_editor
+                                                .base_editor
+                                                .skip_stage_editor
+                                                .get()
+                                            {
+                                                tournament_editor.prepare_group(0, 0);
+                                                "0/0".to_string()
+                                            } else {
+                                                tournament_editor.prepare_stage(i);
+                                                i.to_string()
+                                            };
+                                            let nav_url = url_matched_route(
+                                                MatchedRouteHandler::Extend(&path),
+                                            );
+                                            navigate(
+                                                &nav_url,
+                                                NavigateOptions {
+                                                    scroll: false,
+                                                    ..Default::default()
+                                                },
+                                            );
+                                        }
+                                    >
+                                        {move || format!("Edit {}", stage_name())}
+                                    </button>
+                                }
+                            }
+                        />
+                    </div>
+                </Show>
+            </ActionForm>
         </div>
     }
 }

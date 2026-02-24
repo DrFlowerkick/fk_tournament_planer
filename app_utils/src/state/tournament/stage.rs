@@ -1,16 +1,15 @@
 //! stage editor context
 
-use super::TournamentEditorContext;
 use crate::{
     error::{AppError, AppResult, strategy::handle_write_error},
     server_fn::stage::{SaveStage, load_stage_by_id},
     state::{
-        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        toast_state::ToastContext,
+        EditorContext, EditorContextWithResource, activity_tracker::ActivityTracker,
+        error_state::PageErrorContext, toast_state::ToastContext,
     },
 };
 use app_core::{
-    CrTopic, Stage,
+    CrTopic, Stage, Tournament, TournamentState,
     utils::{id_version::IdVersion, validation::ValidationResult},
 };
 use cr_leptos_axum_socket::use_client_registry_socket;
@@ -18,9 +17,10 @@ use leptos::prelude::*;
 use uuid::Uuid;
 
 pub struct StageEditorContextOptions {
-    stage_number: u32,
-    res_id: Option<Uuid>,
-    tournament_editor_context: TournamentEditorContext,
+    pub stage_number: u32,
+    pub res_id: Option<Uuid>,
+    pub local_tournament: RwSignal<Option<Tournament>>,
+    pub origin_tournament: RwSignal<Option<Tournament>>,
 }
 
 #[derive(Clone, Copy)]
@@ -29,6 +29,8 @@ pub struct StageEditorContext {
     stage_number: u32,
 
     // --- state & derived signals ---
+    /// The local editable stage in the editor context, derived from the local tournament and stage number.
+    pub local: Signal<Option<Stage>>,
     /// SignalSetter for setting the local stage in the editor context
     set_local: SignalSetter<Option<Stage>>,
     /// The original stage loaded from storage.
@@ -37,6 +39,9 @@ pub struct StageEditorContext {
     set_origin: SignalSetter<Option<Stage>>,
     /// Read slice for accessing the validation result of the stage
     pub validation_result: Signal<ValidationResult<()>>,
+    /// Read slice for checking if the stage is in a state where editing is disabled
+    /// (e.g. when stage or tournament is finished)
+    pub is_disabled_stage_editing: Signal<bool>,
 
     // --- Signals, Slices & Callbacks for form fields ---
     /// Signal slice for the id field
@@ -79,18 +84,15 @@ impl EditorContext for StageEditorContext {
 
         // ---- signals & slices ----
         // get id first, which enables look up of stage by id, which is faster than look up by stage number.
-        let id = create_read_slice(
-            options.tournament_editor_context.local,
-            move |local_tournament| {
-                local_tournament.as_ref().and_then(|t| {
-                    t.get_stage_by_number(options.stage_number)
-                        .map(|s| s.get_id())
-                })
-            },
-        );
+        let id = create_read_slice(options.local_tournament, move |local_tournament| {
+            local_tournament.as_ref().and_then(|t| {
+                t.get_stage_by_number(options.stage_number)
+                    .map(|s| s.get_id())
+            })
+        });
 
-        let (_local, set_local) = create_slice(
-            options.tournament_editor_context.local,
+        let (local, set_local) = create_slice(
+            options.local_tournament,
             move |local_tournament| {
                 id.get().and_then(|id| {
                     local_tournament
@@ -107,7 +109,7 @@ impl EditorContext for StageEditorContext {
             },
         );
         let (origin, set_origin) = create_slice(
-            options.tournament_editor_context.origin,
+            options.origin_tournament,
             move |origin_tournament| {
                 id.get().and_then(|id| {
                     origin_tournament
@@ -123,9 +125,8 @@ impl EditorContext for StageEditorContext {
                 }
             },
         );
-        let validation_result = create_read_slice(
-            options.tournament_editor_context.local,
-            move |local_tournament| {
+        let validation_result =
+            create_read_slice(options.local_tournament, move |local_tournament| {
                 if let Some(id) = id.get()
                     && let Some(t) = local_tournament
                     && let Some(stage) = t.get_stage_by_id(id)
@@ -134,26 +135,37 @@ impl EditorContext for StageEditorContext {
                 } else {
                     ValidationResult::Ok(())
                 }
-            },
-        );
+            });
 
-        let tournament_id = create_read_slice(
-            options.tournament_editor_context.local,
-            |local_tournament| local_tournament.as_ref().map(|t| t.get_base().get_id()),
-        );
-        let version = create_read_slice(
-            options.tournament_editor_context.local,
-            move |local_tournament| {
-                id.get().and_then(|id| {
-                    local_tournament
-                        .as_ref()
-                        .and_then(|t| t.get_stage_by_id(id))
-                        .and_then(|s| s.get_version())
-                })
-            },
-        );
+        let is_disabled_stage_editing =
+            create_read_slice(options.local_tournament, move |local_tournament| {
+                if let Some(t) = local_tournament {
+                    match t.get_base().get_tournament_state() {
+                        TournamentState::ActiveStage(active_stage) => {
+                            active_stage >= options.stage_number
+                        }
+                        TournamentState::Finished => true,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            });
+
+        let tournament_id = create_read_slice(options.local_tournament, |local_tournament| {
+            local_tournament.as_ref().map(|t| t.get_base().get_id())
+        });
+
+        let version = create_read_slice(options.local_tournament, move |local_tournament| {
+            id.get().and_then(|id| {
+                local_tournament
+                    .as_ref()
+                    .and_then(|t| t.get_stage_by_id(id))
+                    .and_then(|s| s.get_version())
+            })
+        });
         let (num_groups, set_num_groups) = create_slice(
-            options.tournament_editor_context.local,
+            options.local_tournament,
             move |local_tournament| {
                 id.get().and_then(|id| {
                     local_tournament
@@ -269,10 +281,12 @@ impl EditorContext for StageEditorContext {
 
         StageEditorContext {
             stage_number: options.stage_number,
+            local,
             set_local,
             origin,
             set_origin,
             validation_result,
+            is_disabled_stage_editing,
             id,
             version,
             tournament_id,
@@ -315,7 +329,9 @@ impl EditorContext for StageEditorContext {
             None
         }
     }
+}
 
+impl EditorContextWithResource for StageEditorContext {
     /// Create a new object from a given tournament stage by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut stage: Self::ObjectType) -> Option<Uuid> {
         if let Some(tournament_id) = self.tournament_id.get()

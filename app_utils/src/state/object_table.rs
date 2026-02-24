@@ -3,7 +3,7 @@
 use crate::{
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::ParamQueryId,
-    state::EditorContext,
+    state::{EditorContext, EditorContextWithResource},
 };
 use app_core::utils::traits::ObjectIdVersion;
 use leptos::prelude::*;
@@ -133,10 +133,6 @@ where
     pub selected_id: Signal<Option<Uuid>>,
     /// Callback for updating the currently selected object editor id
     pub set_selected_id: Callback<Option<Uuid>>,
-    /// Callback for creating a new object editor
-    pub new_editor: Callback<OE::NewEditorOptions, Option<Uuid>>,
-    /// Callback for copying the current object editor and selecting the copy
-    pub copy_editor: Callback<OE::NewEditorOptions, Option<Uuid>>,
     /// Trigger to refetch data from server
     refetch_trigger: RwSignal<u64>,
     /// Read slice for getting the current state of the object editor map
@@ -204,32 +200,6 @@ where
                 );
             }
         });
-        let new_editor = Callback::new(move |options: OE::NewEditorOptions| {
-            let editor = OE::new(options);
-            if let Some(new_id) = editor.new_object() {
-                editor_map.update(|em| {
-                    em.insert(new_id, editor);
-                });
-                Some(new_id)
-            } else {
-                None
-            }
-        });
-        let copy_editor = Callback::new(move |options: OE::NewEditorOptions| {
-            let editor = OE::new(options);
-            if let Some(current_id) = selected_id.get()
-                && let Some(origin) = editor_map
-                    .with(|em| em.get(&current_id).and_then(|ed| ed.origin_signal().get()))
-                && let Some(new_id) = editor.copy_object(origin)
-            {
-                editor_map.update(|em| {
-                    em.insert(new_id, editor);
-                });
-                Some(new_id)
-            } else {
-                None
-            }
-        });
         let refetch_trigger = RwSignal::new(0);
 
         Self {
@@ -237,11 +207,21 @@ where
             visible_ids_list,
             selected_id,
             set_selected_id,
-            new_editor,
-            copy_editor,
             refetch_trigger,
             track_fetch_trigger: refetch_trigger.read_only().into(),
             marker: std::marker::PhantomData,
+        }
+    }
+
+    pub fn new_editor(&self, options: OE::NewEditorOptions) -> Option<Uuid> {
+        let editor = OE::new(options);
+        if let Some(new_id) = editor.new_object() {
+            self.editor_map.update(|em| {
+                em.insert(new_id, editor);
+            });
+            Some(new_id)
+        } else {
+            None
         }
     }
 
@@ -261,11 +241,39 @@ where
         self.editor_map.with_untracked(|em| em.get(&id).copied())
     }
 
+    pub fn remove_editor(&self, id: Uuid) {
+        self.editor_map.update(|em| {
+            em.remove(&id);
+        });
+    }
+
     pub fn is_selected(&self, id: Uuid) -> bool {
         self.selected_id
             .with(|selected_id| selected_id == &Some(id))
     }
+}
 
+impl<OE, Q> ObjectEditorMapContext<OE, Q>
+where
+    OE: EditorContextWithResource,
+    Q: ParamQueryId,
+{
+    pub fn copy_editor(&self, options: OE::NewEditorOptions) -> Option<Uuid> {
+        let editor = OE::new(options);
+        if let Some(current_id) = self.selected_id.get()
+            && let Some(origin) = self
+                .editor_map
+                .with(|em| em.get(&current_id).and_then(|ed| ed.origin_signal().get()))
+            && let Some(new_id) = editor.copy_object(origin)
+        {
+            self.editor_map.update(|em| {
+                em.insert(new_id, editor);
+            });
+            Some(new_id)
+        } else {
+            None
+        }
+    }
     pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
         self.editor_map.with(|em| {
             if let Some(editor) = em.get(&object.get_id_version().get_id()) {
@@ -279,12 +287,6 @@ where
                     editor.set_object(object.clone());
                 }
             }
-        });
-    }
-
-    pub fn remove_editor(&self, id: Uuid) {
-        self.editor_map.update(|em| {
-            em.remove(&id);
         });
     }
 

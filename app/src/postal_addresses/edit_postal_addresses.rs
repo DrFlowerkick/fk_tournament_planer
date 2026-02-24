@@ -17,7 +17,7 @@ use app_utils::{
     },
     params::{AddressIdQuery, EditActionParams, FilterNameQuery, ParamQuery},
     state::{
-        EditorContext, object_table::ObjectEditorMapContext,
+        EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
         postal_address::PostalAddressEditorContext,
     },
 };
@@ -109,7 +109,7 @@ pub fn EditPostalAddress() -> impl IntoView {
                                                 "Please select a postal address from the list."
                                             }
                                             Some(EditAction::Copy) => {
-                                                "Press 'Copy' of a selected postal address to create a new postal address based upon the selected one."
+                                                "Press 'Copy selected Postal Address' to create a new postal address based upon the selected one."
                                             }
                                             None => "",
                                         }}
@@ -257,7 +257,6 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         type="hidden"
                         name="form[version]"
                         data-testid="hidden-version"
-                        readonly
                         prop:value=move || {
                             postal_address_editor.version.get().unwrap_or_default()
                         }

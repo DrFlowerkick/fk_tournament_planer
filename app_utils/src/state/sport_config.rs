@@ -7,7 +7,7 @@ use crate::{
     params::{ParamQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
-        EditorContext,
+        EditorContext, EditorContextWithResource,
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
@@ -296,7 +296,9 @@ impl EditorContext for SportConfigEditorContext {
             None
         }
     }
+}
 
+impl EditorContextWithResource for SportConfigEditorContext {
     /// Create a new object from a given sport config by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut sc: SportConfig) -> Option<Uuid> {
         let id = Uuid::new_v4();

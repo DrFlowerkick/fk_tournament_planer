@@ -72,22 +72,22 @@ async fn list_tournament_bases_inner(
     name = "tournament_base.save",
     skip_all,
     fields(
-        id = %tournament.get_id(),
+        id = %base.get_id(),
         // We only log metadata, not complete payloads
-        name_len = tournament.get_name().len(),
+        name_len = base.get_name().len(),
     )
 )]
-pub async fn save_tournament_base(tournament: TournamentBase) -> AppResult<TournamentBase> {
-    save_tournament_base_inner(tournament).await
+pub async fn save_tournament_base(base: TournamentBase) -> AppResult<TournamentBase> {
+    save_tournament_base_inner(base).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-pub async fn save_tournament_base_inner(tournament: TournamentBase) -> AppResult<TournamentBase> {
+pub async fn save_tournament_base_inner(base: TournamentBase) -> AppResult<TournamentBase> {
     let mut core = expect_context::<CoreState>().as_tournament_base_state();
 
     // We replace the state object in the core directly with the received object.
     // Prerequisite: The client has already set the correct IdVersion.
-    *core.get_mut() = tournament;
+    *core.get_mut() = base;
 
     // Persist; log outcome with the saved id.
     match core.save().await {
