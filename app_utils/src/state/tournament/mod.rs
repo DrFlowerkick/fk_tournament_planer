@@ -4,6 +4,7 @@
 //! efficient state updates via `RwSignal` without unnecessary cloning.
 
 pub mod base;
+pub mod stage;
 
 use crate::{
     error::strategy::handle_write_error,

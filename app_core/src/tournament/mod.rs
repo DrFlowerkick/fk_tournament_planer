@@ -323,6 +323,7 @@ impl Tournament {
         if let Some(stage) = self.get_stage_by_number(stage.get_number())
             && stage.get_id() != stage_id
         {
+            // ToDo: handle this case better by e.g. showing an error message to user, instead of silently ignoring the new stage
             return true;
         }
 

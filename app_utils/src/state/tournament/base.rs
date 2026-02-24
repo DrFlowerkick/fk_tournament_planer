@@ -247,8 +247,6 @@ impl EditorContext for BaseEditorContext {
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
         // resource to load tournament base
-        // since we render BaseTableRow inside the Transition block of ListBases,
-        // we do not need to use another Transition block to load the tournament base.
         /*let load_tournament_base = Resource::new(
             move || resource_id.get(),
             move |maybe_id| async move {
