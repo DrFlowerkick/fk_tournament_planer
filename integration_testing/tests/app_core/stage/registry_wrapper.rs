@@ -154,7 +154,7 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     // Act: load_by_id, load_by_number and list
     let _ = core.load_by_id(saved_id).await.expect("load_by_id ok");
     let _ = core.load_by_number(1).await.expect("load_by_number ok");
-    let _ = core.list_stages_of_tournament().await.expect("list ok");
+    let _ = core.list_stage_ids_of_tournament().await.expect("list ok");
 
     // Assert: still no publish after read-only operations
     assert!(

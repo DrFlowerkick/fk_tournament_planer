@@ -131,15 +131,6 @@ impl EditorContext for TournamentEditorContext {
     /// Create a new tournament object in the editor context, returning its unique identifier.
     fn new_object(&self) -> Option<Uuid> {
         self.base_editor.new_object();
-        leptos::logging::debug_log!("New tournament base: {:?}", self.base_editor.local.get());
-        leptos::logging::debug_log!(
-            "New tournament base: {:?}",
-            self.local.get().as_ref().map(|t| t.get_base())
-        );
-        leptos::logging::debug_log!(
-            "New tournament origin: {:?}",
-            self.origin_readonly.get().is_some()
-        );
         self.base_editor.id.get()
     }
 }

@@ -217,7 +217,6 @@ where
         let editor = OE::new(options);
         if let Some(new_id) = editor.new_object() {
             self.editor_map.update(|em| {
-                leptos::logging::debug_log!("Adding new editor with id: {:?}", new_id);
                 em.insert(new_id, editor);
             });
             Some(new_id)

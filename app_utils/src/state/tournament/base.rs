@@ -179,9 +179,11 @@ impl EditorContext for BaseEditorContext {
                     .as_ref()
                     .map(|t| t.get_base().get_name().to_string())
             },
-            |local_tournament, name: String| {
+            move |local_tournament, name: String| {
                 if let Some(t) = local_tournament {
                     t.set_base_name(name);
+                    // Clear unique violation error on name change, if any
+                    set_unique_violation_error.set(None);
                 }
             },
         );

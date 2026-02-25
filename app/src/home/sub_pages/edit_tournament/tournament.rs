@@ -23,7 +23,10 @@ pub fn EditTournament() -> impl IntoView {
     on_cleanup(move || {
         if let Some(id) = tournament_base_id.get_untracked()
             && let Some(editor) = tournament_editor_map.get_editor_untracked(id)
-            && editor.origin_signal().with(|origin| origin.is_none())
+            && editor
+                .origin_signal()
+                .try_with_untracked(|origin| origin.is_none())
+                .unwrap_or(false)
         {
             tournament_editor_map.remove_editor(id);
         }
@@ -33,7 +36,8 @@ pub fn EditTournament() -> impl IntoView {
         <Show
             when=move || {
                 tournament_base_id
-                    .get()
+                    .try_get()
+                    .flatten()
                     .and_then(|id| tournament_editor_map.get_editor(id))
                     .is_some()
             }

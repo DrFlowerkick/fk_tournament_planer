@@ -42,36 +42,15 @@ pub fn EditTournamentBase() -> impl IntoView {
         if let Some(id) = tournament_id.get()
             && let Some(editor) = tournament_editor_map.get_editor(id)
         {
-            leptos::logging::debug_log!("Checking Edit action");
             match edit_action.get() {
                 Some(EditAction::Edit) => editor
                     .origin_signal()
                     .try_with(|origin| origin.is_some())
                     .unwrap_or(false),
-                Some(EditAction::New) => {
-                    let show_form = editor
-                        .origin_signal()
-                        .try_with(|origin| origin.is_none())
-                        .unwrap_or(false);
-                    leptos::logging::debug_log!(
-                        "New Tournament id: {}\nshow_form: {}",
-                        id,
-                        show_form
-                    );
-                    leptos::logging::debug_log!(
-                        "Editor origin: {:?}",
-                        editor.origin_signal().try_get()
-                    );
-                    leptos::logging::debug_log!(
-                        "Editor local base: {:?}",
-                        editor.base_editor.local.try_get()
-                    );
-                    leptos::logging::debug_log!(
-                        "Editor origin base: {:?}",
-                        editor.base_editor.origin_signal().try_get()
-                    );
-                    show_form
-                }
+                Some(EditAction::New) => editor
+                    .origin_signal()
+                    .try_with(|origin| origin.is_none())
+                    .unwrap_or(false),
                 Some(EditAction::Copy) => editor
                     .origin_signal()
                     .try_with(|origin| origin.is_none())
@@ -80,19 +59,6 @@ pub fn EditTournamentBase() -> impl IntoView {
             }
         } else {
             false
-        }
-    });
-
-    // remove unsaved editor (no origin) on unmount
-    on_cleanup(move || {
-        if let Some(id) = tournament_id.get_untracked()
-            && let Some(editor) = tournament_editor_map.get_editor_untracked(id)
-            && editor
-                .origin_signal()
-                .try_with(|origin| origin.is_none())
-                .unwrap_or(false)
-        {
-            tournament_editor_map.remove_editor(id);
         }
     });
 

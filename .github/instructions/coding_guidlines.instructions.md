@@ -7,6 +7,7 @@ applyTo: "**"
 - All comments in code are in english. ALWAYS. NO EXCEPTIONS. Even if the user asks in another language (e.g. German), code comments remain English.
 - Your answers in chat are always in german.
 - Always use the provided active file content as the absolute source of truth.
+- If the user does not explicitly ask for code changes or examples, always ask the user if they want you to provide code examples or make code changes.
 - When modifying code, preserve all existing logic, attributes, and structures (like signals, handlers, and specific classes) unless explicitly asked to change them.
 - Use the `...existing code...` marker to focus only on the requested changes.
 - Use Rust 2024 edition.
