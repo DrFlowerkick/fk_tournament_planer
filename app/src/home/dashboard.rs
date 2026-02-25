@@ -3,10 +3,15 @@ use app_utils::{
         MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
     },
     params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery, TournamentStateQuery},
-    state::global_state::{GlobalState, GlobalStateStoreFields},
+    state::{
+        global_state::{GlobalState, GlobalStateStoreFields},
+        object_table::ObjectEditorMapContext,
+        toast_state::ToastContext,
+        tournament::TournamentEditorContext,
+    },
 };
 use leptos::prelude::*;
-use leptos_router::components::A;
+use leptos_router::{NavigateOptions, components::A, hooks::use_navigate};
 use reactive_stores::Store;
 
 #[component]
@@ -15,14 +20,18 @@ pub fn SportDashboard() -> impl IntoView {
     let UseQueryNavigationReturn {
         url_matched_route,
         url_matched_route_update_query,
-        url_matched_route_remove_query,
         ..
     } = use_query_navigation();
 
     // get global state and sport plugin manager
+    let toast_ctx = expect_context::<ToastContext>();
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
     let sport_id = SportIdQuery::use_param_query();
+
+    // local state
+    let tournament_editor_map =
+        expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
 
     // Helper to get both ID and Plugin for the view
     let sport_name = move || {
@@ -86,19 +95,32 @@ pub fn SportDashboard() -> impl IntoView {
                             "Tournaments"
                         </A>
 
-                        <A
-                            href=url_matched_route_remove_query(
-                                TournamentBaseIdQuery::KEY,
-                                MatchedRouteHandler::Extend("new-tournament"),
-                            )
-
-                            attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
-                            attr:data-testid="link-nav-plan-new"
-                            scroll=false
+                        <button
+                            class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
+                            data-testid="link-nav-plan-new"
+                            on:click=move |_| {
+                                let navigate = use_navigate();
+                                if let Some(new_id) = tournament_editor_map.new_editor(None) {
+                                    let nav_url = url_matched_route_update_query(
+                                        TournamentBaseIdQuery::KEY,
+                                        &new_id.to_string(),
+                                        MatchedRouteHandler::Extend("tournaments/new"),
+                                    );
+                                    navigate(
+                                        &nav_url,
+                                        NavigateOptions {
+                                            scroll: false,
+                                            ..Default::default()
+                                        },
+                                    );
+                                } else {
+                                    toast_ctx.warning("Failed to create a new tournament");
+                                }
+                            }
                         >
                             <span class="icon-[heroicons--plus-circle] w-6 h-6 mr-2"></span>
                             "Plan New Tournament"
-                        </A>
+                        </button>
 
                         <A
                             href=url_matched_route(MatchedRouteHandler::Extend("adhoc-tournament"))

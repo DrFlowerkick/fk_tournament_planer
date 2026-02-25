@@ -1,6 +1,6 @@
 //! component to edit a tournament
 
-use super::EditTournamentBase;
+use super::{EditTournamentBase, EditTournamentFallback};
 use app_utils::{
     params::{ParamQuery, TournamentBaseIdQuery},
     state::{
@@ -30,29 +30,47 @@ pub fn EditTournament() -> impl IntoView {
     });
 
     view! {
-        // Using For forces the view to be recreated when the id changes
-        <For
-            each=move || {
+        <Show
+            when=move || {
                 tournament_base_id
                     .get()
-                    .and_then(|current_id| {
-                        tournament_editor_map
-                            .get_editor(current_id)
-                            .map(|editor| (current_id, editor))
-                    })
-                    .into_iter()
+                    .and_then(|id| tournament_editor_map.get_editor(id))
+                    .is_some()
             }
-            key=|(id, _)| *id
-            children=move |(_, editor)| {
+            fallback=|| {
                 view! {
-                    // ToDo: we probably need some html structure here
-                    <TournamentMenu tournament_editor=editor />
-                    <EditTournamentBase />
-                    <div class="my-4"></div>
-                    <Outlet />
+                    <div class="card w-full bg-base-100 shadow-xl">
+                        <div class="card-body">
+                            <EditTournamentFallback />
+                        </div>
+                    </div>
                 }
             }
-        />
+        >
+            // Using For forces the view to be recreated when the id changes
+            <For
+                each=move || {
+                    tournament_base_id
+                        .get()
+                        .and_then(|current_id| {
+                            tournament_editor_map
+                                .get_editor(current_id)
+                                .map(|editor| (current_id, editor))
+                        })
+                        .into_iter()
+                }
+                key=|(id, _)| *id
+                children=move |(_, editor)| {
+                    view! {
+                        // ToDo: we probably need some html structure here
+                        <TournamentMenu tournament_editor=editor />
+                        <EditTournamentBase />
+                        <div class="my-4"></div>
+                        <Outlet />
+                    }
+                }
+            />
+        </Show>
     }
 }
 

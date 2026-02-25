@@ -1,5 +1,6 @@
 //! create or edit a tournament
 
+use super::EditTournamentFallback;
 use app_core::{TournamentBase, TournamentMode};
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, NumberInput, TextInput},
@@ -41,10 +42,40 @@ pub fn EditTournamentBase() -> impl IntoView {
         if let Some(id) = tournament_id.get()
             && let Some(editor) = tournament_editor_map.get_editor(id)
         {
+            leptos::logging::debug_log!("Checking Edit action");
             match edit_action.get() {
-                Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
-                Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
-                Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
+                Some(EditAction::Edit) => editor
+                    .origin_signal()
+                    .try_with(|origin| origin.is_some())
+                    .unwrap_or(false),
+                Some(EditAction::New) => {
+                    let show_form = editor
+                        .origin_signal()
+                        .try_with(|origin| origin.is_none())
+                        .unwrap_or(false);
+                    leptos::logging::debug_log!(
+                        "New Tournament id: {}\nshow_form: {}",
+                        id,
+                        show_form
+                    );
+                    leptos::logging::debug_log!(
+                        "Editor origin: {:?}",
+                        editor.origin_signal().try_get()
+                    );
+                    leptos::logging::debug_log!(
+                        "Editor local base: {:?}",
+                        editor.base_editor.local.try_get()
+                    );
+                    leptos::logging::debug_log!(
+                        "Editor origin base: {:?}",
+                        editor.base_editor.origin_signal().try_get()
+                    );
+                    show_form
+                }
+                Some(EditAction::Copy) => editor
+                    .origin_signal()
+                    .try_with(|origin| origin.is_none())
+                    .unwrap_or(false),
                 None => false,
             }
         } else {
@@ -56,7 +87,10 @@ pub fn EditTournamentBase() -> impl IntoView {
     on_cleanup(move || {
         if let Some(id) = tournament_id.get_untracked()
             && let Some(editor) = tournament_editor_map.get_editor_untracked(id)
-            && editor.origin_signal().with(|origin| origin.is_none())
+            && editor
+                .origin_signal()
+                .try_with(|origin| origin.is_none())
+                .unwrap_or(false)
         {
             tournament_editor_map.remove_editor(id);
         }
@@ -94,25 +128,7 @@ pub fn EditTournamentBase() -> impl IntoView {
                     <Show
                         when=move || show_form.try_get().unwrap_or(false)
                         fallback=move || {
-                            view! {
-                                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
-                                    <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                                    <p class="text-2xl font-bold text-center">
-                                        {move || match edit_action.try_get().flatten() {
-                                            Some(EditAction::New) => {
-                                                "Press 'New Tournament' to create a new tournament."
-                                            }
-                                            Some(EditAction::Edit) => {
-                                                "Please select a tournament from the list."
-                                            }
-                                            Some(EditAction::Copy) => {
-                                                "Press 'Copy selected Tournament' to create a new tournament based upon the selected one."
-                                            }
-                                            None => "",
-                                        }}
-                                    </p>
-                                </div>
-                            }
+                            view! { <EditTournamentFallback /> }
                         }
                     >
                         // Using For forces the view to be recreated when the id changes
@@ -288,7 +304,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                             name="tournament-name"
                             data_testid="input-tournament-name"
                             value=tournament_editor.base_editor.name
-                            action=InputCommitAction::WriteTo(
+                            action=InputCommitAction::WriteAndSubmit(
                                 tournament_editor.base_editor.set_name,
                             )
                             validation_result=tournament_editor.base_editor.validation_result
@@ -301,7 +317,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                             name="tournament-entrants"
                             data_testid="input-tournament-entrants"
                             value=tournament_editor.base_editor.num_entrants
-                            action=InputCommitAction::WriteTo(
+                            action=InputCommitAction::WriteAndSubmit(
                                 tournament_editor.base_editor.set_num_entrants,
                             )
                             validation_result=tournament_editor.base_editor.validation_result
@@ -315,7 +331,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                             name="tournament-mode"
                             data_testid="select-tournament-mode"
                             value=tournament_editor.base_editor.mode
-                            action=InputCommitAction::WriteTo(
+                            action=InputCommitAction::WriteAndSubmit(
                                 tournament_editor.base_editor.set_mode,
                             )
                         />
@@ -331,7 +347,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                                 name="tournament-swiss-num_rounds"
                                 data_testid="input-tournament-swiss-num_rounds"
                                 value=tournament_editor.base_editor.num_rounds_swiss_system
-                                action=InputCommitAction::WriteTo(
+                                action=InputCommitAction::WriteAndSubmit(
                                     tournament_editor.base_editor.set_num_rounds_swiss_system,
                                 )
                                 validation_result=tournament_editor.base_editor.validation_result

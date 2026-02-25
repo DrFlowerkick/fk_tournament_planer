@@ -224,12 +224,14 @@ impl DbpTournamentBase for PgDb {
     }
 
     #[instrument(name = "db.tb.list", skip(self, name_filter, limit))]
-    async fn list_tournament_bases(
+    async fn list_tournament_base_ids(
         &self,
         sport: Uuid,
         name_filter: Option<&str>,
+        state_filter: Option<TournamentState>,
+        include_adhoc: bool,
         limit: Option<usize>,
-    ) -> DbResult<Vec<TournamentBase>> {
+    ) -> DbResult<Vec<Uuid>> {
         let mut conn = self.new_connection().await?;
         let mut query = tournament_bases.into_boxed::<diesel::pg::Pg>();
 
@@ -245,17 +247,37 @@ impl DbpTournamentBase for PgDb {
             query = query.filter(name.like(pattern));
         }
 
+        if let Some(tournament_state) = state_filter {
+            debug!("apply_state_filter");
+            query = query.filter(state.eq(
+                serde_json::to_value(tournament_state).map_err(|e| {
+                    DbError::Other(format!("Failed to serialize state filter: {e}"))
+                })?,
+            ));
+        }
+
+        if include_adhoc {
+            debug!("including_adhoc_tournaments");
+        } else {
+            debug!("excluding_adhoc_tournaments");
+            query = query.filter(
+                t_type.ne(serde_json::to_value(TournamentType::Adhoc)
+                    .map_err(|e| DbError::Other(format!("Failed to serialize AdHoc type: {e}")))?),
+            );
+        }
+
         if let Some(lim) = limit {
             query = query.limit(lim as i64);
         }
 
         let rows = query
+            .select(id)
             .order((name.asc().nulls_last(), created_at.asc()))
-            .load::<DbTournamentBase>(&mut conn)
+            .load::<Uuid>(&mut conn)
             .await
             .map_err(map_db_err)?;
 
         info!(count = rows.len(), "list_ok");
-        rows.into_iter().map(TournamentBase::try_from).collect()
+        Ok(rows)
     }
 }

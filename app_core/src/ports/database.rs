@@ -1,6 +1,6 @@
 // database port
 
-use crate::{PostalAddress, SportConfig, Stage, TournamentBase};
+use crate::{PostalAddress, SportConfig, Stage, TournamentBase, TournamentState};
 use async_trait::async_trait;
 use isocountry::CountryCodeParseErr;
 use serde::{Deserialize, Serialize};
@@ -48,12 +48,14 @@ pub trait DbpTournamentBase: Send + Sync {
         &self,
         tournament_base: &TournamentBase,
     ) -> DbResult<TournamentBase>;
-    async fn list_tournament_bases(
+    async fn list_tournament_base_ids(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
+        state_filter: Option<TournamentState>,
+        include_adhoc: bool,
         limit: Option<usize>,
-    ) -> DbResult<Vec<TournamentBase>>;
+    ) -> DbResult<Vec<Uuid>>;
 }
 
 /// database port trait for stage
@@ -66,7 +68,11 @@ pub trait DbpStage: Send + Sync {
         number: u32,
     ) -> DbResult<Option<Stage>>;
     async fn save_stage(&self, stage: &Stage) -> DbResult<Stage>;
-    async fn list_stages_of_tournament(&self, tournament_id: Uuid) -> DbResult<Vec<Stage>>;
+    async fn list_stage_ids_of_tournament(
+        &self,
+        tournament_id: Uuid,
+        number_of_stages: u32,
+    ) -> DbResult<Vec<Uuid>>;
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]

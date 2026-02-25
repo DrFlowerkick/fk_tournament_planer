@@ -11,9 +11,9 @@ use crate::{
         MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
     },
     params::{GroupNumberParams, ParamQuery, StageNumberParams},
-    state::EditorContext,
+    state::{EditorContext, EditorContextWithResource},
 };
-use app_core::{Stage, Tournament};
+use app_core::{Tournament, TournamentBase};
 use base::{BaseEditorContext, BaseEditorContextOptions};
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, hooks::use_navigate};
@@ -21,11 +21,6 @@ use stage::{StageEditorContext, StageEditorContextOptions};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-/// This context provides efficient access to the tournament editor state
-/// via `RwSignal`, along with various read slices and callbacks for
-/// interacting with the editor.
-/// It also manages server actions for saving changes and handles
-/// navigation and error handling.
 #[derive(Clone, Copy)]
 pub struct TournamentEditorContext {
     // --- state & derived signals ---
@@ -33,6 +28,8 @@ pub struct TournamentEditorContext {
     local: RwSignal<Option<Tournament>>,
     /// The original tournament loaded from storage.
     origin: RwSignal<Option<Tournament>>,
+    /// Readonly signal for the original tournament, to be used for comparison in validation and update checks
+    origin_readonly: Signal<Option<Tournament>>,
     // ToDo: wrap into RwSignal?
     pub base_editor: BaseEditorContext,
     // ToDo: change into RwSignal?
@@ -113,6 +110,7 @@ impl EditorContext for TournamentEditorContext {
         Self {
             local,
             origin,
+            origin_readonly: origin.into(),
             base_editor,
             stage_editors,
         }
@@ -120,7 +118,7 @@ impl EditorContext for TournamentEditorContext {
 
     /// Get the original tournament currently loaded in the editor context, if any.
     fn origin_signal(&self) -> Signal<Option<Tournament>> {
-        self.origin.into()
+        self.origin_readonly
     }
 
     /// Set the current tournament in the editor context, updating all relevant state accordingly.
@@ -133,11 +131,32 @@ impl EditorContext for TournamentEditorContext {
     /// Create a new tournament object in the editor context, returning its unique identifier.
     fn new_object(&self) -> Option<Uuid> {
         self.base_editor.new_object();
+        leptos::logging::debug_log!("New tournament base: {:?}", self.base_editor.local.get());
+        leptos::logging::debug_log!(
+            "New tournament base: {:?}",
+            self.local.get().as_ref().map(|t| t.get_base())
+        );
+        leptos::logging::debug_log!(
+            "New tournament origin: {:?}",
+            self.origin_readonly.get().is_some()
+        );
         self.base_editor.id.get()
     }
 }
 
 impl TournamentEditorContext {
+    pub fn update_base_in_editor(&self, base: &TournamentBase) {
+        let optimistic_version = self.base_editor.optimistic_version_signal().get();
+        if optimistic_version.is_none() {
+            self.base_editor.set_object(base.clone());
+        }
+        if let Some(ov) = optimistic_version
+            && ov < base.get_version().unwrap_or_default()
+        {
+            self.base_editor.set_object(base.clone());
+        }
+    }
+
     pub fn prepare_stage(&self, stage_number: u32) {
         if self
             .stage_editors

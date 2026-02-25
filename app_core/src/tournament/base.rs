@@ -421,20 +421,19 @@ impl Core<TournamentBaseState> {
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
-    pub async fn list_sport_tournaments(
+    pub async fn list_tournament_base_ids(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
+        state_filter: Option<TournamentState>,
+        include_adhoc: bool,
         limit: Option<usize>,
-    ) -> CoreResult<Vec<TournamentBase>> {
+    ) -> CoreResult<Vec<Uuid>> {
         let tournaments = self
             .database
-            .list_tournament_bases(sport_id, name_filter, limit)
+            .list_tournament_base_ids(sport_id, name_filter, state_filter, include_adhoc, limit)
             .await?;
 
-        for tournament in &tournaments {
-            self.validate(tournament)?;
-        }
         Ok(tournaments)
     }
 }

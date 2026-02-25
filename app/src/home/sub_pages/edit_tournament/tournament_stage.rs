@@ -18,7 +18,7 @@ use app_utils::{
     },
 };
 use leptos::{html::H2, prelude::*};
-use leptos_router::{NavigateOptions, components::A, hooks::use_navigate, nested_router::Outlet};
+use leptos_router::{NavigateOptions, hooks::use_navigate, nested_router::Outlet};
 
 #[component]
 pub fn EditTournamentStage() -> impl IntoView {
@@ -146,7 +146,7 @@ fn TournamentStageForm(
                                         name="stage-num-groups"
                                         data_testid="input-stage-num-groups"
                                         value=stage_editor.num_groups
-                                        action=InputCommitAction::WriteTo(
+                                        action=InputCommitAction::WriteAndSubmit(
                                             stage_editor.set_num_groups,
                                         )
                                         validation_result=stage_editor.validation_result
@@ -165,23 +165,16 @@ fn TournamentStageForm(
                                     key=|i| *i
                                     children=move |i| {
                                         view! {
-                                            <A
-                                                href=move || url_matched_route(
-                                                    MatchedRouteHandler::Extend(&i.to_string()),
-                                                )
-                                                attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
-                                                attr:data-testid=format!("action-btn-configure-group-{}", i)
-                                                scroll=false
-                                            >
-                                                <span class="icon-[heroicons--rectangle-stack] w-6 h-6 mr-2"></span>
-                                                {format!("Edit Group {}", i + 1)}
-                                            </A>
                                             <button
                                                 class="btn btn-sm btn-secondary"
                                                 data-testid=format!("action-btn-configure-group-{}", i)
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
-                                                    tournament_editor.prepare_group(active_stage_number.get().unwrap_or_default(), i);
+                                                    tournament_editor
+                                                        .prepare_group(
+                                                            active_stage_number.get().unwrap_or_default(),
+                                                            i,
+                                                        );
                                                     let nav_url = url_matched_route(
                                                         MatchedRouteHandler::Extend(&i.to_string()),
                                                     );

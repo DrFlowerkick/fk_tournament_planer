@@ -34,6 +34,9 @@ pub fn HomePage() -> impl IntoView {
     let sport_plugin_manager = state.sport_plugin_manager();
 
     // prepare tournament editor context
+    // We have to prepare it here, since we wat to enable short cuts for "New Tournament" and
+    // "Start Adhoc Tournament" in dashboard, which require the editor context to be available
+    // already when navigating to the edit page.
     let tournament_editor_map =
         ObjectEditorMapContext::<TournamentEditorContext, TournamentBaseIdQuery>::new();
     provide_context(tournament_editor_map);
