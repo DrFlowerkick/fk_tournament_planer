@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 pub trait ParamQuery<T: Send + Sync + 'static>: Params + PartialEq + Send + Sync + 'static {
     const KEY: &'static str;
-    fn use_param_query() -> Signal<Option<T>>;
+    fn use_param_query() -> Memo<Option<T>>;
 }
 
 pub trait ParamQueryId: ParamQuery<Uuid> {
@@ -27,9 +27,9 @@ pub struct FilterNameQuery {
 
 impl ParamQuery<String> for FilterNameQuery {
     const KEY: &'static str = "filter_name";
-    fn use_param_query() -> Signal<Option<String>> {
+    fn use_param_query() -> Memo<Option<String>> {
         let query = use_query::<Self>();
-        Signal::derive(move || query.get().ok().and_then(|sn| sn.filter_name))
+        Memo::new(move |_| query.get().ok().and_then(|sn| sn.filter_name))
     }
 }
 
@@ -40,9 +40,9 @@ pub struct FilterLimitQuery {
 
 impl ParamQuery<FilterLimit> for FilterLimitQuery {
     const KEY: &'static str = "filter_limit";
-    fn use_param_query() -> Signal<Option<FilterLimit>> {
+    fn use_param_query() -> Memo<Option<FilterLimit>> {
         let query = use_query::<Self>();
-        Signal::derive(move || query.get().ok().and_then(|fl| fl.filter_limit))
+        Memo::new(move |_| query.get().ok().and_then(|fl| fl.filter_limit))
     }
 }
 
@@ -53,9 +53,9 @@ pub struct TournamentStateQuery {
 
 impl ParamQuery<TournamentState> for TournamentStateQuery {
     const KEY: &'static str = "tournament_state";
-    fn use_param_query() -> Signal<Option<TournamentState>> {
+    fn use_param_query() -> Memo<Option<TournamentState>> {
         let query = use_query::<Self>();
-        Signal::derive(move || query.get().ok().and_then(|ts| ts.tournament_state))
+        Memo::new(move |_| query.get().ok().and_then(|ts| ts.tournament_state))
     }
 }
 
@@ -66,9 +66,9 @@ pub struct IncludeAdhocQuery {
 
 impl ParamQuery<bool> for IncludeAdhocQuery {
     const KEY: &'static str = "include_adhoc";
-    fn use_param_query() -> Signal<Option<bool>> {
+    fn use_param_query() -> Memo<Option<bool>> {
         let query = use_query::<Self>();
-        Signal::derive(move || query.get().ok().and_then(|ia| ia.include_adhoc))
+        Memo::new(move |_| query.get().ok().and_then(|ia| ia.include_adhoc))
     }
 }
 
@@ -81,9 +81,9 @@ pub struct AddressIdQuery {
 
 impl ParamQuery<Uuid> for AddressIdQuery {
     const KEY: &'static str = "address_id";
-    fn use_param_query() -> Signal<Option<Uuid>> {
+    fn use_param_query() -> Memo<Option<Uuid>> {
         let query = use_query::<Self>();
-        Signal::derive(move || query.with(|p| p.as_ref().ok().and_then(|params| params.address_id)))
+        Memo::new(move |_| query.with(|p| p.as_ref().ok().and_then(|params| params.address_id)))
     }
 }
 
@@ -102,9 +102,9 @@ pub struct SportIdQuery {
 
 impl ParamQuery<Uuid> for SportIdQuery {
     const KEY: &'static str = "sport_id";
-    fn use_param_query() -> Signal<Option<Uuid>> {
+    fn use_param_query() -> Memo<Option<Uuid>> {
         let query = use_query::<Self>();
-        Signal::derive(move || query.with(|p| p.as_ref().ok().and_then(|params| params.sport_id)))
+        Memo::new(move |_| query.with(|p| p.as_ref().ok().and_then(|params| params.sport_id)))
     }
 }
 
@@ -121,9 +121,9 @@ pub struct SportConfigIdQuery {
 
 impl ParamQuery<Uuid> for SportConfigIdQuery {
     const KEY: &'static str = "sport_config_id";
-    fn use_param_query() -> Signal<Option<Uuid>> {
+    fn use_param_query() -> Memo<Option<Uuid>> {
         let query = use_query::<Self>();
-        Signal::derive(move || {
+        Memo::new(move |_| {
             query.with(|p| p.as_ref().ok().and_then(|params| params.sport_config_id))
         })
     }
@@ -144,11 +144,9 @@ pub struct TournamentBaseIdQuery {
 
 impl ParamQuery<Uuid> for TournamentBaseIdQuery {
     const KEY: &'static str = "tournament_id";
-    fn use_param_query() -> Signal<Option<Uuid>> {
+    fn use_param_query() -> Memo<Option<Uuid>> {
         let query = use_query::<Self>();
-        Signal::derive(move || {
-            query.with(|p| p.as_ref().ok().and_then(|params| params.tournament_id))
-        })
+        Memo::new(move |_| query.with(|p| p.as_ref().ok().and_then(|params| params.tournament_id)))
     }
 }
 
@@ -165,11 +163,9 @@ pub struct StageNumberParams {
 
 impl ParamQuery<u32> for StageNumberParams {
     const KEY: &'static str = "stage_number";
-    fn use_param_query() -> Signal<Option<u32>> {
+    fn use_param_query() -> Memo<Option<u32>> {
         let query = use_params::<Self>();
-        Signal::derive(move || {
-            query.with(|p| p.as_ref().ok().and_then(|params| params.stage_number))
-        })
+        Memo::new(move |_| query.with(|p| p.as_ref().ok().and_then(|params| params.stage_number)))
     }
 }
 
@@ -180,11 +176,9 @@ pub struct GroupNumberParams {
 
 impl ParamQuery<u32> for GroupNumberParams {
     const KEY: &'static str = "group_number";
-    fn use_param_query() -> Signal<Option<u32>> {
+    fn use_param_query() -> Memo<Option<u32>> {
         let query = use_params::<Self>();
-        Signal::derive(move || {
-            query.with(|p| p.as_ref().ok().and_then(|params| params.group_number))
-        })
+        Memo::new(move |_| query.with(|p| p.as_ref().ok().and_then(|params| params.group_number)))
     }
 }
 
@@ -196,10 +190,8 @@ pub struct EditActionParams {
 
 impl ParamQuery<EditAction> for EditActionParams {
     const KEY: &'static str = "edit_action";
-    fn use_param_query() -> Signal<Option<EditAction>> {
+    fn use_param_query() -> Memo<Option<EditAction>> {
         let query = use_params::<Self>();
-        Signal::derive(move || {
-            query.with(|p| p.as_ref().ok().and_then(|params| params.edit_action))
-        })
+        Memo::new(move |_| query.with(|p| p.as_ref().ok().and_then(|params| params.edit_action)))
     }
 }

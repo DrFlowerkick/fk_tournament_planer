@@ -58,8 +58,6 @@ pub struct BaseEditorContext {
     pub name: Signal<Option<String>>,
     /// Callback for updating the name field
     pub set_name: Callback<Option<String>>,
-    /// Signal slice for the sport id field
-    pub sport_id: Signal<Option<Uuid>>,
     /// Read slice for accessing the tournament base number of entrants, if any
     pub num_entrants: Signal<Option<u32>>,
     /// Write slice for setting the tournament base number of entrants
@@ -170,7 +168,6 @@ impl EditorContext for BaseEditorContext {
                 .as_ref()
                 .and_then(|t| t.get_base().get_version())
         });
-        let sport_id = SportIdQuery::use_param_query();
 
         let (name, set_name) = create_slice(
             options.local_tournament,
@@ -371,7 +368,6 @@ impl EditorContext for BaseEditorContext {
             version,
             name,
             set_name,
-            sport_id,
             num_entrants,
             set_num_entrants,
             tournament_type,
@@ -405,7 +401,8 @@ impl EditorContext for BaseEditorContext {
 
     /// Create a new tournament base in the editor context with a new UUID and default values.
     fn new_object(&self) -> Option<Uuid> {
-        if let Some(sport_id) = self.sport_id.get() {
+        let sport_id = SportIdQuery::use_param_query();
+        if let Some(sport_id) = sport_id.get() {
             let mut base = TournamentBase::default();
             base.set_sport_id(sport_id);
             let id = base.get_id();

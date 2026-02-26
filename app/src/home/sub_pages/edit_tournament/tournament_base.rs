@@ -12,7 +12,7 @@ use app_utils::{
         },
         use_scroll_into_view::use_scroll_h2_into_view,
     },
-    params::{EditActionParams, FilterNameQuery, ParamQuery, TournamentBaseIdQuery},
+    params::{EditActionParams, FilterNameQuery, ParamQuery, SportIdQuery, TournamentBaseIdQuery},
     server_fn::tournament_base::SaveTournamentBase,
     state::{
         EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
@@ -131,6 +131,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
     } = use_query_navigation();
     let navigate = use_navigate();
 
+    let sport_id = SportIdQuery::use_param_query();
     let edit_action = EditActionParams::use_param_query();
     let intent = Signal::derive(move || {
         edit_action.get().map(|action| match action {
@@ -222,14 +223,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                         type="hidden"
                         name="tournament[sport_id]"
                         data-testid="hidden-sport-id"
-                        prop:value=move || {
-                            tournament_editor
-                                .base_editor
-                                .sport_id
-                                .get()
-                                .unwrap_or(Uuid::nil())
-                                .to_string()
-                        }
+                        prop:value=move || { sport_id.get().unwrap_or(Uuid::nil()).to_string() }
                     />
                     <input
                         type="hidden"
