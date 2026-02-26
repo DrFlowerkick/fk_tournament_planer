@@ -8,10 +8,10 @@ use app_utils::{
     enum_utils::EditAction,
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{
-            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
-        },
         use_scroll_into_view::use_scroll_h2_into_view,
+        use_url_navigation::{
+            MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
+        },
     },
     params::{EditActionParams, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, SaveSportConfigFormData},
@@ -30,10 +30,10 @@ use uuid::Uuid;
 #[component]
 pub fn EditSportConfiguration() -> impl IntoView {
     // --- Hooks, Navigation & local and global state ---
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_is_matched_route,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
     let edit_action = EditActionParams::use_param_query();
     let sport_config_id = SportConfigIdQuery::use_param_query();
 
@@ -95,12 +95,12 @@ pub fn EditSportConfiguration() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <Show when=move || edit_action.get().is_some() fallback=|| "Page not found.".into_view()>
+        <Show when=move || edit_action.try_get().flatten().is_some() fallback=|| "Page not found.".into_view()>
             <div class="card w-full bg-base-100 shadow-xl">
                 <div class="card-body">
                     <div class="flex justify-between items-center">
                         <h2 class="card-title" node_ref=scroll_ref>
-                            {move || match edit_action.get() {
+                            {move || match edit_action.try_get().flatten() {
                                 Some(EditAction::New) => {
                                     "New Sport Configuration for ".to_string() + sport_name()
                                 }
@@ -173,10 +173,10 @@ pub fn EditSportConfiguration() -> impl IntoView {
 #[component]
 fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoView {
     // --- Hooks, Navigation & local and global state ---
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_matched_route_update_queries,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
     let navigate = use_navigate();
 
     let edit_action = EditActionParams::use_param_query();

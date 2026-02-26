@@ -3,19 +3,17 @@
 
 pub mod header;
 pub mod home;
+pub mod layout;
 pub mod postal_addresses;
 
-use app_utils::{
-    components::{global_error_banner::GlobalErrorBanner, toast::ToastContainer},
-    state::{
-        activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        global_state::GlobalState, toast_state::ToastContext,
-    },
+use app_utils::state::{
+    activity_tracker::ActivityTracker, error_state::PageErrorContext, global_state::GlobalState,
+    toast_state::ToastContext,
 };
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
-use header::*;
 use home::*;
+use layout::*;
 use leptos::prelude::*;
 use leptos_axum_socket::provide_socket_context;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
@@ -76,9 +74,6 @@ pub fn App() -> impl IntoView {
     // provide global context elements
     provide_global_context();
 
-    // Get the error context to reactively toggle the inert state
-    let page_err_ctx = expect_context::<PageErrorContext>();
-
     // Get the activity tracker context to reactively toggle the inert state
     let activity_tracker = expect_context::<ActivityTracker>();
 
@@ -99,43 +94,23 @@ pub fn App() -> impl IntoView {
 
         // routing
         <Router set_is_routing=activity_tracker.set_router_activity>
-            <div class="flex flex-col min-h-screen">
-                // navigation header
-                <Header />
-                // global toast container is placed here so they are available on all pages
-                <ToastContainer />
-                // global error banner is placed here to be always on top of the page content, but below the navbar
-                <div class="sticky z-40 top-16 bg-base-200">
-                    <GlobalErrorBanner />
-                </div>
-                <main
-                    class="flex-grow p-4 bg-base-200 transition-all duration-200"
-                    class:opacity-50=move || page_err_ctx.has_errors()
-                    inert=move || page_err_ctx.has_errors()
-                >
-                    <Routes fallback=|| "Page not found.".into_view()>
-                        <ParentRoute path=path!("/") view=HomePage>
-                            <Route
-                                path=path!("")
-                                view={
-                                    view! {}
-                                }
-                            />
-                            <TournamentsRoutes />
-                            <Route path=path!("adhoc-tournament") view=AdhocTournament />
-                            <SportConfigRoutes />
-                            <Route path=path!("about-sport") view=AboutSport />
-                        </ParentRoute>
-                        <PostalAddressRoutes />
-                    </Routes>
-                </main>
-
-                <footer class="footer footer-center p-4 bg-base-300 text-base-content">
-                    <div>
-                        <p>"© 2025 FK-Tournament-Planer - Alle Rechte vorbehalten"</p>
-                    </div>
-                </footer>
-            </div>
+            <Routes fallback=|| "Page not found.".into_view()>
+                <ParentRoute path=path!("/") view=Layout>
+                    <ParentRoute path=path!("") view=HomePage>
+                        <Route
+                            path=path!("")
+                            view={
+                                view! {}
+                            }
+                        />
+                        <TournamentsRoutes />
+                        <Route path=path!("adhoc-tournament") view=AdhocTournament />
+                        <SportConfigRoutes />
+                        <Route path=path!("about-sport") view=AboutSport />
+                    </ParentRoute>
+                    <PostalAddressRoutes />
+                </ParentRoute>
+            </Routes>
         </Router>
     }
 }

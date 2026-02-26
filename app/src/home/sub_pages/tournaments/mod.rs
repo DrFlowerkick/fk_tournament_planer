@@ -6,7 +6,7 @@ pub mod register_at_tournament;
 pub use list_tournaments::*;
 pub use register_at_tournament::*;
 
-use crate::{EditSubRoutes, EditTournament};
+use crate::{EditSubRoutes, EditTournamentBase};
 use app_utils::params::{EditActionParams, ParamQuery};
 use leptos::prelude::*;
 #[allow(unused_imports)]
@@ -22,7 +22,7 @@ use leptos_router::{
 pub fn TournamentsRoutes() -> impl MatchNestedRoutes + Clone {
     view! {
         <ParentRoute path=path!("tournaments") view=ListTournaments>
-            <ParentRoute path=ParamSegment(EditActionParams::KEY) view=EditTournament>
+            <ParentRoute path=ParamSegment(EditActionParams::KEY) view=EditTournamentBase>
                 <EditSubRoutes />
                 <Route
                     path=path!("")

@@ -1,23 +1,26 @@
 //! header component
 
+use crate::home::select_sport::STORAGE_KEY_SPORT_ID;
 use app_utils::{
-    hooks::blur_active_element::blur_active_element, state::activity_tracker::ActivityTracker,
+    hooks::{
+        blur_active_element::blur_active_element,
+        use_url_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    },
+    params::TournamentBaseIdQuery,
+    state::{
+        activity_tracker::ActivityTracker, object_table::ObjectEditorMapContext,
+        tournament::TournamentEditorContext,
+    },
 };
 use leptos::prelude::*;
-use leptos_router::{components::A, hooks::use_url};
+use leptos_router::components::A;
 
 #[component]
 pub fn Header() -> impl IntoView {
     // navigation hooks
-    let url = use_url();
-    let root_with_query = Signal::derive(move || {
-        let query = url.get().search_params().to_query_string();
-        if query.is_empty() {
-            "/".to_string()
-        } else {
-            format!("/{}", query)
-        }
-    });
+    let UseQueryNavigationReturn {
+        url_update_path, ..
+    } = use_query_navigation();
 
     // Get the activity tracker context to reactively toggle the inert state
     let activity_tracker = expect_context::<ActivityTracker>();
@@ -25,13 +28,17 @@ pub fn Header() -> impl IntoView {
     // Signal to manage the mobile menu state
     let (menu_open, set_menu_open) = signal(false);
 
+    // prepare tournament editor context
+    // This is used for menu navigation of selected tournament and at the same time loads
+    // all objects of a tournament into context, which may be used by the editor.
+    let tournament_editor_map =
+        ObjectEditorMapContext::<TournamentEditorContext, TournamentBaseIdQuery>::new();
+    provide_context(tournament_editor_map);
+
     view! {
         <header class="navbar bg-base-300 sticky top-0 z-50">
             <div class="flex-1">
-                <A
-                    href=move || root_with_query.get()
-                    attr:class="btn btn-ghost normal-case text-xl"
-                >
+                <A href=move || url_update_path("/") attr:class="btn btn-ghost normal-case text-xl">
                     "Tournament Planner"
                 </A>
             </div>
@@ -84,6 +91,9 @@ pub fn Header() -> impl IntoView {
                             <A
                                 href="/"
                                 on:click=move |_| {
+                                    if let Ok(Some(storage)) = window().local_storage() {
+                                        let _ = storage.remove_item(STORAGE_KEY_SPORT_ID);
+                                    }
                                     set_menu_open.set(false);
                                     blur_active_element();
                                 }

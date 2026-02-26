@@ -9,10 +9,10 @@ use app_utils::{
     },
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{
-            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
-        },
         use_scroll_into_view::use_scroll_h2_into_view,
+        use_url_navigation::{
+            MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
+        },
     },
     params::{FilterLimitQuery, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::list_sport_config_ids,
@@ -39,12 +39,12 @@ use uuid::Uuid;
 #[component]
 pub fn ListSportConfigurations() -> impl IntoView {
     // navigation and query handling Hook
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_is_matched_route,
         url_matched_route,
         url_matched_route_update_query,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
 
     // --- global context and state ---
     let page_err_ctx = expect_context::<PageErrorContext>();

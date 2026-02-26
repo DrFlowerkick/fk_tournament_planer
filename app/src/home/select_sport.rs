@@ -8,7 +8,7 @@ use leptos_router::hooks::use_navigate;
 use reactive_stores::Store;
 use uuid::Uuid;
 
-const STORAGE_KEY_SPORT_ID: &str = "selected_sport_id";
+pub const STORAGE_KEY_SPORT_ID: &str = "selected_sport_id";
 
 #[component]
 pub fn SelectSportPlugin() -> impl IntoView {

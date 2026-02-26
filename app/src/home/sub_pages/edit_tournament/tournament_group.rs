@@ -1,18 +1,18 @@
 //! Edit tournament group component
 
 use app_utils::hooks::{
-    use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     use_scroll_into_view::use_scroll_h2_into_view,
+    use_url_navigation::{UseMatchedRouteNavigationReturn, use_matched_route_navigation},
 };
 use leptos::{html::H2, prelude::*};
 use leptos_router::nested_router::Outlet;
 
 #[component]
 pub fn EditTournamentGroup() -> impl IntoView {
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_is_matched_route,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
 
     // scroll into view handling
     let scroll_ref = NodeRef::<H2>::new();

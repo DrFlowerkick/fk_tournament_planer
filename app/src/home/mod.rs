@@ -1,22 +1,17 @@
 //! home page module
 
 mod dashboard;
-mod select_sport;
+pub mod select_sport;
 mod sub_pages;
 
-pub use sub_pages::*;
-
-use crate::home::dashboard::SportDashboard;
-use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
-    params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery},
+    params::{ParamQuery, SportIdQuery},
     state::{
         global_state::{GlobalState, GlobalStateStoreFields},
-        object_table::ObjectEditorMapContext,
         toast_state::ToastContext,
-        tournament::TournamentEditorContext,
     },
 };
+use dashboard::SportDashboard;
 use leptos::prelude::*;
 use leptos_router::{
     NavigateOptions,
@@ -24,6 +19,8 @@ use leptos_router::{
     nested_router::Outlet,
 };
 use reactive_stores::Store;
+use select_sport::SelectSportPlugin;
+pub use sub_pages::*;
 
 /// Renders the home page of fk tournament
 #[component]
@@ -32,14 +29,6 @@ pub fn HomePage() -> impl IntoView {
     let toast_context = expect_context::<ToastContext>();
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
-
-    // prepare tournament editor context
-    // We have to prepare it here, since we wat to enable short cuts for "New Tournament" and
-    // "Start Adhoc Tournament" in dashboard, which require the editor context to be available
-    // already when navigating to the edit page.
-    let tournament_editor_map =
-        ObjectEditorMapContext::<TournamentEditorContext, TournamentBaseIdQuery>::new();
-    provide_context(tournament_editor_map);
 
     // navigation hooks
     let navigate = use_navigate();

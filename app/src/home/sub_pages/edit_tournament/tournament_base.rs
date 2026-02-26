@@ -1,16 +1,15 @@
 //! create or edit a tournament
 
-use super::EditTournamentFallback;
 use app_core::{TournamentBase, TournamentMode};
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, NumberInput, TextInput},
     enum_utils::EditAction,
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{
-            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
-        },
         use_scroll_into_view::use_scroll_h2_into_view,
+        use_url_navigation::{
+            MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
+        },
     },
     params::{EditActionParams, FilterNameQuery, ParamQuery, SportIdQuery, TournamentBaseIdQuery},
     server_fn::tournament_base::SaveTournamentBase,
@@ -20,26 +19,38 @@ use app_utils::{
     },
 };
 use leptos::{html::H2, prelude::*};
-use leptos_router::{NavigateOptions, hooks::use_navigate};
+use leptos_router::{NavigateOptions, hooks::use_navigate, nested_router::Outlet};
 use uuid::Uuid;
 
 #[component]
 pub fn EditTournamentBase() -> impl IntoView {
     // --- Hooks & Navigation ---
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_is_matched_route,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
 
     let edit_action = EditActionParams::use_param_query();
-    let tournament_id = TournamentBaseIdQuery::use_param_query();
+    let tournament_base_id = TournamentBaseIdQuery::use_param_query();
 
     // --- local state ---
     let tournament_editor_map =
         expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
 
+    // remove unsaved editor (no origin) on unmount
+    on_cleanup(move || {
+        if let Some(id) = tournament_base_id.get_untracked()
+            && let Some(editor) = tournament_editor_map.get_editor_untracked(id)
+            && editor
+                .origin_signal()
+                .with_untracked(|origin| origin.is_none())
+        {
+            tournament_editor_map.remove_editor(id);
+        }
+    });
+
     let show_form = Signal::derive(move || {
-        if let Some(id) = tournament_id.get()
+        if let Some(id) = tournament_base_id.get()
             && let Some(editor) = tournament_editor_map.get_editor(id)
         {
             match edit_action.get() {
@@ -83,16 +94,35 @@ pub fn EditTournamentBase() -> impl IntoView {
                         </button>
                     </div>
                     <Show
-                        when=move || show_form.get()
+                        when=move || show_form.try_get().unwrap_or(false)
                         fallback=move || {
-                            view! { <EditTournamentFallback /> }
+                            view! {
+                                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                                    <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
+                                    <p class="text-2xl font-bold text-center">
+                                        {move || match edit_action.try_get().flatten() {
+                                            Some(EditAction::New) => {
+                                                "Press 'New Tournament' to create a new tournament."
+                                            }
+                                            Some(EditAction::Edit) => {
+                                                "Please select a tournament from the list."
+                                            }
+                                            Some(EditAction::Copy) => {
+                                                "Press 'Copy selected Tournament' to create a new tournament based upon the selected one."
+                                            }
+                                            None => "",
+                                        }}
+                                    </p>
+                                </div>
+                            }
                         }
                     >
                         // Using For forces the view to be recreated when the id changes
                         <For
                             each=move || {
-                                tournament_id
-                                    .get()
+                                tournament_base_id
+                                    .try_get()
+                                    .flatten()
                                     .and_then(|current_id| {
                                         tournament_editor_map
                                             .get_editor(current_id)
@@ -108,6 +138,8 @@ pub fn EditTournamentBase() -> impl IntoView {
                     </Show>
                 </div>
             </div>
+            <div class="my-4"></div>
+            <Outlet />
         </Show>
     }
 }
@@ -115,11 +147,11 @@ pub fn EditTournamentBase() -> impl IntoView {
 #[component]
 fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoView {
     // --- Hooks, Navigation & global state ---
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_matched_route,
         url_matched_route_update_queries,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
     let navigate = use_navigate();
 
     let sport_id = SportIdQuery::use_param_query();

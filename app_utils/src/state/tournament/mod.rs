@@ -7,8 +7,8 @@ pub mod base;
 pub mod stage;
 
 use crate::{
-    hooks::use_query_navigation::{
-        MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+    hooks::use_url_navigation::{
+        MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
     },
     params::{GroupNumberParams, ParamQuery, StageNumberParams},
     state::{EditorContext, EditorContextWithResource, SimpleEditorOptions},
@@ -43,9 +43,9 @@ impl EditorContext for TournamentEditorContext {
     fn new(options: SimpleEditorOptions) -> Self {
         // --- navigation and globale state context ---
         let navigate = use_navigate();
-        let UseQueryNavigationReturn {
+        let UseMatchedRouteNavigationReturn {
             url_matched_route, ..
-        } = use_query_navigation();
+        } = use_matched_route_navigation();
 
         // --- core signals ---
         let local = RwSignal::new(None::<Tournament>);

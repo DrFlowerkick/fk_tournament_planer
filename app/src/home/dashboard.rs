@@ -1,6 +1,6 @@
 use app_utils::{
-    hooks::use_query_navigation::{
-        MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+    hooks::use_url_navigation::{
+        MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
     },
     params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery, TournamentStateQuery},
     state::{
@@ -18,11 +18,11 @@ use reactive_stores::Store;
 #[component]
 pub fn SportDashboard() -> impl IntoView {
     // get query helpers
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_matched_route,
         url_matched_route_update_query,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
 
     // get global state and sport plugin manager
     let toast_ctx = expect_context::<ToastContext>();

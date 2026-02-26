@@ -10,10 +10,10 @@ use app_utils::{
     enum_utils::EditAction,
     hooks::{
         use_on_cancel::use_on_cancel,
-        use_query_navigation::{
-            MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
-        },
         use_scroll_into_view::use_scroll_h2_into_view,
+        use_url_navigation::{
+            MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
+        },
     },
     params::{AddressIdQuery, EditActionParams, FilterNameQuery, ParamQuery},
     state::{
@@ -28,10 +28,10 @@ use uuid::Uuid;
 #[component]
 pub fn EditPostalAddress() -> impl IntoView {
     // --- Hooks, Navigation & global state ---
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_is_matched_route,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
 
     let edit_action = EditActionParams::use_param_query();
     let address_id = AddressIdQuery::use_param_query();
@@ -146,10 +146,10 @@ pub fn EditPostalAddress() -> impl IntoView {
 #[component]
 fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl IntoView {
     // --- Hooks, Navigation & global state ---
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_matched_route_update_queries,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
     let navigate = use_navigate();
 
     let edit_action = EditActionParams::use_param_query();

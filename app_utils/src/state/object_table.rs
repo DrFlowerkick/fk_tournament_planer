@@ -1,7 +1,7 @@
 //! generic context for objects listed in tables
 
 use crate::{
-    hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    hooks::use_url_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::ParamQueryId,
     state::{EditorContext, EditorContextWithResource, EditorOptions},
 };
