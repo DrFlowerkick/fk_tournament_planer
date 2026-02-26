@@ -114,7 +114,7 @@ fn TournamentStageForm(
                             class="btn btn-square btn-ghost btn-sm"
                             on:click=move |_| on_cancel.run(())
                             aria-label="Close"
-                            data-testid="action-btn-close"
+                            data-testid="action-btn-close-edit-stage"
                         >
                             <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
                         </button>

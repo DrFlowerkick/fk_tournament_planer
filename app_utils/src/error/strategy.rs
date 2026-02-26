@@ -10,16 +10,8 @@ use leptos::prelude::*;
 use uuid::Uuid;
 
 /// Evaluates a save/action error (Write).
-/// - Known critical errors -> PageErrorContext (Banner)
-/// - Transient/Technical errors -> ToastContext (Popup)
-// ToDo: remove unnecessary inputs after all calling Components have been refactored.
-pub fn handle_write_error(
-    page_ctx: &PageErrorContext,
-    toast_ctx: &ToastContext,
-    component_id: Uuid,
-    error: &AppError,
-    retry_fn: Callback<()>,
-) {
+/// Since we use autosave and auto update, all save errors are reported via ToastContext (Popup)
+pub fn handle_write_error(toast_ctx: &ToastContext, error: &AppError) {
     match error {
         // 1. Optimistic Lock Conflict -> Toast
         // The client registry and auto saving ensures, that always the latest version is loaded. If a version mismatch

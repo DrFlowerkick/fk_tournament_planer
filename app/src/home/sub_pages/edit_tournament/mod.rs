@@ -32,7 +32,7 @@ fn EditTournamentFallback() -> impl IntoView {
         <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
             <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
             <p class="text-2xl font-bold text-center">
-                {move || match edit_action.try_get().flatten() {
+                {move || match edit_action.get() {
                     Some(EditAction::New) => "Press 'New Tournament' to create a new tournament.",
                     Some(EditAction::Edit) => "Please select a tournament from the list.",
                     Some(EditAction::Copy) => {

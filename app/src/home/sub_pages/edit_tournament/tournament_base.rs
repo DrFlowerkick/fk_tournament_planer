@@ -43,18 +43,9 @@ pub fn EditTournamentBase() -> impl IntoView {
             && let Some(editor) = tournament_editor_map.get_editor(id)
         {
             match edit_action.get() {
-                Some(EditAction::Edit) => editor
-                    .origin_signal()
-                    .try_with(|origin| origin.is_some())
-                    .unwrap_or(false),
-                Some(EditAction::New) => editor
-                    .origin_signal()
-                    .try_with(|origin| origin.is_none())
-                    .unwrap_or(false),
-                Some(EditAction::Copy) => editor
-                    .origin_signal()
-                    .try_with(|origin| origin.is_none())
-                    .unwrap_or(false),
+                Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
+                Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
+                Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
                 None => false,
             }
         } else {
@@ -86,13 +77,13 @@ pub fn EditTournamentBase() -> impl IntoView {
                             class="btn btn-square btn-ghost btn-sm"
                             on:click=move |_| on_cancel.run(())
                             aria-label="Close"
-                            data-testid="action-btn-close"
+                            data-testid="action-btn-close-edit-base"
                         >
                             <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
                         </button>
                     </div>
                     <Show
-                        when=move || show_form.try_get().unwrap_or(false)
+                        when=move || show_form.get()
                         fallback=move || {
                             view! { <EditTournamentFallback /> }
                         }

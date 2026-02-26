@@ -8,7 +8,7 @@ use crate::{
     server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
     state::{
         EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
-        error_state::PageErrorContext, toast_state::ToastContext,
+        toast_state::ToastContext,
     },
 };
 use app_core::{
@@ -101,12 +101,10 @@ impl EditorContext for BaseEditorContext {
     fn new(options: Self::NewEditorOptions) -> Self {
         // ---- global state & context ----
         let toast_ctx = expect_context::<ToastContext>();
-        let page_err_ctx = expect_context::<PageErrorContext>();
         let activity_tracker = expect_context::<ActivityTracker>();
         let component_id = StoredValue::new(Uuid::new_v4());
         // remove errors on unmount
         on_cleanup(move || {
-            page_err_ctx.clear_all_for_component(component_id.get_value());
             activity_tracker.remove_component(component_id.get_value());
         });
 
@@ -349,13 +347,7 @@ impl EditorContext for BaseEditorContext {
                         {
                             set_unique_violation_error.set(Some(field_error));
                         } else {
-                            handle_write_error(
-                                &page_err_ctx,
-                                &toast_ctx,
-                                component_id.get_value(),
-                                &err,
-                                refetch,
-                            );
+                            handle_write_error(&toast_ctx, &err);
                         }
                     }
                 }

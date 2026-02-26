@@ -28,7 +28,7 @@ export const POSTAL_IDS = {
     inputLocality: "input-locality",
     inputRegion: "input-region",
     inputCountry: "select-country",
-    btnClose: "action-btn-close",
+    btnClose: "action-btn-close-edit-form",
   },
 } as const;
 

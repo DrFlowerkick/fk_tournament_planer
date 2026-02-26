@@ -10,7 +10,7 @@ export const SPORT_IDS = {
     hiddenId: "hidden-id",
     hiddenVersion: "hidden-version",
     inputName: "input-name",
-    btnClose: "action-btn-close",
+    btnClose: "action-btn-close-edit-form",
   },
 } as const;
 

@@ -151,9 +151,19 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                     data-testid="postal-address-list-root"
                                 >
                                     <div class="card-body">
-                                        <h2 class="card-title" node_ref=scroll_ref>
-                                            "Search Postal Address"
-                                        </h2>
+                                        <div class="flex justify-between items-center">
+                                            <h2 class="card-title" node_ref=scroll_ref>
+                                                "Search Postal Address"
+                                            </h2>
+                                            <button
+                                                class="btn btn-square btn-ghost btn-sm"
+                                                on:click=move |_| on_cancel.run(())
+                                                aria-label="Close"
+                                                data-testid="action-btn-close-list"
+                                            >
+                                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                                            </button>
+                                        </div>
 
                                         // --- Filter Bar ---
                                         <Form method="GET" action="" noscroll=true replace=true>

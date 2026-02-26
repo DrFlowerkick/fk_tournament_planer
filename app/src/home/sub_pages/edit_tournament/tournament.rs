@@ -25,8 +25,7 @@ pub fn EditTournament() -> impl IntoView {
             && let Some(editor) = tournament_editor_map.get_editor_untracked(id)
             && editor
                 .origin_signal()
-                .try_with_untracked(|origin| origin.is_none())
-                .unwrap_or(false)
+                .with_untracked(|origin| origin.is_none())
         {
             tournament_editor_map.remove_editor(id);
         }

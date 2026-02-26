@@ -64,10 +64,10 @@ pub fn ListTournaments() -> impl IntoView {
     // Signals for Filters
     let sport_id = SportIdQuery::use_param_query();
     let tournament_base_id = TournamentBaseIdQuery::use_param_query();
-    let tournament_state = TournamentStateQuery::use_param_query();
     let search_term = FilterNameQuery::use_param_query();
-    let limit = FilterLimitQuery::use_param_query();
+    let tournament_state = TournamentStateQuery::use_param_query();
     let include_adhoc = IncludeAdhocQuery::use_param_query();
+    let limit = FilterLimitQuery::use_param_query();
 
     // Resource that fetches data when filters change
     let tournament_ids = Resource::new(
@@ -113,7 +113,16 @@ pub fn ListTournaments() -> impl IntoView {
 
     view! {
         <Transition fallback=move || {
-            view! { <span class="loading loading-spinner loading-lg"></span> }
+            view! {
+                <div class="card w-full bg-base-100 shadow-xl" data-testid="tournaments-list-root">
+                    <div class="card-body">
+                        <h2 class="card-title" node_ref=scroll_ref>
+                            "List Tournaments"
+                        </h2>
+                        <span class="loading loading-spinner loading-lg"></span>
+                    </div>
+                </div>
+            }
         }>
             <ErrorBoundary fallback=move |errors| {
                 for (_err_id, err) in errors.get().into_iter() {
@@ -147,9 +156,19 @@ pub fn ListTournaments() -> impl IntoView {
                                     data-testid="tournaments-list-root"
                                 >
                                     <div class="card-body">
-                                        <h2 class="card-title" node_ref=scroll_ref>
-                                            "List Tournaments"
-                                        </h2>
+                                        <div class="flex justify-between items-center">
+                                            <h2 class="card-title" node_ref=scroll_ref>
+                                                "List Tournaments"
+                                            </h2>
+                                            <button
+                                                class="btn btn-square btn-ghost btn-sm"
+                                                on:click=move |_| on_cancel.run(())
+                                                aria-label="Close"
+                                                data-testid="action-btn-close-list"
+                                            >
+                                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                                            </button>
+                                        </div>
 
                                         // --- Filter Bar ---
                                         <Form method="GET" action="" noscroll=true replace=true>
@@ -471,61 +490,5 @@ fn TournamentTableRow(id: Uuid) -> impl IntoView {
                         })
                 })
         }}
-    }
-}
-
-#[component]
-pub fn SelectedTournamentActions(tournament_state: TournamentState) -> impl IntoView {
-    // navigation and query handling Hook
-    let UseQueryNavigationReturn {
-        url_matched_route, ..
-    } = use_query_navigation();
-
-    view! {
-        <div class="flex gap-2 justify-end p-2 bg-base-200" data-testid="row-actions">
-            // Example Logic based on status
-            {match tournament_state {
-                TournamentState::Draft | TournamentState::Published => {
-                    view! {
-                        <A
-                            href=move || url_matched_route(MatchedRouteHandler::Extend("register"))
-                            attr:class="btn btn-sm btn-primary"
-                            attr:data-testid="action-btn-register"
-                            scroll=false
-                        >
-                            "Register"
-                        </A>
-                        <A
-                            href=move || url_matched_route(MatchedRouteHandler::Extend("edit"))
-                            attr:class="btn btn-sm btn-ghost"
-                            attr:data-testid="action-btn-edit"
-                            scroll=false
-                        >
-                            "Edit"
-                        </A>
-                        <button class="btn btn-sm" data-testid="action-btn-show">
-                            "Show"
-                        </button>
-                    }
-                        .into_any()
-                }
-                TournamentState::ActiveStage(_) => {
-                    view! {
-                        <button class="btn btn-sm" data-testid="action-btn-show">
-                            "Show"
-                        </button>
-                    }
-                        .into_any()
-                }
-                TournamentState::Finished => {
-                    view! {
-                        <button class="btn btn-sm btn-secondary" data-testid="action-btn-results">
-                            "Results"
-                        </button>
-                    }
-                        .into_any()
-                }
-            }}
-        </div>
     }
 }

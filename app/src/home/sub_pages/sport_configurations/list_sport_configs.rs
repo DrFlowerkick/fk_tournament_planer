@@ -153,9 +153,19 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                     data-testid="sport-config-list-root"
                                 >
                                     <div class="card-body">
-                                        <h2 class="card-title" node_ref=scroll_ref>
-                                            "Sport Configurations"
-                                        </h2>
+                                        <div class="flex justify-between items-center">
+                                            <h2 class="card-title" node_ref=scroll_ref>
+                                                "Sport Configurations"
+                                            </h2>
+                                            <button
+                                                class="btn btn-square btn-ghost btn-sm"
+                                                on:click=move |_| on_cancel.run(())
+                                                aria-label="Close"
+                                                data-testid="action-btn-close-list"
+                                            >
+                                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                                            </button>
+                                        </div>
 
                                         // --- Filter Bar ---
                                         <Form method="GET" action="" noscroll=true replace=true>
@@ -352,7 +362,8 @@ fn SportConfigTableRow(id: Uuid) -> impl IntoView {
     let sport_plugin_manager = state.sport_plugin_manager();
     let sport_plugin = move || {
         sport_id
-            .get()
+            .try_get()
+            .flatten()
             .and_then(|s_id| sport_plugin_manager.get().get_web_ui(&s_id))
     };
 

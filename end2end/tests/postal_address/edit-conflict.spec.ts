@@ -87,34 +87,47 @@ test.describe("Edit conflict handling with auto-save", () => {
       // One request will win (saving the data), the other one will fail (Optimistic Lock).
       // The failing client should show a toast.
 
-      // Helper to check for toast visibility on a page and return its text
-      const getToastText = async (
+      // Helper to check for toast visibility on a page and return its text and locator
+      const getToastInfo = async (
         toasts: ReturnType<typeof selectors>["toasts"],
-      ): Promise<string | null> => {
+      ) => {
         try {
           // Wait for ERROR toast to appear, but with a shorter timeout as it should happen quickly
-          await toasts.error.waitFor({ state: "visible", timeout: 5000 });
-          return await toasts.error.textContent();
+          const toast = toasts.error;
+          await toast.waitFor({ state: "visible", timeout: 5000 });
+          const text = await toast.textContent();
+          return { text, locator: toast };
         } catch {
           return null;
         }
       };
 
       // Check both pages for the error toast
-      const [toastTextA, toastTextB] = await Promise.all([
-        getToastText(Toasts_A),
-        getToastText(Toasts_B),
+      const [toastInfoA, toastInfoB] = await Promise.all([
+        getToastInfo(Toasts_A),
+        getToastInfo(Toasts_B),
       ]);
 
       // Exactly one of them should have encountered the error (returned a text string)
       // Checks if either A or B has a string value (truthy)
-      expect(!!toastTextA || !!toastTextB).toBe(true);
+      expect(!!toastInfoA || !!toastInfoB).toBe(true);
+      // Ensure only one failed
+      expect(!!toastInfoA && !!toastInfoB).toBe(false);
 
-      if (toastTextA) {
-        expect(toastTextA).toContain("optimistic lock conflict");
+      if (toastInfoA) {
+        expect(toastInfoA.text).toContain("optimistic lock conflict");
+        // Wait for toast to disappear
+        await toastInfoA.locator.waitFor({ state: "hidden" });
+        // Since A failed, B won. A should have reloaded B's value.
+        await expect(PA_A.form.inputStreet).toHaveValue(valB);
       }
-      if (toastTextB) {
-        expect(toastTextB).toContain("optimistic lock conflict");
+
+      if (toastInfoB) {
+        expect(toastInfoB.text).toContain("optimistic lock conflict");
+        // Wait for toast to disappear
+        await toastInfoB.locator.waitFor({ state: "hidden" });
+        // Since B failed, A won. B should have reloaded A's value.
+        await expect(PA_B.form.inputStreet).toHaveValue(valA);
       }
     } finally {
       await ctxA.close();
