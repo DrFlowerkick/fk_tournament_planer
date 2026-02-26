@@ -7,7 +7,7 @@ use app_utils::{
     enum_utils::EditAction,
     params::SportConfigIdQuery,
     state::{
-        EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
+        SimpleEditorOptions, object_table::ObjectEditorMapContext,
         sport_config::SportConfigEditorContext,
     },
 };
@@ -26,8 +26,9 @@ fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
     let sport_config_editor_map =
         ObjectEditorMapContext::<SportConfigEditorContext, SportConfigIdQuery>::new();
     let existing_id = sc.get_id();
-    let editor = SportConfigEditorContext::new(Some(existing_id));
-    sport_config_editor_map.insert_editor(existing_id, editor);
+    sport_config_editor_map
+        .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(existing_id))
+        .unwrap();
     sport_config_editor_map
         .set_selected_id
         .run(Some(existing_id));
@@ -35,7 +36,8 @@ fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
     match edit_action {
         EditAction::New => {
             let new_id = sport_config_editor_map
-                .new_editor(None)
+                .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                .and_then(|editor| editor.id.get())
                 .expect("Failed to create new sport config object");
             sport_config_editor_map.set_selected_id.run(Some(new_id));
         }
@@ -44,12 +46,10 @@ fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
         }
         EditAction::Copy => {
             sport_config_editor_map.update_object_in_editor(&sc);
-            let editor = SportConfigEditorContext::new(None);
-            editor.set_object(sc.clone());
-            let new_id = editor
-                .copy_object(sc)
-                .expect("Failed to copy sport config object");
-            sport_config_editor_map.insert_editor(new_id, editor);
+            let new_id = sport_config_editor_map
+                .spawn_editor_for_copy_object(existing_id, SimpleEditorOptions::no_id())
+                .and_then(|editor| editor.id.get())
+                .expect("Failed to create new sport config object");
             sport_config_editor_map.set_selected_id.run(Some(new_id));
         }
     }

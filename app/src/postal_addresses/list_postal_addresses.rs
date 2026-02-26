@@ -17,7 +17,7 @@ use app_utils::{
     params::{AddressIdQuery, FilterLimitQuery, FilterNameQuery, ParamQuery},
     server_fn::postal_address::list_postal_address_ids,
     state::{
-        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        SimpleEditorOptions, activity_tracker::ActivityTracker, error_state::PageErrorContext,
         object_table::ObjectEditorMapContext, postal_address::PostalAddressEditorContext,
         toast_state::ToastContext,
     },
@@ -264,8 +264,14 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                 data-testid="action-btn-copy"
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
-                                                    if let Some(new_id) = postal_address_editor_map
-                                                        .copy_editor(None)
+                                                    if let Some(selected_id) = postal_address_editor_map
+                                                        .selected_id
+                                                        .get()
+                                                        && let Some(new_editor) = postal_address_editor_map
+                                                            .spawn_editor_for_copy_object(
+                                                                selected_id,
+                                                                SimpleEditorOptions::no_id(),
+                                                            ) && let Some(new_id) = new_editor.id.get()
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             AddressIdQuery::KEY,
@@ -291,8 +297,9 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                 data-testid="action-btn-new"
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
-                                                    if let Some(new_id) = postal_address_editor_map
-                                                        .new_editor(None)
+                                                    if let Some(new_editor) = postal_address_editor_map
+                                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                                        && let Some(new_id) = new_editor.id.get()
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             AddressIdQuery::KEY,
@@ -331,8 +338,10 @@ fn PostalAddressTableRow(id: Uuid) -> impl IntoView {
     // --- local context ---
     let postal_address_editor_map =
         expect_context::<ObjectEditorMapContext<PostalAddressEditorContext, AddressIdQuery>>();
-    let postal_address_editor = PostalAddressEditorContext::new(Some(id));
-    postal_address_editor_map.insert_editor(id, postal_address_editor);
+    // unwrap is safe here, since we provide an id.
+    let postal_address_editor = postal_address_editor_map
+        .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
+        .unwrap();
     let address_id = AddressIdQuery::use_param_query();
 
     // remove editor on unmount

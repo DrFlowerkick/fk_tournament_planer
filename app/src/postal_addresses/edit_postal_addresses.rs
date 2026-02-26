@@ -48,6 +48,7 @@ pub fn EditPostalAddress() -> impl IntoView {
                 Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
                 Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
                 Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
+
                 None => false,
             }
         } else {

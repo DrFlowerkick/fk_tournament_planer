@@ -11,7 +11,7 @@ use crate::{
         MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
     },
     params::{GroupNumberParams, ParamQuery, StageNumberParams},
-    state::{EditorContext, EditorContextWithResource},
+    state::{EditorContext, EditorContextWithResource, SimpleEditorOptions},
 };
 use app_core::{Tournament, TournamentBase};
 use base::{BaseEditorContext, BaseEditorContextOptions};
@@ -38,9 +38,9 @@ pub struct TournamentEditorContext {
 
 impl EditorContext for TournamentEditorContext {
     type ObjectType = Tournament;
-    type NewEditorOptions = Option<Uuid>;
+    type NewEditorOptions = SimpleEditorOptions;
 
-    fn new(tournament_id: Option<Uuid>) -> Self {
+    fn new(options: SimpleEditorOptions) -> Self {
         // --- navigation and globale state context ---
         let navigate = use_navigate();
         let UseQueryNavigationReturn {
@@ -52,7 +52,7 @@ impl EditorContext for TournamentEditorContext {
         let origin = RwSignal::new(None::<Tournament>);
 
         let base_editor_options = BaseEditorContextOptions {
-            res_id: tournament_id,
+            object_id: options.object_id,
             local_tournament: local,
             origin_tournament: origin,
         };
@@ -162,7 +162,7 @@ impl TournamentEditorContext {
         });
         let stage_editor_options = StageEditorContextOptions {
             stage_number,
-            res_id: None,
+            object_id: None,
             local_tournament: self.local,
             origin_tournament: self.origin,
         };

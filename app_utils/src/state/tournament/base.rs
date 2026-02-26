@@ -7,7 +7,7 @@ use crate::{
     params::{ParamQuery, SportIdQuery},
     server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
     state::{
-        EditorContext, EditorContextWithResource, activity_tracker::ActivityTracker,
+        EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
         error_state::PageErrorContext, toast_state::ToastContext,
     },
 };
@@ -23,9 +23,15 @@ use leptos::prelude::*;
 use uuid::Uuid;
 
 pub struct BaseEditorContextOptions {
-    pub res_id: Option<Uuid>,
+    pub object_id: Option<Uuid>,
     pub local_tournament: RwSignal<Option<Tournament>>,
     pub origin_tournament: RwSignal<Option<Tournament>>,
+}
+
+impl EditorOptions for BaseEditorContextOptions {
+    fn object_id(&self) -> Option<Uuid> {
+        self.object_id
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -261,7 +267,7 @@ impl EditorContext for BaseEditorContext {
         });
 
         // ---- tournament base resource ----
-        let (resource_id, set_resource_id) = signal(options.res_id);
+        let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
         // resource to load tournament base

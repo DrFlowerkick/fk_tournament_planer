@@ -4,6 +4,7 @@ use app_utils::{
     },
     params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery, TournamentStateQuery},
     state::{
+        SimpleEditorOptions,
         global_state::{GlobalState, GlobalStateStoreFields},
         object_table::ObjectEditorMapContext,
         toast_state::ToastContext,
@@ -100,7 +101,10 @@ pub fn SportDashboard() -> impl IntoView {
                             data-testid="link-nav-plan-new"
                             on:click=move |_| {
                                 let navigate = use_navigate();
-                                if let Some(new_id) = tournament_editor_map.new_editor(None) {
+                                if let Some(new_id) = tournament_editor_map
+                                    .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                    .and_then(|editor| editor.base_editor.id.get())
+                                {
                                     let nav_url = url_matched_route_update_query(
                                         TournamentBaseIdQuery::KEY,
                                         &new_id.to_string(),

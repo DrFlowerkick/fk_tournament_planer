@@ -17,7 +17,7 @@ use app_utils::{
     params::{FilterLimitQuery, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::list_sport_config_ids,
     state::{
-        EditorContext,
+        SimpleEditorOptions,
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
@@ -274,8 +274,14 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                 data-testid="action-btn-copy"
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
-                                                    if let Some(new_id) = sport_config_editor_map
-                                                        .copy_editor(None)
+                                                    if let Some(selected_id) = sport_config_editor_map
+                                                        .selected_id
+                                                        .get()
+                                                        && let Some(new_editor) = sport_config_editor_map
+                                                            .spawn_editor_for_copy_object(
+                                                                selected_id,
+                                                                SimpleEditorOptions::no_id(),
+                                                            ) && let Some(new_id) = new_editor.id.get()
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             SportConfigIdQuery::KEY,
@@ -301,8 +307,9 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                 data-testid="action-btn-new"
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
-                                                    if let Some(new_id) = sport_config_editor_map
-                                                        .new_editor(None)
+                                                    if let Some(new_editor) = sport_config_editor_map
+                                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                                        && let Some(new_id) = new_editor.id.get()
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             SportConfigIdQuery::KEY,
@@ -352,8 +359,10 @@ fn SportConfigTableRow(id: Uuid) -> impl IntoView {
     // --- local context ---
     let sport_config_editor_map =
         expect_context::<ObjectEditorMapContext<SportConfigEditorContext, SportConfigIdQuery>>();
-    let sport_config_editor = SportConfigEditorContext::new(Some(id));
-    sport_config_editor_map.insert_editor(id, sport_config_editor);
+    // unwrap is safe here, since we provide an id.
+    let sport_config_editor = sport_config_editor_map
+        .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
+        .unwrap();
     let sport_config_id = SportConfigIdQuery::use_param_query();
 
     // remove editor on unmount

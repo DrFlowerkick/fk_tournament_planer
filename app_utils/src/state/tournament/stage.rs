@@ -4,7 +4,7 @@ use crate::{
     error::{AppError, AppResult, strategy::handle_write_error},
     server_fn::stage::{SaveStage, load_stage_by_id},
     state::{
-        EditorContext, EditorContextWithResource, activity_tracker::ActivityTracker,
+        EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
         error_state::PageErrorContext, toast_state::ToastContext,
     },
 };
@@ -18,9 +18,15 @@ use uuid::Uuid;
 
 pub struct StageEditorContextOptions {
     pub stage_number: u32,
-    pub res_id: Option<Uuid>,
+    pub object_id: Option<Uuid>,
     pub local_tournament: RwSignal<Option<Tournament>>,
     pub origin_tournament: RwSignal<Option<Tournament>>,
+}
+
+impl EditorOptions for StageEditorContextOptions {
+    fn object_id(&self) -> Option<Uuid> {
+        self.object_id
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -187,7 +193,7 @@ impl EditorContext for StageEditorContext {
         });
 
         // ---- tournament stage resource ----
-        let (resource_id, set_resource_id) = signal(options.res_id);
+        let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
         // resource to load tournament stage

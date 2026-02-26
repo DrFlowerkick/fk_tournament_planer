@@ -8,7 +8,7 @@ use app_utils::{
     enum_utils::EditAction,
     params::AddressIdQuery,
     state::{
-        EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
+        SimpleEditorOptions, object_table::ObjectEditorMapContext,
         postal_address::PostalAddressEditorContext,
     },
 };
@@ -26,30 +26,30 @@ fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
     let postal_address_editor_map =
         ObjectEditorMapContext::<PostalAddressEditorContext, AddressIdQuery>::new();
     let existing_id = pa.get_id();
-    let editor = PostalAddressEditorContext::new(Some(existing_id));
-    postal_address_editor_map.insert_editor(existing_id, editor);
     postal_address_editor_map
-        .set_selected_id
-        .run(Some(existing_id));
+        .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(existing_id))
+        .unwrap();
 
     match edit_action {
         EditAction::New => {
             let new_id = postal_address_editor_map
-                .new_editor(None)
+                .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                .and_then(|editor| editor.id.get())
                 .expect("Failed to create new postal address object");
             postal_address_editor_map.set_selected_id.run(Some(new_id));
         }
         EditAction::Edit => {
             postal_address_editor_map.update_object_in_editor(&pa);
+            postal_address_editor_map
+                .set_selected_id
+                .run(Some(existing_id));
         }
         EditAction::Copy => {
             postal_address_editor_map.update_object_in_editor(&pa);
-            let editor = PostalAddressEditorContext::new(None);
-            editor.set_object(pa.clone());
-            let new_id = editor
-                .copy_object(pa)
-                .expect("Failed to copy postal address object");
-            postal_address_editor_map.insert_editor(new_id, editor);
+            let new_id = postal_address_editor_map
+                .spawn_editor_for_copy_object(existing_id, SimpleEditorOptions::no_id())
+                .and_then(|editor| editor.id.get())
+                .expect("Failed to create new postal address object");
             postal_address_editor_map.set_selected_id.run(Some(new_id));
         }
     }

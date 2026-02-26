@@ -1,4 +1,7 @@
-use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
+use crate::common::{
+    get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url,
+    wait_for_element_text,
+};
 use app::{postal_addresses::ListPostalAddresses, provide_global_context};
 use gloo_timers::future::sleep;
 use leptos::{
@@ -37,10 +40,10 @@ async fn test_search_postal_address() {
         }
     });
 
-    sleep(Duration::from_millis(10)).await;
-
     // check row
     let first_row_id = format!("table-entry-row-{}", ts.entries[0]);
+    wait_for_element_text(&first_row_id, "Test Address1", 1000).await;
+
     let row = get_element_by_test_id(&first_row_id)
         .text_content()
         .unwrap();

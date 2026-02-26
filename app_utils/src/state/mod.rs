@@ -13,9 +13,13 @@ use app_core::utils::traits::ObjectIdVersion;
 use leptos::prelude::*;
 use uuid::Uuid;
 
+pub trait EditorOptions {
+    fn object_id(&self) -> Option<Uuid>;
+}
+
 pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
     type ObjectType: ObjectIdVersion + Clone + Send + Sync + 'static;
-    type NewEditorOptions;
+    type NewEditorOptions: EditorOptions;
 
     /// Create a new instance of the editor context, initializing all necessary state.
     fn new(options: Self::NewEditorOptions) -> Self;
@@ -36,4 +40,27 @@ pub trait EditorContextWithResource: EditorContext {
     fn reset_version_to_origin(&self);
     /// Get the current optimistic version signal from the editor context, if any.
     fn optimistic_version_signal(&self) -> Signal<Option<u32>>;
+}
+
+#[derive(Clone, Copy)]
+pub struct SimpleEditorOptions {
+    pub object_id: Option<Uuid>,
+}
+
+impl EditorOptions for SimpleEditorOptions {
+    fn object_id(&self) -> Option<Uuid> {
+        self.object_id
+    }
+}
+
+impl SimpleEditorOptions {
+    pub fn with_id(object_id: Uuid) -> Self {
+        Self {
+            object_id: Some(object_id),
+        }
+    }
+
+    pub fn no_id() -> Self {
+        Self { object_id: None }
+    }
 }

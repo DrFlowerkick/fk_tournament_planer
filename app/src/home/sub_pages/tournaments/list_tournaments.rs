@@ -21,7 +21,7 @@ use app_utils::{
     },
     server_fn::tournament_base::list_tournament_base_ids,
     state::{
-        EditorContext, activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        SimpleEditorOptions, activity_tracker::ActivityTracker, error_state::PageErrorContext,
         object_table::ObjectEditorMapContext, toast_state::ToastContext,
         tournament::TournamentEditorContext,
     },
@@ -307,7 +307,9 @@ pub fn ListTournaments() -> impl IntoView {
                                                 data-testid="action-btn-new"
                                                 on:click=move |_| {
                                                     let navigate = use_navigate();
-                                                    if let Some(new_id) = tournament_editor_map.new_editor(None)
+                                                    if let Some(new_editor) = tournament_editor_map
+                                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                                        && let Some(new_id) = new_editor.base_editor.id.get()
                                                     {
                                                         let nav_url = url_matched_route_update_query(
                                                             TournamentBaseIdQuery::KEY,
@@ -346,8 +348,10 @@ fn TournamentTableRow(id: Uuid) -> impl IntoView {
     // --- local context ---
     let tournament_editor_map =
         expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
-    let tournament_editor = TournamentEditorContext::new(Some(id));
-    tournament_editor_map.insert_editor(id, tournament_editor);
+    // unwrap is safe here, since we provide an id.
+    let tournament_editor = tournament_editor_map
+        .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
+        .unwrap();
     let tournament_id = TournamentBaseIdQuery::use_param_query();
 
     // remove editor on unmount

@@ -7,7 +7,7 @@ use crate::{
     params::{ParamQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
-        EditorContext, EditorContextWithResource,
+        EditorContext, EditorContextWithResource, SimpleEditorOptions,
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
@@ -68,10 +68,10 @@ pub struct SportConfigEditorContext {
 
 impl EditorContext for SportConfigEditorContext {
     type ObjectType = SportConfig;
-    type NewEditorOptions = Option<Uuid>;
+    type NewEditorOptions = SimpleEditorOptions;
 
     /// Create a new `SportConfigEditorContext`.
-    fn new(res_id: Option<Uuid>) -> Self {
+    fn new(options: SimpleEditorOptions) -> Self {
         // ---- global state & context ----
         let toast_ctx = expect_context::<ToastContext>();
         let page_err_ctx = expect_context::<PageErrorContext>();
@@ -147,7 +147,7 @@ impl EditorContext for SportConfigEditorContext {
         );
 
         // ---- sport config resource ----
-        let (resource_id, set_resource_id) = signal(res_id);
+        let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
         // resource to load sport config

@@ -3,7 +3,7 @@
 use crate::{
     hooks::use_query_navigation::{UseQueryNavigationReturn, use_query_navigation},
     params::ParamQueryId,
-    state::{EditorContext, EditorContextWithResource},
+    state::{EditorContext, EditorContextWithResource, EditorOptions},
 };
 use app_core::utils::traits::ObjectIdVersion;
 use leptos::prelude::*;
@@ -127,6 +127,8 @@ where
 {
     /// RwSignal for the map of object editors
     editor_map: RwSignal<HashMap<Uuid, OE>>,
+    /// Owner where the context is provided, used for creating new signals in the context of the editors
+    pub owner: StoredValue<Owner>,
     /// RwSignal for the list of visible object editor ids
     pub visible_ids_list: RwSignal<Vec<Uuid>>,
     /// Read slice for the currently selected object editor id
@@ -172,6 +174,7 @@ where
         let navigate = use_navigate();
 
         let editor_map = RwSignal::new(HashMap::new());
+        let owner = StoredValue::new(Owner::current().expect("No reactive owner found"));
         let visible_ids_list = RwSignal::new(Vec::new());
         let selected_id_query = use_query::<Q>();
         let selected_id = Signal::derive(move || {
@@ -204,6 +207,7 @@ where
 
         Self {
             editor_map,
+            owner,
             visible_ids_list,
             selected_id,
             set_selected_id,
@@ -213,22 +217,38 @@ where
         }
     }
 
-    pub fn new_editor(&self, options: OE::NewEditorOptions) -> Option<Uuid> {
-        let editor = OE::new(options);
-        if let Some(new_id) = editor.new_object() {
-            self.editor_map.update(|em| {
-                em.insert(new_id, editor);
-            });
-            Some(new_id)
-        } else {
-            None
-        }
+    pub fn spawn_editor_for_new_object(&self, options: OE::NewEditorOptions) -> Option<OE> {
+        // Execute creation inside the stored owner's scope
+        self.owner.with_value(|owner| {
+            owner.with(|| {
+                let editor = OE::new(options);
+                if let Some(new_id) = editor.new_object() {
+                    self.editor_map.update(|em| {
+                        em.insert(new_id, editor);
+                    });
+                    Some(editor)
+                } else {
+                    None
+                }
+            })
+        })
     }
 
-    pub fn insert_editor(&self, id: Uuid, editor: OE) {
-        self.editor_map.update(|em| {
-            em.insert(id, editor);
-        });
+    pub fn spawn_editor_for_edit_object(&self, options: OE::NewEditorOptions) -> Option<OE> {
+        let Some(object_id) = options.object_id() else {
+            return None; // Cannot edit without an object ID
+        };
+
+        // Execute creation inside the stored owner's scope
+        self.owner.with_value(|owner| {
+            owner.with(|| {
+                let editor = OE::new(options);
+                self.editor_map.update(|em| {
+                    em.insert(object_id, editor);
+                });
+                Some(editor)
+            })
+        })
     }
 
     pub fn get_editor(&self, id: Uuid) -> Option<OE> {
@@ -258,22 +278,31 @@ where
     OE: EditorContextWithResource,
     Q: ParamQueryId,
 {
-    pub fn copy_editor(&self, options: OE::NewEditorOptions) -> Option<Uuid> {
-        let editor = OE::new(options);
-        if let Some(current_id) = self.selected_id.get()
-            && let Some(origin) = self
-                .editor_map
-                .with(|em| em.get(&current_id).and_then(|ed| ed.origin_signal().get()))
-            && let Some(new_id) = editor.copy_object(origin)
-        {
-            self.editor_map.update(|em| {
-                em.insert(new_id, editor);
-            });
-            Some(new_id)
-        } else {
-            None
-        }
+    pub fn spawn_editor_for_copy_object(
+        &self,
+        source_id: Uuid,
+        options: OE::NewEditorOptions,
+    ) -> Option<OE> {
+        // Execute creation inside the stored owner's scope
+        self.owner.with_value(|owner| {
+            owner.with(|| {
+                let editor = OE::new(options);
+                if let Some(origin) = self
+                    .editor_map
+                    .with(|em| em.get(&source_id).and_then(|ed| ed.origin_signal().get()))
+                    && let Some(new_id) = editor.copy_object(origin)
+                {
+                    self.editor_map.update(|em| {
+                        em.insert(new_id, editor);
+                    });
+                    Some(editor)
+                } else {
+                    None
+                }
+            })
+        })
     }
+
     pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
         self.editor_map.with(|em| {
             if let Some(editor) = em.get(&object.get_id_version().get_id()) {

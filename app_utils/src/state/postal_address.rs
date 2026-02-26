@@ -6,8 +6,9 @@ use crate::{
     },
     server_fn::postal_address::{SavePostalAddress, load_postal_address},
     state::{
-        EditorContext, EditorContextWithResource, activity_tracker::ActivityTracker,
-        error_state::PageErrorContext, toast_state::ToastContext,
+        EditorContext, EditorContextWithResource, SimpleEditorOptions,
+        activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        toast_state::ToastContext,
     },
 };
 use app_core::{
@@ -26,7 +27,7 @@ use uuid::Uuid;
 pub struct PostalAddressEditorContext {
     // --- state & derived signals ---
     /// The local editable postal address.
-    local: RwSignal<Option<PostalAddress>>,
+    pub local: RwSignal<Option<PostalAddress>>,
     /// The original postal address loaded from storage.
     origin: RwSignal<Option<PostalAddress>>,
     /// Read slice for accessing the validation result of the postal address
@@ -77,10 +78,10 @@ pub struct PostalAddressEditorContext {
 
 impl EditorContext for PostalAddressEditorContext {
     type ObjectType = PostalAddress;
-    type NewEditorOptions = Option<Uuid>;
+    type NewEditorOptions = SimpleEditorOptions;
 
     /// Create a new `PostalAddressEditorContext`.
-    fn new(res_id: Option<Uuid>) -> Self {
+    fn new(options: SimpleEditorOptions) -> Self {
         // ---- global state & context ----
         let toast_ctx = expect_context::<ToastContext>();
         let page_err_ctx = expect_context::<PageErrorContext>();
@@ -200,7 +201,7 @@ impl EditorContext for PostalAddressEditorContext {
         });
 
         // ---- address resource ----
-        let (resource_id, set_resource_id) = signal(res_id);
+        let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
         // resource to load postal address
