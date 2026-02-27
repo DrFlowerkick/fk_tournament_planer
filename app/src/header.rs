@@ -1,12 +1,12 @@
 //! header component
 
-use crate::home::select_sport::STORAGE_KEY_SPORT_ID;
+use crate::{home::select_sport::STORAGE_KEY_SPORT_ID, tournament_tree_navigation::TournamentTreeNavigation};
 use app_utils::{
     hooks::{
         blur_active_element::blur_active_element,
         use_url_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::TournamentBaseIdQuery,
+    params::{TournamentBaseIdQuery, ParamQuery},
     state::{
         activity_tracker::ActivityTracker, object_table::ObjectEditorMapContext,
         tournament::TournamentEditorContext,
@@ -34,6 +34,8 @@ pub fn Header() -> impl IntoView {
     let tournament_editor_map =
         ObjectEditorMapContext::<TournamentEditorContext, TournamentBaseIdQuery>::new();
     provide_context(tournament_editor_map);
+
+    let tournament_base_id = TournamentBaseIdQuery::use_param_query();
 
     view! {
         <header class="navbar bg-base-300 sticky top-0 z-50">
@@ -101,6 +103,12 @@ pub fn Header() -> impl IntoView {
                                 "Sport Selection"
                             </A>
                         </li>
+                        <Show when=move || tournament_base_id.get().is_some()>
+                            <li class="menu-title border-t border-base-content/10 my-1 py-0 h-px"></li>
+                            <li>
+                                <TournamentTreeNavigation />
+                            </li>
+                        </Show>
                     </ul>
                 </div>
             </div>

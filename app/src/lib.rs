@@ -5,6 +5,7 @@ pub mod header;
 pub mod home;
 pub mod layout;
 pub mod postal_addresses;
+pub mod tournament_tree_navigation;
 
 use app_utils::state::{
     activity_tracker::ActivityTracker, error_state::PageErrorContext, global_state::GlobalState,

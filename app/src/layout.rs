@@ -15,7 +15,6 @@ pub fn Layout() -> impl IntoView {
 
     view! {
         <div class="flex flex-col min-h-screen">
-            // navigation header is now part of the route tree
             <Header />
 
             <ToastContainer />
@@ -29,7 +28,7 @@ pub fn Layout() -> impl IntoView {
                 class:opacity-50=move || page_err_ctx.has_errors()
                 inert=move || page_err_ctx.has_errors()
             >
-                // Hier werden die Child-Routes gerendert via Outlet
+                // rendering of HomePage
                 <Outlet />
             </main>
 

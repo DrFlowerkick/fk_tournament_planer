@@ -373,11 +373,6 @@ fn TournamentTableRow(id: Uuid) -> impl IntoView {
         .unwrap();
     let tournament_id = TournamentBaseIdQuery::use_param_query();
 
-    // remove editor on unmount
-    on_cleanup(move || {
-        tournament_editor_map.remove_editor(id);
-    });
-
     view! {
         {move || {
             tournament_editor

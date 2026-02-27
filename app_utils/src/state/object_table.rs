@@ -136,11 +136,11 @@ where
         // Execute creation inside the stored owner's scope
         self.owner.with_value(|owner| {
             owner.with(|| {
-                let editor = OE::new(options);
+                let mut editor = None;
                 self.editor_map.update(|em| {
-                    em.insert(object_id, editor);
+                    editor = Some(*em.entry(object_id).or_insert_with(|| OE::new(options)));
                 });
-                Some(editor)
+                editor
             })
         })
     }

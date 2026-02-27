@@ -23,7 +23,7 @@ use leptos_router::{NavigateOptions, hooks::use_navigate, nested_router::Outlet}
 #[component]
 pub fn EditTournamentStage() -> impl IntoView {
     let edit_action = EditActionParams::use_param_query();
-    let tournament_id = TournamentBaseIdQuery::use_param_query();
+    let tournament_base_id = TournamentBaseIdQuery::use_param_query();
     let active_stage_number = StageNumberParams::use_param_query();
 
     // --- local state ---
@@ -35,7 +35,7 @@ pub fn EditTournamentStage() -> impl IntoView {
             // Using For forces the view to be recreated when the id changes
             <For
                 each=move || {
-                    tournament_id
+                    tournament_base_id
                         .try_get()
                         .flatten()
                         .and_then(|current_id| {
