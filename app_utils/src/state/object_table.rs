@@ -20,7 +20,7 @@ where
     Q: ParamQueryId,
 {
     /// RwSignal for the map of object editors
-    editor_map: RwSignal<HashMap<Uuid, OE>>,
+    editor_map: RwSignal<HashMap<Uuid, (OE, Owner)>>,
     /// Owner where the context is provided, used for creating new signals in the context of the editors
     pub owner: StoredValue<Owner>,
     /// RwSignal for the list of visible object editor ids
@@ -112,52 +112,72 @@ where
     }
 
     pub fn spawn_editor_for_new_object(&self, options: OE::NewEditorOptions) -> Option<OE> {
-        // Execute creation inside the stored owner's scope
-        self.owner.with_value(|owner| {
-            owner.with(|| {
-                let editor = OE::new(options);
-                if let Some(new_id) = editor.new_object() {
-                    self.editor_map.update(|em| {
-                        em.insert(new_id, editor);
-                    });
-                    Some(editor)
-                } else {
-                    None
-                }
-            })
-        })
+        let child = self.owner.get_value().child();
+
+        // Execute creation inside the child scope
+        let new_context = child.with(|| {
+            let editor = OE::new(options);
+            editor.new_object().map(|new_id| (new_id, editor))
+        });
+        if let Some((new_id, editor)) = new_context {
+            self.editor_map.update(|em| {
+                em.insert(new_id, (editor, child));
+            });
+            Some(editor)
+        } else {
+            child.cleanup();
+            None
+        }
     }
 
     pub fn spawn_editor_for_edit_object(&self, options: OE::NewEditorOptions) -> Option<OE> {
         let Some(object_id) = options.object_id() else {
-            return None; // Cannot edit without an object ID
+            // Cannot edit without an object ID
+            return None;
         };
 
-        // Execute creation inside the stored owner's scope
-        self.owner.with_value(|owner| {
-            owner.with(|| {
-                let mut editor = None;
-                self.editor_map.update(|em| {
-                    editor = Some(*em.entry(object_id).or_insert_with(|| OE::new(options)));
-                });
-                editor
-            })
-        })
+        if let Some(editor) = self
+            .editor_map
+            .with_untracked(|em| em.get(&object_id).map(|(editor, _)| *editor))
+        {
+            // Editor already exists for this object ID
+            return Some(editor);
+        }
+
+        let child = self.owner.get_value().child();
+
+        // Execute creation inside the child scope
+        let editor = child.with(|| OE::new(options));
+        self.editor_map.update(|em| {
+            em.insert(object_id, (editor, child));
+        });
+        Some(editor)
     }
 
     pub fn get_editor(&self, id: Uuid) -> Option<OE> {
         self.editor_map
-            .try_with(|em| em.get(&id).copied())
+            .try_with(|em| em.get(&id).map(|(editor, _)| *editor))
             .flatten()
     }
 
     pub fn get_editor_untracked(&self, id: Uuid) -> Option<OE> {
-        self.editor_map.with_untracked(|em| em.get(&id).copied())
+        self.editor_map
+            .with_untracked(|em| em.get(&id).map(|(editor, _)| *editor))
     }
 
     pub fn remove_editor(&self, id: Uuid) {
         self.editor_map.update(|em| {
-            em.remove(&id);
+            if let Some((_, child)) = em.remove(&id) {
+                child.cleanup();
+            }
+        });
+    }
+
+    pub fn remove_all(&self) {
+        self.editor_map.update(|em| {
+            for child in em.drain().map(|(_, (_, child))| child) {
+                child.cleanup();
+            }
         });
     }
 
@@ -177,29 +197,35 @@ where
         source_id: Uuid,
         options: OE::NewEditorOptions,
     ) -> Option<OE> {
-        // Execute creation inside the stored owner's scope
-        self.owner.with_value(|owner| {
-            owner.with(|| {
-                let editor = OE::new(options);
-                if let Some(origin) = self
-                    .editor_map
-                    .with(|em| em.get(&source_id).and_then(|ed| ed.origin_signal().get()))
-                    && let Some(new_id) = editor.copy_object(origin)
-                {
-                    self.editor_map.update(|em| {
-                        em.insert(new_id, editor);
-                    });
-                    Some(editor)
-                } else {
-                    None
-                }
-            })
-        })
+        let Some(origin) = self
+            .editor_map
+            .with(|em| em.get(&source_id).and_then(|ed| ed.0.origin_signal().get()))
+        else {
+            // Cannot copy without source object data
+            return None;
+        };
+
+        let child = self.owner.get_value().child();
+
+        // Execute creation inside the child scope
+        let new_context = child.with(|| {
+            let editor = OE::new(options);
+            editor.copy_object(origin).map(|new_id| (new_id, editor))
+        });
+        if let Some((new_id, editor)) = new_context {
+            self.editor_map.update(|em| {
+                em.insert(new_id, (editor, child));
+            });
+            Some(editor)
+        } else {
+            child.cleanup();
+            None
+        }
     }
 
     pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
         self.editor_map.with(|em| {
-            if let Some(editor) = em.get(&object.get_id_version().get_id()) {
+            if let Some(editor) = em.get(&object.get_id_version().get_id()).map(|(editor, _)| editor) {
                 let optimistic_version = editor.optimistic_version_signal().get();
                 if optimistic_version.is_none() {
                     editor.set_object(object.clone());

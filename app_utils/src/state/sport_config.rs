@@ -2,7 +2,7 @@
 
 use crate::{
     error::{
-        AppError, AppResult, map_db_unique_violation_to_field_error, strategy::handle_write_error,
+        AppError, ComponentError, ComponentResult, map_db_unique_violation_to_field_error, strategy::handle_write_error,
     },
     params::{ParamQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
@@ -10,7 +10,7 @@ use crate::{
         EditorContext, EditorContextWithResource, SimpleEditorOptions,
         activity_tracker::ActivityTracker,
         global_state::{GlobalState, GlobalStateStoreFields},
-        toast_state::ToastContext,
+        toast_state::ToastContext, error_state::PageErrorContext,
     },
 };
 use app_core::{
@@ -58,7 +58,7 @@ pub struct SportConfigEditorContext {
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
     set_optimistic_version: RwSignal<Option<u32>>,
     /// Resource for loading the sport configuration based on the given id in the editor options
-    pub load_sport_config: LocalResource<AppResult<Option<SportConfig>>>,
+    pub load_sport_config: LocalResource<ComponentResult<Option<SportConfig>>>,
     /// Server action for saving the sport configuration based on the current state of the editor context
     pub save_sport_config: ServerAction<SaveSportConfig>,
     /// Callback after successful save to e.g. navigate to the new sport configuration or show a success toast.
@@ -73,10 +73,12 @@ impl EditorContext for SportConfigEditorContext {
     fn new(options: SimpleEditorOptions) -> Self {
         // ---- global state & context ----
         let toast_ctx = expect_context::<ToastContext>();
+        let page_err_ctx = expect_context::<PageErrorContext>();
         let activity_tracker = expect_context::<ActivityTracker>();
         let component_id = StoredValue::new(Uuid::new_v4());
         // remove errors on unmount
         on_cleanup(move || {
+            page_err_ctx.clear_all_for_component(component_id.get_value());
             activity_tracker.remove_component(component_id.get_value());
         });
 
@@ -183,12 +185,14 @@ impl EditorContext for SportConfigEditorContext {
             } else {
                 Ok(None)
             }
+            .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
         });
-
-        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::SportConfig(id)));
         let refetch = Callback::new(move |()| {
             load_sport_config.refetch();
         });
+        page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+
+        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::SportConfig(id)));
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
         // ---- sport config server action ----

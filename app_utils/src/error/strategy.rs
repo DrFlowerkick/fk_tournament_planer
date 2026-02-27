@@ -1,5 +1,5 @@
 use crate::{
-    error::AppError,
+    error::{AppError, ComponentError},
     state::{
         error_state::{ActiveError, ErrorKey, PageErrorContext},
         toast_state::ToastContext,
@@ -61,22 +61,23 @@ pub fn handle_write_error(toast_ctx: &ToastContext, error: &AppError) {
 /// leaving the broken state (Navigation).
 pub fn handle_read_error(
     ctx: &PageErrorContext,
-    component_id: Uuid,
-    error: &AppError,
-    retry_fn: Callback<()>,
+    error: &ComponentError,
     // This must navigate "back" to a safe place (e.g. Dashboard)
     back_fn: Callback<()>,
 ) {
     let key = ErrorKey::Read;
+    let retry_fn = ctx.get_retry_handler(error.component_id);
 
-    match error {
+    match &error.app_error {
         // Case 1: Specific Entity not found
         AppError::ResourceNotFound(entity, _) => {
             let msg = format!("'{entity}' could not be found.");
 
-            let builder = ActiveError::builder(component_id, key.clone(), msg)
-                .with_retry("Retry", retry_fn)
-                .with_cancel("Back", back_fn);
+            let mut builder = ActiveError::builder(error.component_id, key.clone(), msg);
+            if let Some(retry_fn) = retry_fn {
+                builder = builder.with_retry("Retry", retry_fn);
+            }
+            let builder = builder.with_cancel("Back", back_fn);
 
             ctx.report_error(builder.build());
         }
@@ -85,42 +86,40 @@ pub fn handle_read_error(
         AppError::Core(CoreError::Db(DbError::NotFound)) => {
             let msg = "The requested data could not be found in database.".to_string();
 
-            let builder = ActiveError::builder(component_id, key.clone(), msg)
-                .with_retry("Retry", retry_fn)
-                .with_cancel("Back", back_fn);
+            let mut builder = ActiveError::builder(error.component_id, key.clone(), msg);
+            if let Some(retry_fn) = retry_fn {
+                builder = builder.with_retry("Retry", retry_fn);
+            }
+            let builder = builder.with_cancel("Back", back_fn);
 
             ctx.report_error(builder.build());
         }
 
         // Case 3: All other errors (treat as fatal/blocker for loading)
         err => {
-            let builder = ActiveError::builder(component_id, key.clone(), err.to_string())
-                .with_retry("Retry", retry_fn)
-                .with_cancel("Back", back_fn);
+            let mut builder = ActiveError::builder(error.component_id, key.clone(), err.to_string());
+            if let Some(retry_fn) = retry_fn {
+                builder = builder.with_retry("Retry", retry_fn);
+            }
+            let builder = builder.with_cancel("Back", back_fn);
             ctx.report_error(builder.build());
         }
     }
 }
 
 /// Handles general errors for other operations (not specifically read or write).
-pub fn handle_general_error(
+pub fn handle_unexpected_ui_error(
     ctx: &PageErrorContext,
     component_id: Uuid,
     error_msg: impl Into<String>,
-    retry_fn: Option<Callback<()>>,
     back_fn: Callback<()>,
 ) {
     let key = ErrorKey::General;
 
     let error_msg = error_msg.into();
 
-    let mut builder = ActiveError::builder(component_id, key.clone(), error_msg);
-
-    if let Some(retry) = retry_fn {
-        builder = builder.with_retry("Retry", retry);
-    }
-
-    let builder = builder.with_cancel("Back", back_fn);
+    let builder =
+        ActiveError::builder(component_id, key.clone(), error_msg).with_cancel("Back", back_fn);
 
     ctx.report_error(builder.build());
 }

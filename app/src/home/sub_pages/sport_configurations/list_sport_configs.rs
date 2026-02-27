@@ -4,8 +4,8 @@ use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
     enum_utils::FilterLimit,
     error::{
-        AppError,
-        strategy::{handle_general_error, handle_read_error},
+        ComponentError,
+        strategy::{handle_read_error, handle_unexpected_ui_error},
     },
     hooks::{
         use_on_cancel::use_on_cancel,
@@ -92,6 +92,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                         ),
                     )
                     .await
+                    .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
             } else {
                 Ok(vec![])
             }
@@ -100,6 +101,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
 
     // Refetch function for errors
     let refetch = Callback::new(move |()| sport_config_ids.refetch());
+    page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
     // on_cancel handler
     let on_cancel = use_on_cancel();
@@ -124,20 +126,17 @@ pub fn ListSportConfigurations() -> impl IntoView {
             <ErrorBoundary fallback=move |errors| {
                 for (_err_id, err) in errors.get().into_iter() {
                     let e = err.into_inner();
-                    if let Some(app_err) = e.downcast_ref::<AppError>() {
+                    if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
                         handle_read_error(
                             &page_err_ctx,
-                            component_id.get_value(),
-                            app_err,
-                            refetch,
+                            comp_err,
                             on_cancel,
                         );
                     } else {
-                        handle_general_error(
+                        handle_unexpected_ui_error(
                             &page_err_ctx,
                             component_id.get_value(),
                             "An unexpected error occurred.",
-                            None,
                             on_cancel,
                         );
                     }

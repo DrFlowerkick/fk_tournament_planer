@@ -2,13 +2,14 @@
 
 use crate::{
     error::{
-        AppError, AppResult, map_db_unique_violation_to_field_error, strategy::handle_write_error,
+        AppError, ComponentError, ComponentResult,
+        map_db_unique_violation_to_field_error, strategy::handle_write_error,
     },
     params::{ParamQuery, SportIdQuery},
     server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
     state::{
         EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
-        toast_state::ToastContext,
+        error_state::PageErrorContext, toast_state::ToastContext,
     },
 };
 use app_core::{
@@ -87,7 +88,7 @@ pub struct BaseEditorContext {
     /// WriteSignal for setting the resource id in the editor context, which triggers loading of the tournament base resource
     set_resource_id: WriteSignal<Option<Uuid>>,
     /// Resource for loading the tournament base based on the given id in the editor options
-    pub load_tournament_base: LocalResource<AppResult<Option<TournamentBase>>>,
+    pub load_tournament_base: LocalResource<ComponentResult<Option<TournamentBase>>>,
     /// Server action for saving the tournament base based on the current state of the editor context
     pub save_tournament_base: ServerAction<SaveTournamentBase>,
     /// Callback after successful save to e.g. navigate to the new tournament base or show a success toast.
@@ -101,10 +102,12 @@ impl EditorContext for BaseEditorContext {
     fn new(options: Self::NewEditorOptions) -> Self {
         // ---- global state & context ----
         let toast_ctx = expect_context::<ToastContext>();
+        let page_err_ctx = expect_context::<PageErrorContext>();
         let activity_tracker = expect_context::<ActivityTracker>();
         let component_id = StoredValue::new(Uuid::new_v4());
         // remove errors on unmount
         on_cleanup(move || {
+            page_err_ctx.clear_all_for_component(component_id.get_value());
             activity_tracker.remove_component(component_id.get_value());
         });
 
@@ -307,12 +310,14 @@ impl EditorContext for BaseEditorContext {
             } else {
                 Ok(None)
             }
+            .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
         });
-
-        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::Address(id)));
         let refetch = Callback::new(move |()| {
             load_tournament_base.refetch();
         });
+        page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+
+        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::Address(id)));
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
         // ---- tournament base server action ----

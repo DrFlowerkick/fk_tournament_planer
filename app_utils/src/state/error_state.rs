@@ -1,5 +1,7 @@
 //! handling persistent errors of application
 
+use std::collections::HashMap;
+
 use leptos::prelude::*;
 use uuid::Uuid;
 
@@ -178,16 +180,34 @@ impl ActiveErrorBuilder<HasCancelAction> {
 // --- Context ---
 
 #[derive(Clone, Copy)]
-pub struct PageErrorContext(RwSignal<Vec<ActiveError>>);
+pub struct PageErrorContext {
+    active_error: RwSignal<Vec<ActiveError>>,
+    retry_handlers: RwSignal<HashMap<Uuid, Callback<()>>>,
+}
 
 impl PageErrorContext {
     pub fn new() -> Self {
-        Self(RwSignal::new(Vec::new()))
+        Self {
+            active_error: RwSignal::new(Vec::new()),
+            retry_handlers: RwSignal::new(HashMap::new()),
+        }
+    }
+
+    /// Registers a retry handler for a specific component. This allows individual retry handlers in a central
+    /// error handler, if errors provide their component id.
+    pub fn register_retry_handler(&self, component_id: Uuid, handler: Callback<()>) {
+        self.retry_handlers.update(|handlers| {
+            handlers.insert(component_id, handler);
+        });
+    }
+
+    pub fn get_retry_handler(&self, component_id: Uuid) -> Option<Callback<()>> {
+        self.retry_handlers.with(|handlers| handlers.get(&component_id).cloned())
     }
 
     /// Report an error. Updates existing error if (component_id, key) matches.
     pub fn report_error(&self, new_error: ActiveError) {
-        self.0.update(|list| {
+        self.active_error.update(|list| {
             if let Some(existing) = list
                 .iter_mut()
                 .find(|e| e.component_id == new_error.component_id && e.key == new_error.key)
@@ -201,15 +221,23 @@ impl PageErrorContext {
 
     /// Removes a specific error.
     pub fn clear_error(&self, component_id: Uuid, key: ErrorKey) {
-        self.0.update(|list| {
+        self.active_error.update(|list| {
             list.retain(|e| !(e.component_id == component_id && e.key == key));
         });
+        if self.active_error.with(Vec::is_empty) {
+            self.retry_handlers.update(|handlers| {
+                handlers.remove(&component_id);
+            });
+        }
     }
 
     /// Removes all errors for a specific component (e.g. on cleanup).
     pub fn clear_all_for_component(&self, component_id: Uuid) {
-        self.0.update(|list| {
+        self.active_error.update(|list| {
             list.retain(|e| e.component_id != component_id);
+        });
+        self.retry_handlers.update(|handlers| {
+            handlers.remove(&component_id);
         });
     }
 
@@ -217,7 +245,7 @@ impl PageErrorContext {
     /// Used for the "Global Retry" button.
     pub fn retry_all(&self) {
         // We clone actions to avoid holding the lock during execution
-        let actions: Vec<_> = self.0.get();
+        let actions: Vec<_> = self.active_error.get();
 
         for active_error in actions {
             // We assume actions are safe and don't panic.
@@ -228,16 +256,16 @@ impl PageErrorContext {
 
     /// Returns a read-only reactive signal of the errors.
     pub fn errors(&self) -> Signal<Vec<ActiveError>> {
-        self.0.into()
+        self.active_error.into()
     }
 
     /// Helper that efficiently retrieves the first active error (cloned)
     pub fn get_first_error(&self) -> Option<ActiveError> {
-        self.0.with(|list| list.first().cloned())
+        self.active_error.with(|list| list.first().cloned())
     }
 
     /// Checks if there are any errors active.
     pub fn has_errors(&self) -> bool {
-        !self.0.with(Vec::is_empty)
+        !self.active_error.with(Vec::is_empty)
     }
 }

@@ -1,11 +1,11 @@
 //! stage editor context
 
 use crate::{
-    error::{AppError, AppResult, strategy::handle_write_error},
+    error::{AppError, ComponentError, ComponentResult, strategy::handle_write_error},
     server_fn::stage::{SaveStage, load_stage_by_id},
     state::{
         EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
-        toast_state::ToastContext,
+        error_state::PageErrorContext, toast_state::ToastContext,
     },
 };
 use app_core::{
@@ -65,7 +65,7 @@ pub struct StageEditorContext {
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
     set_optimistic_version: RwSignal<Option<u32>>,
     /// Resource for loading the stage based on the given id in the editor options
-    pub load_stage: LocalResource<AppResult<Option<Stage>>>,
+    pub load_stage: LocalResource<ComponentResult<Option<Stage>>>,
     /// Server action for saving the stage based on the current state of the editor context
     pub save_stage: ServerAction<SaveStage>,
     /// Callback after successful save to e.g. navigate to the new stage or show a success toast.
@@ -79,10 +79,12 @@ impl EditorContext for StageEditorContext {
     fn new(options: Self::NewEditorOptions) -> Self {
         // ---- global state & context ----
         let toast_ctx = expect_context::<ToastContext>();
+        let page_err_ctx = expect_context::<PageErrorContext>();
         let activity_tracker = expect_context::<ActivityTracker>();
         let component_id = StoredValue::new(Uuid::new_v4());
         // remove errors on unmount
         on_cleanup(move || {
+            page_err_ctx.clear_all_for_component(component_id.get_value());
             activity_tracker.remove_component(component_id.get_value());
         });
 
@@ -238,12 +240,14 @@ impl EditorContext for StageEditorContext {
             } else {
                 Ok(None)
             }
+            .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
         });
-
-        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::Address(id)));
         let refetch = Callback::new(move |()| {
             load_stage.refetch();
         });
+        page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+
+        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::Address(id)));
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
         // ---- tournament stage server action ----

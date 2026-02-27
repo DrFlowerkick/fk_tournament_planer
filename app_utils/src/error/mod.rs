@@ -76,3 +76,18 @@ pub fn map_db_unique_violation_to_field_error(
     }
     None
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize, Error)]
+#[error("Component error: {app_error} (Component ID: {component_id})")]
+pub struct ComponentError {
+    pub component_id: Uuid,
+    pub app_error: AppError,
+}
+
+impl ComponentError {
+    pub fn new(component_id: Uuid, app_error: AppError) -> Self {
+        Self { component_id, app_error }
+    }
+}
+
+pub type ComponentResult<T> = Result<T, ComponentError>;
