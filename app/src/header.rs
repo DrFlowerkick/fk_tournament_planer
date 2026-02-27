@@ -1,12 +1,14 @@
 //! header component
 
-use crate::{home::select_sport::STORAGE_KEY_SPORT_ID, tournament_tree_navigation::TournamentTreeNavigation};
+use crate::{
+    home::select_sport::STORAGE_KEY_SPORT_ID, tournament_tree_navigation::TournamentTreeNavigation,
+};
 use app_utils::{
     hooks::{
         blur_active_element::blur_active_element,
         use_url_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
-    params::{TournamentBaseIdQuery, ParamQuery},
+    params::{ParamQuery, TournamentBaseIdQuery},
     state::{
         activity_tracker::ActivityTracker, object_table::ObjectEditorMapContext,
         tournament::TournamentEditorContext,
@@ -14,6 +16,11 @@ use app_utils::{
 };
 use leptos::prelude::*;
 use leptos_router::components::A;
+
+#[derive(Clone, Copy)]
+pub struct DropdownContext {
+    pub set_menu_open: WriteSignal<bool>,
+}
 
 #[component]
 pub fn Header() -> impl IntoView {
@@ -27,6 +34,8 @@ pub fn Header() -> impl IntoView {
 
     // Signal to manage the mobile menu state
     let (menu_open, set_menu_open) = signal(false);
+    let dropdown_ctx = DropdownContext { set_menu_open };
+    provide_context(dropdown_ctx);
 
     // prepare tournament editor context
     // This is used for menu navigation of selected tournament and at the same time loads
@@ -49,7 +58,7 @@ pub fn Header() -> impl IntoView {
                 <Show when=move || activity_tracker.is_active.get()>
                     <span class="loading loading-bars loading-sm"></span>
                 </Show>
-                <div class="dropdown dropdown-end" class:dropdown-open=menu_open>
+                <div class="dropdown dropdown-end" class:dropdown-open=move || menu_open.get()>
                     // Use a button instead of label/input to avoid event conflicts in Leptos.
                     // The 'swap-active' class controls which icon is visible based on the signal.
                     // Trigger blur if false or when clicking links to ensure closing the dropdown menu.
@@ -57,7 +66,7 @@ pub fn Header() -> impl IntoView {
                     <button
                         type="button"
                         class="btn btn-ghost btn-circle swap swap-rotate"
-                        class:swap-active=menu_open
+                        class:swap-active=move || menu_open.get()
                         on:click=move |_| {
                             set_menu_open.update(|v| *v = !*v);
                             if !menu_open.get() {
@@ -76,11 +85,11 @@ pub fn Header() -> impl IntoView {
                     // Vertical dropdown menu
                     <ul
                         tabindex="0"
-                        class="dropdown-content menu bg-base-100 rounded-box z-[1] mt-3 w-52 p-2 shadow border border-base-content/10"
+                        class="dropdown-content menu bg-base-100 rounded-box z-[1] mt-3 w-max max-w-sm p-2 shadow border border-base-content/10"
                     >
                         <li>
                             <A
-                                href="/postal-address"
+                                href=move || url_update_path("/postal-address")
                                 on:click=move |_| {
                                     set_menu_open.set(false);
                                     blur_active_element();

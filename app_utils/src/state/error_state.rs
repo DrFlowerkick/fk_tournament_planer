@@ -202,7 +202,8 @@ impl PageErrorContext {
     }
 
     pub fn get_retry_handler(&self, component_id: Uuid) -> Option<Callback<()>> {
-        self.retry_handlers.with(|handlers| handlers.get(&component_id).cloned())
+        self.retry_handlers
+            .with(|handlers| handlers.get(&component_id).cloned())
     }
 
     /// Report an error. Updates existing error if (component_id, key) matches.

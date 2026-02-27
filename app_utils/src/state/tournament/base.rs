@@ -2,8 +2,8 @@
 
 use crate::{
     error::{
-        AppError, ComponentError, ComponentResult,
-        map_db_unique_violation_to_field_error, strategy::handle_write_error,
+        AppError, ComponentError, ComponentResult, map_db_unique_violation_to_field_error,
+        strategy::handle_write_error,
     },
     params::{ParamQuery, SportIdQuery},
     server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},

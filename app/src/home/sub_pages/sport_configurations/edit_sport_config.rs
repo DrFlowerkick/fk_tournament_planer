@@ -95,7 +95,10 @@ pub fn EditSportConfiguration() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <Show when=move || edit_action.try_get().flatten().is_some() fallback=|| "Page not found.".into_view()>
+        <Show
+            when=move || edit_action.try_get().flatten().is_some()
+            fallback=|| "Page not found.".into_view()
+        >
             <div class="card w-full bg-base-100 shadow-xl">
                 <div class="card-body">
                     <div class="flex justify-between items-center">

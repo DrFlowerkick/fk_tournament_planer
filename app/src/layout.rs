@@ -28,7 +28,7 @@ pub fn Layout() -> impl IntoView {
                 class:opacity-50=move || page_err_ctx.has_errors()
                 inert=move || page_err_ctx.has_errors()
             >
-                // rendering of HomePage
+                // rendering of HomePage, which is in a nested route
                 <Outlet />
             </main>
 

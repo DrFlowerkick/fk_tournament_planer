@@ -130,11 +130,7 @@ pub fn ListTournaments() -> impl IntoView {
                 for (_err_id, err) in errors.get().into_iter() {
                     let e = err.into_inner();
                     if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        handle_read_error(
-                            &page_err_ctx,
-                            comp_err,
-                            on_cancel,
-                        );
+                        handle_read_error(&page_err_ctx, comp_err, on_cancel);
                     } else {
                         handle_unexpected_ui_error(
                             &page_err_ctx,

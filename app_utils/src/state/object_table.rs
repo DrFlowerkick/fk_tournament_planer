@@ -84,9 +84,9 @@ where
             let navigate = navigate.clone();
             move |new_id: Option<Uuid>| {
                 let nav_url = if let Some(t_id) = new_id {
-                    url_update_query(Q::KEY, &t_id.to_string())
+                    url_update_query(Q::KEY, &t_id.to_string(), None)
                 } else {
-                    url_remove_query(Q::KEY)
+                    url_remove_query(Q::KEY, None)
                 };
                 navigate(
                     &nav_url,
@@ -225,7 +225,10 @@ where
 
     pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
         self.editor_map.with(|em| {
-            if let Some(editor) = em.get(&object.get_id_version().get_id()).map(|(editor, _)| editor) {
+            if let Some(editor) = em
+                .get(&object.get_id_version().get_id())
+                .map(|(editor, _)| editor)
+            {
                 let optimistic_version = editor.optimistic_version_signal().get();
                 if optimistic_version.is_none() {
                     editor.set_object(object.clone());

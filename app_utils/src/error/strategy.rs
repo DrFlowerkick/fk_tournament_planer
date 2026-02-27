@@ -97,7 +97,8 @@ pub fn handle_read_error(
 
         // Case 3: All other errors (treat as fatal/blocker for loading)
         err => {
-            let mut builder = ActiveError::builder(error.component_id, key.clone(), err.to_string());
+            let mut builder =
+                ActiveError::builder(error.component_id, key.clone(), err.to_string());
             if let Some(retry_fn) = retry_fn {
                 builder = builder.with_retry("Retry", retry_fn);
             }

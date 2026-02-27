@@ -86,7 +86,10 @@ pub struct ComponentError {
 
 impl ComponentError {
     pub fn new(component_id: Uuid, app_error: AppError) -> Self {
-        Self { component_id, app_error }
+        Self {
+            component_id,
+            app_error,
+        }
     }
 }
 

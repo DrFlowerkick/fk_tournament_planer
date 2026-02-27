@@ -2,15 +2,17 @@
 
 use crate::{
     error::{
-        AppError, ComponentError, ComponentResult, map_db_unique_violation_to_field_error, strategy::handle_write_error,
+        AppError, ComponentError, ComponentResult, map_db_unique_violation_to_field_error,
+        strategy::handle_write_error,
     },
     params::{ParamQuery, SportIdQuery},
     server_fn::sport_config::{SaveSportConfig, load_sport_config},
     state::{
         EditorContext, EditorContextWithResource, SimpleEditorOptions,
         activity_tracker::ActivityTracker,
+        error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
-        toast_state::ToastContext, error_state::PageErrorContext,
+        toast_state::ToastContext,
     },
 };
 use app_core::{

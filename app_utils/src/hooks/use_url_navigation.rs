@@ -6,51 +6,64 @@ use leptos_router::hooks::{use_matched, use_url};
 pub fn use_query_navigation() -> UseQueryNavigationReturn<
     impl Fn(&str) -> Option<String> + Clone + Copy + Send + Sync + 'static,
     impl Fn(&str) -> String + Clone + Copy + Send + Sync + 'static,
-    impl Fn(&str, &str) -> String + Clone + Copy + Send + Sync + 'static,
-    impl Fn(Vec<(&str, &str)>) -> String + Clone + Copy + Send + Sync + 'static,
-    impl Fn(&str) -> String + Clone + Copy + Send + Sync + 'static,
+    impl Fn(&str, &str, Option<&str>) -> String + Clone + Copy + Send + Sync + 'static,
+    impl Fn(Vec<(&str, &str)>, Option<&str>) -> String + Clone + Copy + Send + Sync + 'static,
+    impl Fn(&str, Option<&str>) -> String + Clone + Copy + Send + Sync + 'static,
 > {
     let url = use_url();
     let get_query = move |key: &str| url.get().search_params().get(key);
     let url_update_path = move |new_path: &str| {
-        format!(
-            "{}{}",
-            new_path,
-            url.get().search_params().to_query_string()
-        )
+        if let Some(current_url) = url.try_get() {
+            format!(
+                "{}{}",
+                new_path,
+                current_url.search_params().to_query_string()
+            )
+        } else {
+            new_path.to_string()
+        }
     };
-    let url_update_query = move |key: &str, value: &str| {
-        let mut new_url = url.get();
-        new_url
-            .search_params_mut()
-            .replace(key.to_string(), value.to_string());
-        format!(
-            "{}{}",
-            new_url.path(),
-            new_url.search_params().to_query_string()
-        )
-    };
-    let url_update_queries = move |key_value: Vec<(&str, &str)>| {
-        let mut new_url = url.get();
-        for (key, value) in key_value {
+    let url_update_query = move |key: &str, value: &str, new_path: Option<&str>| {
+        if let Some(mut new_url) = url.try_get() {
             new_url
                 .search_params_mut()
                 .replace(key.to_string(), value.to_string());
+            format!(
+                "{}{}",
+                new_path.unwrap_or_else(|| new_url.path()),
+                new_url.search_params().to_query_string()
+            )
+        } else {
+            String::new()
         }
-        format!(
-            "{}{}",
-            new_url.path(),
-            new_url.search_params().to_query_string()
-        )
     };
-    let url_remove_query = move |key: &str| {
-        let mut new_url = url.get();
-        let _ = new_url.search_params_mut().remove(key);
-        format!(
-            "{}{}",
-            new_url.path(),
-            new_url.search_params().to_query_string()
-        )
+    let url_update_queries = move |key_value: Vec<(&str, &str)>, new_path: Option<&str>| {
+        if let Some(mut new_url) = url.try_get() {
+            for (key, value) in key_value {
+                new_url
+                    .search_params_mut()
+                    .replace(key.to_string(), value.to_string());
+            }
+            format!(
+                "{}{}",
+                new_path.unwrap_or_else(|| new_url.path()),
+                new_url.search_params().to_query_string()
+            )
+        } else {
+            String::new()
+        }
+    };
+    let url_remove_query = move |key: &str, new_path: Option<&str>| {
+        if let Some(mut new_url) = url.try_get() {
+            new_url.search_params_mut().remove(key);
+            format!(
+                "{}{}",
+                new_path.unwrap_or_else(|| new_url.path()),
+                new_url.search_params().to_query_string()
+            )
+        } else {
+            String::new()
+        }
     };
     UseQueryNavigationReturn {
         get_query,
@@ -71,9 +84,9 @@ pub struct UseQueryNavigationReturn<
 > where
     GetFn: Fn(&str) -> Option<String>,
     UrlUpdatePathFn: Fn(&str) -> String,
-    UrlUpdateQueryFn: Fn(&str, &str) -> String,
-    UrlUpdateQueriesFn: Fn(Vec<(&str, &str)>) -> String,
-    UrlRemoveQueryFn: Fn(&str) -> String,
+    UrlUpdateQueryFn: Fn(&str, &str, Option<&str>) -> String,
+    UrlUpdateQueriesFn: Fn(Vec<(&str, &str)>, Option<&str>) -> String,
+    UrlRemoveQueryFn: Fn(&str, Option<&str>) -> String,
 {
     /// Function to get the value of a query parameter by key.
     pub get_query: GetFn,
@@ -82,12 +95,15 @@ pub struct UseQueryNavigationReturn<
     pub url_update_path: UrlUpdatePathFn,
 
     /// Function to return current url with an updated specific query parameter.
+    /// Optionally change the path as well.
     pub url_update_query: UrlUpdateQueryFn,
 
     /// Function to return current url with an updated multiple query parameter.
+    /// Optionally change the path as well.
     pub url_update_queries: UrlUpdateQueriesFn,
 
     /// Function to return current url with a specific query parameter removed.
+    /// Optionally change the path as well.
     pub url_remove_query: UrlRemoveQueryFn,
 }
 
