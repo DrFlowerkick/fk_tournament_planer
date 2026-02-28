@@ -37,8 +37,7 @@ pub fn TournamentTreeNavigation() -> impl IntoView {
     // Use an effect to spawn the editor. This decouples the side-effect (creating a new context/resource)
     // from the view projection.
     Effect::new(move |_| {
-        let current_id = tournament_base_id.get();
-        if let Some(id) = current_id {
+        if let Some(id) = tournament_base_id.get() {
             // Only spawn if we have an ID
             let ed = tournament_editor_map
                 .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id));
@@ -49,22 +48,13 @@ pub fn TournamentTreeNavigation() -> impl IntoView {
     });
 
     view! {
-        // Show re-renders children when the condition changes.
-        // The condition here is checking if we have an editor.
-        <Show when=move || {
-            editor.get().is_some()
-        }>
-            {move || {
-                if let Some(ed) = editor.get() {
-                    // This inner closure is the "children" function of Show.
-                    // It is re-executed when the `when` condition becomes true.
+        {move || {
+            editor
+                .get()
+                .map(|ed| {
                     view! { <TournamentTreeBase tournament_editor=ed /> }
-                        .into_any()
-                } else {
-                    view! {}.into_any()
-                }
-            }}
-        </Show>
+                })
+        }}
     }
 }
 
@@ -96,21 +86,6 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
     let dropdown_ctx = expect_context::<DropdownContext>();
 
     // Resource that fetches stage ids for the tournament, to be used for rendering stage nodes in the tree
-    /*let stage_ids = Resource::new(
-        move || tournament_base_id.get(),
-        move |maybe_id| async move {
-            if let Some(t_id) = maybe_id {
-                activity_tracker
-                    .track_activity_wrapper(
-                        component_id.get_value(),
-                        list_stage_ids_of_tournament(t_id),
-                    )
-                    .await
-            } else {
-                Ok(vec![])
-            }
-        },
-    );*/
     let stage_ids = LocalResource::new(move || async move {
         if let Some(t_id) = tournament_base_id.try_get().flatten() {
             activity_tracker

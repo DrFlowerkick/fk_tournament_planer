@@ -14,7 +14,7 @@ use app_utils::{
         },
     },
     params::{EditActionParams, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
-    server_fn::sport_config::{SaveSportConfig, SaveSportConfigFormData},
+    server_fn::sport_config::SaveSportConfig,
     state::{
         EditorContext, EditorContextWithResource,
         global_state::{GlobalState, GlobalStateStoreFields},
@@ -62,18 +62,19 @@ pub fn EditSportConfiguration() -> impl IntoView {
     let sport_config_editor_map =
         expect_context::<ObjectEditorMapContext<SportConfigEditorContext, SportConfigIdQuery>>();
 
-    let show_form = Signal::derive(move || {
+    let editor = Signal::derive(move || {
         if let Some(id) = sport_config_id.get()
             && let Some(editor) = sport_config_editor_map.get_editor(id)
-        {
-            match edit_action.get() {
+            && match edit_action.get() {
                 Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
                 Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
                 Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
                 None => false,
             }
+        {
+            Some(editor)
         } else {
-            false
+            None
         }
     });
 
@@ -125,48 +126,37 @@ pub fn EditSportConfiguration() -> impl IntoView {
                             <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
                         </button>
                     </div>
-                    <Show
-                        when=move || show_form.try_get().unwrap_or(false)
-                        fallback=move || {
-                            view! {
-                                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
-                                    <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                                    <p class="text-2xl font-bold text-center">
-                                        {move || match edit_action.try_get().flatten() {
-                                            Some(EditAction::New) => {
-                                                "Press 'New Sport Configuration' to create a new sport configuration."
-                                            }
-                                            Some(EditAction::Edit) => {
-                                                "Please select a sport configuration from the list."
-                                            }
-                                            Some(EditAction::Copy) => {
-                                                "Press 'Copy selected Sport Configuration' to create a new sport configuration based upon the selected one."
-                                            }
-                                            None => "",
-                                        }}
-                                    </p>
-                                </div>
-                            }
-                        }
-                    >
-                        // Using For forces the view to be recreated when the id changes
-                        <For
-                            each=move || {
-                                sport_config_id
-                                    .get()
-                                    .and_then(|current_id| {
-                                        sport_config_editor_map
-                                            .get_editor(current_id)
-                                            .map(|editor| (current_id, editor))
-                                    })
-                                    .into_iter()
-                            }
-                            key=|(id, _)| *id
-                            children=move |(_, editor)| {
-                                view! { <SportConfigForm sport_config_editor=editor /> }
-                            }
-                        />
-                    </Show>
+                    {move || {
+                        editor
+                            .try_get()
+                            .flatten()
+                            .map(|ed| {
+                                view! { <SportConfigForm sport_config_editor=ed /> }.into_any()
+                            })
+                            .unwrap_or_else(|| {
+                                view! {
+                                    <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                                        <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
+                                        <p class="text-2xl font-bold text-center">
+                                            {move || match edit_action.try_get().flatten() {
+                                                Some(EditAction::New) => {
+                                                    "Press 'New Sport Configuration' to create a new sport configuration."
+                                                }
+                                                Some(EditAction::Edit) => {
+                                                    "Please select a sport configuration from the list."
+                                                }
+                                                Some(EditAction::Copy) => {
+                                                    "Press 'Copy selected Sport Configuration' to create a new sport configuration based upon the selected one."
+                                                }
+                                                None => "",
+                                            }}
+                                        </p>
+                                    </div>
+                                }
+                                    .into_any()
+                            })
+                    }}
+
                 </div>
             </div>
         </Show>
@@ -183,12 +173,6 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
     let navigate = use_navigate();
 
     let edit_action = EditActionParams::use_param_query();
-    let intent = Signal::derive(move || {
-        edit_action.get().map(|action| match action {
-            EditAction::Edit => "update".to_string(),
-            EditAction::New | EditAction::Copy => "create".to_string(),
-        })
-    });
 
     // sport id and plugin manager
     let sport_id = SportIdQuery::use_param_query();
@@ -222,6 +206,7 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
                 key_value,
                 MatchedRouteHandler::Extend(EditAction::Edit.to_string().as_str()),
             );
+            leptos::logging::debug_log!("Navigating to url after save: {}", nav_url);
             navigate(
                 &nav_url,
                 NavigateOptions {
@@ -235,57 +220,46 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
         .post_save_callback
         .set_value(Some(post_save_callback));
 
+    let on_submit = move || {
+        if let Some(sc) = sport_config_editor.local_read_only.get()
+            && let Some(sport_plugin) = sport_plugin()
+            && sc.validate(sport_plugin).is_ok()
+        {
+            sport_config_editor.increment_optimistic_version();
+            let data = SaveSportConfig { sport_config: sc };
+            #[cfg(feature = "test-mock")]
+            {
+                let save_action = Action::new(|sc: &SaveSportConfig| {
+                    let sc = sc.clone();
+                    async move {
+                        let result = save_sport_config_inner(sc.sport_config).await;
+                        leptos::web_sys::console::log_1(
+                            &format!("Result of save sport config: {:?}", result).into(),
+                        );
+                        result
+                    }
+                });
+                save_action.dispatch(data);
+            }
+            #[cfg(not(feature = "test-mock"))]
+            {
+                sport_config_editor.save_sport_config.dispatch(data);
+            }
+        }
+    };
+
     view! {
         // --- Sport Config Form ---
         <div data-testid="form-sport-config">
-            <ActionForm
-                action=sport_config_editor.save_sport_config
-                on:submit:capture=move |ev| {
-                    ev.prevent_default();
-                    if sport_config_editor.validation_result.with(|vr| vr.is_err()) {
-                        return;
-                    }
-                    sport_config_editor.increment_optimistic_version();
-                    let data = SaveSportConfig {
-                        form: SaveSportConfigFormData {
-                            id: sport_config_editor.id.get().unwrap_or(Uuid::nil()),
-                            version: sport_config_editor.version.get().unwrap_or_default(),
-                            sport_id: sport_id.get().unwrap_or(Uuid::nil()),
-                            name: sport_config_editor.name.get().unwrap_or_default(),
-                            config: sport_config_editor
-                                .config
-                                .get()
-                                .unwrap_or_default()
-                                .to_string(),
-                            intent: intent.get(),
-                        },
-                    };
-                    #[cfg(feature = "test-mock")]
-                    {
-                        let save_action = Action::new(|sc: &SaveSportConfig| {
-                            let sc = sc.clone();
-                            async move {
-                                let result = save_sport_config_inner(sc.form).await;
-                                leptos::web_sys::console::log_1(
-                                    &format!("Result of save sport config: {:?}", result).into(),
-                                );
-                                result
-                            }
-                        });
-                        save_action.dispatch(data);
-                    }
-                    #[cfg(not(feature = "test-mock"))]
-                    {
-                        sport_config_editor.save_sport_config.dispatch(data);
-                    }
-                }
-            >
+            <form on:submit:capture=move |ev| {
+                ev.prevent_default();
+                on_submit();
+            }>
                 // --- Sport Config Form Fields ---
                 <fieldset class="space-y-4 contents">
                     // Hidden meta fields the server expects (id / version)
                     <input
                         type="hidden"
-                        name="form[id]"
                         data-testid="hidden-id"
                         prop:value=move || {
                             sport_config_editor.id.get().unwrap_or(Uuid::nil()).to_string()
@@ -293,33 +267,11 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
                     />
                     <input
                         type="hidden"
-                        name="form[version]"
                         data-testid="hidden-version"
                         prop:value=move || { sport_config_editor.version.get().unwrap_or_default() }
                     />
-                    <input
-                        type="hidden"
-                        name="form[intent]"
-                        data-testid="intent"
-                        prop:value=move || intent.get()
-                    />
-                    <input
-                        type="hidden"
-                        name="form[sport_id]"
-                        data-testid="hidden-sport-id"
-                        prop:value=move || { sport_id.get().unwrap_or_default().to_string() }
-                    />
-                    <input
-                        type="hidden"
-                        name="form[config]"
-                        data-testid="hidden-sport-config"
-                        prop:value=move || {
-                            sport_config_editor.config.get().unwrap_or_default().to_string()
-                        }
-                    />
                     <TextInput
                         label="Name"
-                        name="form[name]"
                         data_testid="input-name"
                         value=sport_config_editor.name
                         action=InputCommitAction::WriteAndSubmit(sport_config_editor.set_name)
@@ -330,7 +282,7 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
                     // Sport specific configuration UI
                     {move || { sport_plugin().map(|plugin| plugin.render_configuration()) }}
                 </fieldset>
-            </ActionForm>
+            </form>
         </div>
     }
 }

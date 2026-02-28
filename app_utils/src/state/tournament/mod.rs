@@ -30,6 +30,8 @@ pub struct TournamentEditorContext {
     origin: RwSignal<Option<Tournament>>,
     /// Readonly signal for the original tournament, to be used for comparison in validation and update checks
     origin_readonly: Signal<Option<Tournament>>,
+    /// keep owner for creating new object context signals in the editor context
+    owner: StoredValue<Owner>,
     // ToDo: wrap into RwSignal?
     pub base_editor: BaseEditorContext,
     // ToDo: change into RwSignal?
@@ -50,6 +52,10 @@ impl EditorContext for TournamentEditorContext {
         // --- core signals ---
         let local = RwSignal::new(None::<Tournament>);
         let origin = RwSignal::new(None::<Tournament>);
+
+        let owner = StoredValue::new(
+            Owner::current().expect("TournamentEditorContext must be created within a component"),
+        );
 
         let base_editor_options = BaseEditorContextOptions {
             object_id: options.object_id,
@@ -111,6 +117,7 @@ impl EditorContext for TournamentEditorContext {
             local,
             origin,
             origin_readonly: origin.into(),
+            owner,
             base_editor,
             stage_editors,
         }
@@ -155,6 +162,9 @@ impl TournamentEditorContext {
         {
             return; // Editor already exists for this stage number
         }
+        if self.local.with(|may_be_t| may_be_t.is_none()) {
+            return; // No Tournament loaded in local editor state, cannot prepare stage
+        }
         self.local.update(|te| {
             if let Some(t) = te.as_mut() {
                 t.new_stage(stage_number);
@@ -166,7 +176,9 @@ impl TournamentEditorContext {
             local_tournament: self.local,
             origin_tournament: self.origin,
         };
-        let stage_editor = StageEditorContext::new(stage_editor_options);
+        let stage_editor = self
+            .owner
+            .with_value(|owner| owner.with(|| StageEditorContext::new(stage_editor_options)));
         self.stage_editors.update_value(|editors| {
             editors.insert(stage_number, stage_editor);
         });

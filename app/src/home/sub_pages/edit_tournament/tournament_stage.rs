@@ -1,5 +1,7 @@
 //! Edit tournament stage component
 
+#[cfg(feature = "test-mock")]
+use app_utils::server_fn::stage::save_stage_inner;
 use app_utils::{
     components::inputs::{InputCommitAction, NumberInput},
     hooks::{
@@ -101,6 +103,35 @@ fn TournamentStageForm(
     let scroll_ref = NodeRef::<H2>::new();
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
+    let on_submit = move || {
+        if let Some(stage) = stage_editor.local.get()
+        && let Some(base) = tournament_editor.base_editor.local.get()
+            && stage.validate(&base).is_ok()
+        {
+            stage_editor.increment_optimistic_version();
+            let data = SaveStage { stage };
+            #[cfg(feature = "test-mock")]
+            {
+
+                let save_action = Action::new(|stage: &SaveStage| {
+                    let stage = stage.clone();
+                    async move {
+                        let result = save_stage_inner(stage.stage).await;
+                        leptos::web_sys::console::log_1(
+                            &format!("Result of save stage: {:?}", result).into(),
+                        );
+                        result
+                    }
+                });
+                save_action.dispatch(data);
+            }
+            #[cfg(not(feature = "test-mock"))]
+            {
+                stage_editor.save_stage.dispatch(data);
+            }
+        }
+    };
+
     view! {
         // hide stage editor for single stage and swiss system tournaments
         <Show when=move || !tournament_editor.base_editor.skip_stage_editor.get()>
@@ -122,18 +153,10 @@ fn TournamentStageForm(
                     </div>
                     // --- Tournament Base Form ---
                     <div data-testid="tournament-editor-form">
-                        <ActionForm
-                            action=stage_editor.save_stage
+                        <form
                             on:submit:capture=move |ev| {
                                 ev.prevent_default();
-                                if stage_editor.validation_result.with(|vr| vr.is_err()) {
-                                    return;
-                                }
-                                if let Some(stage) = stage_editor.local.get() {
-                                    stage_editor.increment_optimistic_version();
-                                    let save_stage = SaveStage { stage };
-                                    stage_editor.save_stage.dispatch(save_stage);
-                                }
+                                on_submit();
                             }
                         >
                             <fieldset
@@ -195,7 +218,7 @@ fn TournamentStageForm(
                                     }
                                 />
                             </div>
-                        </ActionForm>
+                        </form>
                     </div>
                 </div>
             </div>

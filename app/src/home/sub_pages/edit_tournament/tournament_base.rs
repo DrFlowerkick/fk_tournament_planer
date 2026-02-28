@@ -1,6 +1,8 @@
 //! create or edit a tournament
 
 use app_core::{TournamentBase, TournamentMode};
+#[cfg(feature = "test-mock")]
+use app_utils::server_fn::tournament_base::save_tournament_base_inner;
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, NumberInput, TextInput},
     enum_utils::EditAction,
@@ -11,7 +13,7 @@ use app_utils::{
             MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
         },
     },
-    params::{EditActionParams, FilterNameQuery, ParamQuery, SportIdQuery, TournamentBaseIdQuery},
+    params::{EditActionParams, FilterNameQuery, ParamQuery, TournamentBaseIdQuery},
     server_fn::tournament_base::SaveTournamentBase,
     state::{
         EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
@@ -49,18 +51,19 @@ pub fn EditTournamentBase() -> impl IntoView {
         }
     });
 
-    let show_form = Signal::derive(move || {
+    let editor = Signal::derive(move || {
         if let Some(id) = tournament_base_id.get()
             && let Some(editor) = tournament_editor_map.get_editor(id)
-        {
-            match edit_action.get() {
+            && match edit_action.get() {
                 Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
                 Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
                 Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
                 None => false,
             }
+        {
+            Some(editor)
         } else {
-            false
+            None
         }
     });
 
@@ -93,49 +96,36 @@ pub fn EditTournamentBase() -> impl IntoView {
                             <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
                         </button>
                     </div>
-                    <Show
-                        when=move || show_form.try_get().unwrap_or(false)
-                        fallback=move || {
-                            view! {
-                                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
-                                    <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                                    <p class="text-2xl font-bold text-center">
-                                        {move || match edit_action.try_get().flatten() {
-                                            Some(EditAction::New) => {
-                                                "Press 'New Tournament' to create a new tournament."
-                                            }
-                                            Some(EditAction::Edit) => {
-                                                "Please select a tournament from the list."
-                                            }
-                                            Some(EditAction::Copy) => {
-                                                "Press 'Copy selected Tournament' to create a new tournament based upon the selected one."
-                                            }
-                                            None => "",
-                                        }}
-                                    </p>
-                                </div>
-                            }
-                        }
-                    >
-                        // Using For forces the view to be recreated when the id changes
-                        <For
-                            each=move || {
-                                tournament_base_id
-                                    .try_get()
-                                    .flatten()
-                                    .and_then(|current_id| {
-                                        tournament_editor_map
-                                            .get_editor(current_id)
-                                            .map(|editor| (current_id, editor))
-                                    })
-                                    .into_iter()
-                            }
-                            key=|(id, _)| *id
-                            children=move |(_, editor)| {
-                                view! { <TournamentBaseForm tournament_editor=editor /> }
-                            }
-                        />
-                    </Show>
+                    {move || {
+                        editor
+                            .try_get()
+                            .flatten()
+                            .map(|ed| {
+                                view! { <TournamentBaseForm tournament_editor=ed /> }.into_any()
+                            })
+                            .unwrap_or_else(|| {
+                                view! {
+                                    <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                                        <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
+                                        <p class="text-2xl font-bold text-center">
+                                            {move || match edit_action.try_get().flatten() {
+                                                Some(EditAction::New) => {
+                                                    "Press 'New Tournament' to create a new tournament."
+                                                }
+                                                Some(EditAction::Edit) => {
+                                                    "Please select a tournament from the list."
+                                                }
+                                                Some(EditAction::Copy) => {
+                                                    "Press 'Copy selected Tournament' to create a new tournament based upon the selected one."
+                                                }
+                                                None => "",
+                                            }}
+                                        </p>
+                                    </div>
+                                }
+                                    .into_any()
+                            })
+                    }}
                 </div>
             </div>
             <div class="my-4"></div>
@@ -154,14 +144,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
     } = use_matched_route_navigation();
     let navigate = use_navigate();
 
-    let sport_id = SportIdQuery::use_param_query();
     let edit_action = EditActionParams::use_param_query();
-    let intent = Signal::derive(move || {
-        edit_action.get().map(|action| match action {
-            EditAction::Edit => "update".to_string(),
-            EditAction::New | EditAction::Copy => "create".to_string(),
-        })
-    });
     let show_stage_navigation =
         Signal::derive(move || matches!(edit_action.get(), Some(EditAction::Edit)));
 
@@ -196,23 +179,43 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
         .post_save_callback
         .set_value(Some(post_save_callback));
 
+    let on_submit = move || {
+        if let Some(base) = tournament_editor.base_editor.local.get()
+            && base.validate().is_ok()
+        {
+            tournament_editor.base_editor.increment_optimistic_version();
+            let data = SaveTournamentBase { base };
+            #[cfg(feature = "test-mock")]
+            {
+                let save_action = Action::new(|base: &SaveTournamentBase| {
+                    let base = base.clone();
+                    async move {
+                        let result = save_tournament_base_inner(base.base).await;
+                        leptos::web_sys::console::log_1(
+                            &format!("Result of save tournament base: {:?}", result).into(),
+                        );
+                        result
+                    }
+                });
+                save_action.dispatch(data);
+            }
+            #[cfg(not(feature = "test-mock"))]
+            {
+                tournament_editor
+                    .base_editor
+                    .save_tournament_base
+                    .dispatch(data);
+            }
+        }
+    };
+
     view! {
         // --- Tournament Base Form ---
         <div data-testid="tournament-editor-form">
-            <ActionForm
-                action=tournament_editor.base_editor.save_tournament_base
-                on:submit:capture=move |ev| {
-                    ev.prevent_default();
-                    if tournament_editor.base_editor.validation_result.with(|vr| vr.is_err()) {
-                        return;
-                    }
-                    if let Some(base) = tournament_editor.base_editor.local.get() {
-                        tournament_editor.base_editor.increment_optimistic_version();
-                        let save_base = SaveTournamentBase { base };
-                        tournament_editor.base_editor.save_tournament_base.dispatch(save_base);
-                    }
-                }
-            >
+            <form on:submit:capture=move |ev| {
+                ev.prevent_default();
+                on_submit();
+            }>
                 // --- Tournament Base Form ---
                 <fieldset
                     class="space-y-4 contents"
@@ -223,7 +226,6 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                     // hidden meta fields; can be used for E2E testing
                     <input
                         type="hidden"
-                        name="tournament[id]"
                         data-testid="hidden-id"
                         prop:value=move || {
                             tournament_editor
@@ -236,55 +238,20 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                     />
                     <input
                         type="hidden"
-                        name="tournament[version]"
                         data-testid="hidden-version"
                         prop:value=move || {
-                            tournament_editor.base_editor.version.get().unwrap_or_default()
-                        }
-                    />
-                    <input
-                        type="hidden"
-                        name="tournament[sport_id]"
-                        data-testid="hidden-sport-id"
-                        prop:value=move || { sport_id.get().unwrap_or(Uuid::nil()).to_string() }
-                    />
-                    <input
-                        type="hidden"
-                        name="tournament[t_type]"
-                        data-testid="hidden-t_type"
-                        prop:value=move || {
                             tournament_editor
                                 .base_editor
-                                .tournament_type
+                                .version
                                 .get()
-                                .map(|tt| tt.to_string())
                                 .unwrap_or_default()
+                                .to_string()
                         }
-                    />
-                    <input
-                        type="hidden"
-                        name="tournament[state]"
-                        data-testid="hidden-state"
-                        prop:value=move || {
-                            tournament_editor
-                                .base_editor
-                                .tournament_state
-                                .get()
-                                .map(|ts| ts.to_string())
-                                .unwrap_or_default()
-                        }
-                    />
-                    <input
-                        type="hidden"
-                        name="intent"
-                        data-testid="intent"
-                        prop:value=move || intent.get()
                     />
                     <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         <TextInput
                             label="Tournament Name"
-                            name="tournament-name"
                             data_testid="input-tournament-name"
                             value=tournament_editor.base_editor.name
                             action=InputCommitAction::WriteAndSubmit(
@@ -297,7 +264,6 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
 
                         <NumberInput
                             label="Number of Entrants"
-                            name="tournament-entrants"
                             data_testid="input-tournament-entrants"
                             value=tournament_editor.base_editor.num_entrants
                             action=InputCommitAction::WriteAndSubmit(
@@ -311,7 +277,6 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
 
                         <EnumSelect
                             label="Mode"
-                            name="tournament-mode"
                             data_testid="select-tournament-mode"
                             value=tournament_editor.base_editor.mode
                             action=InputCommitAction::WriteAndSubmit(
@@ -327,7 +292,6 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                         }>
                             <NumberInput
                                 label="Rounds (Swiss System)"
-                                name="tournament-swiss-num_rounds"
                                 data_testid="input-tournament-swiss-num_rounds"
                                 value=tournament_editor.base_editor.num_rounds_swiss_system
                                 action=InputCommitAction::WriteAndSubmit(
@@ -410,7 +374,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                         />
                     </div>
                 </Show>
-            </ActionForm>
+            </form>
         </div>
     }
 }

@@ -3,7 +3,10 @@
 use crate::error::AppResult;
 // IdVersion Import wird hier nicht mehr explizit benötigt, da der Client das Objekt fertig liefert
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-use app_core::CoreState;
+use app_core::{
+    CoreState,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
+};
 use app_core::{TournamentBase, TournamentState};
 use leptos::prelude::*;
 use tracing::instrument;
@@ -79,6 +82,7 @@ async fn list_tournament_base_ids_inner(
     skip_all,
     fields(
         id = %base.get_id(),
+        version = ?base.get_version(),
         // We only log metadata, not complete payloads
         name_len = base.get_name().len(),
     )
@@ -90,6 +94,16 @@ pub async fn save_tournament_base(base: TournamentBase) -> AppResult<TournamentB
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 pub async fn save_tournament_base_inner(base: TournamentBase) -> AppResult<TournamentBase> {
     let mut core = expect_context::<CoreState>().as_tournament_base_state();
+
+    // Interpret intent (create vs update) based on presence of id and version in the incoming base
+    match base.get_id_version() {
+        IdVersion::Existing(..) => {
+            info!("saving_update");
+        }
+        IdVersion::NewWithId(..) => {
+            info!("saving_create");
+        }
+    }
 
     // We replace the state object in the core directly with the received object.
     // Prerequisite: The client has already set the correct IdVersion.

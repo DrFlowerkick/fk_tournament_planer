@@ -48,7 +48,7 @@ impl DdcSportPlugin {
                 .build();
             return Err(err.into());
         }
-        let generic_config = match DdcSportConfig::parse_config(config.get_config().clone()) {
+        let ddc_config = match DdcSportConfig::parse_config(config.get_config().clone()) {
             Ok(cfg) => cfg,
             Err(e) => {
                 let err = FieldError::builder()
@@ -59,8 +59,8 @@ impl DdcSportPlugin {
                 return Err(err.into());
             }
         };
-        generic_config.validate(config.get_id(), errs)?;
-        Ok(generic_config)
+        ddc_config.validate(config.get_id(), errs)?;
+        Ok(ddc_config)
     }
     fn validate_final_score_internal(
         &self,

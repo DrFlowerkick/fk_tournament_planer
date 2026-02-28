@@ -1,9 +1,12 @@
 //! server functions for stage entities
 
 use crate::error::AppResult;
-#[cfg(any(feature = "ssr", feature = "test-mock"))]
-use app_core::CoreState;
 use app_core::Stage;
+#[cfg(any(feature = "ssr", feature = "test-mock"))]
+use app_core::{
+    CoreState,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
+};
 use leptos::prelude::*;
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
@@ -84,6 +87,7 @@ async fn list_stage_ids_of_tournament_inner(tournament_id: Uuid) -> AppResult<Ve
     skip_all,
     fields(
         id = %stage.get_id(),
+        version = ?stage.get_version(),
         number = stage.get_number(),
     )
 )]
@@ -95,9 +99,20 @@ pub async fn save_stage(stage: Stage) -> AppResult<Stage> {
 pub async fn save_stage_inner(stage: Stage) -> AppResult<Stage> {
     let mut core = expect_context::<CoreState>().as_stage_state(stage.get_tournament_id());
 
+    // Interpret intent (create vs update) based on presence of id and version in the incoming stage
+    match stage.get_id_version() {
+        IdVersion::Existing(..) => {
+            info!("saving_update");
+        }
+        IdVersion::NewWithId(..) => {
+            info!("saving_create");
+        }
+    }
+
     // We replace the state object in the core directly with the received object.
     // Prerequisite: The client has already set the correct IdVersion.
     *core.get_mut() = stage;
+
     // Persist; log outcome with the saved id.
     match core.save().await {
         Ok(saved) => {

@@ -59,7 +59,7 @@ pub struct BaseEditorContext {
     // --- Signals, Slices & Callbacks for form fields ---
     /// Signal slice for the id field
     pub id: Signal<Option<Uuid>>,
-    /// Signal slice for the version field
+    /// Signal slice for the id_version field
     pub version: Signal<Option<u32>>,
     /// Signal slice for the name field
     pub name: Signal<Option<String>>,

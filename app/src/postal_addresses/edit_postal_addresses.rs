@@ -2,9 +2,7 @@
 
 use app_core::PostalAddress;
 #[cfg(feature = "test-mock")]
-use app_utils::server_fn::postal_address::{
-    SavePostalAddress, SavePostalAddressFormData, save_postal_address_inner,
-};
+use app_utils::server_fn::postal_address::save_postal_address_inner;
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, TextInput},
     enum_utils::EditAction,
@@ -16,6 +14,7 @@ use app_utils::{
         },
     },
     params::{AddressIdQuery, EditActionParams, FilterNameQuery, ParamQuery},
+    server_fn::postal_address::SavePostalAddress,
     state::{
         EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
         postal_address::PostalAddressEditorContext,
@@ -40,19 +39,19 @@ pub fn EditPostalAddress() -> impl IntoView {
     let postal_address_editor_map =
         expect_context::<ObjectEditorMapContext<PostalAddressEditorContext, AddressIdQuery>>();
 
-    let show_form = Signal::derive(move || {
+    let editor = Signal::derive(move || {
         if let Some(id) = address_id.get()
             && let Some(editor) = postal_address_editor_map.get_editor(id)
-        {
-            match edit_action.get() {
+            && match edit_action.get() {
                 Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
                 Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
                 Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
-
                 None => false,
             }
+        {
+            Some(editor)
         } else {
-            false
+            None
         }
     });
 
@@ -95,48 +94,36 @@ pub fn EditPostalAddress() -> impl IntoView {
                             <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
                         </button>
                     </div>
-                    <Show
-                        when=move || show_form.try_get().unwrap_or(false)
-                        fallback=move || {
-                            view! {
-                                <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
-                                    <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
-                                    <p class="text-2xl font-bold text-center">
-                                        {move || match edit_action.try_get().flatten() {
-                                            Some(EditAction::New) => {
-                                                "Press 'New Postal Address' to create a new postal address."
-                                            }
-                                            Some(EditAction::Edit) => {
-                                                "Please select a postal address from the list."
-                                            }
-                                            Some(EditAction::Copy) => {
-                                                "Press 'Copy selected Postal Address' to create a new postal address based upon the selected one."
-                                            }
-                                            None => "",
-                                        }}
-                                    </p>
-                                </div>
-                            }
-                        }
-                    >
-                        // Using For forces the view to be recreated when the id changes
-                        <For
-                            each=move || {
-                                address_id
-                                    .get()
-                                    .and_then(|current_id| {
-                                        postal_address_editor_map
-                                            .get_editor(current_id)
-                                            .map(|editor| (current_id, editor))
-                                    })
-                                    .into_iter()
-                            }
-                            key=|(id, _)| *id
-                            children=move |(_, editor)| {
-                                view! { <PostalAddressForm postal_address_editor=editor /> }
-                            }
-                        />
-                    </Show>
+                    {move || {
+                        editor
+                            .try_get()
+                            .flatten()
+                            .map(|ed| {
+                                view! { <PostalAddressForm postal_address_editor=ed /> }.into_any()
+                            })
+                            .unwrap_or_else(|| {
+                                view! {
+                                    <div class="w-full flex flex-col items-center justify-center py-12 opacity-50">
+                                        <span class="icon-[heroicons--clipboard-document-list] w-24 h-24 mb-4"></span>
+                                        <p class="text-2xl font-bold text-center">
+                                            {move || match edit_action.try_get().flatten() {
+                                                Some(EditAction::New) => {
+                                                    "Press 'New Postal Address' to create a new postal address."
+                                                }
+                                                Some(EditAction::Edit) => {
+                                                    "Please select a postal address from the list."
+                                                }
+                                                Some(EditAction::Copy) => {
+                                                    "Press 'Copy selected Postal Address' to create a new postal address based upon the selected one."
+                                                }
+                                                None => "",
+                                            }}
+                                        </p>
+                                    </div>
+                                }
+                                    .into_any()
+                            })
+                    }}
                 </div>
             </div>
         </Show>
@@ -153,12 +140,6 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
     let navigate = use_navigate();
 
     let edit_action = EditActionParams::use_param_query();
-    let intent = Signal::derive(move || {
-        edit_action.get().map(|action| match action {
-            EditAction::Edit => "update".to_string(),
-            EditAction::New | EditAction::Copy => "create".to_string(),
-        })
-    });
 
     let post_save_callback = Callback::new(move |pa: PostalAddress| {
         if let Some(edit_action) = edit_action.get()
@@ -188,67 +169,45 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
         .post_save_callback
         .set_value(Some(post_save_callback));
 
+    let on_submit = move || {
+        if let Some(pa) = postal_address_editor.local_read_only.get()
+            && pa.validate().is_ok()
+        {
+            postal_address_editor.increment_optimistic_version();
+            let data = SavePostalAddress { postal_address: pa };
+            #[cfg(feature = "test-mock")]
+            {
+                let save_action = Action::new(|pa: &SavePostalAddress| {
+                    let pa = pa.clone();
+                    async move {
+                        let result = save_postal_address_inner(pa.postal_address).await;
+                        leptos::web_sys::console::log_1(
+                            &format!("Result of save postal address: {:?}", result).into(),
+                        );
+                        result
+                    }
+                });
+                save_action.dispatch(data);
+            }
+            #[cfg(not(feature = "test-mock"))]
+            {
+                postal_address_editor.save_postal_address.dispatch(data);
+            }
+        }
+    };
+
     view! {
         // --- Address Form ---
         <div data-testid="form-address">
-            <ActionForm
-                action=postal_address_editor.save_postal_address
-                on:submit:capture=move |ev| {
-                    #[cfg(feature = "test-mock")]
-                    {
-                        ev.prevent_default();
-                        if postal_address_editor.validation_result.with(|vr| vr.is_err()) {
-                            return;
-                        }
-                        postal_address_editor.increment_optimistic_version();
-                        let data = SavePostalAddress {
-                            form: SavePostalAddressFormData {
-                                id: postal_address_editor.id.get().unwrap_or(Uuid::nil()),
-                                version: postal_address_editor.version.get().unwrap_or_default(),
-                                name: postal_address_editor.name.get().unwrap_or_default(),
-                                street: postal_address_editor.street.get().unwrap_or_default(),
-                                postal_code: postal_address_editor
-                                    .postal_code
-                                    .get()
-                                    .unwrap_or_default(),
-                                locality: postal_address_editor.locality.get().unwrap_or_default(),
-                                region: postal_address_editor.region.get(),
-                                country: postal_address_editor
-                                    .country
-                                    .get()
-                                    .map(|c| c.alpha2().to_string())
-                                    .unwrap_or_default(),
-                                intent: intent.get(),
-                            },
-                        };
-                        let save_action = Action::new(|pa: &SavePostalAddress| {
-                            let pa = pa.clone();
-                            async move {
-                                let result = save_postal_address_inner(pa.form).await;
-                                leptos::web_sys::console::log_1(
-                                    &format!("Result of save postal address: {:?}", result).into(),
-                                );
-                                result
-                            }
-                        });
-                        save_action.dispatch(data);
-                    }
-                    #[cfg(not(feature = "test-mock"))]
-                    {
-                        if postal_address_editor.validation_result.with(|vr| vr.is_err()) {
-                            ev.prevent_default();
-                        } else {
-                            postal_address_editor.increment_optimistic_version();
-                        }
-                    }
-                }
-            >
+            <form on:submit:capture=move |ev| {
+                ev.prevent_default();
+                on_submit();
+            }>
                 // --- Address Form Fields ---
                 <fieldset class="space-y-4 contents">
                     // Hidden meta fields the server expects (id / version)
                     <input
                         type="hidden"
-                        name="form[id]"
                         data-testid="hidden-id"
                         prop:value=move || {
                             postal_address_editor.id.get().unwrap_or(Uuid::nil()).to_string()
@@ -256,21 +215,13 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                     />
                     <input
                         type="hidden"
-                        name="form[version]"
                         data-testid="hidden-version"
                         prop:value=move || {
                             postal_address_editor.version.get().unwrap_or_default()
                         }
                     />
-                    <input
-                        type="hidden"
-                        name="form[intent]"
-                        data-testid="intent"
-                        prop:value=move || intent.get()
-                    />
                     <TextInput
                         label="Name"
-                        name="form[name]"
                         data_testid="input-name"
                         value=postal_address_editor.name
                         action=InputCommitAction::WriteAndSubmit(postal_address_editor.set_name)
@@ -280,7 +231,6 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                     />
                     <TextInput
                         label="Street & number"
-                        name="form[street]"
                         data_testid="input-street"
                         value=postal_address_editor.street
                         action=InputCommitAction::WriteAndSubmit(postal_address_editor.set_street)
@@ -291,7 +241,6 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                     <div class="grid grid-cols-2 gap-4">
                         <TextInput
                             label="Postal code"
-                            name="form[postal_code]"
                             data_testid="input-postal_code"
                             value=postal_address_editor.postal_code
                             action=InputCommitAction::WriteAndSubmit(
@@ -303,7 +252,6 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         />
                         <TextInput
                             label="City"
-                            name="form[locality]"
                             data_testid="input-locality"
                             value=postal_address_editor.locality
                             action=InputCommitAction::WriteAndSubmit(
@@ -316,7 +264,6 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                     </div>
                     <TextInput
                         label="Region"
-                        name="form[region]"
                         data_testid="input-region"
                         value=postal_address_editor.region
                         action=InputCommitAction::WriteAndSubmit(postal_address_editor.set_region)
@@ -324,7 +271,6 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                     />
                     <EnumSelect
                         label="Country"
-                        name="form[country]"
                         data_testid="select-country"
                         value=postal_address_editor.country
                         action=InputCommitAction::WriteAndSubmit(postal_address_editor.set_country)
@@ -333,7 +279,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         field="country"
                     />
                 </fieldset>
-            </ActionForm>
+            </form>
         </div>
     }
 }

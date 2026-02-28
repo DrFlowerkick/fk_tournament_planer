@@ -28,9 +28,11 @@ use uuid::Uuid;
 pub struct PostalAddressEditorContext {
     // --- state & derived signals ---
     /// The local editable postal address.
-    pub local: RwSignal<Option<PostalAddress>>,
+    local: RwSignal<Option<PostalAddress>>,
     /// The original postal address loaded from storage.
     origin: RwSignal<Option<PostalAddress>>,
+    /// Readonly signal for the local postal address, to be used for comparison in validation and update checks
+    pub local_read_only: Signal<Option<PostalAddress>>,
     /// Read slice for accessing the validation result of the postal address
     pub validation_result: Signal<ValidationResult<()>>,
     /// WriteSignal for setting a unique violation error on the name field, if any
@@ -224,6 +226,7 @@ impl EditorContext for PostalAddressEditorContext {
                 } else {
                     Ok(None)
                 }
+                .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
             },
         );*/
         // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
@@ -295,6 +298,7 @@ impl EditorContext for PostalAddressEditorContext {
         PostalAddressEditorContext {
             local,
             origin,
+            local_read_only: local.into(),
             validation_result,
             set_unique_violation_error,
             id,
