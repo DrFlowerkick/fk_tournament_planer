@@ -33,8 +33,6 @@ pub struct SportConfigEditorContext {
     // --- state & derived signals ---
     /// The local editable sport configuration.
     local: RwSignal<Option<SportConfig>>,
-    /// The original sport configuration loaded from storage.
-    origin: RwSignal<Option<SportConfig>>,
     /// Read slice of local sport configuration for use in editor components
     pub local_read_only: Signal<Option<SportConfig>>,
     /// Read slice for accessing the validation result of the tournament
@@ -86,7 +84,6 @@ impl EditorContext for SportConfigEditorContext {
 
         // ---- signals & slices ----
         let local = RwSignal::new(None::<SportConfig>);
-        let origin = RwSignal::new(None);
 
         let sport_id = SportIdQuery::use_param_query();
         let state = expect_context::<Store<GlobalState>>();
@@ -213,7 +210,6 @@ impl EditorContext for SportConfigEditorContext {
                         set_resource_id.set(Some(sc.get_id()));
                         set_optimistic_version.set(sc.get_version());
                         local.set(Some(sc.clone()));
-                        origin.set(Some(sc.clone()));
 
                         if let Some(callback) = post_save_callback.get_value() {
                             callback.run(sc);
@@ -238,7 +234,6 @@ impl EditorContext for SportConfigEditorContext {
 
         SportConfigEditorContext {
             local,
-            origin,
             local_read_only: local.into(),
             validation_result,
             set_unique_violation_error,
@@ -255,16 +250,10 @@ impl EditorContext for SportConfigEditorContext {
         }
     }
 
-    /// Get the original sport config currently loaded in the editor context, if any.
-    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>> {
-        self.origin.into()
-    }
-
     /// Set an existing sport config in the editor context.
     fn set_object(&self, sc: SportConfig) {
         self.local.set(Some(sc.clone()));
         self.set_optimistic_version.set(sc.get_version());
-        self.origin.set(Some(sc));
     }
 
     /// Create a new sport config in the editor context with a new UUID and default values from the sport plugin.
@@ -287,7 +276,6 @@ impl EditorContext for SportConfigEditorContext {
                 .set_config(plugin.get_default_config());
             self.local.set(Some(sc));
             self.set_optimistic_version.set(None);
-            self.origin.set(None);
             Some(id)
         } else {
             None
@@ -296,13 +284,21 @@ impl EditorContext for SportConfigEditorContext {
 }
 
 impl EditorContextWithResource for SportConfigEditorContext {
+    /// Get the current sport config in the editor context with its version, if any.
+    fn get_versioned_object(&self) -> Option<Self::ObjectType> {
+        self.local.with(|local| {
+            local
+                .as_ref()
+                .and_then(|sc| sc.get_version().map(|_| sc.clone()))
+        })
+    }
+
     /// Create a new object from a given sport config by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut sc: SportConfig) -> Option<Uuid> {
         let id = Uuid::new_v4();
         sc.set_id_version(IdVersion::new(id, None)).set_name("");
         self.local.set(Some(sc));
         self.set_optimistic_version.set(None);
-        self.origin.set(None);
         Some(id)
     }
 

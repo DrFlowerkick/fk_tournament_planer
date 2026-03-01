@@ -26,7 +26,6 @@ use uuid::Uuid;
 pub struct BaseEditorContextOptions {
     pub object_id: Option<Uuid>,
     pub local_tournament: RwSignal<Option<Tournament>>,
-    pub origin_tournament: RwSignal<Option<Tournament>>,
 }
 
 impl EditorOptions for BaseEditorContextOptions {
@@ -42,10 +41,6 @@ pub struct BaseEditorContext {
     pub local: Signal<Option<TournamentBase>>,
     /// SignalSetter for setting the local tournament base in the editor context.
     set_local: SignalSetter<Option<TournamentBase>>,
-    /// The original tournament base loaded from storage.
-    origin: Signal<Option<TournamentBase>>,
-    /// SignalSetter for setting the original tournament base in the editor context.
-    set_origin: SignalSetter<Option<TournamentBase>>,
     /// Read slice for accessing the validation result of the tournament base
     pub validation_result: Signal<ValidationResult<()>>,
     /// WriteSignal for setting a unique violation error on the name field, if any
@@ -126,23 +121,6 @@ impl EditorContext for BaseEditorContext {
                     }
                 } else {
                     *local_tournament = None;
-                }
-            },
-        );
-        let (origin, set_origin) = create_slice(
-            options.origin_tournament,
-            |origin_tournament| origin_tournament.as_ref().map(|t| t.get_base().clone()),
-            |origin_tournament, new_base: Option<TournamentBase>| {
-                if let Some(new_base) = new_base {
-                    if let Some(origin) = origin_tournament {
-                        origin.set_base(new_base);
-                    } else {
-                        let mut new_tournament = Tournament::new();
-                        new_tournament.set_base(new_base);
-                        *origin_tournament = Some(new_tournament);
-                    }
-                } else {
-                    *origin_tournament = None;
                 }
             },
         );
@@ -336,7 +314,6 @@ impl EditorContext for BaseEditorContext {
                         set_resource_id.set(Some(tb.get_id()));
                         set_optimistic_version.set(tb.get_version());
                         set_local.set(Some(tb.clone()));
-                        set_origin.set(Some(tb.clone()));
 
                         if let Some(callback) = post_save_callback.get_value() {
                             callback.run(tb);
@@ -362,8 +339,6 @@ impl EditorContext for BaseEditorContext {
         BaseEditorContext {
             local,
             set_local,
-            origin,
-            set_origin,
             validation_result,
             set_unique_violation_error,
             is_disabled_base_editing,
@@ -388,17 +363,11 @@ impl EditorContext for BaseEditorContext {
         }
     }
 
-    /// Get the original tournament base currently loaded in the editor context, if any.
-    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>> {
-        self.origin.into()
-    }
-
     /// Set an existing tournament base in the editor context.
     fn set_object(&self, base: Self::ObjectType) {
         let id = base.get_id();
         self.set_local.set(Some(base.clone()));
         self.set_optimistic_version.set(base.get_version());
-        self.set_origin.set(Some(base));
         self.set_resource_id.set(Some(id));
     }
 
@@ -413,7 +382,6 @@ impl EditorContext for BaseEditorContext {
             self.set_resource_id.set(None);
             self.set_local.set(Some(base));
             self.set_optimistic_version.set(None);
-            self.set_origin.set(None);
             Some(id)
         } else {
             None
@@ -422,6 +390,15 @@ impl EditorContext for BaseEditorContext {
 }
 
 impl EditorContextWithResource for BaseEditorContext {
+    /// Get the current tournament base in the editor context with its version, if any.
+    fn get_versioned_object(&self) -> Option<Self::ObjectType> {
+        self.local.with(|local| {
+            local
+                .as_ref()
+                .and_then(|tb| tb.get_version().map(|_| tb.clone()))
+        })
+    }
+
     /// Create a new object from a given tournament base by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut base: Self::ObjectType) -> Option<Uuid> {
         let id = Uuid::new_v4();
@@ -430,7 +407,6 @@ impl EditorContextWithResource for BaseEditorContext {
         self.set_resource_id.set(None);
         self.set_local.set(Some(base));
         self.set_optimistic_version.set(None);
-        self.set_origin.set(None);
         Some(id)
     }
 

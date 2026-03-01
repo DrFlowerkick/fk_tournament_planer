@@ -20,7 +20,6 @@ pub struct StageEditorContextOptions {
     pub stage_number: u32,
     pub object_id: Option<Uuid>,
     pub local_tournament: RwSignal<Option<Tournament>>,
-    pub origin_tournament: RwSignal<Option<Tournament>>,
 }
 
 impl EditorOptions for StageEditorContextOptions {
@@ -39,10 +38,6 @@ pub struct StageEditorContext {
     pub local: Signal<Option<Stage>>,
     /// SignalSetter for setting the local stage in the editor context
     set_local: SignalSetter<Option<Stage>>,
-    /// The original stage loaded from storage.
-    origin: Signal<Option<Stage>>,
-    /// SignalSetter for setting the original stage in the editor context.
-    set_origin: SignalSetter<Option<Stage>>,
     /// Read slice for accessing the validation result of the stage
     pub validation_result: Signal<ValidationResult<()>>,
     /// Read slice for checking if the stage is in a state where editing is disabled
@@ -113,23 +108,6 @@ impl EditorContext for StageEditorContext {
                     && let Some(t) = local_tournament
                 {
                     t.set_stage(new_stage);
-                }
-            },
-        );
-        let (origin, set_origin) = create_slice(
-            options.origin_tournament,
-            move |origin_tournament| {
-                id.get().and_then(|id| {
-                    origin_tournament
-                        .as_ref()
-                        .and_then(|t| t.get_stage_by_id(id).cloned())
-                })
-            },
-            |origin_tournament, new_stage: Option<Stage>| {
-                if let Some(new_stage) = new_stage
-                    && let Some(origin) = origin_tournament
-                {
-                    origin.set_stage(new_stage);
                 }
             },
         );
@@ -277,7 +255,6 @@ impl EditorContext for StageEditorContext {
                         set_resource_id.set(Some(tb.get_id()));
                         set_optimistic_version.set(tb.get_version());
                         set_local.set(Some(tb.clone()));
-                        set_origin.set(Some(tb.clone()));
 
                         if let Some(callback) = post_save_callback.get_value() {
                             callback.run(tb);
@@ -296,8 +273,6 @@ impl EditorContext for StageEditorContext {
             stage_number: options.stage_number,
             local,
             set_local,
-            origin,
-            set_origin,
             validation_result,
             is_disabled_stage_editing,
             id,
@@ -313,16 +288,10 @@ impl EditorContext for StageEditorContext {
         }
     }
 
-    /// Get the original tournament stage currently loaded in the editor context, if any.
-    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>> {
-        self.origin.into()
-    }
-
     /// Set an existing tournament stage in the editor context.
     fn set_object(&self, stage: Self::ObjectType) {
         self.set_local.set(Some(stage.clone()));
         self.set_optimistic_version.set(stage.get_version());
-        self.set_origin.set(Some(stage));
     }
 
     /// Create a new tournament stage in the editor context with a new UUID and default values.
@@ -337,7 +306,6 @@ impl EditorContext for StageEditorContext {
 
             self.set_local.set(Some(stage));
             self.set_optimistic_version.set(None);
-            self.set_origin.set(None);
             Some(id)
         } else {
             None
@@ -346,6 +314,15 @@ impl EditorContext for StageEditorContext {
 }
 
 impl EditorContextWithResource for StageEditorContext {
+    /// Get the current tournament stage in the editor context with its version, if any.
+    fn get_versioned_object(&self) -> Option<Self::ObjectType> {
+        self.local.with(|local| {
+            local
+                .as_ref()
+                .and_then(|ts| ts.get_version().map(|_| ts.clone()))
+        })
+    }
+
     /// Create a new object from a given tournament stage by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut stage: Self::ObjectType) -> Option<Uuid> {
         if let Some(tournament_id) = self.tournament_id.get()
@@ -357,7 +334,6 @@ impl EditorContextWithResource for StageEditorContext {
                 .set_tournament_id(tournament_id);
             self.set_local.set(Some(stage));
             self.set_optimistic_version.set(None);
-            self.set_origin.set(None);
             Some(id)
         } else {
             None

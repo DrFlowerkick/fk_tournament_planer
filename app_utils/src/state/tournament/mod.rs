@@ -26,10 +26,6 @@ pub struct TournamentEditorContext {
     // --- state & derived signals ---
     /// The local editable tournament
     local: RwSignal<Option<Tournament>>,
-    /// The original tournament loaded from storage.
-    origin: RwSignal<Option<Tournament>>,
-    /// Readonly signal for the original tournament, to be used for comparison in validation and update checks
-    origin_readonly: Signal<Option<Tournament>>,
     /// keep owner for creating new object context signals in the editor context
     owner: StoredValue<Owner>,
     /// Base editor context for the tournament, managing the base tournament object
@@ -52,7 +48,6 @@ impl EditorContext for TournamentEditorContext {
 
         // --- core signals ---
         let local = RwSignal::new(None::<Tournament>);
-        let origin = RwSignal::new(None::<Tournament>);
 
         let owner = StoredValue::new(
             Owner::current().expect("TournamentEditorContext must be created within a component"),
@@ -61,7 +56,6 @@ impl EditorContext for TournamentEditorContext {
         let base_editor_options = BaseEditorContextOptions {
             object_id: options.object_id,
             local_tournament: local,
-            origin_tournament: origin,
         };
         let base_editor = BaseEditorContext::new(base_editor_options);
         let stage_editors = RwSignal::new(HashMap::new());
@@ -132,23 +126,15 @@ impl EditorContext for TournamentEditorContext {
 
         Self {
             local,
-            origin,
-            origin_readonly: origin.into(),
             owner,
             base_editor,
             stage_editors,
         }
     }
 
-    /// Get the original tournament currently loaded in the editor context, if any.
-    fn origin_signal(&self) -> Signal<Option<Tournament>> {
-        self.origin_readonly
-    }
-
     /// Set the current tournament in the editor context, updating all relevant state accordingly.
     fn set_object(&self, tournament: Tournament) {
         self.local.set(Some(tournament.clone()));
-        self.origin.set(Some(tournament.clone()));
         self.base_editor.set_object(tournament.get_base().clone());
     }
 
@@ -187,7 +173,6 @@ impl TournamentEditorContext {
             stage_number,
             object_id,
             local_tournament: self.local,
-            origin_tournament: self.origin,
         };
         let stage_editor = self
             .owner

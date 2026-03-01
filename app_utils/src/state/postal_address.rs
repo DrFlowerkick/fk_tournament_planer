@@ -29,8 +29,6 @@ pub struct PostalAddressEditorContext {
     // --- state & derived signals ---
     /// The local editable postal address.
     local: RwSignal<Option<PostalAddress>>,
-    /// The original postal address loaded from storage.
-    origin: RwSignal<Option<PostalAddress>>,
     /// Readonly signal for the local postal address, to be used for comparison in validation and update checks
     pub local_read_only: Signal<Option<PostalAddress>>,
     /// Read slice for accessing the validation result of the postal address
@@ -98,7 +96,6 @@ impl EditorContext for PostalAddressEditorContext {
 
         // ---- signals & slices ----
         let local = RwSignal::new(None::<PostalAddress>);
-        let origin = RwSignal::new(None::<PostalAddress>);
         let (unique_violation_error, set_unique_violation_error) = signal(None::<FieldError>);
         let validation_result = Signal::derive(move || {
             let vr = local.with(|local| {
@@ -272,7 +269,6 @@ impl EditorContext for PostalAddressEditorContext {
                         set_resource_id.set(Some(pa.get_id()));
                         set_optimistic_version.set(pa.get_version());
                         local.set(Some(pa.clone()));
-                        origin.set(Some(pa.clone()));
 
                         if let Some(callback) = post_save_callback.get_value() {
                             callback.run(pa);
@@ -297,7 +293,6 @@ impl EditorContext for PostalAddressEditorContext {
 
         PostalAddressEditorContext {
             local,
-            origin,
             local_read_only: local.into(),
             validation_result,
             set_unique_violation_error,
@@ -322,16 +317,10 @@ impl EditorContext for PostalAddressEditorContext {
         }
     }
 
-    /// Get the original postal address currently loaded in the editor context, if any.
-    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>> {
-        self.origin.into()
-    }
-
     /// Set an existing postal address in the editor context.
     fn set_object(&self, pa: Self::ObjectType) {
         self.local.set(Some(pa.clone()));
         self.set_optimistic_version.set(pa.get_version());
-        self.origin.set(Some(pa));
     }
 
     /// Create a new postal address in the editor context with a new UUID and default values.
@@ -341,19 +330,26 @@ impl EditorContext for PostalAddressEditorContext {
 
         self.local.set(Some(pa.clone()));
         self.set_optimistic_version.set(None);
-        self.origin.set(None);
         Some(id)
     }
 }
 
 impl EditorContextWithResource for PostalAddressEditorContext {
+    /// Get the current postal address in the editor context with its version, if any.
+    fn get_versioned_object(&self) -> Option<Self::ObjectType> {
+        self.local.with(|local| {
+            local
+                .as_ref()
+                .and_then(|pa| pa.get_version().map(|_| pa.clone()))
+        })
+    }
+
     /// Create a new object from a given postal address by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, mut pa: Self::ObjectType) -> Option<Uuid> {
         let id = Uuid::new_v4();
         pa.set_id_version(IdVersion::new(id, None)).set_name("");
         self.local.set(Some(pa));
         self.set_optimistic_version.set(None);
-        self.origin.set(None);
         Some(id)
     }
 

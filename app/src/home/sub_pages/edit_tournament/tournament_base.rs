@@ -17,7 +17,7 @@ use app_utils::{
     params::{EditActionParams, FilterNameQuery, ParamQuery, TournamentBaseIdQuery},
     server_fn::tournament_base::SaveTournamentBase,
     state::{
-        EditorContext, EditorContextWithResource, object_table::ObjectEditorMapContext,
+        EditorContextWithResource, object_table::ObjectEditorMapContext,
         tournament::TournamentEditorContext,
     },
 };
@@ -44,9 +44,8 @@ pub fn EditTournamentBase() -> impl IntoView {
     on_cleanup(move || {
         if let Some(id) = tournament_base_id.get_untracked()
             && let Some(editor) = tournament_editor_map.get_editor_untracked(id)
-            && editor
-                .origin_signal()
-                .with_untracked(|origin| origin.is_none())
+            && editor.base_editor.id.get_untracked().is_some()
+            && editor.base_editor.version.get_untracked().is_none()
         {
             tournament_editor_map.remove_editor(id);
         }
@@ -56,9 +55,14 @@ pub fn EditTournamentBase() -> impl IntoView {
         if let Some(id) = tournament_base_id.get()
             && let Some(editor) = tournament_editor_map.get_editor(id)
             && match edit_action.get() {
-                Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
-                Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
-                Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
+                Some(EditAction::Edit) => {
+                    editor.base_editor.id.get().is_some()
+                        && editor.base_editor.version.get().is_some()
+                }
+                Some(EditAction::New) | Some(EditAction::Copy) => {
+                    editor.base_editor.id.get().is_some()
+                        && editor.base_editor.version.get().is_none()
+                }
                 None => false,
             }
         {

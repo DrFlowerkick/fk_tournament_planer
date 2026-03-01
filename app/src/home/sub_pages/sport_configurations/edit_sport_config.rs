@@ -16,7 +16,7 @@ use app_utils::{
     params::{EditActionParams, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
     server_fn::sport_config::SaveSportConfig,
     state::{
-        EditorContext, EditorContextWithResource,
+        EditorContextWithResource,
         global_state::{GlobalState, GlobalStateStoreFields},
         object_table::ObjectEditorMapContext,
         sport_config::SportConfigEditorContext,
@@ -66,9 +66,12 @@ pub fn EditSportConfiguration() -> impl IntoView {
         if let Some(id) = sport_config_id.get()
             && let Some(editor) = sport_config_editor_map.get_editor(id)
             && match edit_action.get() {
-                Some(EditAction::Edit) => editor.origin_signal().with(|origin| origin.is_some()),
-                Some(EditAction::New) => editor.origin_signal().with(|origin| origin.is_none()),
-                Some(EditAction::Copy) => editor.origin_signal().with(|origin| origin.is_none()),
+                Some(EditAction::Edit) => {
+                    editor.id.get().is_some() && editor.version.get().is_some()
+                }
+                Some(EditAction::New) | Some(EditAction::Copy) => {
+                    editor.id.get().is_some() && editor.version.get().is_none()
+                }
                 None => false,
             }
         {
@@ -82,7 +85,8 @@ pub fn EditSportConfiguration() -> impl IntoView {
     on_cleanup(move || {
         if let Some(id) = sport_config_id.get_untracked()
             && let Some(editor) = sport_config_editor_map.get_editor_untracked(id)
-            && editor.origin_signal().with(|origin| origin.is_none())
+            && editor.id.get_untracked().is_some()
+            && editor.version.get_untracked().is_none()
         {
             sport_config_editor_map.remove_editor(id);
         }

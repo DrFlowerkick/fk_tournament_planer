@@ -197,10 +197,10 @@ where
         source_id: Uuid,
         options: OE::NewEditorOptions,
     ) -> Option<OE> {
-        let Some(origin) = self
-            .editor_map
-            .with(|em| em.get(&source_id).and_then(|ed| ed.0.origin_signal().get()))
-        else {
+        let Some(source) = self.editor_map.with(|em| {
+            em.get(&source_id)
+                .and_then(|(ed, _)| ed.get_versioned_object())
+        }) else {
             // Cannot copy without source object data
             return None;
         };
@@ -210,7 +210,7 @@ where
         // Execute creation inside the child scope
         let new_context = child.with(|| {
             let editor = OE::new(options);
-            editor.copy_object(origin).map(|new_id| (new_id, editor))
+            editor.copy_object(source).map(|new_id| (new_id, editor))
         });
         if let Some((new_id, editor)) = new_context {
             self.editor_map.update(|em| {

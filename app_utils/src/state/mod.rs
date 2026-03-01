@@ -23,8 +23,6 @@ pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
 
     /// Create a new instance of the editor context, initializing all necessary state.
     fn new(options: Self::NewEditorOptions) -> Self;
-    /// Get the original object currently loaded in the editor context, if any.
-    fn origin_signal(&self) -> Signal<Option<Self::ObjectType>>;
     /// Set the current object in the editor context, updating all relevant state accordingly.
     fn set_object(&self, object: Self::ObjectType);
     /// Create a new object based on the current state of the editor context, returning its unique identifier.
@@ -32,6 +30,8 @@ pub trait EditorContext: Copy + Clone + Send + Sync + 'static {
 }
 
 pub trait EditorContextWithResource: EditorContext {
+    /// returns object with set version, if any
+    fn get_versioned_object(&self) -> Option<Self::ObjectType>;
     /// Create a new object from a given object by copying it and assigning a new UUID, then set it in the editor context.
     fn copy_object(&self, _object: Self::ObjectType) -> Option<Uuid>;
     /// Increment the optimistic version number in the editor context to handle concurrent edits.
