@@ -10,7 +10,8 @@ use app_utils::{
         use_on_cancel::use_on_cancel,
         use_scroll_into_view::use_scroll_h2_into_view,
         use_url_navigation::{
-            MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
+            MatchedRouteHandler, UseMatchedRouteNavigationReturn, UseQueryNavigationReturn,
+            use_matched_route_navigation, use_query_navigation,
         },
     },
     params::{EditActionParams, FilterNameQuery, ParamQuery, TournamentBaseIdQuery},
@@ -76,10 +77,14 @@ pub fn EditTournamentBase() -> impl IntoView {
 
     view! {
         <Show when=move || edit_action.get().is_some() fallback=|| "Page not found.".into_view()>
-            <div class="card w-full bg-base-100 shadow-xl">
+            <div class="card w-full bg-base-100 shadow-xl" data-testid="tournament-editor-root">
                 <div class="card-body">
                     <div class="flex justify-between items-center">
-                        <h2 class="card-title" node_ref=scroll_ref>
+                        <h2
+                            class="card-title"
+                            node_ref=scroll_ref
+                            data-testid="tournament-editor-title"
+                        >
                             {move || match edit_action.get() {
                                 Some(EditAction::New) => "New Tournament",
                                 Some(EditAction::Edit) => "Edit Tournament",
@@ -137,10 +142,11 @@ pub fn EditTournamentBase() -> impl IntoView {
 #[component]
 fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoView {
     // --- Hooks, Navigation & global state ---
+    let UseQueryNavigationReturn {
+        url_update_queries, ..
+    } = use_query_navigation();
     let UseMatchedRouteNavigationReturn {
-        url_matched_route,
-        url_matched_route_update_queries,
-        ..
+        url_matched_route, ..
     } = use_matched_route_navigation();
     let navigate = use_navigate();
 
@@ -159,12 +165,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
             ];
             // we need to use extend here, because the callback is executed in the route of
             // the list view
-            let nav_url = url_matched_route_update_queries(
-                key_value,
-                MatchedRouteHandler::Extend(EditAction::Edit.to_string().as_str()),
-            );
-            // ToDo: remove this, if nav_url is ok after testing
-            leptos::logging::debug_log!("Navigating to {} after saving tournament base", nav_url);
+            let nav_url = url_update_queries(key_value, Some("/tournaments/edit"));
             navigate(
                 &nav_url,
                 NavigateOptions {
@@ -344,6 +345,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                                         }
                                         on:click=move |_| {
                                             let navigate = use_navigate();
+                                            tournament_editor.prepare_stage(i);
                                             let path = if tournament_editor
                                                 .base_editor
                                                 .skip_stage_editor
@@ -352,7 +354,6 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                                                 tournament_editor.prepare_group(0, 0);
                                                 "0/0".to_string()
                                             } else {
-                                                tournament_editor.prepare_stage(i);
                                                 i.to_string()
                                             };
                                             let nav_url = url_matched_route(

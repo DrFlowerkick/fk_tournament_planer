@@ -152,7 +152,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         // --- User B edits the config ---
         await test.step("User B edits config", async () => {
           await pageB.goto(
-            `/sport-configurations/edit?sport_id=${sportId}&sport_config_id=${configId}`,
+            `/sport-configurations/edit?sport_id=${sportId}&sport_config_id=${configId}&filter_limit=100`,
           );
 
           // Ensure explicit navigation waits for WASM hydration before interacting
@@ -162,7 +162,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
           await expect(SC_B.form.root).toBeVisible();
 
           // Update
-          await SC_B.form.inputName.fill(updatedName);
+          await fillAndBlur(SC_B.form.inputName, updatedName);
           await adapter.fillSpecificFields(pageB, updatedData);
 
           // Wait for save to complete

@@ -7,13 +7,13 @@ pub mod base;
 pub mod stage;
 
 use crate::{
-    hooks::use_url_navigation::{
-        MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
+    hooks::use_url_navigation::{UseQueryNavigationReturn, use_query_navigation},
+    params::{GroupNumberParams, ParamQuery, StageNumberParams, TournamentBaseIdQuery},
+    state::{
+        EditorContext, EditorContextWithResource, SimpleEditorOptions, toast_state::ToastContext,
     },
-    params::{GroupNumberParams, ParamQuery, StageNumberParams},
-    state::{EditorContext, EditorContextWithResource, SimpleEditorOptions},
 };
-use app_core::{Tournament, TournamentBase};
+use app_core::{Stage, Tournament, TournamentBase};
 use base::{BaseEditorContext, BaseEditorContextOptions};
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, hooks::use_navigate};
@@ -32,10 +32,10 @@ pub struct TournamentEditorContext {
     origin_readonly: Signal<Option<Tournament>>,
     /// keep owner for creating new object context signals in the editor context
     owner: StoredValue<Owner>,
-    // ToDo: wrap into RwSignal?
+    /// Base editor context for the tournament, managing the base tournament object
     pub base_editor: BaseEditorContext,
-    // ToDo: change into RwSignal?
-    stage_editors: StoredValue<HashMap<u32, StageEditorContext>>,
+    /// Map of stage editors for the stages of the tournament, keyed by stage number
+    stage_editors: RwSignal<HashMap<u32, StageEditorContext>>,
 }
 
 impl EditorContext for TournamentEditorContext {
@@ -45,9 +45,10 @@ impl EditorContext for TournamentEditorContext {
     fn new(options: SimpleEditorOptions) -> Self {
         // --- navigation and globale state context ---
         let navigate = use_navigate();
-        let UseMatchedRouteNavigationReturn {
-            url_matched_route, ..
-        } = use_matched_route_navigation();
+        let UseQueryNavigationReturn {
+            url_update_path, ..
+        } = use_query_navigation();
+        let toast_ctx = expect_context::<ToastContext>();
 
         // --- core signals ---
         let local = RwSignal::new(None::<Tournament>);
@@ -63,9 +64,10 @@ impl EditorContext for TournamentEditorContext {
             origin_tournament: origin,
         };
         let base_editor = BaseEditorContext::new(base_editor_options);
-        let stage_editors = StoredValue::new(HashMap::new());
+        let stage_editors = RwSignal::new(HashMap::new());
 
         // --- url parameters & queries & validation ---
+        let tournament_base_id = TournamentBaseIdQuery::use_param_query();
         let active_stage_number = StageNumberParams::use_param_query();
         let active_group_number = GroupNumberParams::use_param_query();
 
@@ -86,21 +88,36 @@ impl EditorContext for TournamentEditorContext {
             let navigate = navigate.clone();
             move || {
                 // Validate url against current params and navigate if invalid params detected
-                if let Some(von) = valid_object_numbers.get() {
+                if let Some(selected_base_id) = tournament_base_id.get()
+                    && let Some(tournament_id) = base_editor.id.get()
+                    && tournament_id == selected_base_id
+                    && let Some(von) = valid_object_numbers.get()
+                {
+                    let toast_msg = match von.len() {
+                        0 => format!(
+                            "Invalid stage number '{}' in URL, navigating back to base view",
+                            active_stage_number.get().unwrap_or_default()
+                        ),
+                        1 => format!(
+                            "Invalid group number '{}' in URL, navigating back to stage view",
+                            active_group_number.get().unwrap_or_default()
+                        ),
+                        _ => "Navigated to corrected URL with valid object numbers".to_string(),
+                    };
+                    toast_ctx.error(toast_msg);
                     // Build redirect path from valid object numbers
                     let redirect_path = von
                         .iter()
                         .map(|n| n.to_string())
                         .collect::<Vec<_>>()
                         .join("/");
+                    let redirect_path = if redirect_path.is_empty() {
+                        "/tournaments/edit".to_string()
+                    } else {
+                        format!("/tournaments/edit/{redirect_path}")
+                    };
                     // Navigate to the corrected path
-                    // ToDo: matched route may not be correct, depending on where on route we are.
-                    let url = url_matched_route(MatchedRouteHandler::Extend(&redirect_path));
-                    // ToDo: remove debug:
-                    leptos::logging::debug_log!(
-                        "Redirecting to {} due to invalid URL parameters",
-                        url
-                    );
+                    let url = url_update_path(&redirect_path);
                     navigate(
                         &url,
                         NavigateOptions {
@@ -155,42 +172,65 @@ impl TournamentEditorContext {
         }
     }
 
-    pub fn prepare_stage(&self, stage_number: u32) {
-        if self
-            .stage_editors
-            .with_value(|editors| editors.contains_key(&stage_number))
-        {
-            return; // Editor already exists for this stage number
+    pub fn spawn_stage_editor(
+        &self,
+        object_id: Option<Uuid>,
+        stage_number: u32,
+    ) -> Option<StageEditorContext> {
+        if let Some(stage_editor) = self.get_stage_editor(stage_number) {
+            return Some(stage_editor); // Editor already exists for this stage number
         }
         if self.local.with(|may_be_t| may_be_t.is_none()) {
-            return; // No Tournament loaded in local editor state, cannot prepare stage
+            return None; // No Tournament loaded in local editor state, cannot prepare stage
         }
-        self.local.update(|te| {
-            if let Some(t) = te.as_mut() {
-                t.new_stage(stage_number);
-            }
-        });
         let stage_editor_options = StageEditorContextOptions {
             stage_number,
-            object_id: None,
+            object_id,
             local_tournament: self.local,
             origin_tournament: self.origin,
         };
         let stage_editor = self
             .owner
             .with_value(|owner| owner.with(|| StageEditorContext::new(stage_editor_options)));
-        self.stage_editors.update_value(|editors| {
+        self.stage_editors.update(|editors| {
             editors.insert(stage_number, stage_editor);
         });
+        Some(stage_editor)
     }
 
     pub fn get_stage_editor(&self, stage_number: u32) -> Option<StageEditorContext> {
         self.stage_editors
-            .with_value(|editors| editors.get(&stage_number).copied())
+            .with(|editors| editors.get(&stage_number).copied())
     }
 
-    pub fn prepare_group(&self, stage_number: u32, _group_number: u32) {
-        self.prepare_stage(stage_number);
+    pub fn update_stage_in_editor(&self, stage: &Stage) {
+        let Some(stage_editor) = self.get_stage_editor(stage.get_number()) else {
+            return; // No editor for this stage number, cannot update
+        };
+        let optimistic_version = stage_editor.optimistic_version_signal().get();
+        if optimistic_version.is_none() {
+            stage_editor.set_object(stage.clone());
+        }
+        if let Some(ov) = optimistic_version
+            && ov < stage.get_version().unwrap_or_default()
+        {
+            stage_editor.set_object(stage.clone());
+        }
+    }
+
+    /// creates a new stage editor for the given stage number if it does not exist yet
+    /// and initializes it with a new stage object.
+    pub fn prepare_stage(&self, stage_number: u32) {
+        if self.get_stage_editor(stage_number).is_some() {
+            return; // Editor already exists for this stage number, nothing to prepare
+        }
+        if let Some(stage_editor) = self.spawn_stage_editor(None, stage_number) {
+            // create new stage object in editor
+            stage_editor.new_object();
+        }
+    }
+
+    pub fn prepare_group(&self, _stage_number: u32, _group_number: u32) {
         // ToDo: implement group editor context and insert into map here
     }
 }

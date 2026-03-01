@@ -132,7 +132,7 @@ async fn given_multiple_stages_when_list_then_ordered_by_number() -> Result<()> 
 
     // Load stages by ID
     let mut stages = Vec::with_capacity(stage_ids.len());
-    for id in &stage_ids {
+    for (id, _) in &stage_ids {
         let stage = db.get_stage_by_id(*id).await?.expect("row must exist");
         stages.push(stage);
     }

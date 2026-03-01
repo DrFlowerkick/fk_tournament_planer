@@ -4,7 +4,6 @@ import { getListSelectors } from "./common";
 export const POSTAL_IDS = {
   list: {
     root: "postal-address-list-root",
-    filterLimit: "filter-limit-select",
     emptyList: "postal-address-list-empty",
     // Reuse existing preview IDs for the inner card content
     preview: {
@@ -37,7 +36,6 @@ export function getPostalSelectors(page: Page) {
     list: {
       ...getListSelectors(page),
       root: page.getByTestId(POSTAL_IDS.list.root),
-      filterLimit: page.getByTestId(POSTAL_IDS.list.filterLimit),
       emptyList: page.getByTestId(POSTAL_IDS.list.emptyList),
     },
     form: {

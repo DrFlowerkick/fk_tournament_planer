@@ -245,6 +245,7 @@ impl PageErrorContext {
     /// Executes all retry actions present in the current error list.
     /// Used for the "Global Retry" button.
     pub fn retry_all(&self) {
+        // First we run all active errors' retry actions...
         // We clone actions to avoid holding the lock during execution
         let actions: Vec<_> = self.active_error.get();
 
@@ -252,6 +253,19 @@ impl PageErrorContext {
             // We assume actions are safe and don't panic.
             // If they modify the error list (e.g. clear error on start), that's fine.
             active_error.do_retry();
+        }
+
+        // ... then we run all remaining retry handlers. The reason for this is,
+        // that errors further down the call chain may have blocked rendering of components, which contain
+        // the Suspense/ Transition block. These components won't rerender with calling their retry handlers.
+        let handlers = self
+            .retry_handlers
+            .get()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        for handler in handlers {
+            handler.run(());
         }
     }
 

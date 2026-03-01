@@ -5,9 +5,13 @@ import {
   goToNewTournament,
   goToListTournaments,
   fillAndBlur,
+  waitForEditTournamentUrl,
   makeUniqueName,
   searchAndOpenByNameOnCurrentPage,
+  expectFieldValidity,
   selectors,
+  waitForNewTournamentUrl,
+  selectAndBlur,
 } from "../../helpers";
 
 const PLUGINS = {
@@ -29,34 +33,32 @@ test.describe("Create New Tournament", () => {
   test("displays the creation form with correct input fields", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.editTournament;
+    const FORM = selectors(page).home.editTournament;
 
     await expect(FORM.title).toHaveText(/New Tournament|Plan Tournament/i);
     await expect(FORM.inputs.name).toBeEmpty();
     await expect(FORM.inputs.entrants).toBeVisible();
-    await expect(FORM.actions.save).toBeVisible();
   });
 
-  test("cancel button navigates back to dashboard or list", async ({
+  test("close button navigates back to dashboard or list", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.editTournament;
+    const FORM = selectors(page).home.editTournament;
     const DASH = selectors(page).home.dashboard;
 
     await expect(FORM.inputs.name).toBeEditable();
-    await fillAndBlur(FORM.inputs.name, "To Be Cancelled");
 
-    await FORM.actions.cancel.click();
+    await FORM.actions.close.click();
 
     await expect(FORM.root).toBeHidden();
     await expect(DASH.nav.planNew).toBeVisible();
   });
 
-  test("successfully creates a tournament, shows toast and handles redirect", async ({
+  test("successfully creates a tournament and handles redirect", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.editTournament;
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const FORM = selectors(page).home.editTournament;
+    const LIST = selectors(page).home.tournamentsList;
     const TOASTS = selectors(page).toasts;
 
     const tourneyName = makeUniqueName("E2E Create Success");
@@ -64,46 +66,33 @@ test.describe("Create New Tournament", () => {
     await fillAndBlur(FORM.inputs.name, tourneyName);
     await fillAndBlur(FORM.inputs.entrants, "32");
 
-    await expect(FORM.actions.save).toBeEnabled();
-    await FORM.actions.save.click();
+    // 1. Wait for URL update (Creation usually redirects to Edit/View with ID)
+    await waitForEditTournamentUrl(page);
 
-    // 1. Verify Toast appears
-    await expect(TOASTS.success).toBeVisible();
-    await expect(TOASTS.success).toContainText(/saved/i);
-
-    // 2. Wait for URL update (Creation usually redirects to Edit/View with ID)
-    await page.waitForURL(/tournament_id=/, { timeout: 20000 });
-
-    // 3. Verify Persistence via List
+    // 2. Verify Persistence via List
     await goToListTournaments(page);
 
     // Wait until list and filter name are ready
     await expect(LIST.root).toBeVisible({ timeout: 10000 });
     await expect(LIST.filterName).toBeEditable();
 
-    await fillAndBlur(LIST.filterName, tourneyName);
-
-    await expect(page.getByRole("cell", { name: tourneyName })).toBeVisible({
-      timeout: 10000,
-    });
+    await searchAndOpenByNameOnCurrentPage(page, tourneyName, "tournament_id");
   });
 
   test("full flow: create, navigate to list, edit existing, modify and save", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.editTournament;
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const FORM = selectors(page).home.editTournament;
+    const LIST = selectors(page).home.tournamentsList;
     const TOASTS = selectors(page).toasts;
 
     // --- Step 1: Create initial tournament ---
     const initialName = makeUniqueName("Flow Initial");
     await fillAndBlur(FORM.inputs.name, initialName);
     await fillAndBlur(FORM.inputs.entrants, "16");
-    await FORM.actions.save.click();
 
-    // Wait for creation to finish (Toast & URL)
-    await expect(TOASTS.success).toBeVisible();
-    await page.waitForURL(/tournament_id=/);
+    // Wait for creation to finish
+    await waitForEditTournamentUrl(page);
 
     // --- Step 2: Go to List and Find it ---
     await goToListTournaments(page);
@@ -124,63 +113,45 @@ test.describe("Create New Tournament", () => {
     // Optional: Change another field if needed
     // await FORM.inputs.entrants.fill("20");
 
-    // --- Step 5: Save Changes ---
-    await FORM.actions.save.click();
-
-    // --- Step 6: Verify Success Toast & Persistence ---
-    // Note: If the previous toast is still there (animations), this might pass immediately.
-    // For now, checking visibility is usually sufficient as 'save' triggers a re-render/new toast.
-    await expect(TOASTS.success).toBeVisible();
-    // Assuming backend returns "Tournament saved"
-    await expect(TOASTS.success).toContainText(/saved/i);
-
+    // --- Step 5: Verify Persistence ---
     // Verify update in List
     await goToListTournaments(page);
-    await fillAndBlur(LIST.filterName, updatedName);
-    await expect(page.getByRole("cell", { name: updatedName })).toBeVisible();
-    await expect(
-      page.getByRole("cell", { name: initialName }),
-    ).not.toBeVisible();
+    await searchAndOpenByNameOnCurrentPage(page, updatedName, "tournament_id");
   });
 
   test.describe("Validation & Normalization", () => {
-    test("save button is disabled without a tournament name", async ({
+    test("save only happens if all required fields are valid", async ({
       page,
     }) => {
-      const FORM = selectors(page).home.dashboard.editTournament;
+      const FORM = selectors(page).home.editTournament;
 
       await fillAndBlur(FORM.inputs.entrants, "16");
       await fillAndBlur(FORM.inputs.name, "");
 
-      await expect(FORM.actions.save).toBeDisabled();
+      // we are still on the new tournament page, so no tournament_id in url, but we can check the form state
+      await waitForNewTournamentUrl(page);
 
       await fillAndBlur(FORM.inputs.name, makeUniqueName("Valid Name Check"));
 
-      await expect(FORM.actions.save).toBeEnabled();
+      // Now the form should be valid, which triggers automatic save and navigation to edit page
+      await waitForEditTournamentUrl(page);
     });
 
     test("save button is disabled with fewer than 2 entrants", async ({
       page,
     }) => {
-      const FORM = selectors(page).home.dashboard.editTournament;
-
-      await fillAndBlur(
-        FORM.inputs.name,
-        makeUniqueName("Entrant Valid Check"),
-      );
+      const FORM = selectors(page).home.editTournament;
 
       await fillAndBlur(FORM.inputs.entrants, "1");
-
-      await expect(FORM.actions.save).toBeDisabled();
+      await expectFieldValidity(FORM.inputs.entrants, "1", true);
 
       await fillAndBlur(FORM.inputs.entrants, "2");
-
-      await expect(FORM.actions.save).toBeEnabled();
+      await expectFieldValidity(FORM.inputs.entrants, "2", false);
     });
 
     test("normalizes whitespace in tournament name", async ({ page }) => {
-      const FORM = selectors(page).home.dashboard.editTournament;
-      const LIST = selectors(page).home.dashboard.tournamentsList;
+      const FORM = selectors(page).home.editTournament;
+      const LIST = selectors(page).home.tournamentsList;
 
       const uniqueSuffix = `Trim Check ${Date.now()}`;
       const dirtyName = `  Chaos   ${uniqueSuffix}  `;
@@ -189,47 +160,36 @@ test.describe("Create New Tournament", () => {
       await fillAndBlur(FORM.inputs.name, dirtyName);
       await fillAndBlur(FORM.inputs.entrants, "8");
 
-      await expect(FORM.actions.save).toBeEnabled();
-      await FORM.actions.save.click();
-
-      await page.waitForURL(/tournament_id=/, { timeout: 20000 });
-
       await goToListTournaments(page);
 
       await expect(LIST.root).toBeVisible();
       await expect(LIST.filterName).toBeEditable();
 
       await LIST.filterName.fill(cleanName);
-
-      const cell = page.getByRole("cell", { name: cleanName });
-      await expect(cell).toBeVisible();
-      await expect(cell).toHaveText(cleanName);
+      await searchAndOpenByNameOnCurrentPage(page, cleanName, "tournament_id");
     });
 
     test("validates swiss system specific fields", async ({ page }) => {
-      const FORM = selectors(page).home.dashboard.editTournament;
+      const FORM = selectors(page).home.editTournament;
 
-      await FORM.inputs.name.fill(makeUniqueName("Swiss Mode"));
-      await FORM.inputs.entrants.fill("10");
+      await fillAndBlur(FORM.inputs.name, makeUniqueName("Swiss Validation"));
+      await fillAndBlur(FORM.inputs.entrants, "10");
+
+      await waitForEditTournamentUrl(page);
 
       await expect(FORM.inputs.mode).toBeVisible();
-      await FORM.inputs.mode.selectOption({ label: "Swiss System (0 rounds)" });
+      await selectAndBlur(FORM.inputs.mode, "Swiss System (0 rounds)");
 
-      await expect(FORM.inputs.num_rounds_swiss).toBeVisible({
-        timeout: 10000,
-      });
+      await expect(FORM.inputs.num_rounds_swiss).toBeVisible();
       await expect(FORM.inputs.num_rounds_swiss).toBeEditable();
 
       // 1. Invalid Rounds (0)
-      await FORM.inputs.num_rounds_swiss.fill("0");
-      await FORM.inputs.num_rounds_swiss.blur();
-      await expect(FORM.actions.save).toBeDisabled();
+      await fillAndBlur(FORM.inputs.num_rounds_swiss, "0");
+      await expectFieldValidity(FORM.inputs.num_rounds_swiss, "0", true);
 
       // 2. Valid Rounds
-      await FORM.inputs.num_rounds_swiss.fill("5");
-      await FORM.inputs.num_rounds_swiss.blur();
-
-      await expect(FORM.actions.save).toBeEnabled();
+      await fillAndBlur(FORM.inputs.num_rounds_swiss, "5");
+      await expectFieldValidity(FORM.inputs.num_rounds_swiss, "5", false);
     });
   });
 });

@@ -220,7 +220,6 @@ impl EditorContext for SportConfigEditorContext {
                         }
                     }
                     Err(err) => {
-                        leptos::logging::debug_error!("Failed to save sport config: {:?}", err);
                         // version reset for parallel editing
                         set_optimistic_version.set(version.get());
                         // transform unique violation error into Validation Error for name, if any

@@ -11,7 +11,7 @@ use app_utils::{
             MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
         },
     },
-    params::{EditActionParams, ParamQuery, StageNumberParams, TournamentBaseIdQuery},
+    params::{ParamQuery, StageNumberParams, TournamentBaseIdQuery},
     server_fn::stage::SaveStage,
     state::{
         EditorContextWithResource,
@@ -21,10 +21,10 @@ use app_utils::{
 };
 use leptos::{html::H2, prelude::*};
 use leptos_router::{NavigateOptions, hooks::use_navigate, nested_router::Outlet};
+use uuid::Uuid;
 
 #[component]
 pub fn EditTournamentStage() -> impl IntoView {
-    let edit_action = EditActionParams::use_param_query();
     let tournament_base_id = TournamentBaseIdQuery::use_param_query();
     let active_stage_number = StageNumberParams::use_param_query();
 
@@ -32,39 +32,31 @@ pub fn EditTournamentStage() -> impl IntoView {
     let tournament_editor_map =
         expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
 
+    let editor = Signal::derive(move || {
+        if let Some(stage_number) = active_stage_number.get()
+            && let Some(id) = tournament_base_id.get()
+            && let Some(editor) = tournament_editor_map.get_editor(id)
+            && let Some(stage_editor) = editor.get_stage_editor(stage_number)
+        {
+            Some((editor, stage_editor))
+        } else {
+            None
+        }
+    });
+
     view! {
-        <Show when=move || { edit_action.get().is_some() }>
-            // Using For forces the view to be recreated when the id changes
-            <For
-                each=move || {
-                    tournament_base_id
-                        .try_get()
-                        .flatten()
-                        .and_then(|current_id| {
-                            active_stage_number
-                                .get()
-                                .and_then(|s_num| {
-                                    tournament_editor_map
-                                        .get_editor(current_id)
-                                        .and_then(|editor| {
-                                            editor
-                                                .get_stage_editor(s_num)
-                                                .map(|stage_editor| (current_id, editor, stage_editor))
-                                        })
-                                })
-                        })
-                        .into_iter()
-                }
-                key=|(id, _, _)| *id
-                children=move |(_, editor, stage_editor)| {
+        {move || {
+            editor
+                .get()
+                .map(|(editor, stage_editor)| {
+                    // if the editor for the current stage number exists in the map, render the stage editor form
                     view! {
                         <TournamentStageForm tournament_editor=editor stage_editor=stage_editor />
+                        <div class="my-4"></div>
+                        <Outlet />
                     }
-                }
-            />
-        </Show>
-        <div class="my-4"></div>
-        <Outlet />
+                })
+        }}
     }
 }
 
@@ -105,14 +97,13 @@ fn TournamentStageForm(
 
     let on_submit = move || {
         if let Some(stage) = stage_editor.local.get()
-        && let Some(base) = tournament_editor.base_editor.local.get()
+            && let Some(base) = tournament_editor.base_editor.local.get()
             && stage.validate(&base).is_ok()
         {
             stage_editor.increment_optimistic_version();
             let data = SaveStage { stage };
             #[cfg(feature = "test-mock")]
             {
-
                 let save_action = Action::new(|stage: &SaveStage| {
                     let stage = stage.clone();
                     async move {
@@ -139,7 +130,7 @@ fn TournamentStageForm(
             <div class="card w-full bg-base-100 shadow-xl">
                 <div class="card-body">
                     <div class="flex justify-between items-center">
-                        <h2 class="card-title" node_ref=scroll_ref>
+                        <h2 class="card-title" node_ref=scroll_ref data-testid="stage-editor-title">
                             {move || editor_title()}
                         </h2>
                         <button
@@ -153,17 +144,30 @@ fn TournamentStageForm(
                     </div>
                     // --- Tournament Base Form ---
                     <div data-testid="tournament-editor-form">
-                        <form
-                            on:submit:capture=move |ev| {
-                                ev.prevent_default();
-                                on_submit();
-                            }
-                        >
+                        <form on:submit:capture=move |ev| {
+                            ev.prevent_default();
+                            on_submit();
+                        }>
                             <fieldset
                                 disabled=move || { stage_editor.is_disabled_stage_editing.get() }
                                 class="space-y-4 contents"
                                 data-testid="stage-editor-form"
                             >
+                                // hidden meta fields; can be used for E2E testing
+                                <input
+                                    type="hidden"
+                                    data-testid="hidden-id"
+                                    prop:value=move || {
+                                        stage_editor.id.get().unwrap_or(Uuid::nil()).to_string()
+                                    }
+                                />
+                                <input
+                                    type="hidden"
+                                    data-testid="hidden-version"
+                                    prop:value=move || {
+                                        stage_editor.version.get().unwrap_or_default().to_string()
+                                    }
+                                />
                                 <div class="w-full max-w-md grid grid-cols-1 gap-6">
                                     <NumberInput
                                         label="Number of Groups"

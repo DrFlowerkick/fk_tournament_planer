@@ -206,7 +206,6 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
                 key_value,
                 MatchedRouteHandler::Extend(EditAction::Edit.to_string().as_str()),
             );
-            leptos::logging::debug_log!("Navigating to url after save: {}", nav_url);
             navigate(
                 &nav_url,
                 NavigateOptions {

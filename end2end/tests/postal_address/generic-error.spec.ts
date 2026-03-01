@@ -47,7 +47,6 @@ test.describe("Generic error handling saving address", () => {
 
 test.describe("Generic error handling loading address", () => {
   test("shows a generic error banner on 500 server error", async ({ page }) => {
-    const PA = selectors(page).postalAddress;
     const BA = selectors(page).banners;
 
     // ---------------- Arrange: Intercept server response --------------------
@@ -64,9 +63,9 @@ test.describe("Generic error handling loading address", () => {
 
     // -------------------- Act: Try to load the address list --------------------
     // Navigate to "list" route and assert elements exist
-      await page.goto(PA_ROUTES.list);
-      // strict hydration check
-      await waitForAppHydration(page);
+    await page.goto(PA_ROUTES.list);
+    // strict hydration check
+    await waitForAppHydration(page);
 
     // -------------------- Assert: error banner is shown --------------------
     await expect(BA.globalErrorBanner.root).toBeVisible();

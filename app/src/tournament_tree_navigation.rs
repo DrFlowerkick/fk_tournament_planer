@@ -16,9 +16,12 @@ use app_utils::{
     params::{ParamQuery, TournamentBaseIdQuery},
     server_fn::stage::list_stage_ids_of_tournament,
     state::{
-        SimpleEditorOptions, activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        object_table::ObjectEditorMapContext, toast_state::ToastContext,
-        tournament::TournamentEditorContext,
+        SimpleEditorOptions,
+        activity_tracker::ActivityTracker,
+        error_state::PageErrorContext,
+        object_table::ObjectEditorMapContext,
+        toast_state::ToastContext,
+        tournament::{TournamentEditorContext, stage::StageEditorContext},
     },
 };
 use leptos::prelude::*;
@@ -166,7 +169,6 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                                                             "/tournaments/edit".to_string()
                                                         }
                                                     }
-
                                                     attr:class="btn btn-ghost btn-sm"
                                                     scroll=false
                                                     on:click=move |_| {
@@ -178,7 +180,39 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                                                 </A>
                                             </summary>
                                             <div class="collapse-content text-sm">
-                                                "ToDo: Add stages here"
+                                                {move || {
+                                                    stage_ids
+                                                        .and_then(|s_ids_and_numbers| {
+                                                            let s_ids_and_numbers = s_ids_and_numbers.clone();
+                                                            {
+                                                                view! {
+                                                                    <For
+                                                                        each=move || {
+                                                                            s_ids_and_numbers
+                                                                                .clone()
+                                                                                .into_iter()
+                                                                                .filter_map(move |(stage_id, stage_number)| {
+                                                                                    tournament_editor
+                                                                                        .spawn_stage_editor(Some(stage_id), stage_number)
+                                                                                        .map(|stage_editor| (stage_id, stage_editor))
+                                                                                })
+                                                                        }
+                                                                        key=|(stage_id, _)| *stage_id
+                                                                        children=move |(_, stage_editor)| {
+                                                                            view! {
+                                                                                <div class="collapse-content text-sm">
+                                                                                    <TournamentTreeStage
+                                                                                        tournament_editor=tournament_editor
+                                                                                        stage_editor=stage_editor
+                                                                                    />
+                                                                                </div>
+                                                                            }
+                                                                        }
+                                                                    />
+                                                                }
+                                                            }
+                                                        })
+                                                }}
                                             </div>
                                         </details>
                                     }
@@ -187,5 +221,69 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                 }}
             </ErrorBoundary>
         </Transition>
+    }
+}
+
+#[component]
+fn TournamentTreeStage(
+    tournament_editor: TournamentEditorContext,
+    stage_editor: StageEditorContext,
+) -> impl IntoView {
+    // --- navigation hooks ---
+    let UseQueryNavigationReturn {
+        url_update_path, ..
+    } = use_query_navigation();
+    let dropdown_ctx = expect_context::<DropdownContext>();
+
+    view! {
+        {move || {
+            stage_editor
+                .load_stage
+                .and_then(|maybe_stage| {
+                    maybe_stage
+                        .as_ref()
+                        .map(|stage| {
+                            tournament_editor.update_stage_in_editor(stage);
+                            view! {
+                                <details class="collapse border-base-300 border">
+                                    <summary class="collapse-title font-semibold">
+                                        <span class="icon-[heroicons--view-columns-16-solid] w-[1em] h-[1em] mr-2"></span>
+                                        {move || {
+                                            stage_editor
+                                                .number
+                                                .get()
+                                                .and_then(|stage_number| {
+                                                    tournament_editor
+                                                        .base_editor
+                                                        .mode
+                                                        .get()
+                                                        .and_then(|mode| mode.get_stage_name(stage_number))
+                                                })
+                                        }}
+                                        <A
+                                            href=move || {
+                                                if let Some(stage_number) = stage_editor.number.get() {
+                                                    url_update_path(
+                                                        &format!("/tournaments/edit/{}", stage_number),
+                                                    )
+                                                } else {
+                                                    "/tournaments/edit".to_string()
+                                                }
+                                            }
+                                            attr:class="btn btn-ghost btn-sm"
+                                            scroll=false
+                                            on:click=move |_| {
+                                                dropdown_ctx.set_menu_open.set(false);
+                                                blur_active_element();
+                                            }
+                                        >
+                                            <span class="icon-[heroicons--link] w-[1em] h-[1em]"></span>
+                                        </A>
+                                    </summary>
+                                </details>
+                            }
+                        })
+                })
+        }}
     }
 }

@@ -31,7 +31,7 @@ impl EditorOptions for StageEditorContextOptions {
 
 #[derive(Clone, Copy)]
 pub struct StageEditorContext {
-    /// The local stage in the editor context.
+    /// The predefined stage number in the editor context.
     stage_number: u32,
 
     // --- state & derived signals ---
@@ -56,6 +56,8 @@ pub struct StageEditorContext {
     pub version: Signal<Option<u32>>,
     /// Signal slice for the tournament ID field
     pub tournament_id: Signal<Option<Uuid>>,
+    /// Signal slice for the number field
+    pub number: Signal<Option<u32>>,
     /// Read slice for accessing the stage number of groups, if any
     pub num_groups: Signal<Option<u32>>,
     /// Write slice for setting the stage number of groups
@@ -168,6 +170,15 @@ impl EditorContext for StageEditorContext {
                     .as_ref()
                     .and_then(|t| t.get_stage_by_id(id))
                     .and_then(|s| s.get_version())
+            })
+        });
+
+        let number = create_read_slice(options.local_tournament, move |local_tournament| {
+            id.get().and_then(|id| {
+                local_tournament
+                    .as_ref()
+                    .and_then(|t| t.get_stage_by_id(id))
+                    .map(|s| s.get_number())
             })
         });
         let (num_groups, set_num_groups) = create_slice(
@@ -292,6 +303,7 @@ impl EditorContext for StageEditorContext {
             id,
             version,
             tournament_id,
+            number,
             num_groups,
             set_num_groups,
             set_optimistic_version,

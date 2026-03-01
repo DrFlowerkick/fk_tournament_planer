@@ -349,11 +349,6 @@ fn PostalAddressTableRow(id: Uuid) -> impl IntoView {
         .unwrap();
     let address_id = AddressIdQuery::use_param_query();
 
-    // remove editor on unmount
-    on_cleanup(move || {
-        postal_address_editor_map.remove_editor(id);
-    });
-
     view! {
         {move || {
             postal_address_editor

@@ -4,7 +4,7 @@ import {
   clickNewPostalAddress,
   fillAllRequiredValid,
   fillAndBlur,
-  selectThenBlur,
+  selectAndBlur,
   expectFieldValidity,
   selectors,
   makeUniqueName,
@@ -99,7 +99,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     // blur path
     // Note: "uppercase on blur" is no longer relevant for a select field
     // as the values are predefined ISO codes.
-    await selectThenBlur(PA.form.inputCountry, "DE");
+    await selectAndBlur(PA.form.inputCountry, "DE");
     await expectFieldValidity(PA.form.inputCountry, "DE", /*invalid*/ false);
   });
 
@@ -121,7 +121,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
      */
 
     // set DE
-    await selectThenBlur(PA.form.inputCountry, "DE");
+    await selectAndBlur(PA.form.inputCountry, "DE");
 
     // Example 1: "   10115    " -> "10115" (valid for DE)
     await fillAndBlur(PA.form.inputPostalCode, "   10115    ");
@@ -174,7 +174,7 @@ test.describe("Per-field normalization → validation + gated save", () => {
     );
 
     // set DE
-    await selectThenBlur(PA.form.inputCountry, "DE");
+    await selectAndBlur(PA.form.inputCountry, "DE");
 
     await expectFieldValidity(
       PA.form.inputPostalCode,

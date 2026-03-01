@@ -2,7 +2,7 @@
 import { expect, Locator, Page } from "@playwright/test";
 import {
   fillAndBlur,
-  selectThenBlur,
+  selectAndBlur,
   extractQueryParamFromUrl,
   waitForAppHydration,
   IDS,
@@ -208,7 +208,7 @@ export async function fillFields(
 
   // Country before postal code (for postal code validation)
   if (fields.country !== undefined) {
-    await selectThenBlur(PA.form.inputCountry, fields.country);
+    await selectAndBlur(PA.form.inputCountry, fields.country);
   }
 
   // Postal code

@@ -72,7 +72,7 @@ pub trait DbpStage: Send + Sync {
         &self,
         tournament_id: Uuid,
         number_of_stages: u32,
-    ) -> DbResult<Vec<Uuid>>;
+    ) -> DbResult<Vec<(Uuid, u32)>>;
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]

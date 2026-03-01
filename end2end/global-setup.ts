@@ -10,6 +10,7 @@ import {
   fillFields,
   closeForm,
   waitForPostalAddressListUrl,
+  waitForEditTournamentUrl,
   fillAndBlur,
   waitForAppHydration,
   clickNewPostalAddress,
@@ -28,7 +29,7 @@ const SEED_TOURNAMENTS = [
 ];
 
 async function seedTournaments(page: Page) {
-  const FORM = selectors(page).home.dashboard.editTournament;
+  const FORM = selectors(page).home.editTournament;
 
   // 1. Select Sport (ensure we are in the context)
   await openHomePage(page);
@@ -46,17 +47,15 @@ async function seedTournaments(page: Page) {
     await fillAndBlur(FORM.inputs.name, t.name);
     await fillAndBlur(FORM.inputs.entrants, t.entrants);
 
+    // setting valid values will trigger autosave and navigation to edit page
+
+    // Wait for completion (URL update) to be ready for the next one
+    await waitForEditTournamentUrl(page);
+
     await expect(FORM.inputs.name).toHaveValue(t.name);
     await expect(FORM.inputs.entrants).toHaveValue(t.entrants);
     await expect(FORM.inputs.name).toHaveAttribute("aria-invalid", "false");
     await expect(FORM.inputs.entrants).toHaveAttribute("aria-invalid", "false");
-
-    // Save
-    await expect(FORM.actions.save).toBeEnabled();
-    await FORM.actions.save.click();
-
-    // Wait for completion (URL update) to be ready for the next one
-    await page.waitForURL(/tournament_id=/, { timeout: 10000 });
   }
 }
 
@@ -101,7 +100,7 @@ export default async () => {
     console.log("✅ Postal Addresses Seeded");
 
     console.log("🌱 Seeding Tournaments...");
-    //await seedTournaments(page);
+    await seedTournaments(page);
     console.log("✅ Tournaments Seeded");
   } catch (e) {
     console.error("❌ Seeding failed:", e);

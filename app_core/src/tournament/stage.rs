@@ -290,7 +290,7 @@ impl Core<StageState> {
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
-    pub async fn list_stage_ids_of_tournament(&mut self) -> CoreResult<Vec<Uuid>> {
+    pub async fn list_stage_ids_of_tournament(&mut self) -> CoreResult<Vec<(Uuid, u32)>> {
         self.try_load_tournament().await?;
         if let Some(tournament) = self.state.tournament.as_ref() {
             let stages = self

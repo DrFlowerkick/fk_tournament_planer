@@ -3,6 +3,7 @@ use app::*;
 use app_core::*;
 use axum::{
     Router,
+    ServiceExt, // Needed for into_make_service() on the layered service (NormalizePath)
     extract::State,
     http,
     http::{HeaderMap, HeaderName, StatusCode},
@@ -23,7 +24,9 @@ use shared::*;
 use sport_plugin_manager::SportPluginManagerMap;
 use std::env;
 use std::{sync::Arc, time::Duration};
+use tower::Layer;
 use tower_http::{
+    normalize_path::NormalizePathLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
@@ -173,10 +176,18 @@ async fn main() -> Result<()> {
                 })
         );
 
+    // Normalize paths (remove trailing slashes) before routing
+    let app = NormalizePathLayer::trim_trailing_slash().layer(app);
+
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     info!(%addr, "listening on http server");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app.into_make_service()).await?;
+
+    // We must convert the layered service back into a MakeService for Axum server.
+    // Explicit type annotation ensures compatibility with axum::serve.
+    let app_service = ServiceExt::<axum::extract::Request>::into_make_service(app);
+
+    axum::serve(listener, app_service).await?;
     Ok(())
 }

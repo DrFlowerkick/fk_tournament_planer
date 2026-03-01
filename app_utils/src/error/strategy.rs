@@ -118,9 +118,13 @@ pub fn handle_unexpected_ui_error(
     let key = ErrorKey::General;
 
     let error_msg = error_msg.into();
+    let retry_fn = ctx.get_retry_handler(component_id);
 
-    let builder =
+    let mut builder =
         ActiveError::builder(component_id, key.clone(), error_msg).with_cancel("Back", back_fn);
+    if let Some(retry_fn) = retry_fn {
+        builder = builder.with_retry("Retry", retry_fn);
+    }
 
     ctx.report_error(builder.build());
 }

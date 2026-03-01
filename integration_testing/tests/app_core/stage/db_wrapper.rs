@@ -186,7 +186,7 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
     // Act
     let list = core.list_stage_ids_of_tournament().await.expect("db ok");
     let mut stage_list: Vec<Stage> = Vec::with_capacity(list.len());
-    for id in list {
+    for (id, _) in list {
         let stage = core
             .load_by_id(id)
             .await

@@ -4,8 +4,10 @@ import {
   selectors,
   openHomePage,
   selectSportPluginByName,
+  waitForEditTournamentUrl,
   goToNewTournament,
   fillAndBlur,
+  selectAndBlur,
 } from "../../helpers";
 
 const PLUGINS = {
@@ -23,20 +25,17 @@ test.describe("Configuration of Tournament Stages", () => {
   test("SingleStage: navigates transparently through stage editor to group editor", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.editTournament;
-    const STAGE = selectors(page).home.dashboard.editStage;
-    const GROUP = selectors(page).home.dashboard.editGroup;
+    const FORM = selectors(page).home.editTournament;
+    const STAGE = selectors(page).home.editStage;
+    const GROUP = selectors(page).home.editGroup;
 
     // 1. Create Tournament with SingleStage
     await fillAndBlur(FORM.inputs.name, makeUniqueName("Single Stage Test"));
     await fillAndBlur(FORM.inputs.entrants, "16");
-    await FORM.inputs.mode.selectOption({ label: "Single Stage" }); // Default, but explicit is better
-    await FORM.actions.save.click();
 
-    // 2. Wait for navigation links to appear
-    await expect(FORM.links.configureSingleStage).toBeVisible({
-      timeout: 10000,
-    });
+    await waitForEditTournamentUrl(page);
+
+    await selectAndBlur(FORM.inputs.mode, "Single Stage");
 
     // 3. Navigate to Stage/Group Config
     await FORM.links.configureSingleStage.click();
@@ -53,21 +52,21 @@ test.describe("Configuration of Tournament Stages", () => {
   test("SwissSystem: navigates transparently through stage editor to group editor", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.editTournament;
-    const STAGE = selectors(page).home.dashboard.editStage;
-    const GROUP = selectors(page).home.dashboard.editGroup;
+    const FORM = selectors(page).home.editTournament;
+    const STAGE = selectors(page).home.editStage;
+    const GROUP = selectors(page).home.editGroup;
 
     // 1. Create Tournament with Swiss System
     await fillAndBlur(FORM.inputs.name, makeUniqueName("Swiss System Test"));
     await fillAndBlur(FORM.inputs.entrants, "16");
-    await FORM.inputs.mode.selectOption({ label: "Swiss System (0 rounds)" });
+
+    await waitForEditTournamentUrl(page);
+
+    await selectAndBlur(FORM.inputs.mode, "Swiss System (0 rounds)");
     await fillAndBlur(FORM.inputs.num_rounds_swiss, "5");
-    await FORM.actions.save.click();
 
     // 2. Wait for navigation links to appear
-    await expect(FORM.links.configureSwissSystem).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(FORM.links.configureSwissSystem).toBeVisible();
 
     // 3. Navigate to Stage/Group Config
     await FORM.links.configureSwissSystem.click();
@@ -84,20 +83,20 @@ test.describe("Configuration of Tournament Stages", () => {
   test("PoolAndFinalStage: Configure Pool Stage shows stage editor and group options", async ({
     page,
   }) => {
-    const FORM = selectors(page).home.dashboard.editTournament;
-    const STAGE = selectors(page).home.dashboard.editStage;
-    const GROUP = selectors(page).home.dashboard.editGroup;
+    const FORM = selectors(page).home.editTournament;
+    const STAGE = selectors(page).home.editStage;
+    const GROUP = selectors(page).home.editGroup;
 
     // 1. Create Tournament with Pool And Final Stage
     await fillAndBlur(FORM.inputs.name, makeUniqueName("Pool Stage Test"));
     await fillAndBlur(FORM.inputs.entrants, "32"); // Enough entrants for groups
-    await FORM.inputs.mode.selectOption({ label: "Pool and Final Stage" });
-    await FORM.actions.save.click();
+
+    await waitForEditTournamentUrl(page);
+
+    await selectAndBlur(FORM.inputs.mode, "Pool and Final Stage");
 
     // 2. Wait for navigation links to appear
-    await expect(FORM.links.configurePoolStage).toBeVisible({
-      timeout: 10000,
-    });
+    await expect(FORM.links.configurePoolStage).toBeVisible();
 
     // 3. Navigate to Stage Config
     await FORM.links.configurePoolStage.click();
@@ -123,9 +122,9 @@ test.describe("Configuration of Tournament Stages", () => {
     // Optional: Set groups to 4 to see if 4 links appear (Generic check)
     await fillAndBlur(STAGE.inputs.numGroups, "4");
 
-    await expect(STAGE.groupLink(0)).toBeVisible();
-    await expect(STAGE.groupLink(1)).toBeVisible();
-    await expect(STAGE.groupLink(2)).toBeVisible();
-    await expect(STAGE.groupLink(3)).toBeVisible();
+    await expect(STAGE.groupActionBtn(0)).toBeVisible();
+    await expect(STAGE.groupActionBtn(1)).toBeVisible();
+    await expect(STAGE.groupActionBtn(2)).toBeVisible();
+    await expect(STAGE.groupActionBtn(3)).toBeVisible();
   });
 });

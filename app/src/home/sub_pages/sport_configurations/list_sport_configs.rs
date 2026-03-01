@@ -371,11 +371,6 @@ fn SportConfigTableRow(id: Uuid) -> impl IntoView {
         .unwrap();
     let sport_config_id = SportConfigIdQuery::use_param_query();
 
-    // remove editor on unmount
-    on_cleanup(move || {
-        sport_config_editor_map.remove_editor(id);
-    });
-
     view! {
         {move || {
             sport_config_editor
