@@ -6,7 +6,7 @@
 use crate::header::DropdownContext;
 use app_utils::{
     error::{
-        ComponentError,
+        AppError, ComponentError,
         strategy::{handle_read_error, handle_unexpected_ui_error},
     },
     hooks::{
@@ -127,7 +127,15 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                 for (_err_id, err) in errors.get().into_iter() {
                     let e = err.into_inner();
                     if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        handle_read_error(&page_err_ctx, comp_err, on_cancel);
+                        if let AppError::ResourceNotFound(object, _) = &comp_err.app_error
+                            && object == "Tournament Base"
+                        {
+                            // We do not handle missing tournament base here, because it may be an old tournament id that was bookmarked.
+                            // Instead, we clear the invalid id and show a toast message.
+                            toast_ctx.error("Obsolete tournament id in query.");
+                        } else {
+                            handle_read_error(&page_err_ctx, comp_err, on_cancel);
+                        }
                     } else {
                         handle_unexpected_ui_error(
                             &page_err_ctx,
