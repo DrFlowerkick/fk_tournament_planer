@@ -301,7 +301,11 @@ impl Core<PostalAddressState> {
             self.state.address.get_version().expect(
                 "expecting save_postal_address to return always an existing id and version",
             );
-        let notice = CrTopic::Address(id);
+        let notice = if version == 0 {
+            CrTopic::NewAddress
+        } else {
+            CrTopic::Address { address_id: id }
+        };
         let msg = CrMsg::AddressUpdated { id, version };
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())

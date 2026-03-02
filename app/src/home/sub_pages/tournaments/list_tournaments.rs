@@ -1,8 +1,9 @@
 //! list tournaments
 
-use app_core::TournamentState;
+use app_core::{CrTopic, TournamentState};
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
+    enum_utils::EditAction,
     enum_utils::FilterLimit,
     error::{
         ComponentError,
@@ -16,16 +17,17 @@ use app_utils::{
         },
     },
     params::{
-        FilterLimitQuery, FilterNameQuery, IncludeAdhocQuery, ParamQuery, SportIdQuery,
-        TournamentBaseIdQuery, TournamentStateQuery,
+        EditActionParams, FilterLimitQuery, FilterNameQuery, IncludeAdhocQuery, ParamQuery,
+        SportIdQuery, TournamentBaseIdQuery, TournamentStateQuery,
     },
     server_fn::tournament_base::list_tournament_base_ids,
     state::{
-        SimpleEditorOptions, activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        object_table::ObjectEditorMapContext, toast_state::ToastContext,
-        tournament::TournamentEditorContext,
+        LabeledAction, SimpleEditorOptions, activity_tracker::ActivityTracker,
+        error_state::PageErrorContext, object_table::ObjectEditorMapContext,
+        toast_state::ToastContext, tournament::TournamentEditorContext,
     },
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
     NavigateOptions,
@@ -102,9 +104,36 @@ pub fn ListTournaments() -> impl IntoView {
         },
     );
 
-    // Refetch function for errors
+    // Refetch callbacks
     let refetch = Callback::new(move |()| tournament_ids.refetch());
     page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+
+    let edit_action = EditActionParams::use_param_query();
+    let reload_after_new = Callback::new(move |()| match edit_action.get_untracked() {
+        Some(EditAction::New) | Some(EditAction::Copy) => {
+            toast_ctx.success("New Tournament on server", None);
+        }
+        Some(EditAction::Edit) => {
+            let action = LabeledAction {
+                label: "Reload List".to_string(),
+                on_click: refetch,
+            };
+
+            toast_ctx.success("New Tournament on server", Some(action));
+        }
+        None => {
+            toast_ctx.success("New Tournament on server, reloading list", None);
+            tournament_ids.refetch();
+        }
+    });
+
+    // Subscribe to relevant events from client registry to trigger refetch
+    Effect::new(move || {
+        if let Some(sport_id) = sport_id.get() {
+            let topic = CrTopic::NewTournamentBase { sport_id };
+            use_client_registry_socket(topic.into(), None.into(), reload_after_new.clone());
+        }
+    });
 
     // on_cancel handler
     let on_cancel = use_on_cancel();
@@ -311,7 +340,7 @@ pub fn ListTournaments() -> impl IntoView {
                                                 }
                                                 data-testid="action-btn-copy"
                                                 on:click=move |_| {
-                                                    toast_ctx.warning("Not implemented yet");
+                                                    toast_ctx.warning("Not implemented yet", None);
                                                 }
                                             >
                                                 "Copy selected Tournament"
@@ -338,7 +367,8 @@ pub fn ListTournaments() -> impl IntoView {
                                                             },
                                                         );
                                                     } else {
-                                                        toast_ctx.warning("Failed to create a new tournament");
+                                                        toast_ctx
+                                                            .warning("Failed to create a new tournament", None);
                                                     }
                                                 }
                                             >

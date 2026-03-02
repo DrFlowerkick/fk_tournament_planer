@@ -1,8 +1,9 @@
 //! Postal Address Search Component
 
+use app_core::CrTopic;
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
-    enum_utils::FilterLimit,
+    enum_utils::{EditAction, FilterLimit},
     error::{
         ComponentError,
         strategy::{handle_read_error, handle_unexpected_ui_error},
@@ -14,14 +15,15 @@ use app_utils::{
             MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
         },
     },
-    params::{AddressIdQuery, FilterLimitQuery, FilterNameQuery, ParamQuery},
+    params::{AddressIdQuery, EditActionParams, FilterLimitQuery, FilterNameQuery, ParamQuery},
     server_fn::postal_address::list_postal_address_ids,
     state::{
-        SimpleEditorOptions, activity_tracker::ActivityTracker, error_state::PageErrorContext,
-        object_table::ObjectEditorMapContext, postal_address::PostalAddressEditorContext,
-        toast_state::ToastContext,
+        LabeledAction, SimpleEditorOptions, activity_tracker::ActivityTracker,
+        error_state::PageErrorContext, object_table::ObjectEditorMapContext,
+        postal_address::PostalAddressEditorContext, toast_state::ToastContext,
     },
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use isocountry::CountryCode;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
@@ -94,9 +96,31 @@ pub fn ListPostalAddresses() -> impl IntoView {
         },
     );
 
-    // Refetch function for errors
+    // Refetch callbacks
     let refetch = Callback::new(move |()| postal_address_ids.refetch());
     page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+
+    let edit_action = EditActionParams::use_param_query();
+    let reload_after_new = Callback::new(move |()| match edit_action.get_untracked() {
+        Some(EditAction::New) | Some(EditAction::Copy) => {
+            toast_ctx.success("New Postal Address on server", None);
+        }
+        Some(EditAction::Edit) => {
+            let action = LabeledAction {
+                label: "Reload List".to_string(),
+                on_click: refetch,
+            };
+
+            toast_ctx.success("New Postal Address on server", Some(action));
+        }
+        None => {
+            toast_ctx.success("New Postal Address on server, reloading list", None);
+            postal_address_ids.refetch();
+        }
+    });
+
+    // Subscribe to relevant events from client registry to trigger refetch
+    use_client_registry_socket(CrTopic::NewAddress.into(), None.into(), reload_after_new);
 
     // on_cancel handler
     let on_cancel = use_on_cancel();
@@ -291,7 +315,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                             },
                                                         );
                                                     } else {
-                                                        toast_ctx.warning("Failed to copy object");
+                                                        toast_ctx.warning("Failed to copy object", None);
                                                     }
                                                 }
                                             >
@@ -319,7 +343,8 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                             },
                                                         );
                                                     } else {
-                                                        toast_ctx.warning("Failed to create a new postal address");
+                                                        toast_ctx
+                                                            .warning("Failed to create a new postal address", None);
                                                     }
                                                 }
                                             >

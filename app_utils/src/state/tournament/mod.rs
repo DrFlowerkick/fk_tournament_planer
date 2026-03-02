@@ -98,7 +98,7 @@ impl EditorContext for TournamentEditorContext {
                         ),
                         _ => "Navigated to corrected URL with valid object numbers".to_string(),
                     };
-                    toast_ctx.error(toast_msg);
+                    toast_ctx.error(toast_msg, None);
                     // Build redirect path from valid object numbers
                     let redirect_path = von
                         .iter()

@@ -285,7 +285,13 @@ impl Core<StageState> {
             .stage
             .get_version()
             .expect("expecting save_stage to return always an existing id and version");
-        let notice = CrTopic::Stage(id);
+        let notice = if version == 0 {
+            CrTopic::NewStage {
+                tournament_base_id: self.state.tournament_id,
+            }
+        } else {
+            CrTopic::Stage { stage_id: id }
+        };
         let msg = CrMsg::StageUpdated { id, version };
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())

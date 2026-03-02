@@ -64,7 +64,7 @@ pub fn HomePage() -> impl IntoView {
 
     Effect::new(move || {
         if is_sport_id_invalid() {
-            toast_context.error("Invalid sport id");
+            toast_context.error("Invalid sport id", None);
             navigate(
                 "/",
                 NavigateOptions {
@@ -73,7 +73,7 @@ pub fn HomePage() -> impl IntoView {
                 },
             );
         } else if url.get().path() != "/" && !is_sport_id_given() {
-            toast_context.error("Missing sport id");
+            toast_context.error("Missing sport id", None);
             navigate(
                 "/",
                 NavigateOptions {

@@ -2,43 +2,25 @@
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::{any::Any, fmt::Display};
+use std::any::Any;
 use thiserror::Error;
 use uuid::Uuid;
 
 /// Topics a client can subscribe to. Extend as needed for your domain.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum CrTopic {
-    Address(Uuid),
-    SportConfig(Uuid),
-    TournamentBase(Uuid),
-    Stage(Uuid),
-}
-
-impl Display for CrTopic {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CrTopic::Address(id) => write!(f, "address: {id}"),
-            CrTopic::SportConfig(id) => write!(f, "sport_config: {id}"),
-            CrTopic::TournamentBase(id) => write!(f, "tournament: {id}"),
-            CrTopic::Stage(id) => write!(f, "stage: {id}"),
-        }
-    }
-}
-
-impl CrTopic {
-    pub fn id(&self) -> &Uuid {
-        match self {
-            CrTopic::Address(id) => id,
-            CrTopic::SportConfig(id) => id,
-            CrTopic::TournamentBase(id) => id,
-            CrTopic::Stage(id) => id,
-        }
-    }
+    NewAddress,
+    Address { address_id: Uuid },
+    NewSportConfig { sport_id: Uuid },
+    SportConfig { sport_config_id: Uuid },
+    NewTournamentBase { sport_id: Uuid },
+    TournamentBase { tournament_base_id: Uuid },
+    NewStage { tournament_base_id: Uuid },
+    Stage { stage_id: Uuid },
 }
 
 /// Domain notices sent to subscribed clients. Keep payloads minimal.
-#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Hash, Eq)]
 pub enum CrMsg {
     AddressUpdated { id: Uuid, version: u32 },
     SportConfigUpdated { id: Uuid, version: u32 },

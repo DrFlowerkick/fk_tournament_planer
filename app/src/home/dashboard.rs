@@ -118,7 +118,7 @@ pub fn SportDashboard() -> impl IntoView {
                                         },
                                     );
                                 } else {
-                                    toast_ctx.warning("Failed to create a new tournament");
+                                    toast_ctx.warning("Failed to create a new tournament", None);
                                 }
                             }
                         >

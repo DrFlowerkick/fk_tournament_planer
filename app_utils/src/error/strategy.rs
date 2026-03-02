@@ -21,7 +21,7 @@ pub fn handle_write_error(toast_ctx: &ToastContext, error: &AppError) {
         // This should not happen often.
         AppError::Core(CoreError::Db(DbError::OptimisticLockConflict)) => {
             let msg = format!("{error}");
-            toast_ctx.error(msg);
+            toast_ctx.error(msg, None);
         }
 
         // 2. Unique Violation -> Toast
@@ -32,7 +32,7 @@ pub fn handle_write_error(toast_ctx: &ToastContext, error: &AppError) {
                 .map(|f| format!("A unique value is already in use: '{f}'."))
                 .unwrap_or_else(|| "A unique value is already in use.".to_string());
 
-            toast_ctx.error(msg);
+            toast_ctx.error(msg, None);
         }
 
         // 3. Check Violation -> Toast
@@ -44,14 +44,14 @@ pub fn handle_write_error(toast_ctx: &ToastContext, error: &AppError) {
                 .map(|c| format!("Data validation failed (Constraint: {}).", c))
                 .unwrap_or_else(|| "Data validation failed.".to_string());
 
-            toast_ctx.error(msg);
+            toast_ctx.error(msg, None);
         }
 
         // 4. Everything else -> TOAST
         _ => {
             // "Fire & Forget" Toast
             // AppError implements Display via thiserror, so error.to_string() works fine.
-            toast_ctx.error(error.to_string());
+            toast_ctx.error(error.to_string(), None);
         }
     }
 }

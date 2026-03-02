@@ -1,22 +1,16 @@
 //! handling persistent errors of application
 
-use std::collections::HashMap;
-
+use super::LabeledAction;
 use leptos::prelude::*;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 // --- Data Structures ---
 
 #[derive(Clone)]
-pub struct ErrorAction {
-    pub label: String,
-    pub on_click: Callback<()>,
-}
-
-#[derive(Clone)]
 pub enum CancelAction {
-    Discard(String),          // Label for discard/cancel action
-    ErrorAction(ErrorAction), // Custom cancel action with label and callback
+    Discard(String),              // Label for discard/cancel action
+    LabeledAction(LabeledAction), // Custom cancel action with label and callback
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -37,7 +31,7 @@ pub struct ActiveError {
     pub key: ErrorKey,
     pub message: String,
     /// If present, shows a primary action button (e.g. "Retry", "Reload")
-    retry_action: Option<ErrorAction>,
+    retry_action: Option<LabeledAction>,
     /// Mandatory secondary/cancel action (e.g. "Dismiss", "Back")
     cancel_action: CancelAction,
 }
@@ -67,7 +61,7 @@ impl ActiveError {
     pub fn cancel_label(&self) -> String {
         match &self.cancel_action {
             CancelAction::Discard(label) => label.clone(),
-            CancelAction::ErrorAction(action) => action.label.clone(),
+            CancelAction::LabeledAction(action) => action.label.clone(),
         }
     }
     pub fn do_cancel(&self) {
@@ -77,7 +71,7 @@ impl ActiveError {
         error_ctx.clear_error(self.component_id, key);
         match &self.cancel_action {
             CancelAction::Discard(_) => {}
-            CancelAction::ErrorAction(action) => action.on_click.run(()),
+            CancelAction::LabeledAction(action) => action.on_click.run(()),
         }
     }
 }
@@ -95,7 +89,7 @@ pub struct ActiveErrorBuilder<State> {
     component_id: Uuid,
     key: ErrorKey,
     message: String,
-    retry_action: Option<ErrorAction>,
+    retry_action: Option<LabeledAction>,
     cancel_action: Option<CancelAction>,
     _marker: std::marker::PhantomData<State>,
 }
@@ -125,7 +119,7 @@ impl ActiveErrorBuilder<NoCancelAction> {
             key: self.key,
             message: self.message,
             retry_action: self.retry_action,
-            cancel_action: Some(CancelAction::ErrorAction(ErrorAction {
+            cancel_action: Some(CancelAction::LabeledAction(LabeledAction {
                 label: label.into(),
                 on_click,
             })),
@@ -154,7 +148,7 @@ impl ActiveErrorBuilder<NoCancelAction> {
 impl<State> ActiveErrorBuilder<State> {
     /// Adds or replaces a primary retry action.
     pub fn with_retry(mut self, label: impl Into<String>, on_click: Callback<()>) -> Self {
-        self.retry_action = Some(ErrorAction {
+        self.retry_action = Some(LabeledAction {
             label: label.into(),
             on_click,
         });

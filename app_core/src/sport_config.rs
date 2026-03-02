@@ -175,7 +175,15 @@ impl Core<SportConfigState> {
             .config
             .get_version()
             .expect("expecting save_sport_config to return always an existing id and version");
-        let notice = CrTopic::SportConfig(id);
+        let notice = if version == 0 {
+            CrTopic::NewSportConfig {
+                sport_id: self.state.config.get_sport_id(),
+            }
+        } else {
+            CrTopic::SportConfig {
+                sport_config_id: id,
+            }
+        };
         let msg = CrMsg::SportConfigUpdated { id, version };
         self.client_registry.publish(notice, msg).await?;
 

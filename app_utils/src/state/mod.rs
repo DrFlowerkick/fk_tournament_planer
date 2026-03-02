@@ -64,3 +64,10 @@ impl SimpleEditorOptions {
         Self { object_id: None }
     }
 }
+
+/// Labeled action to use in error dialogs, toasts, etc.
+#[derive(Clone, Debug)]
+pub struct LabeledAction {
+    pub label: String,
+    pub on_click: Callback<()>,
+}

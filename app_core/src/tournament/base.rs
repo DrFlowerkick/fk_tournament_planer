@@ -416,7 +416,15 @@ impl Core<TournamentBaseState> {
             self.state.tournament.get_version().expect(
                 "expecting save_tournament_base to return always an existing id and version",
             );
-        let notice = CrTopic::TournamentBase(id);
+        let notice = if version == 0 {
+            CrTopic::NewTournamentBase {
+                sport_id: self.state.tournament.get_sport_id(),
+            }
+        } else {
+            CrTopic::TournamentBase {
+                tournament_base_id: id,
+            }
+        };
         let msg = CrMsg::TournamentBaseUpdated { id, version };
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())

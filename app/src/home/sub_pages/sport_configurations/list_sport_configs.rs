@@ -1,8 +1,9 @@
 //! listing, creating and modifying sport configurations
 
+use app_core::CrTopic;
 use app_utils::{
     components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
-    enum_utils::FilterLimit,
+    enum_utils::{EditAction, FilterLimit},
     error::{
         ComponentError,
         strategy::{handle_read_error, handle_unexpected_ui_error},
@@ -14,10 +15,13 @@ use app_utils::{
             MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
         },
     },
-    params::{FilterLimitQuery, FilterNameQuery, ParamQuery, SportConfigIdQuery, SportIdQuery},
+    params::{
+        EditActionParams, FilterLimitQuery, FilterNameQuery, ParamQuery, SportConfigIdQuery,
+        SportIdQuery,
+    },
     server_fn::sport_config::list_sport_config_ids,
     state::{
-        SimpleEditorOptions,
+        LabeledAction, SimpleEditorOptions,
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
@@ -26,6 +30,7 @@ use app_utils::{
         toast_state::ToastContext,
     },
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
     NavigateOptions,
@@ -99,9 +104,36 @@ pub fn ListSportConfigurations() -> impl IntoView {
         },
     );
 
-    // Refetch function for errors
+    // Refetch callbacks
     let refetch = Callback::new(move |()| sport_config_ids.refetch());
     page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+
+    let edit_action = EditActionParams::use_param_query();
+    let reload_after_new = Callback::new(move |()| match edit_action.get_untracked() {
+        Some(EditAction::New) | Some(EditAction::Copy) => {
+            toast_ctx.success("New Sport Configuration on server", None);
+        }
+        Some(EditAction::Edit) => {
+            let action = LabeledAction {
+                label: "Reload List".to_string(),
+                on_click: refetch,
+            };
+
+            toast_ctx.success("New Sport Configuration on server", Some(action));
+        }
+        None => {
+            toast_ctx.success("New Sport Configuration on server, reloading list", None);
+            sport_config_ids.refetch();
+        }
+    });
+
+    // Subscribe to relevant events from client registry to trigger refetch
+    Effect::new(move || {
+        if let Some(sport_id) = sport_id.get() {
+            let topic = CrTopic::NewSportConfig { sport_id };
+            use_client_registry_socket(topic.into(), None.into(), reload_after_new.clone());
+        }
+    });
 
     // on_cancel handler
     let on_cancel = use_on_cancel();
@@ -301,7 +333,8 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                             },
                                                         );
                                                     } else {
-                                                        toast_ctx.warning("Failed to copy Sport Configuration");
+                                                        toast_ctx
+                                                            .warning("Failed to copy Sport Configuration", None);
                                                     }
                                                 }
                                             >
@@ -330,7 +363,10 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                         );
                                                     } else {
                                                         toast_ctx
-                                                            .warning("Failed to create a new Sport Configuration");
+                                                            .warning(
+                                                                "Failed to create a new Sport Configuration",
+                                                                None,
+                                                            );
                                                     }
                                                 }
                                             >

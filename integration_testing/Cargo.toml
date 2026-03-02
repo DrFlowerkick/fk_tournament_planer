@@ -34,7 +34,6 @@ ssr = [
     "shared/ssr",
     "sport_plugin_manager/ssr",
     "dep:tokio",
-    "dep:cr_single_instance",
     "dep:db_postgres",
     "dep:diesel",
     "dep:diesel-async",
@@ -48,7 +47,6 @@ app_core = { path = "../app_core" }
 app_utils = { path = "../app_utils" }
 async-trait.workspace = true
 chrono.workspace = true
-cr_single_instance = { path = "../cr_single_instance", optional = true }
 db_postgres = { path = "../db_postgres", optional = true }
 diesel = { workspace = true, optional = true }
 diesel-async = { workspace = true, optional = true }

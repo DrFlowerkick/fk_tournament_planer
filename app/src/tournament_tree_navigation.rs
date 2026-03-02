@@ -4,6 +4,7 @@
 //! for the open/closed state of each node. We will use CSS to style the tree and indicate which nodes are expandable.
 
 use crate::header::DropdownContext;
+use app_core::CrTopic;
 use app_utils::{
     error::{
         AppError, ComponentError,
@@ -24,6 +25,7 @@ use app_utils::{
         tournament::{TournamentEditorContext, stage::StageEditorContext},
     },
 };
+use cr_leptos_axum_socket::use_client_registry_socket;
 use leptos::prelude::*;
 use leptos_router::{NavigateOptions, components::A, hooks::use_navigate};
 use uuid::Uuid;
@@ -101,14 +103,31 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
             Ok(vec![])
         }
     });
-    let refetch = Callback::new(move |()| {
-        stage_ids.refetch();
-    });
+
+    // Refetch callbacks
+    let refetch = Callback::new(move |()| stage_ids.refetch());
     page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+
+    let reload_after_new = Callback::new(move |()| {
+        // in menu it should not be a problem to trigger a refetch while editing,
+        // because it should not trigger rerendering of the currently edited stage,
+        // but only update the list of stages in the tree, which should not interrupt
+        // the editing process.
+        toast_ctx.success("New Tournament Stage on server, adding stage to menu", None);
+        stage_ids.refetch()
+    });
+
+    // Subscribe to relevant events from client registry to trigger refetch
+    Effect::new(move || {
+        if let Some(tournament_base_id) = tournament_editor.base_editor.id.get() {
+            let topic = CrTopic::NewStage { tournament_base_id };
+            use_client_registry_socket(topic.into(), None.into(), reload_after_new.clone());
+        }
+    });
 
     let on_cancel = Callback::new(move |()| {
         tournament_editor_map.remove_all();
-        toast_ctx.info("Initializing...");
+        toast_ctx.info("Initializing...", None);
         let nav_url = url_remove_query(TournamentBaseIdQuery::KEY, Some("/"));
         navigate(
             &nav_url,
@@ -130,9 +149,7 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                         if let AppError::ResourceNotFound(object, _) = &comp_err.app_error
                             && object == "Tournament Base"
                         {
-                            // We do not handle missing tournament base here, because it may be an old tournament id that was bookmarked.
-                            // Instead, we clear the invalid id and show a toast message.
-                            toast_ctx.error("Obsolete tournament id in query.");
+                            toast_ctx.error("Obsolete tournament id in query.", None);
                         } else {
                             handle_read_error(&page_err_ctx, comp_err, on_cancel);
                         }

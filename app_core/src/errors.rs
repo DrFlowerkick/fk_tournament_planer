@@ -31,10 +31,6 @@ pub enum CoreError {
     #[error("validation error: {0:?}")]
     Validation(#[from] ValidationErrors),
 
-    /// Missing ID where one is required
-    #[error("missing ID of: {0}")]
-    MissingId(String),
-
     /// Parsing error for enums of core
     #[error("parsing error: {0}")]
     ParsingError(String),

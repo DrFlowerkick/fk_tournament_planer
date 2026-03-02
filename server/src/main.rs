@@ -10,9 +10,7 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
-use axum_extra::routing::RouterExt;
 use cr_leptos_axum_socket::{ClientRegistrySocket, connect_to_websocket};
-use cr_single_instance::*;
 use db_postgres::*;
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
@@ -106,7 +104,6 @@ async fn main() -> Result<()> {
     // initialize core state
     let db = PgDb::new(url_db()?).await?;
     db.run_migration().await?;
-    let _cr_single = Arc::new(CrSingleInstance::new());
     let cr = Arc::new(ClientRegistrySocket {});
     let mut spm = SportPluginManagerMap::new();
     // register sport plugins
@@ -129,7 +126,6 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/db", get(health_db))
-        .typed_get(api_sse_subscribe)
         .leptos_routes_with_context(
             &app_state,
             routes,

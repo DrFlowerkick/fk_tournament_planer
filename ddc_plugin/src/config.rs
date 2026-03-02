@@ -304,7 +304,7 @@ impl DdcSetWinningCfg {
                 "Score exceeds hard cap".to_string(),
             ));
         }
-        if max_score < hard_cap && max_score - min_score < win_by_margin {
+        if max_score < hard_cap && max_score.saturating_sub(min_score) < win_by_margin {
             return Err(SportError::InvalidScore(
                 "Winning margin not reached".to_string(),
             ));
@@ -327,7 +327,7 @@ impl DdcSetWinningCfg {
         // For example, if score_to_win is 15 and win_by_margin is 2,
         // the maximum result without exceeding the hard cap is 15 (winner) to 13 (opponent).
         // With one point per rally, this results in 28 played rallies.
-        score_to_win + (score_to_win - win_by_margin)
+        score_to_win + (score_to_win.saturating_sub(win_by_margin))
     }
 }
 

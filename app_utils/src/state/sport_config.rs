@@ -191,7 +191,11 @@ impl EditorContext for SportConfigEditorContext {
         });
         page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
-        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::SportConfig(id)));
+        let topic = Signal::derive(move || {
+            resource_id.get().map(|id| CrTopic::SportConfig {
+                sport_config_id: id,
+            })
+        });
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
         // ---- sport config server action ----

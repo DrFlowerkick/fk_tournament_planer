@@ -295,7 +295,11 @@ impl EditorContext for BaseEditorContext {
         });
         page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
-        let topic = Signal::derive(move || resource_id.get().map(|id| CrTopic::Address(id)));
+        let topic = Signal::derive(move || {
+            resource_id.get().map(|id| CrTopic::TournamentBase {
+                tournament_base_id: id,
+            })
+        });
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
         // ---- tournament base server action ----

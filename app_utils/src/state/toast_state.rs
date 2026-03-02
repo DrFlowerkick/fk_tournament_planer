@@ -1,3 +1,4 @@
+use super::LabeledAction;
 use leptos::prelude::*;
 use std::time::Duration;
 use uuid::Uuid;
@@ -10,12 +11,21 @@ pub enum ToastVariant {
     Error,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub struct Toast {
     pub id: Uuid,
     pub message: String,
     pub variant: ToastVariant,
+    pub interactive: Option<LabeledAction>,
 }
+
+impl PartialEq for Toast {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Toast {}
 
 #[derive(Clone, Copy)]
 pub struct ToastContext(RwSignal<Vec<Toast>>);
@@ -30,7 +40,12 @@ impl ToastContext {
         self.0.into()
     }
 
-    fn add(&self, message: impl Into<String>, variant: ToastVariant) {
+    fn add(
+        &self,
+        message: impl Into<String>,
+        variant: ToastVariant,
+        interactive: Option<LabeledAction>,
+    ) {
         let msg_string = message.into();
 
         // 1. Deduplication: Check if exactly this message is already displayed.
@@ -50,6 +65,7 @@ impl ToastContext {
             id: new_id,
             message: msg_string,
             variant,
+            interactive,
         };
 
         // 2. Add
@@ -74,19 +90,19 @@ impl ToastContext {
     }
 
     // Helper Methods for convenience
-    pub fn info(&self, msg: impl Into<String>) {
-        self.add(msg, ToastVariant::Info);
+    pub fn info(&self, msg: impl Into<String>, interactive: Option<LabeledAction>) {
+        self.add(msg, ToastVariant::Info, interactive);
     }
 
-    pub fn success(&self, msg: impl Into<String>) {
-        self.add(msg, ToastVariant::Success);
+    pub fn success(&self, msg: impl Into<String>, interactive: Option<LabeledAction>) {
+        self.add(msg, ToastVariant::Success, interactive);
     }
 
-    pub fn warning(&self, msg: impl Into<String>) {
-        self.add(msg, ToastVariant::Warning);
+    pub fn warning(&self, msg: impl Into<String>, interactive: Option<LabeledAction>) {
+        self.add(msg, ToastVariant::Warning, interactive);
     }
 
-    pub fn error(&self, msg: impl Into<String>) {
-        self.add(msg, ToastVariant::Error);
+    pub fn error(&self, msg: impl Into<String>, interactive: Option<LabeledAction>) {
+        self.add(msg, ToastVariant::Error, interactive);
     }
 }
