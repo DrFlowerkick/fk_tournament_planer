@@ -102,11 +102,9 @@
 /// 4. tournament organization: name, location, stations, officials
 /// For a simple adhoc tournament only parts 1 and 2 are required.
 pub mod base;
-pub mod editor;
 pub mod stage;
 
 pub use base::*;
-pub use editor::*;
 pub use stage::*;
 
 use crate::{
@@ -289,16 +287,6 @@ impl Tournament {
     /// Sets the tournament mode of the tournament base.
     pub fn set_base_mode(&mut self, mode: TournamentMode) {
         self.base.set_tournament_mode(mode);
-
-        if matches!(
-            self.base.get_tournament_mode(),
-            TournamentMode::SingleStage | TournamentMode::SwissSystem { num_rounds: _ }
-        ) {
-            // Single stage tournament -> set number of groups as 1 for stage 0, if exists
-            if let Some(stage) = self.get_stage_by_number(0) {
-                self.set_stage_number_of_groups(stage.get_id(), 1);
-            }
-        }
 
         // Validation: Check if changes invalidate child objects (e.g. Mode change -> fewer stages)
         self.unlink_excess_stages();
