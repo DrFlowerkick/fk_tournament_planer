@@ -74,7 +74,7 @@ checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 
 [[package]]
 name = "app"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "app_core",
  "app_utils",
@@ -99,7 +99,7 @@ dependencies = [
 
 [[package]]
 name = "app_core"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -116,7 +116,7 @@ dependencies = [
 
 [[package]]
 name = "app_utils"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "app_core",
  "cr_leptos_axum_socket",
@@ -571,7 +571,7 @@ dependencies = [
 
 [[package]]
 name = "cr_leptos_axum_socket"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "app_core",
@@ -702,7 +702,7 @@ checksum = "2a2330da5de22e8a3cb63252ce2abb30116bf5265e89c0e01bc17015ce30a476"
 
 [[package]]
 name = "db_postgres"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "app_core",
@@ -723,7 +723,7 @@ dependencies = [
 
 [[package]]
 name = "ddc_plugin"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "app_core",
@@ -975,7 +975,7 @@ checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
 
 [[package]]
 name = "fk_tournament_planer"
-version = "0.12.0"
+version = "0.12.1"
 
 [[package]]
 name = "flate2"
@@ -1010,7 +1010,7 @@ dependencies = [
 
 [[package]]
 name = "frontend"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "app",
  "console_error_panic_hook",
@@ -1122,7 +1122,7 @@ dependencies = [
 
 [[package]]
 name = "generic_sport_plugin"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "app_core",
@@ -1522,7 +1522,7 @@ dependencies = [
 
 [[package]]
 name = "integration_testing"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "app",
@@ -2767,7 +2767,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "app",
@@ -2903,7 +2903,7 @@ dependencies = [
 
 [[package]]
 name = "shared"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "app_core",
  "axum",
@@ -2980,7 +2980,7 @@ checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
 name = "sport_plugin_manager"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "anyhow",
  "app_core",

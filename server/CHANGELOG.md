@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/DrFlowerkick/fk_tournament_planer/compare/server-v0.12.0...server-v0.12.1) (2026-03-02)
+
+
+### Bug Fixes
+
+* :bug: Fixing recursion limit for server. ([#38](https://github.com/DrFlowerkick/fk_tournament_planer/issues/38)) ([ecb36d4](https://github.com/DrFlowerkick/fk_tournament_planer/commit/ecb36d49bd140f9af6cf9d9f2ac4261b8763e13c))
+
 ## [0.12.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/server-v0.11.0...server-v0.12.0) (2026-03-02)
 
 

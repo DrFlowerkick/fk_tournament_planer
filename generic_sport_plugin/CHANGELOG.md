@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.1](https://github.com/DrFlowerkick/fk_tournament_planer/compare/generic_sport_plugin-v0.12.0...generic_sport_plugin-v0.12.1) (2026-03-02)
+
+
+### Miscellaneous Chores
+
+* **generic_sport_plugin:** Synchronize fk_tournament versions
+
 ## [0.12.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/generic_sport_plugin-v0.11.0...generic_sport_plugin-v0.12.0) (2026-03-02)
 
 
