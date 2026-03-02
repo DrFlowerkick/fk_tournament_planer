@@ -194,7 +194,7 @@ impl PostalAddress {
         if self.name.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field("Name")
+                    .set_field("name")
                     .add_required()
                     .set_object_id(object_id)
                     .build(),
@@ -203,7 +203,7 @@ impl PostalAddress {
         if self.street.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field("Street")
+                    .set_field("street")
                     .add_required()
                     .set_object_id(object_id)
                     .build(),
@@ -212,7 +212,7 @@ impl PostalAddress {
         if self.postal_code.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field("PostalCode")
+                    .set_field("postal_code")
                     .add_required()
                     .set_object_id(object_id)
                     .build(),
@@ -221,7 +221,7 @@ impl PostalAddress {
         if self.locality.is_empty() {
             errs.add(
                 FieldError::builder()
-                    .set_field("Locality")
+                    .set_field("locality")
                     .add_required()
                     .set_object_id(object_id)
                     .build(),
@@ -230,7 +230,7 @@ impl PostalAddress {
         if self.country.is_none() {
             errs.add(
                 FieldError::builder()
-                    .set_field("Country")
+                    .set_field("country")
                     .add_required()
                     .set_object_id(object_id)
                     .build(),
@@ -244,7 +244,7 @@ impl PostalAddress {
         {
             errs.add(
                 FieldError::builder()
-                    .set_field("PostalCode")
+                    .set_field("postal_code")
                     .add_invalid_format()
                     .add_message("DE postal code must have 5 digits")
                     .set_object_id(object_id)
@@ -301,23 +301,24 @@ impl Core<PostalAddressState> {
             self.state.address.get_version().expect(
                 "expecting save_postal_address to return always an existing id and version",
             );
-        let notice = CrTopic::Address(id);
+        let notice = if version == 0 {
+            CrTopic::NewAddress
+        } else {
+            CrTopic::Address { address_id: id }
+        };
         let msg = CrMsg::AddressUpdated { id, version };
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
-    pub async fn list_addresses(
+    pub async fn list_address_ids(
         &self,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> CoreResult<Vec<PostalAddress>> {
+    ) -> CoreResult<Vec<Uuid>> {
         let list = self
             .database
-            .list_postal_addresses(name_filter, limit)
+            .list_postal_address_ids(name_filter, limit)
             .await?;
-        for addr in &list {
-            addr.validate()?;
-        }
         Ok(list)
     }
 }
@@ -358,7 +359,7 @@ mod test_validate {
 
         let errs = res.unwrap_err();
         let err = errs.errors.first().unwrap();
-        assert_eq!(err.get_field(), "Name", "should report the name field");
+        assert_eq!(err.get_field(), "name", "should report the name field");
         assert_eq!(
             err.get_code(),
             "required",
@@ -376,7 +377,7 @@ mod test_validate {
 
         let errs = res.unwrap_err();
         let err = errs.errors.first().unwrap();
-        assert_eq!(err.get_field(), "Street", "should report the street field");
+        assert_eq!(err.get_field(), "street", "should report the street field");
         assert_eq!(
             err.get_code(),
             "required",
@@ -396,7 +397,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            "PostalCode",
+            "postal_code",
             "should report the postal code field"
         );
         assert_eq!(
@@ -418,7 +419,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            "Locality",
+            "locality",
             "should report the locality field"
         );
         assert_eq!(
@@ -440,7 +441,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            "Country",
+            "country",
             "should report the country field"
         );
         assert_eq!(
@@ -470,22 +471,22 @@ mod test_validate {
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), "Street"))
+                .any(|e| matches!(e.get_field(), "street"))
         );
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), "PostalCode"))
+                .any(|e| matches!(e.get_field(), "postal_code"))
         );
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), "Locality"))
+                .any(|e| matches!(e.get_field(), "locality"))
         );
         assert!(
             errs.errors
                 .iter()
-                .any(|e| matches!(e.get_field(), "Country"))
+                .any(|e| matches!(e.get_field(), "country"))
         );
     }
 
@@ -514,7 +515,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            "PostalCode",
+            "postal_code",
             "should report the postal code field"
         );
         assert_eq!(
@@ -536,7 +537,7 @@ mod test_validate {
         let err = errs.errors.first().unwrap();
         assert_eq!(
             err.get_field(),
-            "PostalCode",
+            "postal_code",
             "should report the postal code field"
         );
         assert_eq!(

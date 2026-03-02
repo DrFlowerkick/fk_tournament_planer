@@ -22,9 +22,6 @@
     "cr_leptos_axum_socket": {
       "component": "cr_leptos_axum_socket"
     },
-    "cr_single_instance": {
-      "component": "cr_single_instance"
-    },
     "db_postgres": {
       "component": "db_postgres"
     },
@@ -64,7 +61,6 @@
         "app_core",
         "app_utils",
         "cr_leptos_axum_socket",
-        "cr_single_instance",
         "db_postgres",
         "ddc_plugin",
         "frontend",

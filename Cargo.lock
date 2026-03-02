@@ -79,7 +79,6 @@ dependencies = [
  "app_core",
  "app_utils",
  "cr_leptos_axum_socket",
- "cr_single_instance",
  "db_postgres",
  "ddc_plugin",
  "generic_sport_plugin",
@@ -120,6 +119,7 @@ name = "app_utils"
 version = "0.11.0"
 dependencies = [
  "app_core",
+ "cr_leptos_axum_socket",
  "displaydoc",
  "gloo-timers",
  "http",
@@ -272,33 +272,6 @@ dependencies = [
  "mime",
  "pin-project-lite",
  "sync_wrapper",
- "tower-layer",
- "tower-service",
- "tracing",
-]
-
-[[package]]
-name = "axum-extra"
-version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbfe9f610fe4e99cf0cfcd03ccf8c63c28c616fe714d80475ef731f3b13dd21b"
-dependencies = [
- "axum",
- "axum-core",
- "axum-macros",
- "bytes",
- "form_urlencoded",
- "futures-core",
- "futures-util",
- "http",
- "http-body",
- "http-body-util",
- "mime",
- "percent-encoding",
- "pin-project-lite",
- "rustversion",
- "serde_core",
- "serde_html_form",
  "tower-layer",
  "tower-service",
  "tracing",
@@ -577,7 +550,6 @@ version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ddef33a339a91ea89fb53151bd0a4689cfce27055c291dfa69945475d22c747"
 dependencies = [
- "percent-encoding",
  "time",
  "version_check",
 ]
@@ -610,32 +582,6 @@ dependencies = [
  "serde",
  "shared",
  "tracing",
- "uuid",
-]
-
-[[package]]
-name = "cr_single_instance"
-version = "0.11.0"
-dependencies = [
- "anyhow",
- "app_core",
- "async-trait",
- "axum",
- "axum-extra",
- "codee",
- "dashmap",
- "displaydoc",
- "futures-core",
- "futures-util",
- "leptos",
- "leptos-use",
- "serde",
- "serde_json",
- "shared",
- "tokio",
- "tokio-stream",
- "tracing",
- "tracing-subscriber",
  "uuid",
 ]
 
@@ -1584,7 +1530,6 @@ dependencies = [
  "app_utils",
  "async-trait",
  "chrono",
- "cr_single_instance",
  "db_postgres",
  "diesel",
  "diesel-async",
@@ -1765,12 +1710,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a59caa13dbc0f4d71bf3d610884953273c52a0bbe995b35d36cdb1c8f91142f"
 dependencies = [
  "cfg-if",
- "chrono",
  "codee",
- "cookie",
  "default-struct-builder",
- "futures-util",
- "gloo-timers",
  "http",
  "js-sys",
  "lazy_static",
@@ -1779,7 +1720,6 @@ dependencies = [
  "paste",
  "send_wrapper",
  "thiserror 2.0.17",
- "unic-langid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -2770,19 +2710,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_html_form"
-version = "0.2.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2f2d7ff8a2140333718bb329f5c40fc5f0865b84c426183ce14c97d2ab8154f"
-dependencies = [
- "form_urlencoded",
- "indexmap",
- "itoa",
- "ryu",
- "serde_core",
-]
-
-[[package]]
 name = "serde_json"
 version = "1.0.145"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2846,9 +2773,7 @@ dependencies = [
  "app",
  "app_core",
  "axum",
- "axum-extra",
  "cr_leptos_axum_socket",
- "cr_single_instance",
  "db_postgres",
  "ddc_plugin",
  "dotenvy",
@@ -3265,7 +3190,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42d3e9c45c09de15d06dd8acf5f4e0e399e85927b7f00711024eb7ae10fa4869"
 dependencies = [
  "displaydoc",
- "serde_core",
  "zerovec",
 ]
 
@@ -3612,24 +3536,6 @@ name = "typenum"
 version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "562d481066bde0658276a35467c4af00bdc6ee726305698a55b86e61d7ad82bb"
-
-[[package]]
-name = "unic-langid"
-version = "0.9.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a28ba52c9b05311f4f6e62d5d9d46f094bd6e84cb8df7b3ef952748d752a7d05"
-dependencies = [
- "unic-langid-impl",
-]
-
-[[package]]
-name = "unic-langid-impl"
-version = "0.9.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dce1bf08044d4b7a94028c93786f8566047edc11110595914de93362559bc658"
-dependencies = [
- "tinystr",
-]
 
 [[package]]
 name = "unicase"
@@ -4203,7 +4109,6 @@ version = "0.11.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c28719294829477f525be0186d13efa9a3c602f7ec202ca9e353d310fb9a002"
 dependencies = [
- "serde",
  "yoke",
  "zerofrom",
  "zerovec-derive",

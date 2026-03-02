@@ -8,9 +8,7 @@ use app_core::{
     utils::validation::{ValidationErrors, ValidationResult},
 };
 use app_utils::{
-    components::inputs::{
-        DurationInputUnit, DurationInputWithValidation, NumberInputWithValidation,
-    },
+    components::inputs::{DurationInput, DurationInputUnit, InputCommitAction, NumberInput},
     state::sport_config::SportConfigEditorContext,
 };
 use leptos::prelude::*;
@@ -58,42 +56,12 @@ impl SportPortWebUi for GenericSportPlugin {
                     <span class="hidden sm:inline text-base-content/30">"|"</span>
 
                     <span class="text-base-content/80" data-testid="preview-score-config">
-                        {move || {
-                            match generic_config.score_to_win {
-                                Some(score) => {
-                                    let mut details = Vec::new();
-                                    if let Some(margin) = generic_config.win_by_margin {
-                                        details.push(format!("+{}", margin));
-                                    }
-                                    if let Some(cap) = generic_config.hard_cap {
-                                        details.push(format!("Cap {}", cap));
-                                    }
-                                    let details_str = if details.is_empty() {
-                                        String::new()
-                                    } else {
-                                        format!(" ({})", details.join(", "))
-                                    };
-                                    format!("Score: {}{}", score, details_str)
-                                }
-                                None => "No score limit".to_string(),
-                            }
-                        }}
+                        {move || generic_config.display_score_limit()}
                     </span>
                 </div>
 
                 // 2. Block: Meta Info (Duration & Points)
                 <div class="flex items-center gap-3 ml-auto sm:ml-0">
-                    // Duration
-                    <div
-                        class="flex items-center gap-1 text-xs opacity-70"
-                        title="Expected Match Duration"
-                    >
-                        <span class="icon-[heroicons--clock] w-4 h-4"></span>
-                        <span data-testid="preview-expected-duration">
-                            {format!("~{} min", duration_minutes)}
-                        </span>
-                    </div>
-
                     // Victory Points Badges
                     <div class="flex gap-1">
                         <span
@@ -113,6 +81,17 @@ impl SportPortWebUi for GenericSportPlugin {
                             {generic_config.victory_points_draw}
                         </span>
                     </div>
+
+                    // Duration
+                    <div
+                        class="flex items-center gap-1 text-xs opacity-70"
+                        title="Expected Match Duration"
+                    >
+                        <span class="icon-[heroicons--clock] w-4 h-4"></span>
+                        <span data-testid="preview-expected-duration">
+                            {format!("~{} min", duration_minutes)}
+                        </span>
+                    </div>
                 </div>
             </div>
         }
@@ -125,10 +104,11 @@ impl SportPortWebUi for GenericSportPlugin {
         };
         view! {
             <div class="p-2">
-                <span class="font-medium">{generic_config.sets_to_win.to_string()}</span>
                 <span class="font-medium">
-                    {generic_config.score_to_win.map(|s| s.to_string()).unwrap_or_default()}
+                    {format!("Sets to win: {}", generic_config.sets_to_win)}
                 </span>
+                <span class="hidden sm:inline text-base-content/30">"|"</span>
+                <span class="font-medium">{generic_config.display_score_limit()}</span>
             </div>
         }
         .into_any()
@@ -149,19 +129,13 @@ impl SportPortWebUi for GenericSportPlugin {
         });
 
         let validation_result = Signal::derive(move || {
-            if let Some(object_id) = sport_config_editor.sport_config_id.get()
+            if let Some(object_id) = sport_config_editor.id.get()
                 && let Some(cfg) = current_config.get()
             {
                 cfg.validate(object_id, ValidationErrors::new())
             } else {
                 ValidationResult::Ok(())
             }
-        });
-
-        Effect::new(move || {
-            sport_config_editor
-                .set_is_valid_json
-                .set(validation_result.with(|vr| vr.is_ok()));
         });
 
         // --- Signals for form fields ---
@@ -247,86 +221,86 @@ impl SportPortWebUi for GenericSportPlugin {
 
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">
-                <NumberInputWithValidation
+                <NumberInput
                     label="Sets to Win"
                     name="sets_to_win"
                     data_testid="input-sets_to_win"
                     value=sets_to_win
-                    set_value=set_sets_to_win
+                    action=InputCommitAction::WriteAndSubmit(set_sets_to_win)
                     validation_result=validation_result
-                    object_id=sport_config_editor.sport_config_id
+                    object_id=sport_config_editor.id
                     field="sets_to_win"
                     min="1"
                 />
                 <div class="grid grid-cols-3 gap-4">
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Score to Win a Set"
                         name="score_to_win"
                         data_testid="input-score_to_win"
                         value=score_to_win
-                        set_value=set_score_to_win
+                        action=InputCommitAction::WriteAndSubmit(set_score_to_win)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="score_to_win"
                         min="1"
                     />
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Win by Margin"
                         name="win_by_margin"
                         data_testid="input-win_by_margin"
                         value=win_by_margin
-                        set_value=set_win_by_margin
+                        action=InputCommitAction::WriteAndSubmit(set_win_by_margin)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="win_by_margin"
                         min="1"
                     />
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Hard Cap"
                         name="hard_cap"
                         data_testid="input-hard_cap"
                         value=hard_cap
-                        set_value=set_hard_cap
+                        action=InputCommitAction::WriteAndSubmit(set_hard_cap)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="hard_cap"
                         min="1"
                     />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Victory Points for Win"
                         name="victory_points_win"
                         data_testid="input-victory_points_win"
                         value=victory_points_win
-                        set_value=set_victory_points_win
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_win)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="victory_points_win"
                         min="0"
                         step="0.1"
                     />
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Victory Points for Draw"
                         name="victory_points_draw"
                         data_testid="input-victory_points_draw"
                         value=victory_points_draw
-                        set_value=set_victory_points_draw
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_draw)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="victory_points_draw"
                         min="0"
                         step="0.1"
                     />
                 </div>
-                <DurationInputWithValidation
+                <DurationInput
                     label="Expected Match Duration"
                     name="expected_match_duration_minutes"
                     data_testid="input-expected_match_duration_minutes"
                     value=expected_match_duration_minutes
-                    set_value=set_expected_match_duration_minutes
+                    action=InputCommitAction::WriteAndSubmit(set_expected_match_duration_minutes)
                     validation_result=validation_result
-                    object_id=sport_config_editor.sport_config_id
+                    object_id=sport_config_editor.id
                     field="expected_match_duration_minutes"
                     unit=DurationInputUnit::Minutes
                 />

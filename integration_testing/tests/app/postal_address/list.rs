@@ -1,7 +1,15 @@
-use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
+use crate::common::{
+    get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url,
+    wait_for_element_text,
+};
 use app::{postal_addresses::ListPostalAddresses, provide_global_context};
 use gloo_timers::future::sleep;
-use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlAnchorElement};
+use leptos::{
+    mount::mount_to,
+    prelude::*,
+    wasm_bindgen::JsCast,
+    web_sys::{HtmlAnchorElement, HtmlButtonElement},
+};
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -32,10 +40,10 @@ async fn test_search_postal_address() {
         }
     });
 
-    sleep(Duration::from_millis(10)).await;
-
     // check row
     let first_row_id = format!("table-entry-row-{}", ts.entries[0]);
+    wait_for_element_text(&first_row_id, "Test Address1", 1000).await;
+
     let row = get_element_by_test_id(&first_row_id)
         .text_content()
         .unwrap();
@@ -90,13 +98,11 @@ async fn test_search_postal_address() {
 
     // test new button URL
     let new_button = get_element_by_test_id("action-btn-new")
-        .dyn_into::<HtmlAnchorElement>()
+        .dyn_into::<HtmlButtonElement>()
         .unwrap();
-    let href = new_button.href();
-    assert!(href.ends_with("new"));
     assert_eq!(
         new_button.text_content().unwrap(),
-        "Create New Postal Address"
+        "Create new Postal Address"
     );
 
     // test buttons which show after click on table row
@@ -105,12 +111,16 @@ async fn test_search_postal_address() {
         .unwrap();
     let href = edit_button.href();
     assert!(href.ends_with(&format!("edit?address_id={}", ts.entries[0])));
-    assert_eq!(edit_button.text_content().unwrap(), "Edit");
+    assert_eq!(
+        edit_button.text_content().unwrap(),
+        "Edit selected Postal Address"
+    );
 
     let copy_button = get_element_by_test_id("action-btn-copy")
-        .dyn_into::<HtmlAnchorElement>()
+        .dyn_into::<HtmlButtonElement>()
         .unwrap();
-    let href = copy_button.href();
-    assert!(href.ends_with(&format!("copy?address_id={}", ts.entries[0])));
-    assert_eq!(copy_button.text_content().unwrap(), "Copy");
+    assert_eq!(
+        copy_button.text_content().unwrap(),
+        "Copy selected Postal Address"
+    );
 }

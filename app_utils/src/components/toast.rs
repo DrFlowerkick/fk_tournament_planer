@@ -27,6 +27,10 @@ pub fn ToastContainer() -> impl IntoView {
                         ToastVariant::Warning => "toast-alert-warning",
                         ToastVariant::Error => "toast-alert-error",
                     };
+                    let interactive_action = toast.interactive.as_ref().map(|a| a.on_click);
+                    let interactive_label = Signal::derive(move || {
+                        toast.interactive.as_ref().map(|a| a.label.clone())
+                    });
 
                     view! {
                         // Animations (fade-in) could be done via CSS
@@ -36,6 +40,20 @@ pub fn ToastContainer() -> impl IntoView {
                         >
                             // Icon based on type (optional)
                             <span>{toast.message}</span>
+                            // Optional interactive action (e.g. "Undo" button)
+                            <Show when=move || interactive_action.is_some()>
+                                <button
+                                    class="btn btn-sm btn-outline"
+                                    on:click=move |_| {
+                                        if let Some(action) = interactive_action {
+                                            action.run(());
+                                        }
+                                    }
+                                >
+                                    {move || interactive_label.get()}
+                                </button>
+
+                            </Show>
                         </div>
                     }
                 }

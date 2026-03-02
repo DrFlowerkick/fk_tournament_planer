@@ -140,15 +140,24 @@ async fn given_filter_and_limit_when_list_tournament_bases_then_db_fake_results_
 
     // Act
     let got = core
-        .list_sport_tournaments(sport_id, Some("ma"), Some(2))
+        .list_tournament_base_ids(sport_id, Some("ma"), None, false, Some(2))
         .await
         .expect("db ok");
 
     // Assert: exactly 2 with names containing "ma" (case-insensitive)
     assert_eq!(got.len(), 2);
-    let names: Vec<_> = got.iter().map(|x| x.get_name()).collect();
-    assert!(names.contains(&"Mara Tournament"));
-    assert!(names.contains(&"Max Tournament"));
+    let mut names: Vec<String> = Vec::with_capacity(got.len());
+    for id in &got {
+        let tb = core
+            .load(*id)
+            .await
+            .expect("load ok")
+            .expect("id from list should exist in DB");
+        assert_eq!(tb.get_id(), *id);
+        names.push(tb.get_name().to_string());
+    }
+    assert!(names.contains(&String::from("Mara Tournament")));
+    assert!(names.contains(&String::from("Max Tournament")));
 }
 
 /// 7) list_tournament_bases(): only limit
@@ -164,7 +173,7 @@ async fn given_only_limit_when_list_tournament_bases_then_limit_is_respected() {
     }
 
     let got = core
-        .list_sport_tournaments(sport_id, None, Some(3))
+        .list_tournament_base_ids(sport_id, None, None, false, Some(3))
         .await
         .expect("db ok");
     assert_eq!(got.len(), 3);
@@ -178,7 +187,7 @@ async fn given_db_fake_failure_when_list_tournament_bases_then_error_propagates(
     db_fake.fail_list_tb_once();
 
     let err = core
-        .list_sport_tournaments(Uuid::new_v4(), None, None)
+        .list_tournament_base_ids(Uuid::new_v4(), None, None, false, None)
         .await
         .expect_err("expected DB error");
 

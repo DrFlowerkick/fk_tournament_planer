@@ -1,20 +1,16 @@
 //! handling persistent errors of application
 
+use super::LabeledAction;
 use leptos::prelude::*;
+use std::collections::HashMap;
 use uuid::Uuid;
 
 // --- Data Structures ---
 
 #[derive(Clone)]
-pub struct ErrorAction {
-    pub label: String,
-    pub on_click: Callback<()>,
-}
-
-#[derive(Clone)]
 pub enum CancelAction {
-    Discard(String),          // Label for discard/cancel action
-    ErrorAction(ErrorAction), // Custom cancel action with label and callback
+    Discard(String),              // Label for discard/cancel action
+    LabeledAction(LabeledAction), // Custom cancel action with label and callback
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -35,7 +31,7 @@ pub struct ActiveError {
     pub key: ErrorKey,
     pub message: String,
     /// If present, shows a primary action button (e.g. "Retry", "Reload")
-    retry_action: Option<ErrorAction>,
+    retry_action: Option<LabeledAction>,
     /// Mandatory secondary/cancel action (e.g. "Dismiss", "Back")
     cancel_action: CancelAction,
 }
@@ -65,7 +61,7 @@ impl ActiveError {
     pub fn cancel_label(&self) -> String {
         match &self.cancel_action {
             CancelAction::Discard(label) => label.clone(),
-            CancelAction::ErrorAction(action) => action.label.clone(),
+            CancelAction::LabeledAction(action) => action.label.clone(),
         }
     }
     pub fn do_cancel(&self) {
@@ -75,7 +71,7 @@ impl ActiveError {
         error_ctx.clear_error(self.component_id, key);
         match &self.cancel_action {
             CancelAction::Discard(_) => {}
-            CancelAction::ErrorAction(action) => action.on_click.run(()),
+            CancelAction::LabeledAction(action) => action.on_click.run(()),
         }
     }
 }
@@ -93,7 +89,7 @@ pub struct ActiveErrorBuilder<State> {
     component_id: Uuid,
     key: ErrorKey,
     message: String,
-    retry_action: Option<ErrorAction>,
+    retry_action: Option<LabeledAction>,
     cancel_action: Option<CancelAction>,
     _marker: std::marker::PhantomData<State>,
 }
@@ -123,7 +119,7 @@ impl ActiveErrorBuilder<NoCancelAction> {
             key: self.key,
             message: self.message,
             retry_action: self.retry_action,
-            cancel_action: Some(CancelAction::ErrorAction(ErrorAction {
+            cancel_action: Some(CancelAction::LabeledAction(LabeledAction {
                 label: label.into(),
                 on_click,
             })),
@@ -152,7 +148,7 @@ impl ActiveErrorBuilder<NoCancelAction> {
 impl<State> ActiveErrorBuilder<State> {
     /// Adds or replaces a primary retry action.
     pub fn with_retry(mut self, label: impl Into<String>, on_click: Callback<()>) -> Self {
-        self.retry_action = Some(ErrorAction {
+        self.retry_action = Some(LabeledAction {
             label: label.into(),
             on_click,
         });
@@ -178,16 +174,35 @@ impl ActiveErrorBuilder<HasCancelAction> {
 // --- Context ---
 
 #[derive(Clone, Copy)]
-pub struct PageErrorContext(RwSignal<Vec<ActiveError>>);
+pub struct PageErrorContext {
+    active_error: RwSignal<Vec<ActiveError>>,
+    retry_handlers: RwSignal<HashMap<Uuid, Callback<()>>>,
+}
 
 impl PageErrorContext {
     pub fn new() -> Self {
-        Self(RwSignal::new(Vec::new()))
+        Self {
+            active_error: RwSignal::new(Vec::new()),
+            retry_handlers: RwSignal::new(HashMap::new()),
+        }
+    }
+
+    /// Registers a retry handler for a specific component. This allows individual retry handlers in a central
+    /// error handler, if errors provide their component id.
+    pub fn register_retry_handler(&self, component_id: Uuid, handler: Callback<()>) {
+        self.retry_handlers.update(|handlers| {
+            handlers.insert(component_id, handler);
+        });
+    }
+
+    pub fn get_retry_handler(&self, component_id: Uuid) -> Option<Callback<()>> {
+        self.retry_handlers
+            .with(|handlers| handlers.get(&component_id).cloned())
     }
 
     /// Report an error. Updates existing error if (component_id, key) matches.
     pub fn report_error(&self, new_error: ActiveError) {
-        self.0.update(|list| {
+        self.active_error.update(|list| {
             if let Some(existing) = list
                 .iter_mut()
                 .find(|e| e.component_id == new_error.component_id && e.key == new_error.key)
@@ -201,43 +216,65 @@ impl PageErrorContext {
 
     /// Removes a specific error.
     pub fn clear_error(&self, component_id: Uuid, key: ErrorKey) {
-        self.0.update(|list| {
+        self.active_error.update(|list| {
             list.retain(|e| !(e.component_id == component_id && e.key == key));
         });
+        if self.active_error.with(Vec::is_empty) {
+            self.retry_handlers.update(|handlers| {
+                handlers.remove(&component_id);
+            });
+        }
     }
 
     /// Removes all errors for a specific component (e.g. on cleanup).
     pub fn clear_all_for_component(&self, component_id: Uuid) {
-        self.0.update(|list| {
+        self.active_error.update(|list| {
             list.retain(|e| e.component_id != component_id);
+        });
+        self.retry_handlers.update(|handlers| {
+            handlers.remove(&component_id);
         });
     }
 
     /// Executes all retry actions present in the current error list.
     /// Used for the "Global Retry" button.
     pub fn retry_all(&self) {
+        // First we run all active errors' retry actions...
         // We clone actions to avoid holding the lock during execution
-        let actions: Vec<_> = self.0.get();
+        let actions: Vec<_> = self.active_error.get();
 
         for active_error in actions {
             // We assume actions are safe and don't panic.
             // If they modify the error list (e.g. clear error on start), that's fine.
             active_error.do_retry();
         }
+
+        // ... then we run all remaining retry handlers. The reason for this is,
+        // that errors further down the call chain may have blocked rendering of components, which contain
+        // the Suspense/ Transition block. These components won't rerender with calling their retry handlers.
+        let handlers = self
+            .retry_handlers
+            .get()
+            .values()
+            .cloned()
+            .collect::<Vec<_>>();
+        for handler in handlers {
+            handler.run(());
+        }
     }
 
     /// Returns a read-only reactive signal of the errors.
     pub fn errors(&self) -> Signal<Vec<ActiveError>> {
-        self.0.into()
+        self.active_error.into()
     }
 
     /// Helper that efficiently retrieves the first active error (cloned)
     pub fn get_first_error(&self) -> Option<ActiveError> {
-        self.0.with(|list| list.first().cloned())
+        self.active_error.with(|list| list.first().cloned())
     }
 
     /// Checks if there are any errors active.
     pub fn has_errors(&self) -> bool {
-        !self.0.with(Vec::is_empty)
+        !self.active_error.with(Vec::is_empty)
     }
 }

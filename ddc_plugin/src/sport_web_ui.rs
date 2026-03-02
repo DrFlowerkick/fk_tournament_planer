@@ -8,8 +8,7 @@ use app_core::{
 };
 use app_utils::{
     components::inputs::{
-        DurationInputUnit, DurationInputWithValidation, EnumSelectWithValidation,
-        NumberInputWithValidation,
+        DurationInput, DurationInputUnit, EnumSelect, InputCommitAction, NumberInput,
     },
     state::sport_config::SportConfigEditorContext,
 };
@@ -116,6 +115,7 @@ impl SportPortWebUi for DdcSportPlugin {
         view! {
             <div class="p-2">
                 <span class="font-medium">{generic_config.sets_cfg.to_string()}</span>
+                <span class="hidden sm:inline text-base-content/30">"|"</span>
                 <span class="font-medium">{generic_config.set_winning_cfg.to_string()}</span>
             </div>
         }
@@ -137,19 +137,13 @@ impl SportPortWebUi for DdcSportPlugin {
         });
 
         let validation_result = Signal::derive(move || {
-            if let Some(object_id) = sport_config_editor.sport_config_id.get()
+            if let Some(object_id) = sport_config_editor.id.get()
                 && let Some(cfg) = current_config.get()
             {
                 cfg.validate(object_id, ValidationErrors::new())
             } else {
                 ValidationResult::Ok(())
             }
-        });
-
-        Effect::new(move || {
-            sport_config_editor
-                .set_is_valid_json
-                .set(validation_result.with(|vr| vr.is_ok()));
         });
 
         // --- Signals for form fields ---
@@ -167,52 +161,35 @@ impl SportPortWebUi for DdcSportPlugin {
                 }
             })
         });
-        let set_num_sets = Callback::new(move |num_sets: Option<u16>| {
-            if let Some(mut cfg) = current_config.get() {
-                if let Some(num_sets) = num_sets {
-                    let mut changed = false;
-                    match &mut cfg.sets_cfg {
-                        DdcSetCfg::CustomSetsToWin { sets_to_win } => {
-                            *sets_to_win = num_sets;
-                            changed = true;
-                        }
-                        DdcSetCfg::CustomTotalSets { total_sets } => {
-                            *total_sets = num_sets;
-                            changed = true;
-                        }
-                        _ => {}
-                    }
-                    if changed {
-                        sport_config_editor
-                            .set_config
-                            .set(serde_json::to_value(cfg).unwrap());
-                    }
-                }
-            }
-        });
         let sets_cfg =
             Signal::derive(move || current_config.with(|cfg| cfg.as_ref().map(|c| c.sets_cfg)));
         let set_sets_cfg = Callback::new(move |new_cfg: Option<DdcSetCfg>| {
             if let Some(mut cfg) = current_config.get()
                 && let Some(new_cfg) = new_cfg
             {
-                let new_cfg = match new_cfg {
-                    DdcSetCfg::CustomSetsToWin { .. } => DdcSetCfg::CustomSetsToWin {
-                        sets_to_win: num_sets.get().unwrap_or_default(),
-                    },
-                    DdcSetCfg::CustomTotalSets { .. } => DdcSetCfg::CustomTotalSets {
-                        total_sets: num_sets.get().unwrap_or_default(),
-                    },
-                    _ => {
-                        // reset num_sets if not custom
-                        set_num_sets.run(None);
-                        new_cfg
-                    }
-                };
                 cfg.sets_cfg = new_cfg;
                 sport_config_editor
                     .set_config
                     .set(serde_json::to_value(cfg).unwrap());
+            }
+        });
+        let set_num_sets = Callback::new(move |num_sets: Option<u16>| {
+            if let Some(cfg) = current_config.get()
+                && let Some(num_sets) = num_sets
+            {
+                match cfg.sets_cfg {
+                    DdcSetCfg::CustomSetsToWin { .. } => {
+                        set_sets_cfg.run(Some(DdcSetCfg::CustomSetsToWin {
+                            sets_to_win: num_sets,
+                        }));
+                    }
+                    DdcSetCfg::CustomTotalSets { .. } => {
+                        set_sets_cfg.run(Some(DdcSetCfg::CustomTotalSets {
+                            total_sets: num_sets,
+                        }));
+                    }
+                    _ => {}
+                }
             }
         });
         // configuration of winning a set
@@ -374,25 +351,25 @@ impl SportPortWebUi for DdcSportPlugin {
 
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">
-                <EnumSelectWithValidation
+                <EnumSelect
                     label="Sets Configuration"
                     name="sets_cfg"
                     data_testid="select-sets_cfg"
                     value=sets_cfg
-                    set_value=set_sets_cfg
+                    action=InputCommitAction::WriteAndSubmit(set_sets_cfg)
                 />
                 {move || {
                     match sets_cfg.get() {
                         Some(DdcSetCfg::CustomSetsToWin { .. }) => {
                             view! {
-                                <NumberInputWithValidation
+                                <NumberInput
                                     label="Sets to Win"
                                     name="num_sets"
                                     data_testid="input-num_sets"
                                     value=num_sets
-                                    set_value=set_num_sets
+                                    action=InputCommitAction::WriteAndSubmit(set_num_sets)
                                     validation_result=validation_result
-                                    object_id=sport_config_editor.sport_config_id
+                                    object_id=sport_config_editor.id
                                     field="sets_cfg"
                                     min="1"
                                 />
@@ -401,14 +378,14 @@ impl SportPortWebUi for DdcSportPlugin {
                         }
                         Some(DdcSetCfg::CustomTotalSets { .. }) => {
                             view! {
-                                <NumberInputWithValidation
+                                <NumberInput
                                     label="Total Sets"
                                     name="num_sets"
                                     data_testid="input-num_sets"
                                     value=num_sets
-                                    set_value=set_num_sets
+                                    action=InputCommitAction::WriteAndSubmit(set_num_sets)
                                     validation_result=validation_result
-                                    object_id=sport_config_editor.sport_config_id
+                                    object_id=sport_config_editor.id
                                     field="sets_cfg"
                                     min="1"
                                 />
@@ -418,48 +395,48 @@ impl SportPortWebUi for DdcSportPlugin {
                         _ => ().into_any(),
                     }
                 }}
-                <EnumSelectWithValidation
+                <EnumSelect
                     label="Set Winning Configuration"
                     name="set_winning_cfg"
                     data_testid="select-set_winning_cfg"
                     value=winning_cfg
-                    set_value=set_winning_cfg
+                    action=InputCommitAction::WriteAndSubmit(set_winning_cfg)
                 />
                 {move || {
                     match winning_cfg.get() {
                         Some(DdcSetWinningCfg::Custom { .. }) => {
                             view! {
                                 <div class="grid grid-cols-3 gap-4">
-                                    <NumberInputWithValidation
+                                    <NumberInput
                                         label="Score to Win a Set"
                                         name="score_to_win"
                                         data_testid="input-score_to_win"
                                         value=score_to_win
-                                        set_value=set_score_to_win
+                                        action=InputCommitAction::WriteAndSubmit(set_score_to_win)
                                         validation_result=validation_result
-                                        object_id=sport_config_editor.sport_config_id
+                                        object_id=sport_config_editor.id
                                         field="score_to_win"
                                         min="1"
                                     />
-                                    <NumberInputWithValidation
+                                    <NumberInput
                                         label="Win by Margin"
                                         name="win_by_margin"
                                         data_testid="input-win_by_margin"
                                         value=win_by_margin
-                                        set_value=set_win_by_margin
+                                        action=InputCommitAction::WriteAndSubmit(set_win_by_margin)
                                         validation_result=validation_result
-                                        object_id=sport_config_editor.sport_config_id
+                                        object_id=sport_config_editor.id
                                         field="win_by_margin"
                                         min="1"
                                     />
-                                    <NumberInputWithValidation
+                                    <NumberInput
                                         label="Hard Cap"
                                         name="hard_cap"
                                         data_testid="input-hard_cap"
                                         value=hard_cap
-                                        set_value=set_hard_cap
+                                        action=InputCommitAction::WriteAndSubmit(set_hard_cap)
                                         validation_result=validation_result
-                                        object_id=sport_config_editor.sport_config_id
+                                        object_id=sport_config_editor.id
                                         field="hard_cap"
                                         min="1"
                                     />
@@ -471,40 +448,40 @@ impl SportPortWebUi for DdcSportPlugin {
                     }
                 }}
                 <div class="grid grid-cols-2 gap-4">
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Victory Points for Win"
                         name="victory_points_win"
                         data_testid="input-victory_points_win"
                         value=victory_points_win
-                        set_value=set_victory_points_win
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_win)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="victory_points_win"
                         min="0"
                         step="0.1"
                     />
-                    <NumberInputWithValidation
+                    <NumberInput
                         label="Victory Points for Draw"
                         name="victory_points_draw"
                         data_testid="input-victory_points_draw"
                         value=victory_points_draw
-                        set_value=set_victory_points_draw
+                        action=InputCommitAction::WriteAndSubmit(set_victory_points_draw)
                         validation_result=validation_result
-                        object_id=sport_config_editor.sport_config_id
+                        object_id=sport_config_editor.id
                         field="victory_points_draw"
                         min="0"
                         step="0.1"
                     />
                 </div>
-                <DurationInputWithValidation
+                <DurationInput
                     label="Expected Rally Duration"
                     name="expected_rally_duration_seconds"
                     data_testid="input-expected_rally_duration_seconds"
                     value=expected_rally_duration_seconds
-                    set_value=set_expected_rally_duration_seconds
+                    action=InputCommitAction::WriteAndSubmit(set_expected_rally_duration_seconds)
                     unit=DurationInputUnit::Seconds
                     validation_result=validation_result
-                    object_id=sport_config_editor.sport_config_id
+                    object_id=sport_config_editor.id
                     field="expected_rally_duration_seconds"
                 />
                 <div class="form-control w-full">

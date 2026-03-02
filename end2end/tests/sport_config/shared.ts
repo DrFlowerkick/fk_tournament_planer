@@ -1,14 +1,16 @@
 import { test, expect, Page, Locator } from "@playwright/test";
 import {
+  fillAndBlur,
   openSportConfigurationList,
+  clickNewSportConfig,
   clickEditSportConfig,
+  clickCopySportConfig,
   extractQueryParamFromUrl,
+  expectFieldValidity,
   waitForAppHydration,
-  waitForNavigationRowSelectionByName,
   searchAndOpenByNameOnCurrentPage,
   selectors,
 } from "../../helpers";
-import exp from "constants";
 
 export interface SportConfigTestAdapter {
   sportName: string;
@@ -23,28 +25,29 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       const ts = Date.now();
       const initialName = `E2E ${adapter.sportName} ${ts} Flow`;
       const updatedName = `${initialName} Updated`;
+      const copiedName = `${initialName} Copied`;
       const initialData = adapter.generateData();
       const updatedData = adapter.generateData();
 
       const SC = selectors(page).sportConfig;
 
-      await test.step("Navigate to New Sport Config", async () => {
+      await test.step("Navigate to Sport Config List", async () => {
         await openSportConfigurationList(page, adapter.sportName);
-
-        // Wait for the "New" button to be enabled/visible if it depends on selection
-        await expect(SC.list.btnNew).toBeVisible();
-        await SC.list.btnNew.click();
-        await expect(SC.form.root).toBeVisible();
       });
 
-      await test.step("Fill and Save New Config", async () => {
-        await SC.form.inputName.fill(initialName);
-        await adapter.fillSpecificFields(page, initialData);
+      await test.step("Create New Config", async () => {
+        await clickNewSportConfig(page);
 
-        await SC.form.btnSave.click();
+        // first fill all fields...
+        await adapter.fillSpecificFields(page, initialData);
+        // ... then fill the name and blur to trigger validation and enable save
+        await fillAndBlur(SC.form.inputName, initialName);
 
         // Wait for save to complete
         await expect(SC.list.previewByName(initialName)).toBeVisible();
+
+        // Close form
+        await SC.form.btnClose.click();
         // Expect edit inputs are not visible anymore
         await expect(SC.form.root).toBeHidden();
 
@@ -59,15 +62,17 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
       });
 
       await test.step("Edit Config", async () => {
-        await expect(SC.list.btnEdit).toBeVisible();
         await clickEditSportConfig(page);
 
         // Update fields
-        await SC.form.inputName.fill(updatedName);
+        await fillAndBlur(SC.form.inputName, updatedName);
         await adapter.fillSpecificFields(page, updatedData);
 
-        await SC.form.btnSave.click();
+        await SC.form.btnClose.click();
+        await expect(SC.form.root).toBeHidden();
+
         await expect(SC.list.previewByName(updatedName)).toBeVisible();
+        await searchAndOpenByNameOnCurrentPage(page, updatedName, "sport_config_id");
 
         // Verify preview
         await expect(SC.list.detailedPreview).toBeVisible();
@@ -76,6 +81,32 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
           updatedData,
         );
       });
+
+      await test.step("Copy Config", async () => {
+        await clickCopySportConfig(page);
+
+        // First check for duplicate error
+        await fillAndBlur(SC.form.inputName, updatedName);
+        await expectFieldValidity(SC.form.inputName, updatedName, true);
+
+        // Update name field
+        await fillAndBlur(SC.form.inputName, copiedName);
+        await expectFieldValidity(SC.form.inputName, copiedName, false);
+
+        await SC.form.btnClose.click();
+        await expect(SC.form.root).toBeHidden();
+
+        await expect(SC.list.previewByName(copiedName)).toBeVisible();
+        await searchAndOpenByNameOnCurrentPage(page, copiedName, "sport_config_id");
+
+        // Verify preview, which should contain copied data
+        await expect(SC.list.detailedPreview).toBeVisible();
+        await adapter.assertSpecificFields(
+          SC.list.detailedPreview,
+          updatedData,
+        );
+      });
+
     });
 
     test("Live Update (Preview-only UI)", async ({ browser }) => {
@@ -98,15 +129,17 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         await test.step("User A creates config", async () => {
           await openSportConfigurationList(pageA, adapter.sportName);
 
-          await expect(SC_A.list.btnNew).toBeVisible();
-          await SC_A.list.btnNew.click();
+          await clickNewSportConfig(pageA);
 
-          await SC_A.form.inputName.fill(initialName);
+          // first fill all fields...
           await adapter.fillSpecificFields(pageA, initialData);
+          // ... then fill the name and blur to trigger validation and enable save
+          await fillAndBlur(SC_A.form.inputName, initialName);
 
-          await SC_A.form.btnSave.click();
           // Wait for save to complete
           await expect(SC_A.list.previewByName(initialName)).toBeVisible();
+          // Close form
+          await SC_A.form.btnClose.click();
           // Expect edit inputs are not visible anymore
           await expect(SC_A.form.root).toBeHidden();
         });
@@ -119,7 +152,7 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
         // --- User B edits the config ---
         await test.step("User B edits config", async () => {
           await pageB.goto(
-            `/sport-configurations/edit?sport_id=${sportId}&sport_config_id=${configId}`,
+            `/sport-configurations/edit?sport_id=${sportId}&sport_config_id=${configId}&filter_limit=100`,
           );
 
           // Ensure explicit navigation waits for WASM hydration before interacting
@@ -129,10 +162,9 @@ export function runSportConfigSharedTests(adapter: SportConfigTestAdapter) {
           await expect(SC_B.form.root).toBeVisible();
 
           // Update
-          await SC_B.form.inputName.fill(updatedName);
+          await fillAndBlur(SC_B.form.inputName, updatedName);
           await adapter.fillSpecificFields(pageB, updatedData);
 
-          await SC_B.form.btnSave.click();
           // Wait for save to complete
           await expect(SC_B.list.previewByName(updatedName)).toBeVisible();
         });

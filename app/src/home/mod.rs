@@ -1,13 +1,9 @@
 //! home page module
 
 mod dashboard;
-mod select_sport;
+pub mod select_sport;
 mod sub_pages;
 
-pub use sub_pages::*;
-
-use crate::home::dashboard::SportDashboard;
-use crate::home::select_sport::SelectSportPlugin;
 use app_utils::{
     params::{ParamQuery, SportIdQuery},
     state::{
@@ -15,6 +11,7 @@ use app_utils::{
         toast_state::ToastContext,
     },
 };
+use dashboard::SportDashboard;
 use leptos::prelude::*;
 use leptos_router::{
     NavigateOptions,
@@ -22,16 +19,18 @@ use leptos_router::{
     nested_router::Outlet,
 };
 use reactive_stores::Store;
+use select_sport::SelectSportPlugin;
+pub use sub_pages::*;
 
 /// Renders the home page of fk tournament
 #[component]
 pub fn HomePage() -> impl IntoView {
     // get global state and sport plugin manager
     let toast_context = expect_context::<ToastContext>();
-
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
-    // setup hooks
+
+    // navigation hooks
     let navigate = use_navigate();
     let url = use_url();
 
@@ -65,7 +64,7 @@ pub fn HomePage() -> impl IntoView {
 
     Effect::new(move || {
         if is_sport_id_invalid() {
-            toast_context.error("Invalid sport id");
+            toast_context.error("Invalid sport id", None);
             navigate(
                 "/",
                 NavigateOptions {
@@ -74,7 +73,7 @@ pub fn HomePage() -> impl IntoView {
                 },
             );
         } else if url.get().path() != "/" && !is_sport_id_given() {
-            toast_context.error("Missing sport id");
+            toast_context.error("Missing sport id", None);
             navigate(
                 "/",
                 NavigateOptions {

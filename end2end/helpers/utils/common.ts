@@ -59,7 +59,7 @@ export async function waitForNavigationRowSelectionByName(
   // After save the row of "name" should be selected, when the url contains
   // the corresponding ID of the created object and the detailed preview should be visible.
   const preview = LIST.previewByName(name);
-  
+
   // Extract the specific UUID from the data-testid before clicking
   const testId = await preview.getAttribute("data-testid");
   const expectedId = testId?.replace(IDS.list.entryPreviewPrefix, "");
@@ -107,7 +107,7 @@ export async function fillAndBlur(locator: Locator, value: string) {
  * Select a value in a dropdown, then blur.
  * Necessary because .fill() does not work on <select> elements.
  */
-export async function selectThenBlur(selectLocator: Locator, value: string) {
+export async function selectAndBlur(selectLocator: Locator, value: string) {
   await expect(selectLocator).toBeVisible();
   await selectLocator.selectOption(value);
   await selectLocator.blur();

@@ -2,9 +2,16 @@ use crate::common::{
     get_element_by_test_id, get_test_root, init_test_state, lock_test, set_input_value,
     set_select_value, set_url,
 };
-use app::{postal_addresses::LoadPostalAddress, provide_global_context};
+use app::{postal_addresses::EditPostalAddress, provide_global_context};
 use app_core::{DbpPostalAddress, PostalAddress};
-use app_utils::{params::AddressIdQuery, state::object_table_list::ObjectListContext};
+use app_utils::{
+    enum_utils::EditAction,
+    params::AddressIdQuery,
+    state::{
+        SimpleEditorOptions, object_table::ObjectEditorMapContext,
+        postal_address::PostalAddressEditorContext,
+    },
+};
 use gloo_timers::future::sleep;
 use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlInputElement};
 use leptos_router::{
@@ -15,11 +22,39 @@ use std::time::Duration;
 use wasm_bindgen_test::*;
 
 #[component]
-fn LoadPostalAddressWrapper() -> impl IntoView {
-    // requires Router context
-    provide_context(ObjectListContext::<PostalAddress, AddressIdQuery>::new());
+fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
+    let postal_address_editor_map =
+        ObjectEditorMapContext::<PostalAddressEditorContext, AddressIdQuery>::new();
+    let existing_id = pa.get_id();
+    postal_address_editor_map
+        .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(existing_id))
+        .unwrap();
 
-    view! { <LoadPostalAddress /> }
+    match edit_action {
+        EditAction::New => {
+            let new_id = postal_address_editor_map
+                .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                .and_then(|editor| editor.id.get())
+                .expect("Failed to create new postal address object");
+            postal_address_editor_map.set_selected_id.run(Some(new_id));
+        }
+        EditAction::Edit => {
+            postal_address_editor_map.update_object_in_editor(&pa);
+            postal_address_editor_map
+                .set_selected_id
+                .run(Some(existing_id));
+        }
+        EditAction::Copy => {
+            postal_address_editor_map.update_object_in_editor(&pa);
+            let new_id = postal_address_editor_map
+                .spawn_editor_for_copy_object(existing_id, SimpleEditorOptions::no_id())
+                .and_then(|editor| editor.id.get())
+                .expect("Failed to create new postal address object");
+            postal_address_editor_map.set_selected_id.run(Some(new_id));
+        }
+    }
+    provide_context(postal_address_editor_map);
+    view! { <EditPostalAddress /> }
 }
 
 #[wasm_bindgen_test]
@@ -29,9 +64,19 @@ async fn test_new_postal_address() {
 
     let ts = init_test_state();
 
-    // 1. Set initial URL for creating a new address
+    // 1. Get an existing address from the fake database
+    let existing_id = ts.entries[0];
+    let pa = ts
+        .db
+        .get_postal_address(existing_id)
+        .await
+        .unwrap()
+        .unwrap();
+
+    // 2. Set initial URL for creating a new address
     set_url("/postal-address/new");
 
+    // 3. Mount the component with router and context
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
@@ -39,13 +84,21 @@ async fn test_new_postal_address() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/new") view=LoadPostalAddressWrapper />
+                    <Route
+                        path=path!("/postal-address/:edit_action")
+                        view=move || {
+                            view! { <PrepareTest edit_action=EditAction::New pa=pa.clone() /> }
+                        }
+                    />
                 </Routes>
             </Router>
         }
     });
 
     sleep(Duration::from_millis(10)).await;
+
+    // Check form is visible
+    let _form = get_element_by_test_id("form-address");
 
     // create a new address by filling the form
     set_input_value("input-name", "New Name");
@@ -56,18 +109,22 @@ async fn test_new_postal_address() {
     set_select_value("select-country", ts.country.alpha2());
 
     sleep(Duration::from_millis(10)).await;
-    let save_button = get_element_by_test_id("btn-save");
-    save_button.click();
-
-    sleep(Duration::from_millis(10)).await;
 
     let new_address = ts
         .db
-        .list_postal_addresses(Some("New"), None)
+        .list_postal_address_ids(Some("New"), None)
         .await
         .unwrap();
     assert_eq!(new_address.len(), 1);
-    assert_eq!(new_address[0].get_name(), "New Name");
+    assert_eq!(
+        ts.db
+            .get_postal_address(new_address[0])
+            .await
+            .unwrap()
+            .unwrap()
+            .get_name(),
+        "New Name"
+    );
 }
 
 #[wasm_bindgen_test]
@@ -77,10 +134,18 @@ async fn test_edit_postal_address() {
 
     let ts = init_test_state();
 
-    // 1. Set initial URL for creating a new address
+    // 1. Get an existing address from the fake database to edit
     let existing_id = ts.entries[0];
-    set_url(&format!("/postal-address/edit?address_id={}", existing_id));
+    let pa = ts
+        .db
+        .get_postal_address(existing_id)
+        .await
+        .unwrap()
+        .unwrap();
+    // 2. Set initial URL for editing an existing address
+    set_url("/postal-address/edit");
 
+    // 3. Mount the component with router and context
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
@@ -88,7 +153,12 @@ async fn test_edit_postal_address() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit") view=LoadPostalAddressWrapper />
+                    <Route
+                        path=path!("/postal-address/:edit_action")
+                        view=move || {
+                            view! { <PrepareTest edit_action=EditAction::Edit pa=pa.clone() /> }
+                        }
+                    />
                 </Routes>
             </Router>
         }
@@ -108,10 +178,6 @@ async fn test_edit_postal_address() {
     set_input_value("input-street", "456 Another St");
 
     sleep(Duration::from_millis(10)).await;
-    let save_button = get_element_by_test_id("btn-save");
-    save_button.click();
-
-    sleep(Duration::from_millis(10)).await;
     let updated_address = ts
         .db
         .get_postal_address(existing_id)
@@ -123,16 +189,24 @@ async fn test_edit_postal_address() {
 }
 
 #[wasm_bindgen_test]
-async fn test_save_as_new_postal_address() {
+async fn test_copy_new_postal_address() {
     // Acquire lock and clean DOM.
     let _guard = lock_test().await;
 
     let ts = init_test_state();
 
-    // 1. Set initial URL for creating a new address
+    // 1. Get an existing address from the fake database to copy
     let existing_id = ts.entries[0];
-    set_url(&format!("/postal-address/edit?address_id={}", existing_id));
+    let pa = ts
+        .db
+        .get_postal_address(existing_id)
+        .await
+        .unwrap()
+        .unwrap();
+    // 2. Set initial URL for editing an existing address
+    set_url("/postal-address/copy");
 
+    // 3. Mount the component with router and context
     let core = ts.core.clone();
     let _mount_guard = mount_to(get_test_root(), move || {
         provide_context(core.clone());
@@ -140,40 +214,55 @@ async fn test_save_as_new_postal_address() {
         view! {
             <Router>
                 <Routes fallback=|| "Page not found.".into_view()>
-                    <Route path=path!("/postal-address/edit") view=LoadPostalAddressWrapper />
+                    <Route
+                        path=path!("/postal-address/:edit_action")
+                        view=move || {
+                            view! { <PrepareTest edit_action=EditAction::Copy pa=pa.clone() /> }
+                        }
+                    />
                 </Routes>
             </Router>
         }
     });
-
-    leptos::web_sys::console::log_1(&"test_save_as_new_postal_address started".into());
 
     // The component should react to the URL change.
     // A small delay helps ensure all reactive updates are processed.
     sleep(Duration::from_millis(10)).await;
 
     // verify that the form is populated with existing data
-    let name_input = get_element_by_test_id("input-name")
+    let street_input = get_element_by_test_id("input-street")
         .dyn_into::<HtmlInputElement>()
         .unwrap();
-    assert_eq!(name_input.value(), format!("{}1", ts.name_base));
+    assert_eq!(street_input.value(), ts.street);
 
     // now save existing address as new
     set_input_value("input-name", "Cloned Address");
 
     sleep(Duration::from_millis(10)).await;
 
-    let save_as_new_button = get_element_by_test_id("btn-save-as-new");
-    save_as_new_button.click();
-
-    sleep(Duration::from_millis(10)).await;
-
     let cloned_addresses = ts
         .db
-        .list_postal_addresses(Some("Cloned"), None)
+        .list_postal_address_ids(Some("Cloned"), None)
         .await
         .unwrap();
     assert_eq!(cloned_addresses.len(), 1);
-    assert_eq!(cloned_addresses[0].get_name(), "Cloned Address");
-    assert_eq!(cloned_addresses[0].get_version().unwrap(), 0);
+    assert_eq!(
+        ts.db
+            .get_postal_address(cloned_addresses[0])
+            .await
+            .unwrap()
+            .unwrap()
+            .get_name(),
+        "Cloned Address"
+    );
+    assert_eq!(
+        ts.db
+            .get_postal_address(cloned_addresses[0])
+            .await
+            .unwrap()
+            .unwrap()
+            .get_version()
+            .unwrap(),
+        0
+    );
 }

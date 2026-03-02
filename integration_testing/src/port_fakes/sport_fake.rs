@@ -2,7 +2,11 @@
 
 use app_core::{
     EntrantGroupScore, Match, SportConfig, SportPort, SportResult,
-    utils::{id_version::IdVersion, traits::ObjectIdVersion, validation::ValidationErrors},
+    utils::{
+        id_version::IdVersion,
+        traits::ObjectIdVersion,
+        validation::{ValidationErrors, ValidationResult},
+    },
 };
 use leptos::prelude::*;
 use serde_json::Value;
@@ -55,7 +59,7 @@ impl SportPort for MockSport {
         &self,
         _config: &SportConfig,
         _err: ValidationErrors,
-    ) -> SportResult<()> {
+    ) -> ValidationResult<()> {
         Ok(())
     }
 

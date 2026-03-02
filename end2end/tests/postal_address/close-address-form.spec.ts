@@ -1,27 +1,27 @@
 // e2e/tests/cancel-navigation.spec.ts
 import { test, expect } from "@playwright/test";
 import {
-  openNewForm,
   fillAllRequiredValid,
-  clickSave,
+  closeForm,
   extractUuidFromUrl,
-  openEditForm,
+  clickNewPostalAddress,
   openPostalAddressList,
   waitForPostalAddressListUrl,
   searchAndOpenByNameOnCurrentPage,
   selectors
 } from "../../helpers";
 
-test.describe("Cancel button navigation", () => {
+test.describe("Close postal address editor form", () => {
   test("returns to the previous page (search list)", async ({ page }) => {
     const PA = selectors(page).postalAddress;
     
     // -------------------- Arrange: Create an address and find it --------------------
     const name = `E2E CancelNav ${Date.now()}`;
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
     await fillAllRequiredValid(page, name);
-    await clickSave(page);
-    await waitForPostalAddressListUrl(page);
+    await closeForm(page);
+    await waitForPostalAddressListUrl(page, true);
     const url = page.url();
     const uuid = extractUuidFromUrl(url);
 
@@ -29,26 +29,12 @@ test.describe("Cancel button navigation", () => {
     await searchAndOpenByNameOnCurrentPage(page, name, "address_id");
     await expect(PA.list.btnEdit).toBeVisible();
 
-    // -------------------- Act: Go to edit and click cancel --------------------
+    // -------------------- Act: Go to edit and click close --------------------
     await PA.list.btnEdit.click();
-    await expect(PA.form.root).toBeVisible();
-    await PA.form.btnCancel.click();
+    await closeForm(page);
 
     // -------------------- Assert: We are back on the search page with uuid in url--------------------
     // The URL should be the search/list URL, not the edit URL
-    await waitForPostalAddressListUrl(page);
-
-    // -------------------- Act: Open edit page directly and cancel --------------------
-    await openPostalAddressList(page); // Ensure we have no uuid in current url
-    await openEditForm(page, uuid);
-
-    await expect(PA.form.root).toBeVisible();
-    await PA.form.btnCancel.click();
-
-    // -------------------- Assert: We are on the main list page now with id in url --------------------
-    await waitForPostalAddressListUrl(page);
-    const url_after_cancel = page.url();
-    const uuid_after_cancel = extractUuidFromUrl(url_after_cancel);
-    expect(uuid_after_cancel).toBe(uuid);
+    await waitForPostalAddressListUrl(page, true);
   });
 });

@@ -2,7 +2,7 @@
 
 use super::FakeDatabasePort;
 use app_core::{
-    DbError, DbResult, DbpTournamentBase, TournamentBase,
+    DbError, DbResult, DbpTournamentBase, TournamentBase, TournamentState, TournamentType,
     utils::{id_version::IdVersion, traits::ObjectIdVersion},
 };
 use async_trait::async_trait;
@@ -59,12 +59,14 @@ impl DbpTournamentBase for FakeDatabasePort {
         Ok(new)
     }
 
-    async fn list_tournament_bases(
+    async fn list_tournament_base_ids(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
+        state_filter: Option<TournamentState>,
+        include_adhoc: bool,
         limit: Option<usize>,
-    ) -> DbResult<Vec<TournamentBase>> {
+    ) -> DbResult<Vec<Uuid>> {
         let mut guard = self.fail_next_list_tb.lock().unwrap();
         if *guard {
             *guard = false;
@@ -78,6 +80,14 @@ impl DbpTournamentBase for FakeDatabasePort {
             .unwrap()
             .values()
             .filter(|sc| sc.get_sport_id() == sport_id)
+            .filter(|sc| {
+                if let Some(sf) = state_filter {
+                    sc.get_tournament_state() == sf
+                } else {
+                    true
+                }
+            })
+            .filter(|sc| include_adhoc || sc.get_tournament_type() != TournamentType::Adhoc)
             .cloned()
             .collect();
 
@@ -89,6 +99,6 @@ impl DbpTournamentBase for FakeDatabasePort {
             rows.truncate(lim);
         }
 
-        Ok(rows)
+        Ok(rows.into_iter().map(|tb| tb.get_id()).collect())
     }
 }

@@ -12,7 +12,6 @@ members = [
     "app_core",
     "app_utils",
     "cr_leptos_axum_socket",
-    "cr_single_instance",
     "db_postgres",
     "ddc_plugin",
     "frontend",
@@ -27,7 +26,6 @@ members = [
 anyhow = "1.0"
 async-trait = "0.1.89"
 axum = "0.8.7"
-axum-extra = { version = "0.12", features = ["routing", "typed-routing"] }
 axum-macros = "0.5.0"
 cfg-if = "1.0.4"
 chrono = "0.4"
@@ -72,7 +70,7 @@ url = "2.5"
 uuid = { version = "1.18.1", features = ["serde", "v4", "v5", "rng-getrandom"] }
 wasm-bindgen = "=0.2.105"
 wasm-bindgen-test = "0.3"
-web-sys = { version = "0.3", features = ["HtmlOptionsCollection", "Element", "ScrollIntoViewOptions", "ScrollLogicalPosition"] }
+web-sys = { version = "0.3", features = ["HtmlOptionsCollection", "Element", "ScrollIntoViewOptions", "ScrollLogicalPosition", "ScrollBehavior", "Storage"] }
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 

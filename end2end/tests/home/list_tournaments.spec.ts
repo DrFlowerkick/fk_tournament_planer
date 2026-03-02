@@ -3,6 +3,7 @@ import {
   openHomePage,
   selectSportPluginByName,
   goToListTournaments,
+  searchAndOpenByNameOnCurrentPage,
   fillAndBlur,
   selectors,
 } from "../../helpers";
@@ -24,13 +25,13 @@ test.describe("Tournaments List Page", () => {
     await goToListTournaments(page);
 
     // Stability Check
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const LIST = selectors(page).home.tournamentsList;
     await expect(LIST.root).toBeVisible();
     await expect(LIST.filterName).toBeEditable();
   });
 
   test("displays filter controls and table structure", async ({ page }) => {
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const LIST = selectors(page).home.tournamentsList;
 
     await expect(page.locator("h2")).toHaveText("List Tournaments");
     await expect(LIST.filters.status).toHaveValue("Draft"); // Default according to Rust code
@@ -38,7 +39,7 @@ test.describe("Tournaments List Page", () => {
   });
 
   test("finds seeded tournament via search", async ({ page }) => {
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const LIST = selectors(page).home.tournamentsList;
     const targetName = SEED_DATA.DRAFT;
 
     // Execute search
@@ -47,15 +48,11 @@ test.describe("Tournaments List Page", () => {
     // Wait/Check
     // We expect exactly this entry in the table
     // Using a more specific selector to ensure we hit the table cell
-    await expect(
-      page.getByRole("cell", { name: targetName }).first(),
-    ).toBeVisible({
-      timeout: 10000,
-    });
+    await searchAndOpenByNameOnCurrentPage(page, targetName, "tournament_id");
   });
 
   test("shows empty state when search finds no results", async ({ page }) => {
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const LIST = selectors(page).home.tournamentsList;
 
     // Search for something impossible
     await fillAndBlur(LIST.filterName, "X9Z9 NonExistent Tournament");
@@ -68,39 +65,29 @@ test.describe("Tournaments List Page", () => {
     );
   });
 
-  test("clicking a row reveals action buttons (Edit, Register, Show)", async ({
+  test("clicking a row reveals action buttons (Edit, Copy)", async ({
     page,
   }) => {
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const LIST = selectors(page).home.tournamentsList;
     const targetName = SEED_DATA.DRAFT;
 
     await fillAndBlur(LIST.filterName, targetName);
 
     // Find the row
-    const cell = page.getByRole("cell", { name: targetName }).first();
+    const cell = await searchAndOpenByNameOnCurrentPage(page, targetName, "tournament_id");
     await expect(cell).toBeVisible();
 
-    // Click to select the row (logic in tournaments.rs: signals `selected_id`)
-    await cell.click();
-
-    // Expect Action Row to appear
-    // Rust: data-testid="row-actions"
-    const actions = page.getByTestId("row-actions");
-    await expect(actions).toBeVisible();
-
-    // Verify Buttons for "Draft" status (as per Rust code: Register, Edit, Show)
-    await expect(page.getByTestId("action-btn-register")).toBeVisible();
+    // Verify Buttons for "Draft" status (as per Rust code: Copy, Edit)
+    await expect(page.getByTestId("action-btn-copy")).toBeVisible();
     await expect(page.getByTestId("action-btn-edit")).toBeVisible();
-    await expect(page.getByTestId("action-btn-show")).toBeVisible();
   });
 
   test("edit button navigates to edit form", async ({ page }) => {
     const targetName = SEED_DATA.DRAFT;
-    const LIST = selectors(page).home.dashboard.tournamentsList;
+    const LIST = selectors(page).home.tournamentsList;
+    const FORM = selectors(page).home.editTournament;
 
-    await fillAndBlur(LIST.filterName, targetName);
-    const cell = page.getByRole("cell", { name: targetName }).first();
-    await cell.click();
+    const cell = await searchAndOpenByNameOnCurrentPage(page, targetName, "tournament_id");
 
     // Click Edit
     await page.getByTestId("action-btn-edit").click();
@@ -112,9 +99,6 @@ test.describe("Tournaments List Page", () => {
     );
 
     // Check pre-filled data
-    // Rust: ValidatedTextInput name="tournament-name"
-    await expect(page.locator('input[name="tournament-name"]')).toHaveValue(
-      targetName,
-    );
+    await expect(FORM.inputs.name).toHaveValue(targetName);
   });
 });

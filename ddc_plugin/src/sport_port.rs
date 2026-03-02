@@ -3,7 +3,7 @@
 use super::{DdcSportPlugin, config::DdcSportConfig};
 use app_core::{
     EntrantGroupScore, Match, SportConfig, SportError, SportPort, SportResult,
-    utils::validation::ValidationErrors,
+    utils::validation::{ValidationErrors, ValidationResult},
 };
 use serde_json::Value;
 use std::time::Duration;
@@ -24,7 +24,7 @@ impl SportPort for DdcSportPlugin {
         &self,
         config: &SportConfig,
         errs: ValidationErrors,
-    ) -> SportResult<()> {
+    ) -> ValidationResult<()> {
         self.validate_config(config, errs)?;
         Ok(())
     }

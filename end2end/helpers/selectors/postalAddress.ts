@@ -4,7 +4,6 @@ import { getListSelectors } from "./common";
 export const POSTAL_IDS = {
   list: {
     root: "postal-address-list-root",
-    filterLimit: "filter-limit-select",
     emptyList: "postal-address-list-empty",
     // Reuse existing preview IDs for the inner card content
     preview: {
@@ -28,9 +27,7 @@ export const POSTAL_IDS = {
     inputLocality: "input-locality",
     inputRegion: "input-region",
     inputCountry: "select-country",
-    btnSave: "btn-save",
-    btnSaveAsNew: "btn-save-as-new",
-    btnCancel: "btn-cancel",
+    btnClose: "action-btn-close-edit-form",
   },
 } as const;
 
@@ -39,7 +36,6 @@ export function getPostalSelectors(page: Page) {
     list: {
       ...getListSelectors(page),
       root: page.getByTestId(POSTAL_IDS.list.root),
-      filterLimit: page.getByTestId(POSTAL_IDS.list.filterLimit),
       emptyList: page.getByTestId(POSTAL_IDS.list.emptyList),
     },
     form: {
@@ -52,9 +48,7 @@ export function getPostalSelectors(page: Page) {
       inputLocality: page.getByTestId(POSTAL_IDS.form.inputLocality),
       inputRegion: page.getByTestId(POSTAL_IDS.form.inputRegion),
       inputCountry: page.getByTestId(POSTAL_IDS.form.inputCountry),
-      btnSave: page.getByTestId(POSTAL_IDS.form.btnSave),
-      btnSaveAsNew: page.getByTestId(POSTAL_IDS.form.btnSaveAsNew),
-      btnCancel: page.getByTestId(POSTAL_IDS.form.btnCancel),
+      btnClose: page.getByTestId(POSTAL_IDS.form.btnClose),
     },
   };
 }

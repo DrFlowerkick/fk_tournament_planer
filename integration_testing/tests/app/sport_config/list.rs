@@ -1,7 +1,12 @@
 use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
 use app::{home::ListSportConfigurations, provide_global_context};
 use gloo_timers::future::sleep;
-use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlAnchorElement};
+use leptos::{
+    mount::mount_to,
+    prelude::*,
+    wasm_bindgen::JsCast,
+    web_sys::{HtmlAnchorElement, HtmlButtonElement},
+};
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -61,13 +66,11 @@ async fn test_config_search_renders() {
 
     // test new button URL
     let new_button = get_element_by_test_id("action-btn-new")
-        .dyn_into::<HtmlAnchorElement>()
+        .dyn_into::<HtmlButtonElement>()
         .unwrap();
-    let href = new_button.href();
-    assert!(href.ends_with(&format!("new?sport_id={}", ts.generic_sport_id)));
     assert_eq!(
         new_button.text_content().unwrap(),
-        "Create New Configuration"
+        "Create new Sport Configuration"
     );
 
     // test buttons which show after click on table row
@@ -79,15 +82,16 @@ async fn test_config_search_renders() {
         "edit?sport_id={}&sport_config_id={}",
         ts.generic_sport_id, ts.generic_sport_config_id
     )));
-    assert_eq!(edit_button.text_content().unwrap(), "Edit");
+    assert_eq!(
+        edit_button.text_content().unwrap(),
+        "Edit selected Sport Configuration"
+    );
 
     let copy_button = get_element_by_test_id("action-btn-copy")
-        .dyn_into::<HtmlAnchorElement>()
+        .dyn_into::<HtmlButtonElement>()
         .unwrap();
-    let href = copy_button.href();
-    assert!(href.ends_with(&format!(
-        "copy?sport_id={}&sport_config_id={}",
-        ts.generic_sport_id, ts.generic_sport_config_id
-    )));
-    assert_eq!(copy_button.text_content().unwrap(), "Copy");
+    assert_eq!(
+        copy_button.text_content().unwrap(),
+        "Copy selected Sport Configuration"
+    );
 }

@@ -1,15 +1,13 @@
 //! Postal Address Server Functions Module
 
-#[cfg(any(feature = "ssr", feature = "test-mock"))]
-use crate::error::AppError;
 use crate::error::AppResult;
 use app_core::PostalAddress;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-use app_core::{CoreState, utils::id_version::IdVersion};
-#[cfg(any(feature = "ssr", feature = "test-mock"))]
-use isocountry::CountryCode;
+use app_core::{
+    CoreState,
+    utils::{id_version::IdVersion, traits::ObjectIdVersion},
+};
 use leptos::prelude::*;
-use serde::{Deserialize, Serialize};
 use tracing::instrument;
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
 use tracing::{error, info};
@@ -45,29 +43,23 @@ pub async fn load_postal_address_inner(id: Uuid) -> AppResult<Option<PostalAddre
     skip_all,
     fields(q_len = name.len(), limit = limit.unwrap_or(10))
 )]
-pub async fn list_postal_addresses(
-    name: String,
-    limit: Option<usize>,
-) -> AppResult<Vec<PostalAddress>> {
-    list_postal_addresses_inner(name, limit).await
+pub async fn list_postal_address_ids(name: String, limit: Option<usize>) -> AppResult<Vec<Uuid>> {
+    list_postal_address_ids_inner(name, limit).await
 }
 
 #[cfg(feature = "test-mock")]
-pub async fn list_postal_addresses(
-    name: String,
-    limit: Option<usize>,
-) -> AppResult<Vec<PostalAddress>> {
-    list_postal_addresses_inner(name, limit).await
+pub async fn list_postal_address_ids(name: String, limit: Option<usize>) -> AppResult<Vec<Uuid>> {
+    list_postal_address_ids_inner(name, limit).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-pub async fn list_postal_addresses_inner(
+pub async fn list_postal_address_ids_inner(
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<PostalAddress>> {
+) -> AppResult<Vec<Uuid>> {
     let core = expect_context::<CoreState>().as_postal_address_state();
     info!("list_request");
-    match core.list_addresses(Some(&name), limit).await {
+    match core.list_address_ids(Some(&name), limit).await {
         Ok(list) => {
             info!(count = list.len(), "list_ok");
             Ok(list)
@@ -79,115 +71,39 @@ pub async fn list_postal_addresses_inner(
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SavePostalAddressFormData {
-    pub id: Uuid,
-    pub version: u32,
-    pub name: String,
-    pub street: String,
-    pub postal_code: String,
-    pub locality: String,
-    pub region: Option<String>,
-    pub country: String,
-    pub intent: Option<String>,
-}
-
 #[server]
 #[instrument(
     name = "postal_address.save",
     skip_all,
     fields(
-        id = %form.id,
-        version = form.version,
-        // capture intent without logging full payloads
-        intent = form.intent.as_deref().unwrap_or(""),
+        id = %postal_address.get_id(),
+        version = ?postal_address.get_version(),
         // tiny hints only; avoid PII/body dumps
-        name_len = form.name.len(),
-        locality_len = form.locality.len()
+        name_len = postal_address.get_name().len(),
+        locality_len = postal_address.get_locality().len()
     )
 )]
-pub async fn save_postal_address(form: SavePostalAddressFormData) -> AppResult<PostalAddress> {
-    save_postal_address_inner(form).await
+pub async fn save_postal_address(postal_address: PostalAddress) -> AppResult<PostalAddress> {
+    save_postal_address_inner(postal_address).await
 }
 
-/*
-Replace by on:submit handler for test mock, which is at the moment defined at EditPostalAddress
-
-#[cfg(feature = "test-mock")]
-#[allow(clippy::too_many_arguments)]
-pub async fn save_postal_address(
-    id: Uuid,
-    version: u32,
-    name: String,
-    street: String,
-    postal_code: String,
-    locality: String,
-    region: Option<String>,
-    country: String,
-    intent: Option<String>,
-) -> AppResult<PostalAddress> {
-    save_postal_address_inner(
-        id,
-        version,
-        name,
-        street,
-        postal_code,
-        locality,
-        region,
-        country,
-        intent,
-    )
-    .await
-}*/
-
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-pub async fn save_postal_address_inner(
-    form: SavePostalAddressFormData,
-) -> AppResult<PostalAddress> {
-    use app_core::{CoreError, DbError};
-
+pub async fn save_postal_address_inner(postal_address: PostalAddress) -> AppResult<PostalAddress> {
     let mut core = expect_context::<CoreState>().as_postal_address_state();
 
-    // get mut handle to wrapped PostalAddress
-    let mut_pa_core = core.get_mut();
-
-    // Interpret intent
-    // ToDo: we have to refactor this when switching to auto save.
-    match form.intent.as_deref() {
-        Some("update") => {
-            // set id and version previously loaded
-            if form.id.is_nil() {
-                return Err(AppError::NilIdUpdate);
-            }
-            let id_version = IdVersion::new(form.id, Some(form.version));
-            mut_pa_core.set_id_version(id_version);
+    // Interpret intent (create vs update) based on presence of id and version in the incoming postal address
+    match postal_address.get_id_version() {
+        IdVersion::Existing(..) => {
             info!("saving_update");
         }
-        Some("create") => {
-            let id_version = IdVersion::new(form.id, None);
-            mut_pa_core.set_id_version(id_version);
+        IdVersion::NewWithId(..) => {
             info!("saving_create");
         }
-        Some("copy_as_new") => {
-            // set to nil id and no version to create a new copy
-            let id_version = IdVersion::new(Uuid::nil(), None);
-            mut_pa_core.set_id_version(id_version);
-            info!("saving_copy_as_new");
-        }
-        _ => { /* ToDo: should we return err for unknown intent? Or how do we handle this case? */ }
     }
 
-    let country_code =
-        CountryCode::for_alpha2(&form.country).map_err(|e| CoreError::from(DbError::from(e)))?;
-
-    // set address data from Form inputs
-    mut_pa_core
-        .set_name(form.name)
-        .set_street(form.street)
-        .set_postal_code(form.postal_code)
-        .set_locality(form.locality)
-        .set_region(form.region.unwrap_or_default())
-        .set_country(Some(country_code));
+    // We replace the state object in the core directly with the received object.
+    // Prerequisite: The client has already set the correct IdVersion.
+    *core.get_mut() = postal_address;
 
     // Persist; log outcome with the saved id. if save() is ok, it returns valid id -> unwrap() is save
     match core.save().await {

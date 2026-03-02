@@ -6,7 +6,11 @@
 
 use crate::{
     EntrantGroupScore, Match, SportConfig,
-    utils::{id_version::IdVersion, traits::ObjectIdVersion, validation::ValidationErrors},
+    utils::{
+        id_version::IdVersion,
+        traits::ObjectIdVersion,
+        validation::{ValidationErrors, ValidationResult},
+    },
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -60,7 +64,7 @@ pub trait SportPort: ObjectIdVersion + Send + Sync + Any {
         &self,
         config: &SportConfig,
         validation_errors: ValidationErrors,
-    ) -> SportResult<()>;
+    ) -> ValidationResult<()>;
 
     /// Estimates the maximum duration of a single match based on the sport-specific configuration.
     fn estimate_match_duration(&self, config: &SportConfig) -> SportResult<Duration>;

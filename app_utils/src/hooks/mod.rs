@@ -3,5 +3,5 @@
 pub mod blur_active_element;
 pub mod is_field_valid;
 pub mod use_on_cancel;
-pub mod use_query_navigation;
 pub mod use_scroll_into_view;
+pub mod use_url_navigation;

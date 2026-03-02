@@ -2,8 +2,19 @@ import { expect, Page } from "@playwright/test";
 import { selectors } from "../selectors";
 import { extractQueryParamFromUrl, waitForAppHydration } from "./common";
 
+const UUID_REGEX =
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+
 export const HOME_ROUTES = {
+  newTournament: "/tournaments/new",
+  editTournament: "/tournaments/edit",
+  copyTournament: "/tournaments/copy",
+  list: "/tournaments",
   home: "/",
+};
+
+export const TB_QUERY_KEYS = {
+  tournamentBaseId: "tournament_id",
 };
 
 /**
@@ -132,13 +143,14 @@ export async function expectSportDashboardContent(
 export async function goToListTournaments(page: Page) {
   await waitForAppHydration(page);
   const DASH = selectors(page).home.dashboard;
+  const LIST = selectors(page).home.tournamentsList;
 
   // Navigate via dashboard link
   await expect(DASH.nav.tournaments).toBeVisible();
   await DASH.nav.tournaments.click();
 
   // Expect List Root to be visible
-  await expect(DASH.tournamentsList.root).toBeVisible({ timeout: 10000 });
+  await expect(LIST.root).toBeVisible({ timeout: 10000 });
 }
 
 /**
@@ -157,12 +169,63 @@ export async function goToNewTournament(page: Page) {
   await DASH.nav.planNew.click();
 
   // Expect URL to update accordingly:
-  // start with /new-tournament and ensure no tournament_id param is present
-  await page.waitForURL(/^.*\/new-tournament(?!.*tournament_id=).*$/, {
-    timeout: 10000,
+  // start with /tournaments/new and ensure no tournament_id param is present
+  await waitForNewTournamentUrl(page);
+}
+
+/**
+ * Wait for navigation to create a new tournament page (UUID URL).
+ */
+export async function waitForNewTournamentUrl(page: Page) {
+  const FORM = selectors(page).home.editTournament;
+  // Wait for URL path /tournaments/new and valid tournament_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === HOME_ROUTES.newTournament;
+    const tournamentId = url.searchParams.get(TB_QUERY_KEYS.tournamentBaseId);
+    return isCorrectPath && !!tournamentId && UUID_REGEX.test(tournamentId);
   });
 
-  // Expect Start Page Root to be visible
-  await expect(DASH.editTournament.root).toBeVisible({ timeout: 10000 });
-  await expect(DASH.editTournament.form).toBeEnabled();
+  // strict hydration check
+  await waitForAppHydration(page);
+
+  await expect(FORM.root).toBeVisible();
+  await expect(FORM.form).toBeVisible();
+}
+
+/**
+ * Wait for navigation to a edit tournament page (UUID URL).
+ */
+export async function waitForEditTournamentUrl(page: Page) {
+  const FORM = selectors(page).home.editTournament;
+  // Wait for URL path /tournaments/edit and valid tournament_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === HOME_ROUTES.editTournament;
+    const tournamentId = url.searchParams.get(TB_QUERY_KEYS.tournamentBaseId);
+    return isCorrectPath && !!tournamentId && UUID_REGEX.test(tournamentId);
+  });
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
+  await expect(FORM.root).toBeVisible();
+  await expect(FORM.form).toBeVisible();
+}
+
+/**
+ * Wait for navigation to a copy tournament page (UUID URL).
+ */
+export async function waitForCopyTournamentUrl(page: Page) {
+  const FORM = selectors(page).home.editTournament;
+  // Wait for URL path /tournaments/copy and valid tournament_id query param
+  await page.waitForURL((url) => {
+    const isCorrectPath = url.pathname === HOME_ROUTES.copyTournament;
+    const tournamentId = url.searchParams.get(TB_QUERY_KEYS.tournamentBaseId);
+    return isCorrectPath && !!tournamentId && UUID_REGEX.test(tournamentId);
+  });
+
+  // strict hydration check
+  await waitForAppHydration(page);
+
+  await expect(FORM.root).toBeVisible();
+  await expect(FORM.form).toBeVisible();
 }

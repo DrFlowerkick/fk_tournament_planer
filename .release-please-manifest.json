@@ -4,7 +4,6 @@
   "app_core": "0.11.0",
   "app_utils": "0.11.0",
   "cr_leptos_axum_socket": "0.11.0",
-  "cr_single_instance": "0.11.0",
   "db_postgres": "0.11.0",
   "ddc_plugin": "0.11.0",
   "frontend": "0.11.0",

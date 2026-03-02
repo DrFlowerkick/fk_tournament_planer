@@ -3,15 +3,14 @@ use app::*;
 use app_core::*;
 use axum::{
     Router,
+    ServiceExt, // Needed for into_make_service() on the layered service (NormalizePath)
     extract::State,
     http,
     http::{HeaderMap, HeaderName, StatusCode},
     response::IntoResponse,
     routing::get,
 };
-use axum_extra::routing::RouterExt;
 use cr_leptos_axum_socket::{ClientRegistrySocket, connect_to_websocket};
-use cr_single_instance::*;
 use db_postgres::*;
 use ddc_plugin::DdcSportPlugin;
 use generic_sport_plugin::GenericSportPlugin;
@@ -23,7 +22,9 @@ use shared::*;
 use sport_plugin_manager::SportPluginManagerMap;
 use std::env;
 use std::{sync::Arc, time::Duration};
+use tower::Layer;
 use tower_http::{
+    normalize_path::NormalizePathLayer,
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, SetRequestIdLayer},
     trace::{DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
@@ -103,7 +104,6 @@ async fn main() -> Result<()> {
     // initialize core state
     let db = PgDb::new(url_db()?).await?;
     db.run_migration().await?;
-    let _cr_single = Arc::new(CrSingleInstance::new());
     let cr = Arc::new(ClientRegistrySocket {});
     let mut spm = SportPluginManagerMap::new();
     // register sport plugins
@@ -126,7 +126,6 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/health", get(health))
         .route("/health/db", get(health_db))
-        .typed_get(api_sse_subscribe)
         .leptos_routes_with_context(
             &app_state,
             routes,
@@ -173,10 +172,18 @@ async fn main() -> Result<()> {
                 })
         );
 
+    // Normalize paths (remove trailing slashes) before routing
+    let app = NormalizePathLayer::trim_trailing_slash().layer(app);
+
     // run our app with hyper
     // `axum::Server` is a re-export of `hyper::Server`
     info!(%addr, "listening on http server");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    axum::serve(listener, app.into_make_service()).await?;
+
+    // We must convert the layered service back into a MakeService for Axum server.
+    // Explicit type annotation ensures compatibility with axum::serve.
+    let app_service = ServiceExt::<axum::extract::Request>::into_make_service(app);
+
+    axum::serve(listener, app_service).await?;
     Ok(())
 }

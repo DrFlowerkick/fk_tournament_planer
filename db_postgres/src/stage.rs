@@ -220,17 +220,25 @@ impl DbpStage for PgDb {
     }
 
     #[instrument(name = "db.stage.list", skip(self, t_id))]
-    async fn list_stages_of_tournament(&self, t_id: Uuid) -> DbResult<Vec<Stage>> {
+    async fn list_stage_ids_of_tournament(
+        &self,
+        t_id: Uuid,
+        number_of_stages: u32,
+    ) -> DbResult<Vec<(Uuid, u32)>> {
         let mut conn = self.new_connection().await?;
 
-        let rows = stages
+        let rows: Vec<_> = stages
             .filter(tournament_id.eq(t_id))
+            .filter(number.lt(number_of_stages as i32))
+            .select((id, number))
             .order(number.asc())
-            .load::<DbStage>(&mut conn)
+            .load::<(Uuid, i32)>(&mut conn)
             .await
-            .map_err(map_db_err)?;
-
+            .map_err(map_db_err)?
+            .into_iter()
+            .map(|(stage_id, stage_number)| (stage_id, stage_number as u32))
+            .collect();
         info!(count = rows.len(), "list_ok");
-        rows.into_iter().map(Stage::try_from).collect()
+        Ok(rows)
     }
 }

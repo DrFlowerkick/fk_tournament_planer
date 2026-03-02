@@ -125,10 +125,18 @@ async fn given_multiple_stages_when_list_then_ordered_by_number() -> Result<()> 
     db.save_stage(&make_new_stage(t_id, 1)).await?;
 
     // Act
-    let stages = db.list_stages_of_tournament(t_id).await?;
+    let stage_ids = db.list_stage_ids_of_tournament(t_id, 3).await?;
 
     // Assert
-    assert_eq!(stages.len(), 3);
+    assert_eq!(stage_ids.len(), 3);
+
+    // Load stages by ID
+    let mut stages = Vec::with_capacity(stage_ids.len());
+    for (id, _) in &stage_ids {
+        let stage = db.get_stage_by_id(*id).await?.expect("row must exist");
+        stages.push(stage);
+    }
+
     assert_eq!(stages[0].get_number(), 0);
     assert_eq!(stages[1].get_number(), 1);
     assert_eq!(stages[2].get_number(), 2);

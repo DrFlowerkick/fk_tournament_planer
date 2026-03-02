@@ -138,20 +138,29 @@ async fn given_filter_and_limit_when_list_sport_configs_then_db_fake_results_are
 
     // Act
     let got = core
-        .list_sport_configs(sport_id, Some("ma"), Some(2))
+        .list_sport_config_ids(sport_id, Some("ma"), Some(2))
         .await
         .expect("db ok");
 
     // Assert: exactly 2 with names containing "ma" (case-insensitive)
     assert_eq!(got.len(), 2);
-    let names: Vec<_> = got.iter().map(|x| x.get_name()).collect();
-    assert!(names.contains(&"Mara Config"));
-    assert!(names.contains(&"Max Config"));
+    let mut names: Vec<String> = Vec::with_capacity(got.len());
+    for id in &got {
+        let pa = core
+            .load(*id)
+            .await
+            .expect("load ok")
+            .expect("id from list should exist in DB");
+        assert_eq!(pa.get_id(), *id);
+        names.push(pa.get_name().to_string());
+    }
+    assert!(names.contains(&"Mara Config".to_string()));
+    assert!(names.contains(&"Max Config".to_string()));
 }
 
-/// 7) list_sport_configs(): only limit
+/// 7) list_sport_config_ids(): only limit
 #[tokio::test]
-async fn given_only_limit_when_list_sport_configs_then_limit_is_respected() {
+async fn given_only_limit_when_list_sport_config_ids_then_limit_is_respected() {
     let (mut core, _db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
     let sport_id = core.sport_plugins.list()[0].get_id_version().get_id();
 
@@ -162,21 +171,21 @@ async fn given_only_limit_when_list_sport_configs_then_limit_is_respected() {
     }
 
     let got = core
-        .list_sport_configs(sport_id, None, Some(3))
+        .list_sport_config_ids(sport_id, None, Some(3))
         .await
         .expect("db ok");
     assert_eq!(got.len(), 3);
 }
 
-/// 8) list_sport_configs(): DB error propagates
+/// 8) list_sport_config_ids(): DB error propagates
 #[tokio::test]
-async fn given_db_fake_failure_when_list_sport_configs_then_error_propagates() {
+async fn given_db_fake_failure_when_list_sport_config_ids_then_error_propagates() {
     let (core, db_fake, _cr_fake) = make_core_sport_config_state_with_fakes();
 
     db_fake.fail_list_sc_once();
 
     let err = core
-        .list_sport_configs(Uuid::new_v4(), None, None)
+        .list_sport_config_ids(Uuid::new_v4(), None, None)
         .await
         .expect_err("expected DB error");
 

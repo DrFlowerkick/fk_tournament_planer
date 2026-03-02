@@ -7,12 +7,13 @@ import {
   openHomePage,
   selectSportPluginByName,
   goToNewTournament,
-  expectSavesDisabled,
-  expectSavesEnabled,
   fillFields,
-  clickSave,
+  closeForm,
   waitForPostalAddressListUrl,
+  waitForEditTournamentUrl,
   fillAndBlur,
+  waitForAppHydration,
+  clickNewPostalAddress,
 } from "./helpers";
 
 const PLUGINS = {
@@ -28,7 +29,7 @@ const SEED_TOURNAMENTS = [
 ];
 
 async function seedTournaments(page: Page) {
-  const FORM = selectors(page).home.dashboard.editTournament;
+  const FORM = selectors(page).home.editTournament;
 
   // 1. Select Sport (ensure we are in the context)
   await openHomePage(page);
@@ -46,29 +47,31 @@ async function seedTournaments(page: Page) {
     await fillAndBlur(FORM.inputs.name, t.name);
     await fillAndBlur(FORM.inputs.entrants, t.entrants);
 
+    // setting valid values will trigger autosave and navigation to edit page
+
+    // Wait for completion (URL update) to be ready for the next one
+    await waitForEditTournamentUrl(page);
+
     await expect(FORM.inputs.name).toHaveValue(t.name);
     await expect(FORM.inputs.entrants).toHaveValue(t.entrants);
     await expect(FORM.inputs.name).toHaveAttribute("aria-invalid", "false");
     await expect(FORM.inputs.entrants).toHaveAttribute("aria-invalid", "false");
-
-    // Save
-    await expect(FORM.actions.save).toBeEnabled();
-    await FORM.actions.save.click();
-
-    // Wait for completion (URL update) to be ready for the next one
-    await page.waitForURL(/tournament_id=/, { timeout: 10000 });
   }
 }
 
 async function seedPostalAddresses(page: Page) {
-  const NEW_PA_URL = "/postal-address/new";
+  const NEW_PA_URL = "/postal-address";
   await page.goto(NEW_PA_URL);
+  await waitForAppHydration(page);
 
   const names = ["Alpha", "Beta", "Gamma"];
 
   for (const name of names) {
     console.log(`🌱 Seeding Postal Address: ${name}`);
-    await expectSavesDisabled(page);
+    // Click "New" button to open the form
+    await clickNewPostalAddress(page);
+
+    // Fill form fields (using helper for consistency)
     await fillFields(page, {
       name: `E2E Nav ${name}`,
       street: "Teststr. 1",
@@ -77,11 +80,8 @@ async function seedPostalAddresses(page: Page) {
       region: "",
       country: "DE",
     });
-    await expectSavesEnabled(page);
-    await clickSave(page);
-    await waitForPostalAddressListUrl(page);
-    // Navigate back for the next one
-    await page.goto(NEW_PA_URL);
+    await closeForm(page);
+    await waitForPostalAddressListUrl(page, true);
   }
 }
 

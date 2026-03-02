@@ -1,28 +1,38 @@
 use app_utils::{
-    hooks::use_query_navigation::{
-        MatchedRouteHandler, UseQueryNavigationReturn, use_query_navigation,
+    hooks::use_url_navigation::{
+        MatchedRouteHandler, UseMatchedRouteNavigationReturn, use_matched_route_navigation,
     },
     params::{ParamQuery, SportIdQuery, TournamentBaseIdQuery, TournamentStateQuery},
-    state::global_state::{GlobalState, GlobalStateStoreFields},
+    state::{
+        SimpleEditorOptions,
+        global_state::{GlobalState, GlobalStateStoreFields},
+        object_table::ObjectEditorMapContext,
+        toast_state::ToastContext,
+        tournament::TournamentEditorContext,
+    },
 };
 use leptos::prelude::*;
-use leptos_router::components::A;
+use leptos_router::{NavigateOptions, components::A, hooks::use_navigate};
 use reactive_stores::Store;
 
 #[component]
 pub fn SportDashboard() -> impl IntoView {
     // get query helpers
-    let UseQueryNavigationReturn {
+    let UseMatchedRouteNavigationReturn {
         url_matched_route,
         url_matched_route_update_query,
-        url_matched_route_remove_query,
         ..
-    } = use_query_navigation();
+    } = use_matched_route_navigation();
 
     // get global state and sport plugin manager
+    let toast_ctx = expect_context::<ToastContext>();
     let state = expect_context::<Store<GlobalState>>();
     let sport_plugin_manager = state.sport_plugin_manager();
     let sport_id = SportIdQuery::use_param_query();
+
+    // local state
+    let tournament_editor_map =
+        expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
 
     // Helper to get both ID and Plugin for the view
     let sport_name = move || {
@@ -52,24 +62,14 @@ pub fn SportDashboard() -> impl IntoView {
                 <div class="card-body">
                     // Header Section
                     <div class="text-center mb-8 max-w-2xl mx-auto">
-                        <A
-                            href=move || {
-                                format!("/?sport_id={}", sport_id.get().unwrap_or_default())
-                            }
-                            attr:class="no-underline text-inherit"
+                        <h1
+                            class="card-title text-4xl md:text-5xl font-bold mb-4 hover:opacity-80 transition-opacity"
+                            data-testid="sport-dashboard-title"
                         >
-                            <h1
-                                class="card-title text-4xl md:text-5xl font-bold mb-4 hover:opacity-80 transition-opacity"
-                                data-testid="sport-dashboard-title"
-                            >
-                                {move || {
-                                    format!(
-                                        "{} Tournament Planer",
-                                        sport_name().unwrap_or_default(),
-                                    )
-                                }}
-                            </h1>
-                        </A>
+                            {move || {
+                                format!("{} Tournament Planer", sport_name().unwrap_or_default())
+                            }}
+                        </h1>
                         <p class="text-xl text-base-content/70" data-testid="sport-dashboard-desc">
                             {move || {
                                 format!(
@@ -84,7 +84,7 @@ pub fn SportDashboard() -> impl IntoView {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mx-auto">
                         <A
                             href=url_matched_route_update_query(
-                                TournamentStateQuery::key(),
+                                TournamentStateQuery::KEY,
                                 "Draft",
                                 MatchedRouteHandler::Extend("tournaments"),
                             )
@@ -96,19 +96,35 @@ pub fn SportDashboard() -> impl IntoView {
                             "Tournaments"
                         </A>
 
-                        <A
-                            href=url_matched_route_remove_query(
-                                TournamentBaseIdQuery::key(),
-                                MatchedRouteHandler::Extend("new-tournament"),
-                            )
-
-                            attr:class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
-                            attr:data-testid="link-nav-plan-new"
-                            scroll=false
+                        <button
+                            class="btn btn-secondary h-auto min-h-[4rem] text-lg shadow-md"
+                            data-testid="link-nav-plan-new"
+                            on:click=move |_| {
+                                let navigate = use_navigate();
+                                if let Some(new_id) = tournament_editor_map
+                                    .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                    .and_then(|editor| editor.base_editor.id.get())
+                                {
+                                    let nav_url = url_matched_route_update_query(
+                                        TournamentBaseIdQuery::KEY,
+                                        &new_id.to_string(),
+                                        MatchedRouteHandler::Extend("tournaments/new"),
+                                    );
+                                    navigate(
+                                        &nav_url,
+                                        NavigateOptions {
+                                            scroll: false,
+                                            ..Default::default()
+                                        },
+                                    );
+                                } else {
+                                    toast_ctx.warning("Failed to create a new tournament", None);
+                                }
+                            }
                         >
                             <span class="icon-[heroicons--plus-circle] w-6 h-6 mr-2"></span>
                             "Plan New Tournament"
-                        </A>
+                        </button>
 
                         <A
                             href=url_matched_route(MatchedRouteHandler::Extend("adhoc-tournament"))

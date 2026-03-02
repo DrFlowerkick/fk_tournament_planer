@@ -4,6 +4,7 @@ use app_core::{Core, CoreBuilder, InitState, SportConfig, utils::traits::ObjectI
 use futures_util::lock::{Mutex, MutexGuard};
 use generic_sport_plugin::GenericSportPlugin;
 use generic_sport_plugin::config::GenericSportConfig;
+use gloo_timers::future::sleep;
 use integration_testing::port_fakes::{FakeClientRegistryPort, FakeDatabasePort, make_addr};
 use isocountry::CountryCode;
 use leptos::{
@@ -13,6 +14,7 @@ use leptos::{
 };
 use sport_plugin_manager::SportPluginManagerMap;
 use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 use uuid::Uuid;
 
 /// Global mutex to force serial execution of WASM tests sharing the DOM
@@ -173,4 +175,50 @@ pub fn init_test_state() -> InitialTestState {
         generic_sport_id,
         generic_sport_config_id,
     }
+}
+
+// Helper function to log the current HTML of the test root for debugging purposes.
+pub fn _log_current_html() {
+    let document = leptos::web_sys::window().unwrap().document().unwrap();
+
+    // take body or test root element
+    if let Some(body) = document.body() {
+        let html = body.inner_html();
+
+        // Rudimentary Pretty-Printing for better readability
+        let pretty_html = html.replace("><", ">\n<").replace("div>", "div>\n");
+
+        // get current url for better context in logs
+        let url = document.url().unwrap_or_default();
+
+        leptos::web_sys::console::log_1(
+            &format!(
+                "\n--- DOM SNAPSHOT ---\nURL: {}\n{}\n--------------------",
+                url, pretty_html
+            )
+            .into(),
+        );
+    } else {
+        leptos::web_sys::console::log_1(&"Body element not found".into());
+    }
+}
+// Helper function to wait for an element to appear
+pub async fn wait_for_element_text(test_id: &str, expected_text: &str, timeout_ms: u64) {
+    let timeout: u64 = timeout_ms / 20; // attempts
+    for _ in 0..timeout {
+        if let Ok(element) = document().query_selector(&format!("[data-testid='{}']", test_id)) {
+            if let Some(el) = element {
+                if let Some(content) = el.text_content() {
+                    if content.contains(expected_text) {
+                        return;
+                    }
+                }
+            }
+        }
+        sleep(Duration::from_millis(20)).await;
+    }
+    panic!(
+        "Timeout waiting for element '{}' with text '{}'",
+        test_id, expected_text
+    );
 }

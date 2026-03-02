@@ -134,7 +134,7 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     let any_id = core.get().get_id();
     let _ = core.load(any_id).await.expect("load ok");
     let _ = core
-        .list_sport_configs(sport_id, None, Some(10))
+        .list_sport_config_ids(sport_id, None, Some(10))
         .await
         .expect("list ok");
 

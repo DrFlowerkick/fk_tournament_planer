@@ -19,8 +19,6 @@ const genericSportAdapter: SportConfigTestAdapter = {
   },
   fillSpecificFields: async (page: Page, data: any) => {
     const SC = selectors(page).sportConfig;
-    // We use the save button as a blur target to trigger validation/normalization
-    const blurTarget = SC.form.btnSave;
 
     await fillAndBlur(
       page.getByTestId("input-sets_to_win"),

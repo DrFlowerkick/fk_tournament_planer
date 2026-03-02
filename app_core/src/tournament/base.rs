@@ -11,7 +11,7 @@ use crate::{
 };
 use displaydoc::Display;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 use uuid::Uuid;
 
 /// mode of tournament
@@ -24,6 +24,7 @@ pub enum TournamentType {
     Adhoc,
 }
 
+// ToDo: do we need this? If yes, change to FromStr
 impl From<String> for TournamentType {
     fn from(s: String) -> Self {
         match s.as_str() {
@@ -38,7 +39,7 @@ impl From<String> for TournamentType {
 /// If there are Mode specific configuration values, which cannot be placed
 /// in sub structures like Stage, Group, Match, etc., we may need to add them here.
 /// For now, Swiss system needs number of rounds.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TournamentMode {
     /// Single Stage
     #[default]
@@ -49,6 +50,21 @@ pub enum TournamentMode {
     TwoPoolStagesAndFinalStage,
     /// Swiss System
     SwissSystem { num_rounds: u32 },
+}
+
+impl Display for TournamentMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TournamentMode::SingleStage => write!(f, "Single Stage"),
+            TournamentMode::PoolAndFinalStage => write!(f, "Pool and Final Stage"),
+            TournamentMode::TwoPoolStagesAndFinalStage => {
+                write!(f, "Two Pool Stages and Final Stage")
+            }
+            TournamentMode::SwissSystem { num_rounds } => {
+                write!(f, "Swiss System ({} rounds)", num_rounds)
+            }
+        }
+    }
 }
 
 impl TournamentMode {
@@ -80,7 +96,7 @@ impl TournamentMode {
 }
 
 /// status of tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum TournamentState {
     /// Draft
     #[default]
@@ -93,6 +109,17 @@ pub enum TournamentState {
     Finished,
 }
 
+impl Display for TournamentState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            TournamentState::Draft => write!(f, "Draft"),
+            TournamentState::Published => write!(f, "Published"),
+            TournamentState::ActiveStage(stage) => write!(f, "Running (Stage {})", stage),
+            TournamentState::Finished => write!(f, "Finished"),
+        }
+    }
+}
+
 impl FromStr for TournamentState {
     type Err = CoreError;
 
@@ -100,11 +127,20 @@ impl FromStr for TournamentState {
         match s {
             "Draft" => Ok(TournamentState::Draft),
             "Published" => Ok(TournamentState::Published),
-            "Running" => Ok(TournamentState::ActiveStage(0)),
             "Finished" => Ok(TournamentState::Finished),
-            _ => Err(CoreError::ParsingError(
-                "Invalid tournament state".to_string(),
-            )),
+            _ => {
+                if let Some(stage_str) = s.strip_prefix("Running (Stage ")
+                    && stage_str.ends_with(')')
+                {
+                    let stage_num_str = &stage_str[..stage_str.len() - 1];
+                    if let Ok(stage_num) = stage_num_str.parse::<u32>() {
+                        return Ok(TournamentState::ActiveStage(stage_num));
+                    }
+                }
+                Err(CoreError::ParsingError(
+                    "Invalid tournament state".to_string(),
+                ))
+            }
         }
     }
 }
@@ -380,25 +416,32 @@ impl Core<TournamentBaseState> {
             self.state.tournament.get_version().expect(
                 "expecting save_tournament_base to return always an existing id and version",
             );
-        let notice = CrTopic::TournamentBase(id);
+        let notice = if version == 0 {
+            CrTopic::NewTournamentBase {
+                sport_id: self.state.tournament.get_sport_id(),
+            }
+        } else {
+            CrTopic::TournamentBase {
+                tournament_base_id: id,
+            }
+        };
         let msg = CrMsg::TournamentBaseUpdated { id, version };
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
-    pub async fn list_sport_tournaments(
+    pub async fn list_tournament_base_ids(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
+        state_filter: Option<TournamentState>,
+        include_adhoc: bool,
         limit: Option<usize>,
-    ) -> CoreResult<Vec<TournamentBase>> {
+    ) -> CoreResult<Vec<Uuid>> {
         let tournaments = self
             .database
-            .list_tournament_bases(sport_id, name_filter, limit)
+            .list_tournament_base_ids(sport_id, name_filter, state_filter, include_adhoc, limit)
             .await?;
 
-        for tournament in &tournaments {
-            self.validate(tournament)?;
-        }
         Ok(tournaments)
     }
 }

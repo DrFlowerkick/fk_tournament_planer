@@ -171,12 +171,12 @@ impl DbpSportConfig for PgDb {
     }
 
     #[instrument(name = "db.sc.list", skip(self, name_filter, limit))]
-    async fn list_sport_configs(
+    async fn list_sport_config_ids(
         &self,
         sport: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<SportConfig>> {
+    ) -> DbResult<Vec<Uuid>> {
         let mut conn = self.new_connection().await?;
         let mut query = sport_configs.into_boxed::<diesel::pg::Pg>();
 
@@ -196,12 +196,13 @@ impl DbpSportConfig for PgDb {
         }
 
         let rows = query
+            .select(id)
             .order((name.asc().nulls_last(), created_at.asc()))
-            .load::<DbSportConfig>(&mut conn)
+            .load::<Uuid>(&mut conn)
             .await
             .map_err(map_db_err)?;
 
         info!(count = rows.len(), "list_ok");
-        rows.into_iter().map(SportConfig::try_from).collect()
+        Ok(rows)
     }
 }

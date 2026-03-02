@@ -1,9 +1,11 @@
 // e2e/create-duplicate-address.spec.ts
 import { test, expect } from "@playwright/test";
 import {
-  openNewForm,
+  openPostalAddressList,
+  clickNewPostalAddress,
   fillFields,
-  clickSave,
+  expectFieldValidity,
+  closeForm,
   waitForPostalAddressListUrl,
   selectors,
 } from "../../helpers";
@@ -30,13 +32,14 @@ test.describe("Uniqueness constraint violation", () => {
       country: "DE",
     };
 
-    await openNewForm(page);
+    await openPostalAddressList(page);
+    await clickNewPostalAddress(page);
     await fillFields(page, initial);
-    await clickSave(page);
-    await waitForPostalAddressListUrl(page);
+    await closeForm(page);
+    await waitForPostalAddressListUrl(page, true);
 
     // -------------------- Act: Try to create duplicate --------------------
-    await openNewForm(page);
+    await clickNewPostalAddress(page);
     const duplicate = {
       name: uniqueData.name, // Same name
       street: "Nebenstrasse 2", // Different street
@@ -46,14 +49,9 @@ test.describe("Uniqueness constraint violation", () => {
       country: "DE",
     };
     await fillFields(page, duplicate);
-    await clickSave(page);
 
-    // -------------------- Assert: Duplicate error Toast appears --------------------
-    // A toast should appear
-    await expect(TOAST.error).toBeVisible();
-
-    // The toast should contain a warning message.
-    await expect(TOAST.error).toContainText(`A unique value is already in use`);
+    // -------------------- Assert: Duplicate validation error appears --------------------
+    await expectFieldValidity(PA.form.inputName, duplicate.name, true);
 
     // The form should still be open with the duplicate data (not navigated away)
     await expect(PA.form.inputName).toHaveValue(duplicate.name);
@@ -63,7 +61,5 @@ test.describe("Uniqueness constraint violation", () => {
     await expect(PA.form.inputRegion).toHaveValue(duplicate.region);
     await expect(PA.form.inputCountry).toHaveValue(duplicate.country);
 
-    // Toast should disappear after some time
-    await expect(TOAST.error).toBeHidden({ timeout: 10000 });
   });
 });

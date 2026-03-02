@@ -1,5 +1,7 @@
 // client registry based upon leptos-axum-socket
 
+use std::collections::HashSet;
+
 #[cfg(feature = "ssr")]
 use app_core::{ClientRegistryPort, CrResult};
 use app_core::{CrMsg, CrTopic};
@@ -20,7 +22,7 @@ use shared::AppState;
 #[cfg(feature = "ssr")]
 use tracing::instrument;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug, Hash, PartialEq, Eq)]
 pub struct CrSocketMsg {
     pub msg: CrMsg,
 }
@@ -62,19 +64,29 @@ pub async fn connect_to_websocket(
 // client registry subscription hook for leptos components
 pub fn use_client_registry_socket(
     topic: Signal<Option<CrTopic>>,
-    version: Signal<u32>,
+    version: Signal<Option<u32>>,
     refetch: Callback<()>,
 ) {
     let socket = expect_socket_context();
 
     let prev_topic = StoredValue::new(None::<CrTopic>);
+    // we cache received messages to avoid refetching multiple times for the same message,
+    // e.g. when refetching triggers resubscribe
+    let received_msg = StoredValue::new(HashSet::<CrSocketMsg>::new());
 
     let subscribe = {
         move |topic: CrTopic, refetch: Callback<()>| {
             let version = version.get_untracked();
             let socket_handler = move |msg: &CrSocketMsg| {
-                if msg.msg.version() > version {
-                    refetch.run(());
+                if received_msg.with_value(|msgs| !msgs.contains(msg)) {
+                    received_msg.update_value(|msgs| {
+                        msgs.insert(msg.clone());
+                    });
+                } else {
+                    return;
+                }
+                if version.is_none() || Some(msg.msg.version()) > version {
+                    refetch.try_run(());
                 }
             };
             socket.subscribe(topic, socket_handler);

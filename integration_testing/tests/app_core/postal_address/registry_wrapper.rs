@@ -154,7 +154,10 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     // Act: load (existing id) and list
     let any_id = core.get().get_id();
     let _ = core.load(any_id).await.expect("load ok");
-    let _ = core.list_addresses(None, Some(10)).await.expect("list ok");
+    let _ = core
+        .list_address_ids(None, Some(10))
+        .await
+        .expect("list ok");
 
     // Assert: still no publish after read-only operations
     assert!(
