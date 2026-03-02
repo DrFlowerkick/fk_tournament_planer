@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.11.0...db_postgres-v0.12.0) (2026-03-02)
+
+
+### Features
+
+* Auto save and load local and origin changes ([#36](https://github.com/DrFlowerkick/fk_tournament_planer/issues/36)) ([8e51b66](https://github.com/DrFlowerkick/fk_tournament_planer/commit/8e51b6625b07f84694e128cf50547ce7d00323ef))
+
 ## [0.11.0](https://github.com/DrFlowerkick/fk_tournament_planer/compare/db_postgres-v0.10.0...db_postgres-v0.11.0) (2026-02-12)
 
 
