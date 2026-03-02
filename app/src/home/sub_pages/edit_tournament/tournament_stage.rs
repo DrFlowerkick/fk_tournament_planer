@@ -123,6 +123,18 @@ fn TournamentStageForm(
         }
     };
 
+    // For single stage or swiss system tournaments, ensure that stage 0 always has 1 group
+    Effect::new(move || {
+        if tournament_editor.base_editor.skip_stage_editor.get()
+            && let Some(stage_number) = active_stage_number.get()
+            && stage_number == 0
+            && stage_editor.num_groups.get() != Some(1)
+        {
+            stage_editor.set_num_groups.run(Some(1));
+            on_submit();
+        }
+    });
+
     view! {
         // hide stage editor for single stage and swiss system tournaments
         <Show when=move || !tournament_editor.base_editor.skip_stage_editor.get()>
