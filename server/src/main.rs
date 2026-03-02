@@ -1,3 +1,5 @@
+#![recursion_limit = "512"]
+
 use anyhow::{Context, Result};
 use app::*;
 use app_core::*;
