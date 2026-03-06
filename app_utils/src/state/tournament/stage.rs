@@ -57,6 +57,10 @@ pub struct StageEditorContext {
     pub num_groups: Signal<Option<u32>>,
     /// Write slice for setting the stage number of groups
     pub set_num_groups: Callback<Option<u32>>,
+    /// Signal for the group sizes of the stage, which is derived from the local stage and number of groups
+    pub group_sizes: Signal<Vec<u32>>,
+    /// Callback for setting the group size of a specific group, which updates the local stage accordingly
+    pub set_group_sizes: Callback<(usize, u32)>,
 
     // --- Resource & server action state ---
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
@@ -180,6 +184,29 @@ impl EditorContext for StageEditorContext {
         let set_num_groups = Callback::new(move |num_groups: Option<u32>| {
             set_num_groups.set(num_groups.unwrap_or_default());
         });
+        let (group_sizes, set_group_sizes) = create_slice(
+            options.local_tournament,
+            move |local_tournament| {
+                if let Some(id) = id.get()
+                    && let Some(t) = local_tournament
+                    && let Some(stage) = t.get_stage_by_id(id)
+                {
+                    stage.get_group_sizes().into()
+                } else {
+                    vec![]
+                }
+            },
+            move |local_tournament, (group_index, group_size): (usize, u32)| {
+                if let Some(id) = id.get()
+                    && let Some(t) = local_tournament
+                {
+                    t.set_stage_group_size(id, group_index, group_size);
+                }
+            },
+        );
+        let set_group_sizes = Callback::new(move |(group_index, group_size): (usize, u32)| {
+            set_group_sizes.set((group_index, group_size));
+        });
 
         // ---- tournament stage resource ----
         let (resource_id, set_resource_id) = signal(options.object_id);
@@ -282,6 +309,8 @@ impl EditorContext for StageEditorContext {
             number,
             num_groups,
             set_num_groups,
+            group_sizes,
+            set_group_sizes,
             set_optimistic_version,
             load_stage,
             save_stage,

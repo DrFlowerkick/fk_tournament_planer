@@ -2,7 +2,7 @@
 
 use app_core::CrTopic;
 use app_utils::{
-    components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
+    components::inputs::{EnumSelect, FieldInput, InputCommitAction, InputUpdateStrategy},
     enum_utils::{EditAction, FilterLimit},
     error::{
         ComponentError,
@@ -217,7 +217,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                             <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
                                                 // Text Search
                                                 <div class="w-full max-w-xs">
-                                                    <TextInput<
+                                                    <FieldInput<
                                                     String,
                                                 >
                                                         name=FilterNameQuery::KEY

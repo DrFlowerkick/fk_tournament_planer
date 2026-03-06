@@ -7,10 +7,13 @@ applyTo: "**"
 - All comments in code are in english. ALWAYS. NO EXCEPTIONS. Even if the user asks in another language (e.g. German), code comments remain English.
 - Your answers in chat are always in german.
 - Always use the provided active file content as the absolute source of truth.
-- If the user does not explicitly ask for code changes or examples, always ask the user if they want you to provide code examples or make code changes.
+- If the user does not explicitly ask for code changes or examples, ALWAYS ASK (!!!) the user if they want you to provide code examples or make code changes.
 - When modifying code, preserve all existing logic, attributes, and structures (like signals, handlers, and specific classes) unless explicitly asked to change them.
 - Use the `...existing code...` marker to focus only on the requested changes.
 - Use Rust 2024 edition.
+- For web UI I use leptos-0.8.x
+- For database I use postgres with diesel-2.x
+- I use a workspace with multiple crates, including `app_core` for domain logic. All dependencies are listed in the workspace Cargo.toml. 
 - Use idiomatic Rust patterns and practices.
 - Follow the Rust API Guidelines: https://rust-lang.github.io/api-guidelines/about.html
 - Use `cargo fmt` to format code.

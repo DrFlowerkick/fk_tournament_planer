@@ -4,7 +4,7 @@ use app_core::{TournamentBase, TournamentMode};
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::tournament_base::save_tournament_base_inner;
 use app_utils::{
-    components::inputs::{EnumSelect, InputCommitAction, NumberInput, TextInput},
+    components::inputs::{EnumSelect, FieldInput, InputCommitAction},
     enum_utils::EditAction,
     hooks::{
         use_on_cancel::use_on_cancel,
@@ -255,7 +255,7 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                     />
                     <div class="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                        <TextInput
+                        <FieldInput
                             label="Tournament Name"
                             data_testid="input-tournament-name"
                             value=tournament_editor.base_editor.name
@@ -267,7 +267,8 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                             field="name"
                         />
 
-                        <NumberInput
+                        <FieldInput
+                            input_type="number"
                             label="Number of Entrants"
                             data_testid="input-tournament-entrants"
                             value=tournament_editor.base_editor.num_entrants
@@ -295,7 +296,8 @@ fn TournamentBaseForm(tournament_editor: TournamentEditorContext) -> impl IntoVi
                                 Some(TournamentMode::SwissSystem { .. })
                             )
                         }>
-                            <NumberInput
+                            <FieldInput
+                                input_type="number"
                                 label="Rounds (Swiss System)"
                                 data_testid="input-tournament-swiss-num_rounds"
                                 value=tournament_editor.base_editor.num_rounds_swiss_system

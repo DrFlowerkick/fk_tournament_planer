@@ -2,7 +2,7 @@
 
 use app_core::{CrTopic, TournamentState};
 use app_utils::{
-    components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
+    components::inputs::{EnumSelect, FieldInput, InputCommitAction, InputUpdateStrategy},
     enum_utils::EditAction,
     enum_utils::FilterLimit,
     error::{
@@ -232,7 +232,7 @@ pub fn ListTournaments() -> impl IntoView {
 
                                                 // Text Search
                                                 <div class="w-full max-w-xs">
-                                                    <TextInput<
+                                                    <FieldInput<
                                                     String,
                                                 >
                                                         name=FilterNameQuery::KEY

@@ -96,6 +96,7 @@ impl InputUpdateStrategy {
             ev.target().form().map(|f| f.request_submit());
         }
     }
+
     pub fn commit_duration_input(
         &self,
         ev: Targeted<Event, HtmlInputElement>,
@@ -170,6 +171,82 @@ impl InputUpdateStrategy {
             ev.target().form().map(|f| f.request_submit());
         }
     }
+
+    pub fn commit_vec_input<T>(
+        &self,
+        ev: Targeted<Event, HtmlInputElement>,
+        set_draft: WriteSignal<Option<String>>,
+        action: VecInputCommitAction<T>,
+        index: usize,
+        set_parse_err: WriteSignal<Option<String>>,
+    ) where
+        T: FromStr + Display + Clone + Send + Sync + 'static,
+    {
+        match self {
+            InputUpdateStrategy::Change => {
+                // Only update the draft on input, commit on change
+                set_draft.set(Some(ev.target().value()));
+            }
+            InputUpdateStrategy::Input => {
+                // Update and commit on every input event
+                self.commit_vec_update(ev, set_draft, action, index, set_parse_err);
+            }
+        }
+    }
+
+    pub fn commit_vec_change<T>(
+        &self,
+        ev: Targeted<Event, HtmlInputElement>,
+        set_draft: WriteSignal<Option<String>>,
+        action: VecInputCommitAction<T>,
+        index: usize,
+        set_parse_err: WriteSignal<Option<String>>,
+    ) where
+        T: FromStr + Display + Clone + Send + Sync + 'static,
+    {
+        match self {
+            InputUpdateStrategy::Change => {
+                self.commit_vec_update(ev, set_draft, action, index, set_parse_err);
+            }
+            InputUpdateStrategy::Input => {
+                // No additional action needed on change, since value is already committed on input
+            }
+        }
+    }
+
+    pub fn commit_vec_update<T>(
+        &self,
+        ev: Targeted<Event, HtmlInputElement>,
+        set_draft: WriteSignal<Option<String>>,
+        action: VecInputCommitAction<T>,
+        index: usize,
+        set_parse_err: WriteSignal<Option<String>>,
+    ) where
+        T: FromStr + Display + Clone + Send + Sync + 'static,
+    {
+        let new_val = ev.target().value();
+        let submit = if new_val.is_empty() {
+            set_parse_err.set(None);
+            set_draft.set(None);
+            false
+        } else {
+            match new_val.parse::<T>() {
+                Ok(val) => {
+                    set_parse_err.set(None);
+                    set_draft.set(None);
+                    action.execute(index, val)
+                }
+                Err(_) => {
+                    set_parse_err.set(Some(format!("Invalid input format, parse failed.")));
+                    false
+                }
+            }
+        };
+        if submit {
+            // Trigger form submission if requested by the action
+            ev.target().form().map(|f| f.request_submit());
+        }
+    }
 }
 
 /// Defines what happens when an input value is committed.
@@ -217,8 +294,56 @@ where
     }
 }
 
+/// Defines what happens when an input value is committed for a Vec element.
+/// Enforces compile-time safety to ensure at least one action (callback or submit) is taken.
+pub enum VecInputCommitAction<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    /// Only update the parent signal via callback.
+    WriteTo(Callback<(usize, T)>),
+    /// Only trigger a form submission.
+    SubmitForm,
+    /// Update the parent signal AND trigger a form submission.
+    WriteAndSubmit(Callback<(usize, T)>),
+}
+
+impl<T> Clone for VecInputCommitAction<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for VecInputCommitAction<T> where T: Clone + Send + Sync + 'static {}
+
+impl<T> VecInputCommitAction<T>
+where
+    T: Clone + Send + Sync + 'static,
+{
+    /// Executes the configured action. Returns true if a submit is requested.
+    pub fn execute(&self, index: usize, value: T) -> bool {
+        match self {
+            VecInputCommitAction::WriteTo(cb) => {
+                cb.run((index, value));
+                false
+            }
+            VecInputCommitAction::SubmitForm => true,
+            VecInputCommitAction::WriteAndSubmit(cb) => {
+                cb.run((index, value));
+                true
+            }
+        }
+    }
+}
+
 #[component]
-pub fn TextInput<T>(
+pub fn FieldInput<T>(
+    /// The input type (e.g. "text", "number"). Defaults to "text".
+    #[prop(into, default = "text".to_string())]
+    input_type: String,
     /// Label text for the input
     #[prop(into)]
     label: String,
@@ -238,6 +363,12 @@ pub fn TextInput<T>(
     /// Strategy for committing values to the parent signal.
     #[prop(into, default = InputUpdateStrategy::default())]
     update_on: InputUpdateStrategy,
+    /// Optional step attribute
+    #[prop(into, optional)]
+    step: Option<String>,
+    /// Optional min attribute
+    #[prop(into, optional)]
+    min: Option<String>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into, default = Ok(()).into())]
@@ -294,7 +425,9 @@ where
                 <span class="label-text">{label}</span>
             </label>
             <input
-                type="text"
+                type=input_type
+                step=step
+                min=min
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
                 prop:value=display_value
@@ -327,7 +460,10 @@ where
 }
 
 #[component]
-pub fn NumberInput<T>(
+pub fn VecFieldInput<T>(
+    /// The input type (e.g. "text", "number"). Defaults to "text".
+    #[prop(into, default = "text".to_string())]
+    input_type: String,
     /// Label text for the input
     #[prop(into)]
     label: String,
@@ -338,21 +474,23 @@ pub fn NumberInput<T>(
     /// Optional data-testid attribute for testing
     #[prop(into, optional)]
     data_testid: Option<String>,
-    /// Reactive read-access to Option<T>.
-    /// Using Signal<Option<T>> allows passing ReadSignal, Memo, or derived closures.
+    /// Reactive read-access to Vec<T>.
+    /// Using Signal<Vec<T>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into)]
-    value: Signal<Option<T>>,
+    value: Signal<Vec<T>>,
     /// Defines the action to take when the value changes.
-    action: InputCommitAction<T>,
+    action: VecInputCommitAction<T>,
+    /// Index of the element in the Vec<T> for this input
+    index: usize,
     /// Strategy for committing values to the parent signal.
     #[prop(into, default = InputUpdateStrategy::default())]
     update_on: InputUpdateStrategy,
-    /// Optional step attribute for the number input
+    /// Optional step attribute
     #[prop(into, optional)]
-    step: String,
-    /// Optional min attribute for the number input
+    step: Option<String>,
+    /// Optional min attribute
     #[prop(into, optional)]
-    min: String,
+    min: Option<String>,
     /// Reactive read-access to validation results
     /// Using Signal<ValidationResult<()>> allows passing ReadSignal, Memo, or derived closures.
     #[prop(into, default = Ok(()).into())]
@@ -372,7 +510,6 @@ pub fn NumberInput<T>(
 ) -> impl IntoView
 where
     T: FromStr + Display + Clone + Send + Sync + 'static,
-    T::Err: std::fmt::Display,
 {
     // Local buffer: Some(string) while typing, None when synced with Core
     let (draft, set_draft) = signal(None::<String>);
@@ -394,7 +531,11 @@ where
     // Derived: What to actually show in the <input>
     let display_value = move || match draft.get() {
         Some(d) => d,
-        None => value.get().map(|v| v.to_string()).unwrap_or_default(),
+        None => value
+            .get()
+            .get(index)
+            .map(|v| v.to_string())
+            .unwrap_or_default(),
     };
 
     // Derived: Error visibility logic
@@ -404,23 +545,14 @@ where
     // Auto-generate label and placeholder text based on label and optionality
     let (label, placeholder_text) = generate_label_placeholder(label, optional, placeholder);
 
-    // Default step to "1" if not provided
-    let step_val = if step.is_empty() {
-        "1".to_string()
-    } else {
-        step
-    };
-    // Default min to "0" if not provided
-    let min = if min.is_empty() { "0".to_string() } else { min };
-
     view! {
         <div class="form-control w-full">
             <label class="label">
                 <span class="label-text">{label}</span>
             </label>
             <input
-                type="number"
-                step=step_val
+                type=input_type
+                step=step
                 min=min
                 class="input input-bordered w-full"
                 aria-invalid=move || show_error().to_string()
@@ -429,10 +561,10 @@ where
                 data-testid=data_testid
                 placeholder=placeholder_text
                 on:input:target=move |ev| {
-                    update_on.commit_input(ev, set_draft, action, set_parse_err)
+                    update_on.commit_vec_input(ev, set_draft, action, index, set_parse_err)
                 }
                 on:change:target=move |ev| {
-                    update_on.commit_change(ev, set_draft, action, set_parse_err)
+                    update_on.commit_vec_change(ev, set_draft, action, index, set_parse_err)
                 }
                 // USER LEAVES FIELD: Reset draft to sync with core
                 on:blur=move |_| {
@@ -540,7 +672,7 @@ where
     // We hide errors while the user is actively typing (proactive reset)
     let show_error = move || draft.get().is_none() && error.get().is_some();
 
-    // Auto-generate label and placeholder text based on label and optionality
+    // Auto-generate data-testid, label, and placeholder text based on name, label, and optionality
     let (label, placeholder_text) = generate_label_placeholder(label, optional, placeholder);
 
     view! {

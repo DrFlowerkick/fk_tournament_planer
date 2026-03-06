@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// stage of a tournament
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Stage {
     /// id and version of stage in tournament
     id_version: IdVersion,
@@ -21,8 +21,10 @@ pub struct Stage {
     tournament_id: Uuid,
     /// scheduled stage number in tournament
     number: u32,
-    /// number of groups in stage
-    num_groups: u32,
+    /// number of entrants per group.
+    /// The length of this vector defines the number of groups.
+    /// The sum of values must match the total number of entrants (or survivors from prev stage).
+    group_sizes: Vec<u32>,
 }
 
 impl Default for Stage {
@@ -31,7 +33,9 @@ impl Default for Stage {
             id_version: IdVersion::default(),
             tournament_id: Uuid::nil(),
             number: 0,
-            num_groups: 1,
+            // Default is one group (e.g. for Swiss System or final)
+            // Ideally should be initialized based on tournament entrants when created properly
+            group_sizes: vec![0],
         }
     }
 }
@@ -78,8 +82,14 @@ impl Stage {
     }
 
     /// Get the number of groups in stage.
+    /// Calculated field based on group_sizes configuration.
     pub fn get_num_groups(&self) -> u32 {
-        self.num_groups
+        self.group_sizes.len() as u32
+    }
+
+    /// Get the configured sizes for each group
+    pub fn get_group_sizes(&self) -> &[u32] {
+        &self.group_sizes
     }
 
     /// Set the `IdVersion` of the stage.
@@ -101,8 +111,61 @@ impl Stage {
     }
 
     /// Set the number of groups in stage.
-    pub fn set_num_groups(&mut self, num_groups: u32) -> &mut Self {
-        self.num_groups = num_groups;
+    pub fn set_number_of_groups(&mut self, num_groups: u32) -> &mut Self {
+        match self.get_num_groups().cmp(&num_groups) {
+            std::cmp::Ordering::Less => {
+                // Add new groups with default size 0
+                self.group_sizes.extend(
+                    std::iter::repeat(0).take((num_groups - self.get_num_groups()) as usize),
+                );
+            }
+            std::cmp::Ordering::Greater => {
+                // Remove extra groups from the end
+                self.group_sizes.truncate(num_groups as usize);
+            }
+            std::cmp::Ordering::Equal => {
+                // No change needed
+            }
+        }
+        self
+    }
+
+    /// Set the group sizes configuration directly.
+    pub fn set_group_sizes(&mut self, sizes: Vec<u32>) -> &mut Self {
+        self.group_sizes = sizes;
+        self
+    }
+
+    /// Set the size of a specific group by index.
+    pub fn set_group_size(&mut self, group_index: usize, size: u32) -> &mut Self {
+        if let Some(group_size) = self.group_sizes.get_mut(group_index) {
+            *group_size = size;
+        }
+        self
+    }
+
+    /// Helper to distribute entrants evenly across N groups.
+    /// Remaining entrants are distributed one by one to the first groups.
+    /// E.g. 10 entrants, 3 groups -> [4, 3, 3]
+    pub fn distribute_groups_evenly(
+        &mut self,
+        num_total_entrants: u32,
+        num_groups: u32,
+    ) -> &mut Self {
+        if num_groups == 0 {
+            self.group_sizes = vec![];
+            return self;
+        }
+
+        let base_size = num_total_entrants / num_groups;
+        let remainder = num_total_entrants % num_groups;
+
+        let mut sizes = Vec::with_capacity(num_groups as usize);
+        for i in 0..num_groups {
+            let size = base_size + if i < remainder { 1 } else { 0 };
+            sizes.push(size);
+        }
+        self.group_sizes = sizes;
         self
     }
 
@@ -139,21 +202,43 @@ impl Stage {
             );
         }
 
-        // Validate number of groups
-        if self.num_groups == 0 {
+        // Validate number of groups (implicitly validates group_sizes vector)
+        let num_groups = self.get_num_groups();
+
+        if num_groups == 0 {
             errs.add(
                 FieldError::builder()
-                    .set_field(String::from("num_groups"))
+                    .set_field(String::from("group_sizes"))
                     .add_message("Number of groups must be at least 1")
                     .set_object_id(object_id)
                     .build(),
             );
         }
-        if self.num_groups > tournament.get_num_entrants() / 2 {
+
+        if num_groups > tournament.get_num_entrants() / 2 {
             errs.add(
                 FieldError::builder()
                     .set_field(String::from("num_groups"))
                     .add_message("Number of groups cannot exceed half the number of entrants")
+                    .set_object_id(object_id)
+                    .build(),
+            );
+        }
+
+        // Validate total entrants sum
+        let configured_entrants: u32 = self.group_sizes.iter().sum();
+        let expected_entrants = tournament.get_num_entrants();
+        // Note: For later stages, this logic might need adjustment if entrants drop out,
+        // but for stage definition, the sum usually acts as a sanity check against the count
+        // expected in this stage. Assuming for now all entrants are part of the stage structure.
+        if configured_entrants != expected_entrants {
+            errs.add(
+                FieldError::builder()
+                    .set_field(String::from("group_sizes"))
+                    .add_message(format!(
+                        "Sum of group sizes ({}) must match total tournament entrants ({})",
+                        configured_entrants, expected_entrants
+                    ))
                     .set_object_id(object_id)
                     .build(),
             );
@@ -164,7 +249,7 @@ impl Stage {
 
         // Validate number of groups against mode constraints
         if matches!(mode, TournamentMode::SingleStage) {
-            if self.num_groups != 1 {
+            if num_groups != 1 {
                 errs.add(
                     FieldError::builder()
                         .set_field(String::from("num_groups"))
@@ -179,7 +264,7 @@ impl Stage {
 
         // Specific constraint: Swiss System has 1 group in stage (the whole field)
         if let TournamentMode::SwissSystem { .. } = mode {
-            if self.num_groups > 1 {
+            if num_groups > 1 {
                 errs.add(
                     FieldError::builder()
                         .set_field(String::from("num_groups"))

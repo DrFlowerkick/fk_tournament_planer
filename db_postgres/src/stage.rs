@@ -29,9 +29,9 @@ pub struct DbStage {
     pub version: i64,
     pub tournament_id: Uuid,
     pub number: i32,
-    pub num_groups: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub group_sizes: Vec<Option<i32>>,
 }
 
 // Mapping DB -> Core
@@ -54,7 +54,13 @@ impl TryFrom<DbStage> for Stage {
 
         s.set_tournament_id(r.tournament_id)
             .set_number(r.number as u32)
-            .set_num_groups(r.num_groups as u32);
+            .set_group_sizes(
+                r.group_sizes
+                    .into_iter()
+                    .flatten()
+                    .map(|size| size as u32)
+                    .collect(),
+            );
 
         Ok(s)
     }
@@ -66,7 +72,7 @@ impl TryFrom<DbStage> for Stage {
 pub struct WriteDbStage {
     pub tournament_id: Uuid,
     pub number: i32,
-    pub num_groups: i32,
+    pub group_sizes: Vec<i32>,
 }
 
 // Mapping Core -> DB
@@ -77,7 +83,11 @@ impl<'a> TryFrom<&'a Stage> for WriteDbStage {
         Ok(WriteDbStage {
             tournament_id: s.get_tournament_id(),
             number: s.get_number() as i32,
-            num_groups: s.get_num_groups() as i32,
+            group_sizes: s
+                .get_group_sizes()
+                .iter()
+                .map(|&size| size as i32)
+                .collect(),
         })
     }
 }
@@ -161,9 +171,9 @@ impl DbpStage for PgDb {
                     version,
                     tournament_id,
                     number,
-                    num_groups,
                     created_at,
                     updated_at,
+                    group_sizes,
                 ))
                 .get_result::<DbStage>(&mut conn)
                 .await;
@@ -205,9 +215,9 @@ impl DbpStage for PgDb {
                         version,
                         tournament_id,
                         number,
-                        num_groups,
                         created_at,
                         updated_at,
+                        group_sizes,
                     ))
                     .get_result::<DbStage>(&mut conn)
                     .await

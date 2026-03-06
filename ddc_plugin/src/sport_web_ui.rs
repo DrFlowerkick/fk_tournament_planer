@@ -8,7 +8,7 @@ use app_core::{
 };
 use app_utils::{
     components::inputs::{
-        DurationInput, DurationInputUnit, EnumSelect, InputCommitAction, NumberInput,
+        DurationInput, DurationInputUnit, EnumSelect, FieldInput, InputCommitAction,
     },
     state::sport_config::SportConfigEditorContext,
 };
@@ -362,7 +362,8 @@ impl SportPortWebUi for DdcSportPlugin {
                     match sets_cfg.get() {
                         Some(DdcSetCfg::CustomSetsToWin { .. }) => {
                             view! {
-                                <NumberInput
+                                <FieldInput
+                                    input_type="number"
                                     label="Sets to Win"
                                     name="num_sets"
                                     data_testid="input-num_sets"
@@ -378,7 +379,8 @@ impl SportPortWebUi for DdcSportPlugin {
                         }
                         Some(DdcSetCfg::CustomTotalSets { .. }) => {
                             view! {
-                                <NumberInput
+                                <FieldInput
+                                    input_type="number"
                                     label="Total Sets"
                                     name="num_sets"
                                     data_testid="input-num_sets"
@@ -407,7 +409,8 @@ impl SportPortWebUi for DdcSportPlugin {
                         Some(DdcSetWinningCfg::Custom { .. }) => {
                             view! {
                                 <div class="grid grid-cols-3 gap-4">
-                                    <NumberInput
+                                    <FieldInput
+                                        input_type="number"
                                         label="Score to Win a Set"
                                         name="score_to_win"
                                         data_testid="input-score_to_win"
@@ -418,7 +421,8 @@ impl SportPortWebUi for DdcSportPlugin {
                                         field="score_to_win"
                                         min="1"
                                     />
-                                    <NumberInput
+                                    <FieldInput
+                                        input_type="number"
                                         label="Win by Margin"
                                         name="win_by_margin"
                                         data_testid="input-win_by_margin"
@@ -429,7 +433,8 @@ impl SportPortWebUi for DdcSportPlugin {
                                         field="win_by_margin"
                                         min="1"
                                     />
-                                    <NumberInput
+                                    <FieldInput
+                                        input_type="number"
                                         label="Hard Cap"
                                         name="hard_cap"
                                         data_testid="input-hard_cap"
@@ -448,7 +453,8 @@ impl SportPortWebUi for DdcSportPlugin {
                     }
                 }}
                 <div class="grid grid-cols-2 gap-4">
-                    <NumberInput
+                    <FieldInput
+                        input_type="number"
                         label="Victory Points for Win"
                         name="victory_points_win"
                         data_testid="input-victory_points_win"
@@ -460,7 +466,8 @@ impl SportPortWebUi for DdcSportPlugin {
                         min="0"
                         step="0.1"
                     />
-                    <NumberInput
+                    <FieldInput
+                        input_type="number"
                         label="Victory Points for Draw"
                         name="victory_points_draw"
                         data_testid="input-victory_points_draw"

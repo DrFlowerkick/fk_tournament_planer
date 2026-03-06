@@ -4,7 +4,7 @@ use app_core::SportConfig;
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::sport_config::save_sport_config_inner;
 use app_utils::{
-    components::inputs::{InputCommitAction, TextInput},
+    components::inputs::{FieldInput, InputCommitAction},
     enum_utils::EditAction,
     hooks::{
         use_on_cancel::use_on_cancel,
@@ -273,7 +273,7 @@ fn SportConfigForm(sport_config_editor: SportConfigEditorContext) -> impl IntoVi
                         data-testid="hidden-version"
                         prop:value=move || { sport_config_editor.version.get().unwrap_or_default() }
                     />
-                    <TextInput
+                    <FieldInput
                         label="Name"
                         data_testid="input-name"
                         value=sport_config_editor.name
