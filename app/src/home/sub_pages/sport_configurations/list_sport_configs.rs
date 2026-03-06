@@ -220,6 +220,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                     <FieldInput<
                                                     String,
                                                 >
+                                                        input_type="search"
                                                         name=FilterNameQuery::KEY
                                                         label="Search Name"
                                                         placeholder="Type to search for name..."
