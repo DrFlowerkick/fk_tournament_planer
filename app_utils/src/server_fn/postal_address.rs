@@ -13,18 +13,12 @@ use tracing::instrument;
 use tracing::{error, info};
 use uuid::Uuid;
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "postal_address.load",
     skip_all,
     fields(id = %id)
 )]
-pub async fn load_postal_address(id: Uuid) -> AppResult<Option<PostalAddress>> {
-    load_postal_address_inner(id).await
-}
-
-#[cfg(feature = "test-mock")]
 pub async fn load_postal_address(id: Uuid) -> AppResult<Option<PostalAddress>> {
     load_postal_address_inner(id).await
 }
@@ -43,23 +37,29 @@ pub async fn load_postal_address_inner(id: Uuid) -> AppResult<Option<PostalAddre
     skip_all,
     fields(q_len = name.len(), limit = limit.unwrap_or(10))
 )]
-pub async fn list_postal_address_ids(name: String, limit: Option<usize>) -> AppResult<Vec<Uuid>> {
-    list_postal_address_ids_inner(name, limit).await
+pub async fn list_postal_addresses(
+    name: String,
+    limit: Option<usize>,
+) -> AppResult<Vec<PostalAddress>> {
+    list_postal_addresses_inner(name, limit).await
 }
 
 #[cfg(feature = "test-mock")]
-pub async fn list_postal_address_ids(name: String, limit: Option<usize>) -> AppResult<Vec<Uuid>> {
-    list_postal_address_ids_inner(name, limit).await
+pub async fn list_postal_addresses(
+    name: String,
+    limit: Option<usize>,
+) -> AppResult<Vec<PostalAddress>> {
+    list_postal_addresses_inner(name, limit).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-pub async fn list_postal_address_ids_inner(
+pub async fn list_postal_addresses_inner(
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<Uuid>> {
+) -> AppResult<Vec<PostalAddress>> {
     let core = expect_context::<CoreState>().as_postal_address_state();
     info!("list_request");
-    match core.list_address_ids(Some(&name), limit).await {
+    match core.list_addresses(Some(&name), limit).await {
         Ok(list) => {
             info!(count = list.len(), "list_ok");
             Ok(list)

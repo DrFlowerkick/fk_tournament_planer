@@ -50,7 +50,7 @@ test.describe("Generic error handling loading address", () => {
     const BA = selectors(page).banners;
 
     // ---------------- Arrange: Intercept server response --------------------
-    await page.route(/\/api\/load_postal_address/, (route) => {
+    await page.route(/\/api\/list_postal_addresses/, (route) => {
       route.fulfill({
         status: 500,
         contentType: "application/json",
@@ -79,7 +79,7 @@ test.describe("Generic error handling loading address", () => {
     // -------------------- Act: Click retry and assert banner disappears --------------------
     // IMPORTANT: Remove the route interception before retrying,
     // so the next request actually hits the (mocked) server or proceeds normally.
-    await page.unroute(/\/api\/load_postal_address/);
+    await page.unroute(/\/api\/list_postal_addresses/);
 
     await BA.globalErrorBanner.btnRetry.click();
 

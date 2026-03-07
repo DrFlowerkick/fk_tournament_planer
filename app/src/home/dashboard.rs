@@ -83,7 +83,7 @@ pub fn SportDashboard() -> impl IntoView {
                     // Navigation Links Grid
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mx-auto">
                         <A
-                            href=url_matched_route_update_query(
+                            href=move || url_matched_route_update_query(
                                 TournamentStateQuery::KEY,
                                 "Draft",
                                 MatchedRouteHandler::Extend("tournaments"),
@@ -127,7 +127,7 @@ pub fn SportDashboard() -> impl IntoView {
                         </button>
 
                         <A
-                            href=url_matched_route(MatchedRouteHandler::Extend("adhoc-tournament"))
+                            href=move || url_matched_route(MatchedRouteHandler::Extend("adhoc-tournament"))
                             attr:class="btn btn-accent h-auto min-h-[4rem] text-lg shadow-md"
                             attr:data-testid="link-nav-adhoc"
                             scroll=false
@@ -137,7 +137,7 @@ pub fn SportDashboard() -> impl IntoView {
                         </A>
 
                         <A
-                            href=url_matched_route(
+                            href=move || url_matched_route(
                                 MatchedRouteHandler::Extend("sport-configurations"),
                             )
                             attr:class="btn btn-neutral h-auto min-h-[4rem] text-lg shadow-md"
@@ -150,7 +150,7 @@ pub fn SportDashboard() -> impl IntoView {
 
                         // Full width About link
                         <A
-                            href=url_matched_route(MatchedRouteHandler::Extend("about-sport"))
+                            href=move || url_matched_route(MatchedRouteHandler::Extend("about-sport"))
                             attr:class="btn btn-ghost md:col-span-2 mt-4"
                             attr:data-testid="link-nav-about"
                             scroll=false

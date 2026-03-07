@@ -310,15 +310,20 @@ impl Core<PostalAddressState> {
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
-    pub async fn list_address_ids(
+    pub async fn list_addresses(
         &self,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> CoreResult<Vec<Uuid>> {
+    ) -> CoreResult<Vec<PostalAddress>> {
         let list = self
             .database
-            .list_postal_address_ids(name_filter, limit)
+            .list_postal_addresses(name_filter, limit)
             .await?;
+
+        // validate all addresses in the list before returning
+        for addr in &list {
+            addr.validate()?;
+        }
         Ok(list)
     }
 }

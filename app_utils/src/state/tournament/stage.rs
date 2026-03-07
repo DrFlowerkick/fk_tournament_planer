@@ -1,7 +1,7 @@
 //! stage editor context
 
 use crate::{
-    error::{AppError, ComponentError, ComponentResult, strategy::handle_write_error},
+    error::{AppError, ComponentError, ComponentResult, strategy::handle_with_toast},
     server_fn::stage::{SaveStage, load_stage_by_id},
     state::{
         EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
@@ -170,7 +170,7 @@ impl EditorContext for StageEditorContext {
                     local_tournament
                         .as_ref()
                         .and_then(|t| t.get_stage_by_id(id))
-                        .map(|s| s.get_num_groups())
+                        .map(|s| s.get_number_of_groups())
                 })
             },
             move |local_tournament, num_groups: u32| {
@@ -291,7 +291,7 @@ impl EditorContext for StageEditorContext {
                     Err(err) => {
                         // version reset for parallel editing
                         set_optimistic_version.set(version.get());
-                        handle_write_error(&toast_ctx, &err);
+                        handle_with_toast(&toast_ctx, &err, None);
                     }
                 }
             }

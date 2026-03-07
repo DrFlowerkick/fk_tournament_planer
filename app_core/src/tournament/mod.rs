@@ -391,7 +391,7 @@ impl Tournament {
                     };
                     // check if group number is valid
                     if let Some(stage) = self.stages.get(&current)
-                        && stage.get_num_groups() <= gn
+                        && stage.get_number_of_groups() <= gn
                     {
                         is_invalid = true;
                         break;
@@ -440,7 +440,7 @@ impl Tournament {
     /// Checks if the new tournament configuration requires removing groups.
     fn unlink_excess_groups(&mut self, stage_id: Uuid) {
         if let Some(stage) = self.stages.get(&stage_id) {
-            let num_expected = stage.get_num_groups();
+            let num_expected = stage.get_number_of_groups();
 
             let excess_ids = self.collect_excess_ids(
                 stage_id,

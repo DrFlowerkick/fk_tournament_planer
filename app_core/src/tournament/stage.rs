@@ -83,7 +83,7 @@ impl Stage {
 
     /// Get the number of groups in stage.
     /// Calculated field based on group_sizes configuration.
-    pub fn get_num_groups(&self) -> u32 {
+    pub fn get_number_of_groups(&self) -> u32 {
         self.group_sizes.len() as u32
     }
 
@@ -112,11 +112,11 @@ impl Stage {
 
     /// Set the number of groups in stage.
     pub fn set_number_of_groups(&mut self, num_groups: u32) -> &mut Self {
-        match self.get_num_groups().cmp(&num_groups) {
+        match self.get_number_of_groups().cmp(&num_groups) {
             std::cmp::Ordering::Less => {
                 // Add new groups with default size 0
                 self.group_sizes.extend(
-                    std::iter::repeat(0).take((num_groups - self.get_num_groups()) as usize),
+                    std::iter::repeat(0).take((num_groups - self.get_number_of_groups()) as usize),
                 );
             }
             std::cmp::Ordering::Greater => {
@@ -203,7 +203,7 @@ impl Stage {
         }
 
         // Validate number of groups (implicitly validates group_sizes vector)
-        let num_groups = self.get_num_groups();
+        let num_groups = self.get_number_of_groups();
 
         if num_groups == 0 {
             errs.add(

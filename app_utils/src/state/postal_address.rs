@@ -1,13 +1,10 @@
 //! postal address editor context
 
 use crate::{
-    error::{
-        AppError, ComponentError, ComponentResult, map_db_unique_violation_to_field_error,
-        strategy::handle_write_error,
-    },
-    server_fn::postal_address::{SavePostalAddress, load_postal_address},
+    error::{AppError, strategy::handle_with_toast},
+    server_fn::postal_address::{LoadPostalAddress, SavePostalAddress},
     state::{
-        EditorContext, EditorContextWithResource, SimpleEditorOptions,
+        EditorContext, EditorContextWithResource, LabeledAction, SimpleEditorOptions,
         activity_tracker::ActivityTracker, error_state::PageErrorContext,
         toast_state::ToastContext,
     },
@@ -66,11 +63,9 @@ pub struct PostalAddressEditorContext {
     /// Callback for updating the country field
     pub set_country: Callback<Option<CountryCode>>,
 
-    // --- Resource & server action state ---
+    // --- server actions state ---
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
     set_optimistic_version: RwSignal<Option<u32>>,
-    /// Resource for loading the postal address based on the given id in the editor options
-    pub load_postal_address: LocalResource<ComponentResult<Option<PostalAddress>>>,
     /// Server action for saving the postal address based on the current state of the editor context
     pub save_postal_address: ServerAction<SavePostalAddress>,
     /// Callback after successful save to e.g. navigate to the new postal address or show a success toast.
@@ -200,55 +195,20 @@ impl EditorContext for PostalAddressEditorContext {
             set_country.set(country);
         });
 
-        // ---- address resource ----
+        // ---- address server action ----
         let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
-        // resource to load postal address
-        // since we render PostalAddressTableRow inside the Transition block of ListPostalAddresses,
-        // we do not need to use another Transition block to load the postal address.
-        /*let load_postal_address = Resource::new(
-            move || resource_id.get(),
-            move |maybe_id| async move {
-                if let Some(id) = maybe_id {
-                    match activity_tracker
-                        .track_activity_wrapper(component_id.get_value(), load_postal_address(id))
-                        .await
-                    {
-                        Ok(None) => {
-                            Err(AppError::ResourceNotFound("Postal Address".to_string(), id))
-                        }
-                        res => res,
-                    }
-                } else {
-                    Ok(None)
-                }
-                .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
-            },
-        );*/
-        // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
-        // errors occur until the page is fully rendered and the app "transformed" into a SPA). For this reason
-        // we use a LocalResource here, which does not cause hydration errors.
-        // ToDo: investigate how to use Resource without hydration errors, since Resource provides better
-        // ergonomics for loading states and error handling.
-        let load_postal_address = LocalResource::new(move || async move {
-            if let Some(id) = resource_id.get() {
-                match activity_tracker
-                    .track_activity_wrapper(component_id.get_value(), load_postal_address(id))
-                    .await
-                {
-                    Ok(None) => Err(AppError::ResourceNotFound("Postal Address".to_string(), id)),
-                    res => res,
-                }
-            } else {
-                Ok(None)
-            }
-            .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
-        });
+        // server action to fetch updated postal address for the given id, used by client registry
+        let fetch_postal_address = ServerAction::<LoadPostalAddress>::new();
+        let fetch_postal_address_pending = fetch_postal_address.pending();
+        activity_tracker.track_pending_memo(component_id.get_value(), fetch_postal_address_pending);
+
         let refetch = Callback::new(move |()| {
-            load_postal_address.refetch();
+            if let Some(id) = resource_id.get() {
+                fetch_postal_address.dispatch(LoadPostalAddress { id });
+            }
         });
-        page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
         let topic = Signal::derive(move || {
             resource_id
@@ -257,7 +217,37 @@ impl EditorContext for PostalAddressEditorContext {
         });
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
-        // ---- address server action ----
+        // handle fetch result
+        Effect::new(move || {
+            if let Some(fetch_result) = fetch_postal_address.value().get() {
+                fetch_postal_address.clear();
+                match fetch_result {
+                    Ok(Some(pa)) => {
+                        set_resource_id.set(Some(pa.get_id()));
+                        set_optimistic_version.set(pa.get_version());
+                        local.set(Some(pa));
+                    }
+                    Ok(None) => {
+                        // This case should not happen, since we handle not found case in the server function by returning an error.
+                        // But we handle it here just in case, to prevent the editor from being stuck in a loading state.
+                        let err = AppError::ResourceNotFound(
+                            "Postal Address".to_string(),
+                            resource_id.get().unwrap_or_default(),
+                        );
+                        handle_with_toast(&toast_ctx, &err, None);
+                    }
+                    Err(err) => {
+                        let interactive = LabeledAction {
+                            label: "Retry".to_string(),
+                            on_click: refetch,
+                        };
+                        handle_with_toast(&toast_ctx, &err, Some(interactive));
+                    }
+                }
+            }
+        });
+
+        // server action for saving the postal address based on the current state of the editor context
         let save_postal_address = ServerAction::<SavePostalAddress>::new();
         let save_postal_address_pending = save_postal_address.pending();
         activity_tracker.track_pending_memo(component_id.get_value(), save_postal_address_pending);
@@ -283,12 +273,12 @@ impl EditorContext for PostalAddressEditorContext {
                         set_optimistic_version.set(version.get());
                         // transform unique violation error into Validation Error for name, if any
                         if let Some(object_id) = id.get()
-                            && let Some(field_error) =
-                                map_db_unique_violation_to_field_error(&err, object_id, "name")
+                            && let Some(field_error) = err.to_field_error(object_id, "name")
                         {
                             set_unique_violation_error.set(Some(field_error));
                         } else {
-                            handle_write_error(&toast_ctx, &err);
+                            // ToDo: add retry interactive to toast?
+                            handle_with_toast(&toast_ctx, &err, None);
                         }
                     }
                 }
@@ -315,7 +305,6 @@ impl EditorContext for PostalAddressEditorContext {
             country,
             set_country,
             set_optimistic_version,
-            load_postal_address,
             save_postal_address,
             post_save_callback,
         }

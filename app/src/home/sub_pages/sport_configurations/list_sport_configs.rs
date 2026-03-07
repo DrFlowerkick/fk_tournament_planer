@@ -6,7 +6,7 @@ use app_utils::{
     enum_utils::{EditAction, FilterLimit},
     error::{
         ComponentError,
-        strategy::{handle_read_error, handle_unexpected_ui_error},
+        strategy::{handle_unexpected_ui_error, handle_with_error_banner},
     },
     hooks::{
         use_on_cancel::use_on_cancel,
@@ -159,7 +159,7 @@ pub fn ListSportConfigurations() -> impl IntoView {
                 for (_err_id, err) in errors.get().into_iter() {
                     let e = err.into_inner();
                     if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        handle_read_error(&page_err_ctx, comp_err, on_cancel);
+                        handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
                     } else {
                         handle_unexpected_ui_error(
                             &page_err_ctx,

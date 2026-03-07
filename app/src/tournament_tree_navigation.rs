@@ -8,7 +8,7 @@ use app_core::CrTopic;
 use app_utils::{
     error::{
         AppError, ComponentError,
-        strategy::{handle_read_error, handle_unexpected_ui_error},
+        strategy::{handle_unexpected_ui_error, handle_with_error_banner},
     },
     hooks::{
         blur_active_element::blur_active_element,
@@ -151,7 +151,7 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                         {
                             toast_ctx.error("Obsolete tournament id in query.", None);
                         } else {
-                            handle_read_error(&page_err_ctx, comp_err, on_cancel);
+                            handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
                         }
                     } else {
                         handle_unexpected_ui_error(

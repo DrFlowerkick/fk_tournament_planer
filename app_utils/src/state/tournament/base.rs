@@ -1,10 +1,7 @@
 //! base editor context
 
 use crate::{
-    error::{
-        AppError, ComponentError, ComponentResult, map_db_unique_violation_to_field_error,
-        strategy::handle_write_error,
-    },
+    error::{AppError, ComponentError, ComponentResult, strategy::handle_with_toast},
     params::{ParamQuery, SportIdQuery},
     server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
     state::{
@@ -328,12 +325,11 @@ impl EditorContext for BaseEditorContext {
                         set_optimistic_version.set(version.get());
                         // transform unique violation error into Validation Error for name, if any
                         if let Some(object_id) = id.get()
-                            && let Some(field_error) =
-                                map_db_unique_violation_to_field_error(&err, object_id, "name")
+                            && let Some(field_error) = err.to_field_error(object_id, "name")
                         {
                             set_unique_violation_error.set(Some(field_error));
                         } else {
-                            handle_write_error(&toast_ctx, &err);
+                            handle_with_toast(&toast_ctx, &err, None);
                         }
                     }
                 }

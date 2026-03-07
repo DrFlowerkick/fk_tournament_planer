@@ -12,7 +12,7 @@ async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_re
     // Prepare state
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(0); // Valid: < 3
-    core.get_mut().set_num_groups(4); // Valid: 4 <= 32/2
+    core.get_mut().set_number_of_groups(4); // Valid: 4 <= 32/2
 
     let id = core
         .save()
@@ -21,7 +21,7 @@ async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_re
         .get_id();
 
     // Change state to verify reload
-    core.get_mut().set_num_groups(1);
+    core.get_mut().set_number_of_groups(1);
 
     // Act
     let res = core.load_by_id(id).await.expect("db ok");
@@ -31,7 +31,7 @@ async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_re
     let got = core.get().clone();
     assert_eq!(got.get_id(), id);
     assert_eq!(got.get_number(), 0);
-    assert_eq!(got.get_num_groups(), 4);
+    assert_eq!(got.get_number_of_groups(), 4);
 }
 
 /// 2) load_by_number(): found → state replaced, Some returned
@@ -43,12 +43,12 @@ async fn given_existing_number_when_load_by_number_then_state_is_replaced_and_so
     // Prepare state
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(1); // Use Stage 1 (Valid: < 3)
-    core.get_mut().set_num_groups(8); // Valid: 8 <= 32/2
+    core.get_mut().set_number_of_groups(8); // Valid: 8 <= 32/2
 
     core.save().await.expect("initial save should succeed");
 
     // Change state to verify reload
-    core.get_mut().set_num_groups(1);
+    core.get_mut().set_number_of_groups(1);
     core.get_mut().set_number(2);
 
     // Act
@@ -58,7 +58,7 @@ async fn given_existing_number_when_load_by_number_then_state_is_replaced_and_so
     // Assert state was replaced (state.tournament_id is implicit context)
     let got = core.get();
     assert_eq!(got.get_number(), 1);
-    assert_eq!(got.get_num_groups(), 8);
+    assert_eq!(got.get_number_of_groups(), 8);
 }
 
 /// 3) load_by_id(): not found → None, state unchanged
@@ -125,7 +125,7 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
     // Arrange
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(0);
-    core.get_mut().set_num_groups(2);
+    core.get_mut().set_number_of_groups(2);
 
     // Act
     let saved = core.save().await.expect("save ok").clone();
@@ -142,7 +142,7 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
     let (mut core, db_fake, _cr_fake) = make_core_stage_state_with_fakes();
 
     // Seed state (valid one)
-    core.get_mut().set_num_groups(1);
+    core.get_mut().set_number_of_groups(1);
     let before = core.get().clone();
 
     // Act
@@ -175,7 +175,7 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
         s.set_id_version(IdVersion::default());
         s.set_tournament_id(t_id);
         s.set_number(num);
-        s.set_num_groups(groups);
+        s.set_number_of_groups(groups);
         *core.get_mut() = s;
 
         core.save()
@@ -204,8 +204,8 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
     assert_eq!(stage_list[2].get_number(), 2);
 
     // check content correctness (matches inputs above)
-    assert_eq!(stage_list[0].get_num_groups(), 4); // #0 -> 4 groups
-    assert_eq!(stage_list[2].get_num_groups(), 2); // #2 -> 2 groups
+    assert_eq!(stage_list[0].get_number_of_groups(), 4); // #0 -> 4 groups
+    assert_eq!(stage_list[2].get_number_of_groups(), 2); // #2 -> 2 groups
 }
 
 /// 9) list_stages_of_tournament(): DB error propagates

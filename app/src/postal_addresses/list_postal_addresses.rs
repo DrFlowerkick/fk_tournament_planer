@@ -1,12 +1,12 @@
 //! Postal Address Search Component
 
-use app_core::CrTopic;
+use app_core::{CrTopic, PostalAddress};
 use app_utils::{
     components::inputs::{EnumSelect, FieldInput, InputCommitAction, InputUpdateStrategy},
     enum_utils::{EditAction, FilterLimit},
     error::{
         ComponentError,
-        strategy::{handle_read_error, handle_unexpected_ui_error},
+        strategy::{handle_unexpected_ui_error, handle_with_error_banner},
     },
     hooks::{
         use_on_cancel::use_on_cancel,
@@ -16,7 +16,7 @@ use app_utils::{
         },
     },
     params::{AddressIdQuery, EditActionParams, FilterLimitQuery, FilterNameQuery, ParamQuery},
-    server_fn::postal_address::list_postal_address_ids,
+    server_fn::postal_address::list_postal_addresses,
     state::{
         LabeledAction, SimpleEditorOptions, activity_tracker::ActivityTracker,
         error_state::PageErrorContext, object_table::ObjectEditorMapContext,
@@ -73,7 +73,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
     let limit = FilterLimitQuery::use_param_query();
 
     // Resource that fetches data when filters change
-    let postal_address_ids = Resource::new(
+    let postal_addresses = Resource::new(
         move || {
             (
                 search_term.get(),
@@ -85,7 +85,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
             activity_tracker
                 .track_activity_wrapper(
                     component_id.get_value(),
-                    list_postal_address_ids(
+                    list_postal_addresses(
                         term.unwrap_or_default(),
                         lim.or_else(|| Some(FilterLimit::default()))
                             .map(|l| l as usize),
@@ -97,7 +97,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
     );
 
     // Refetch callbacks
-    let refetch = Callback::new(move |()| postal_address_ids.refetch());
+    let refetch = Callback::new(move |()| postal_addresses.refetch());
     page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
     let edit_action = EditActionParams::use_param_query();
@@ -115,7 +115,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
         }
         None => {
             toast_ctx.success("New Postal Address on server, reloading list", None);
-            postal_address_ids.refetch();
+            postal_addresses.refetch();
         }
     });
 
@@ -149,7 +149,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 for (_err_id, err) in errors.get().into_iter() {
                     let e = err.into_inner();
                     if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        handle_read_error(&page_err_ctx, comp_err, on_cancel);
+                        handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
                     } else {
                         handle_unexpected_ui_error(
                             &page_err_ctx,
@@ -161,9 +161,9 @@ pub fn ListPostalAddresses() -> impl IntoView {
                 }
             }>
                 {move || {
-                    postal_address_ids
-                        .and_then(|pa_ids| {
-                            postal_address_editor_map.visible_ids_list.set(pa_ids.clone());
+                    postal_addresses
+                        .and_then(|pa_list| {
+                            postal_address_editor_map.visible_objects_list.set(pa_list.clone());
                             view! {
                                 <div
                                     class="card w-full bg-base-100 shadow-xl"
@@ -233,8 +233,8 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                             <Show
                                                 when=move || {
                                                     postal_address_editor_map
-                                                        .visible_ids_list
-                                                        .with(|val| !val.is_empty())
+                                                        .visible_objects_list
+                                                        .with(|list| !list.is_empty())
                                                 }
                                                 fallback=|| {
                                                     view! {
@@ -259,11 +259,11 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                     <tbody>
                                                         <For
                                                             each=move || {
-                                                                postal_address_editor_map.visible_ids_list.get().into_iter()
+                                                                postal_address_editor_map.visible_objects_list.get()
                                                             }
-                                                            key=|id| *id
-                                                            children=move |id| {
-                                                                view! { <PostalAddressTableRow id=id /> }
+                                                            key=|pa| pa.get_id()
+                                                            children=move |pa| {
+                                                                view! { <PostalAddressTableRow pa=pa /> }
                                                             }
                                                         />
                                                     </tbody>
@@ -365,142 +365,113 @@ pub fn ListPostalAddresses() -> impl IntoView {
 }
 
 #[component]
-fn PostalAddressTableRow(id: Uuid) -> impl IntoView {
+fn PostalAddressTableRow(pa: PostalAddress) -> impl IntoView {
     // --- local context ---
     let postal_address_editor_map =
         expect_context::<ObjectEditorMapContext<PostalAddressEditorContext, AddressIdQuery>>();
+    let id = pa.get_id();
     // unwrap is safe here, since we provide an id.
     let postal_address_editor = postal_address_editor_map
         .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
         .unwrap();
+    postal_address_editor_map.update_object_in_editor(&pa);
     let address_id = AddressIdQuery::use_param_query();
 
     view! {
-        {move || {
-            postal_address_editor
-                .load_postal_address
-                .and_then(|maybe_pa| {
-                    maybe_pa
-                        .as_ref()
-                        .map(|pa| {
-                            postal_address_editor_map.update_object_in_editor(pa);
-                            view! {
-                                <tr
-                                    class="hover cursor-pointer"
-                                    class:bg-base-200=move || {
-                                        postal_address_editor_map.is_selected(id)
-                                    }
-                                    data-testid=format!("table-entry-row-{}", id)
-                                    on:click=move |_| {
-                                        if address_id.get() == Some(id) {
-                                            postal_address_editor_map.set_selected_id.run(None);
-                                        } else {
-                                            postal_address_editor_map.set_selected_id.run(Some(id));
-                                        }
-                                    }
-                                >
-                                    <td
-                                        class="font-bold"
-                                        data-testid=format!("table-entry-name-{}", id)
-                                    >
-                                        {move || postal_address_editor.name.get()}
-                                    </td>
-                                    <td data-testid=format!(
-                                        "table-entry-preview-{}",
-                                        id,
-                                    )>
-                                        {move || {
-                                            format!(
-                                                "{} - {}",
-                                                postal_address_editor.locality.get().unwrap_or_default(),
-                                                postal_address_editor
-                                                    .country
-                                                    .get()
-                                                    .map(|c| c.name())
-                                                    .unwrap_or_default(),
-                                            )
-                                        }}
-                                    </td>
-                                </tr>
-                                <Show when=move || postal_address_editor_map.is_selected(id)>
-                                    <tr>
-                                        <td colspan="2" class="p-0">
-                                            <div
-                                                class="flex flex-wrap items-baseline gap-x-2 gap-y-1 p-4 bg-base-200 text-sm"
-                                                data-testid="table-entry-detailed-preview"
-                                            >
-                                                <span data-testid="preview-street" class="font-medium">
-                                                    {move || postal_address_editor.street.get()}
-                                                </span>
+        <tr
+            class="hover cursor-pointer"
+            class:bg-base-200=move || { postal_address_editor_map.is_selected(id) }
+            data-testid=format!("table-entry-row-{}", id)
+            on:click=move |_| {
+                if address_id.get() == Some(id) {
+                    postal_address_editor_map.set_selected_id.run(None);
+                } else {
+                    postal_address_editor_map.set_selected_id.run(Some(id));
+                }
+            }
+        >
+            <td class="font-bold" data-testid=format!("table-entry-name-{}", id)>
+                {move || postal_address_editor.name.get()}
+            </td>
+            <td data-testid=format!(
+                "table-entry-preview-{}",
+                id,
+            )>
+                {move || {
+                    format!(
+                        "{} - {}",
+                        postal_address_editor.locality.get().unwrap_or_default(),
+                        postal_address_editor.country.get().map(|c| c.name()).unwrap_or_default(),
+                    )
+                }}
+            </td>
+        </tr>
+        <Show when=move || postal_address_editor_map.is_selected(id)>
+            <tr>
+                <td colspan="2" class="p-0">
+                    <div
+                        class="flex flex-wrap items-baseline gap-x-2 gap-y-1 p-4 bg-base-200 text-sm"
+                        data-testid="table-entry-detailed-preview"
+                    >
+                        <span data-testid="preview-street" class="font-medium">
+                            {move || postal_address_editor.street.get()}
+                        </span>
 
-                                                <span class="opacity-50 hidden sm:inline">"•"</span>
+                        <span class="opacity-50 hidden sm:inline">"•"</span>
 
-                                                <span data-testid="preview-postal_locality">
-                                                    <span data-testid="preview-postal_code">
-                                                        {move || postal_address_editor.postal_code.get()}
-                                                    </span>
-                                                    " "
-                                                    <span data-testid="preview-locality">
-                                                        {move || postal_address_editor.locality.get()}
-                                                    </span>
-                                                </span>
+                        <span data-testid="preview-postal_locality">
+                            <span data-testid="preview-postal_code">
+                                {move || postal_address_editor.postal_code.get()}
+                            </span>
+                            " "
+                            <span data-testid="preview-locality">
+                                {move || postal_address_editor.locality.get()}
+                            </span>
+                        </span>
 
-                                                <Show when=move || {
-                                                    postal_address_editor.region.get().is_some()
-                                                }>
-                                                    <span class="opacity-50 hidden sm:inline">"•"</span>
-                                                    <span data-testid="preview-region">
-                                                        {move || {
-                                                            postal_address_editor
-                                                                .region
-                                                                .get()
-                                                                .map(|r| r.to_string())
-                                                                .unwrap_or_default()
-                                                        }}
-                                                    </span>
-                                                </Show>
+                        <Show when=move || { postal_address_editor.region.get().is_some() }>
+                            <span class="opacity-50 hidden sm:inline">"•"</span>
+                            <span data-testid="preview-region">
+                                {move || {
+                                    postal_address_editor
+                                        .region
+                                        .get()
+                                        .map(|r| r.to_string())
+                                        .unwrap_or_default()
+                                }}
+                            </span>
+                        </Show>
 
-                                                <span class="opacity-50 hidden sm:inline">"•"</span>
+                        <span class="opacity-50 hidden sm:inline">"•"</span>
 
-                                                <span
-                                                    data-testid="preview-country"
-                                                    class="text-base-content/70"
-                                                >
-                                                    {move || display_country(
-                                                        postal_address_editor.country.get(),
-                                                    )}
-                                                </span>
+                        <span data-testid="preview-country" class="text-base-content/70">
+                            {move || display_country(postal_address_editor.country.get())}
+                        </span>
 
-                                                // Hidden technical fields
-                                                <span class="hidden" data-testid="preview-address-id">
-                                                    {move || {
-                                                        postal_address_editor
-                                                            .id
-                                                            .get()
-                                                            .map(|id| id.to_string())
-                                                            .unwrap_or_default()
-                                                    }}
-                                                </span>
-                                                <span class="hidden" data-testid="preview-address-version">
-                                                    {move || {
-                                                        postal_address_editor.version.get().unwrap_or_default()
-                                                    }}
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="2" class="p-0">
-                                            <div
-                                                class="flex gap-2 justify-end p-2 bg-base-200"
-                                                data-testid="row-actions"
-                                            ></div>
-                                        </td>
-                                    </tr>
-                                </Show>
-                            }
-                        })
-                })
-        }}
+                        // Hidden technical fields
+                        <span class="hidden" data-testid="preview-address-id">
+                            {move || {
+                                postal_address_editor
+                                    .id
+                                    .get()
+                                    .map(|id| id.to_string())
+                                    .unwrap_or_default()
+                            }}
+                        </span>
+                        <span class="hidden" data-testid="preview-address-version">
+                            {move || { postal_address_editor.version.get().unwrap_or_default() }}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" class="p-0">
+                    <div
+                        class="flex gap-2 justify-end p-2 bg-base-200"
+                        data-testid="row-actions"
+                    ></div>
+                </td>
+            </tr>
+        </Show>
     }
 }

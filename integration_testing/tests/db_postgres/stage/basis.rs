@@ -30,7 +30,7 @@ async fn given_new_when_save_then_get_roundtrip_version_is_0() -> Result<()> {
 
     assert_eq!(fetched.get_tournament_id(), t_id);
     assert_eq!(fetched.get_number(), 0);
-    assert_eq!(fetched.get_num_groups(), 2);
+    assert_eq!(fetched.get_number_of_groups(), 2);
 
     Ok(())
 }
@@ -53,7 +53,7 @@ async fn given_existing_v0_when_update_then_version_increments_to_1() -> Result<
     // Assert
     assert_eq!(v1.get_id(), v0.get_id());
     assert_eq!(v1.get_version(), Some(1));
-    assert_eq!(v1.get_num_groups(), 4);
+    assert_eq!(v1.get_number_of_groups(), 4);
 
     Ok(())
 }

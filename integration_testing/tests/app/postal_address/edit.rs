@@ -112,19 +112,11 @@ async fn test_new_postal_address() {
 
     let new_address = ts
         .db
-        .list_postal_address_ids(Some("New"), None)
+        .list_postal_addresses(Some("New"), None)
         .await
         .unwrap();
     assert_eq!(new_address.len(), 1);
-    assert_eq!(
-        ts.db
-            .get_postal_address(new_address[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_name(),
-        "New Name"
-    );
+    assert_eq!(new_address[0].get_name(), "New Name");
 }
 
 #[wasm_bindgen_test]
@@ -242,27 +234,10 @@ async fn test_copy_new_postal_address() {
 
     let cloned_addresses = ts
         .db
-        .list_postal_address_ids(Some("Cloned"), None)
+        .list_postal_addresses(Some("Cloned"), None)
         .await
         .unwrap();
     assert_eq!(cloned_addresses.len(), 1);
-    assert_eq!(
-        ts.db
-            .get_postal_address(cloned_addresses[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_name(),
-        "Cloned Address"
-    );
-    assert_eq!(
-        ts.db
-            .get_postal_address(cloned_addresses[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_version()
-            .unwrap(),
-        0
-    );
+    assert_eq!(cloned_addresses[0].get_street(), "Cloned Address");
+    assert_eq!(cloned_addresses[0].get_version().unwrap(), 0);
 }
