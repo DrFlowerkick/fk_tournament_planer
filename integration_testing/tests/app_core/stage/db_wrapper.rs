@@ -13,6 +13,8 @@ async fn given_existing_id_when_load_by_id_then_state_is_replaced_and_some_is_re
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(0); // Valid: < 3
     core.get_mut().set_number_of_groups(4); // Valid: 4 <= 32/2
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 4);
 
     let id = core
         .save()
@@ -44,6 +46,8 @@ async fn given_existing_number_when_load_by_number_then_state_is_replaced_and_so
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(1); // Use Stage 1 (Valid: < 3)
     core.get_mut().set_number_of_groups(8); // Valid: 8 <= 32/2
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 8);
 
     core.save().await.expect("initial save should succeed");
 
@@ -126,6 +130,8 @@ async fn given_valid_state_when_save_then_db_fake_result_replaces_state_and_is_r
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(0);
     core.get_mut().set_number_of_groups(2);
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 2);
 
     // Act
     let saved = core.save().await.expect("save ok").clone();
@@ -143,6 +149,8 @@ async fn given_db_fake_failure_when_save_then_error_propagates_and_state_unchang
 
     // Seed state (valid one)
     core.get_mut().set_number_of_groups(1);
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 1);
     let before = core.get().clone();
 
     // Act
@@ -176,6 +184,7 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
         s.set_tournament_id(t_id);
         s.set_number(num);
         s.set_number_of_groups(groups);
+        s.distribute_groups_evenly(32, groups); // 32 entrants
         *core.get_mut() = s;
 
         core.save()
@@ -205,7 +214,14 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
 
     // check content correctness (matches inputs above)
     assert_eq!(stage_list[0].get_number_of_groups(), 4); // #0 -> 4 groups
+    assert_eq!(stage_list[0].get_group_sizes(), vec![8, 8, 8, 8]);
+    assert_eq!(stage_list[1].get_number_of_groups(), 8); // #2 -> 2 groups
+    assert_eq!(
+        stage_list[1].get_group_sizes(),
+        vec![4, 4, 4, 4, 4, 4, 4, 4]
+    );
     assert_eq!(stage_list[2].get_number_of_groups(), 2); // #2 -> 2 groups
+    assert_eq!(stage_list[2].get_group_sizes(), vec![16, 16]);
 }
 
 /// 9) list_stages_of_tournament(): DB error propagates

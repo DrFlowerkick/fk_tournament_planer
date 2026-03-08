@@ -232,14 +232,13 @@ where
         }
     }
 
-    // ToDo: we have to change all signal usage in this fn to _untracked
     pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
-        self.editor_map.with(|em| {
+        self.editor_map.with_untracked(|em| {
             if let Some(editor) = em
                 .get(&object.get_id_version().get_id())
                 .map(|(editor, _)| editor)
             {
-                let optimistic_version = editor.optimistic_version_signal().get();
+                let optimistic_version = editor.optimistic_version_signal().get_untracked();
                 if optimistic_version.is_none() {
                     editor.set_object(object.clone());
                 }

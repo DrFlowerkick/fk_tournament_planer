@@ -1,6 +1,6 @@
 //! Postal Address Search Component
 
-use app_core::{CrTopic, PostalAddress};
+use app_core::{CrTopic, PostalAddress, utils::traits::ObjectIdVersion};
 use app_utils::{
     components::inputs::{EnumSelect, FieldInput, InputCommitAction, InputUpdateStrategy},
     enum_utils::{EditAction, FilterLimit},
@@ -27,10 +27,7 @@ use cr_leptos_axum_socket::use_client_registry_socket;
 use isocountry::CountryCode;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
-    NavigateOptions,
-    components::{A, Form},
-    hooks::use_navigate,
-    nested_router::Outlet,
+    NavigateOptions, components::Form, hooks::use_navigate, nested_router::Outlet,
 };
 use uuid::Uuid;
 
@@ -130,104 +127,88 @@ pub fn ListPostalAddresses() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <Transition fallback=move || {
-            view! {
-                <div
-                    class="card w-full bg-base-100 shadow-xl"
-                    data-testid="postal-address-list-root"
-                >
-                    <div class="card-body">
-                        <h2 class="card-title" node_ref=scroll_ref>
-                            "Search Postal Address"
-                        </h2>
-                        <span class="loading loading-spinner loading-lg"></span>
-                    </div>
+        <div class="card w-full bg-base-100 shadow-xl" data-testid="postal-address-list-root">
+            <div class="card-body">
+                <div class="flex justify-between items-center">
+                    <h2 class="card-title" node_ref=scroll_ref>
+                        "Search Postal Address"
+                    </h2>
+                    <button
+                        class="btn btn-square btn-ghost btn-sm"
+                        on:click=move |_| on_cancel.run(())
+                        aria-label="Close"
+                        data-testid="action-btn-close-list"
+                    >
+                        <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                    </button>
                 </div>
-            }
-        }>
-            <ErrorBoundary fallback=move |errors| {
-                for (_err_id, err) in errors.get().into_iter() {
-                    let e = err.into_inner();
-                    if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
-                    } else {
-                        handle_unexpected_ui_error(
-                            &page_err_ctx,
-                            component_id.get_value(),
-                            "An unexpected error occurred.",
-                            on_cancel,
-                        );
-                    }
-                }
-            }>
-                {move || {
-                    postal_addresses
-                        .and_then(|pa_list| {
-                            postal_address_editor_map.visible_objects_list.set(pa_list.clone());
-                            view! {
-                                <div
-                                    class="card w-full bg-base-100 shadow-xl"
-                                    data-testid="postal-address-list-root"
-                                >
-                                    <div class="card-body">
-                                        <div class="flex justify-between items-center">
-                                            <h2 class="card-title" node_ref=scroll_ref>
-                                                "Search Postal Address"
-                                            </h2>
-                                            <button
-                                                class="btn btn-square btn-ghost btn-sm"
-                                                on:click=move |_| on_cancel.run(())
-                                                aria-label="Close"
-                                                data-testid="action-btn-close-list"
-                                            >
-                                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
-                                            </button>
-                                        </div>
 
-                                        // --- Filter Bar ---
-                                        <Form method="GET" action="" noscroll=true replace=true>
-                                            // Hidden input to keep address_id in query string
-                                            <input
-                                                type="hidden"
-                                                name=AddressIdQuery::KEY
-                                                prop:value=move || {
-                                                    address_id
-                                                        .get()
-                                                        .map(|id| id.to_string())
-                                                        .unwrap_or_default()
-                                                }
-                                            />
-                                            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
-                                                // Text Search
-                                                <div class="w-full max-w-xs">
-                                                    <FieldInput<
-                                                    String,
-                                                >
-                                                        input_type="search"
-                                                        name=FilterNameQuery::KEY
-                                                        label="Search Name"
-                                                        placeholder="Type to search for name..."
-                                                        value=search_term
-                                                        update_on=InputUpdateStrategy::Input
-                                                        action=InputCommitAction::SubmitForm
-                                                        data_testid="filter-name-search"
-                                                    />
-                                                </div>
-                                                // Limit Selector
-                                                <div class="w-full max-w-xs">
-                                                    <EnumSelect<
-                                                    FilterLimit,
-                                                >
-                                                        name=FilterLimitQuery::KEY
-                                                        label="Limit"
-                                                        value=limit
-                                                        data_testid="filter-limit-select"
-                                                        clear_label=FilterLimit::default().to_string()
-                                                        action=InputCommitAction::SubmitForm
-                                                    />
-                                                </div>
-                                            </div>
-                                        </Form>
+                // --- Filter Bar ---
+                <Form method="GET" action="" noscroll=true replace=true>
+                    // Hidden input to keep address_id in query string
+                    <input
+                        type="hidden"
+                        name=AddressIdQuery::KEY
+                        prop:value=move || {
+                            address_id.get().map(|id| id.to_string()).unwrap_or_default()
+                        }
+                    />
+                    <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                        // Text Search
+                        <div class="w-full max-w-xs">
+                            <FieldInput<
+                            String,
+                        >
+                                input_type="search"
+                                name=FilterNameQuery::KEY
+                                label="Search Name"
+                                placeholder="Type to search for name..."
+                                value=search_term
+                                update_on=InputUpdateStrategy::Input
+                                action=InputCommitAction::SubmitForm
+                                data_testid="filter-name-search"
+                            />
+                        </div>
+                        // Limit Selector
+                        <div class="w-full max-w-xs">
+                            <EnumSelect<
+                            FilterLimit,
+                        >
+                                name=FilterLimitQuery::KEY
+                                label="Limit"
+                                value=limit
+                                data_testid="filter-limit-select"
+                                clear_label=FilterLimit::default().to_string()
+                                action=InputCommitAction::SubmitForm
+                            />
+                        </div>
+                    </div>
+                </Form>
+                <ErrorBoundary fallback=move |errors| {
+                    for (_err_id, err) in errors.get().into_iter() {
+                        let e = err.into_inner();
+                        if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
+                            handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
+                        } else {
+                            handle_unexpected_ui_error(
+                                &page_err_ctx,
+                                component_id.get_value(),
+                                "An unexpected error occurred.",
+                                on_cancel,
+                            );
+                        }
+                    }
+                }>
+                    <Transition fallback=move || {
+                        view! { <span class="loading loading-spinner loading-lg"></span> }
+                    }>
+                        {move || {
+                            postal_addresses
+                                .and_then(|pa_list| {
+                                    postal_address_editor_map
+                                        .visible_objects_list
+                                        .set(pa_list.clone());
+                                    view! {
                                         // --- Table Area ---
                                         <div class="overflow-x-auto">
                                             <Show
@@ -261,7 +242,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                             each=move || {
                                                                 postal_address_editor_map.visible_objects_list.get()
                                                             }
-                                                            key=|pa| pa.get_id()
+                                                            key=|pa| pa.get_id_version()
                                                             children=move |pa| {
                                                                 view! { <PostalAddressTableRow pa=pa /> }
                                                             }
@@ -272,20 +253,28 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                         </div>
                                         // --- Action Bar ---
                                         <div class="flex flex-col md:flex-row justify-end gap-4">
-                                            <div class:hidden=move || {
-                                                postal_address_editor_map.selected_id.get().is_none()
-                                            }>
-                                                <A
-                                                    href=move || url_matched_route(
+                                            <button
+                                                class="btn btn-sm btn-secondary"
+                                                class:hidden=move || {
+                                                    postal_address_editor_map.selected_id.get().is_none()
+                                                }
+                                                data-testid="action-btn-edit"
+                                                on:click=move |_| {
+                                                    let navigate = use_navigate();
+                                                    let nav_url = url_matched_route(
                                                         MatchedRouteHandler::Extend("edit"),
-                                                    )
-                                                    attr:class="btn btn-sm btn-secondary"
-                                                    attr:data-testid="action-btn-edit"
-                                                    scroll=false
-                                                >
-                                                    "Edit selected Postal Address"
-                                                </A>
-                                            </div>
+                                                    );
+                                                    navigate(
+                                                        &nav_url,
+                                                        NavigateOptions {
+                                                            scroll: false,
+                                                            ..Default::default()
+                                                        },
+                                                    );
+                                                }
+                                            >
+                                                "Edit selected Postal Address"
+                                            </button>
                                             <button
                                                 class="btn btn-sm btn-secondary-content"
                                                 class:hidden=move || {
@@ -352,15 +341,15 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                 "Create new Postal Address"
                                             </button>
                                         </div>
-                                    </div>
-                                </div>
-                                <div class="my-4"></div>
-                                <Outlet />
-                            }
-                        })
-                }}
-            </ErrorBoundary>
-        </Transition>
+                                        <div class="my-4"></div>
+                                        <Outlet />
+                                    }
+                                })
+                        }}
+                    </Transition>
+                </ErrorBoundary>
+            </div>
+        </div>
     }
 }
 
@@ -374,6 +363,8 @@ fn PostalAddressTableRow(pa: PostalAddress) -> impl IntoView {
     let postal_address_editor = postal_address_editor_map
         .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
         .unwrap();
+    // we use update here, because the row may be rerendered during editing,which may result in an edit
+    // conflict.
     postal_address_editor_map.update_object_in_editor(&pa);
     let address_id = AddressIdQuery::use_param_query();
 

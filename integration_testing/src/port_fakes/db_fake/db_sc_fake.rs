@@ -60,12 +60,12 @@ impl DbpSportConfig for FakeDatabasePort {
         Ok(new)
     }
 
-    async fn list_sport_config_ids(
+    async fn list_sport_configs(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>> {
+    ) -> DbResult<Vec<SportConfig>> {
         let mut guard = self.fail_next_list_sc.lock().unwrap();
         if *guard {
             *guard = false;
@@ -97,6 +97,6 @@ impl DbpSportConfig for FakeDatabasePort {
         if let Some(l) = limit {
             rows.truncate(l);
         }
-        Ok(rows.into_iter().map(|sc| sc.get_id()).collect())
+        Ok(rows)
     }
 }

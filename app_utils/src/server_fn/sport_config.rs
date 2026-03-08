@@ -13,18 +13,12 @@ use tracing::instrument;
 use tracing::{error, info};
 use uuid::Uuid;
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "sport_config.load",
     skip_all,
     fields(id = %id)
 )]
-pub async fn load_sport_config(id: Uuid) -> AppResult<Option<SportConfig>> {
-    load_sport_config_inner(id).await
-}
-
-#[cfg(feature = "test-mock")]
 pub async fn load_sport_config(id: Uuid) -> AppResult<Option<SportConfig>> {
     load_sport_config_inner(id).await
 }
@@ -38,21 +32,21 @@ pub async fn load_sport_config_inner(id: Uuid) -> AppResult<Option<SportConfig>>
 
 #[cfg(not(feature = "test-mock"))]
 #[server]
-#[instrument(name = "sport_config.list_sport_config_ids", skip_all)]
-pub async fn list_sport_config_ids(
+#[instrument(name = "sport_config.list", skip_all)]
+pub async fn list_sport_configs(
     sport_id: Uuid,
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<Uuid>> {
+) -> AppResult<Vec<SportConfig>> {
     list_sport_configs_inner(sport_id, name, limit).await
 }
 
 #[cfg(feature = "test-mock")]
-pub async fn list_sport_config_ids(
+pub async fn list_sport_configs(
     sport_id: Uuid,
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<Uuid>> {
+) -> AppResult<Vec<SportConfig>> {
     list_sport_configs_inner(sport_id, name, limit).await
 }
 
@@ -61,10 +55,10 @@ async fn list_sport_configs_inner(
     sport_id: Uuid,
     name: String,
     limit: Option<usize>,
-) -> AppResult<Vec<Uuid>> {
+) -> AppResult<Vec<SportConfig>> {
     let core = expect_context::<CoreState>().as_sport_config_state();
     let configs = core
-        .list_sport_config_ids(sport_id, Some(&name), limit)
+        .list_sport_configs(sport_id, Some(&name), limit)
         .await?;
     Ok(configs)
 }

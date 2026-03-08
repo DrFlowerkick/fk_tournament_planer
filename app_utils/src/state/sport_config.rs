@@ -1,11 +1,11 @@
 //! sport configuration editor context
 
 use crate::{
-    error::{AppError, ComponentError, ComponentResult, strategy::handle_with_toast},
+    error::{AppError, strategy::handle_with_toast},
     params::{ParamQuery, SportIdQuery},
-    server_fn::sport_config::{SaveSportConfig, load_sport_config},
+    server_fn::sport_config::{LoadSportConfig, SaveSportConfig},
     state::{
-        EditorContext, EditorContextWithResource, SimpleEditorOptions,
+        EditorContext, EditorContextWithResource, LabeledAction, SimpleEditorOptions,
         activity_tracker::ActivityTracker,
         error_state::PageErrorContext,
         global_state::{GlobalState, GlobalStateStoreFields},
@@ -54,8 +54,6 @@ pub struct SportConfigEditorContext {
     // --- Resource & server action state ---
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
     set_optimistic_version: RwSignal<Option<u32>>,
-    /// Resource for loading the sport configuration based on the given id in the editor options
-    pub load_sport_config: LocalResource<ComponentResult<Option<SportConfig>>>,
     /// Server action for saving the sport configuration based on the current state of the editor context
     pub save_sport_config: ServerAction<SaveSportConfig>,
     /// Callback after successful save to e.g. navigate to the new sport configuration or show a success toast.
@@ -141,52 +139,20 @@ impl EditorContext for SportConfigEditorContext {
             },
         );
 
-        // ---- sport config resource ----
+        // ---- sport config server action ----
         let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
-        // resource to load sport config
-        // since we render SportConfigTableRow inside the Transition block of ListSportConfigs,
-        // we do not need to use another Transition block to load the sport config.
-        /*let load_sport_config = Resource::new(
-            move || resource_id.get(),
-            move |maybe_id| async move {
-                if let Some(id) = maybe_id {
-                    match activity_tracker
-                        .track_activity_wrapper(component_id.get_value(), load_sport_config(id))
-                        .await
-                    {
-                        Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
-                        res =>res,
-                    }
-                } else {
-                    Ok(None)
-                }
-            },
-        );*/
-        // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
-        // errors occur until the page is fully rendered and the app "transformed" into a SPA). For this reason
-        // we use a LocalResource here, which does not cause hydration errors.
-        // ToDo: investigate how to use Resource without hydration errors, since Resource provides better
-        // ergonomics for loading states and error handling.
-        let load_sport_config = LocalResource::new(move || async move {
-            if let Some(id) = resource_id.get() {
-                match activity_tracker
-                    .track_activity_wrapper(component_id.get_value(), load_sport_config(id))
-                    .await
-                {
-                    Ok(None) => Err(AppError::ResourceNotFound("Sport Config".to_string(), id)),
-                    res => res,
-                }
-            } else {
-                Ok(None)
-            }
-            .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
-        });
+        // server action to fetch updated sport config for the given id, used by client registry
+        let fetch_sport_config = ServerAction::<LoadSportConfig>::new();
+        let fetch_sport_config_pending = fetch_sport_config.pending();
+        activity_tracker.track_pending_memo(component_id.get_value(), fetch_sport_config_pending);
+
         let refetch = Callback::new(move |()| {
-            load_sport_config.refetch();
+            if let Some(id) = resource_id.get() {
+                fetch_sport_config.dispatch(LoadSportConfig { id });
+            }
         });
-        page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
         let topic = Signal::derive(move || {
             resource_id.get().map(|id| CrTopic::SportConfig {
@@ -195,7 +161,37 @@ impl EditorContext for SportConfigEditorContext {
         });
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
-        // ---- sport config server action ----
+        // handle fetch result
+        Effect::new(move || {
+            if let Some(fetch_result) = fetch_sport_config.value().get() {
+                fetch_sport_config.clear();
+                match fetch_result {
+                    Ok(Some(sc)) => {
+                        set_resource_id.set(Some(sc.get_id()));
+                        set_optimistic_version.set(sc.get_version());
+                        local.set(Some(sc));
+                    }
+                    Ok(None) => {
+                        // This case should not happen, since we handle not found case in the server function by returning an error.
+                        // But we handle it here just in case, to prevent the editor from being stuck in a loading state.
+                        let err = AppError::ResourceNotFound(
+                            "Sport Config".to_string(),
+                            resource_id.get().unwrap_or_default(),
+                        );
+                        handle_with_toast(&toast_ctx, &err, None);
+                    }
+                    Err(err) => {
+                        let interactive = LabeledAction {
+                            label: "Retry".to_string(),
+                            on_click: refetch,
+                        };
+                        handle_with_toast(&toast_ctx, &err, Some(interactive));
+                    }
+                }
+            }
+        });
+
+        // server action for saving the sport config based on the current state of the editor context
         let save_sport_config = ServerAction::<SaveSportConfig>::new();
         let save_sport_config_pending = save_sport_config.pending();
         activity_tracker.track_pending_memo(component_id.get_value(), save_sport_config_pending);
@@ -244,7 +240,6 @@ impl EditorContext for SportConfigEditorContext {
             config,
             set_config,
             set_optimistic_version,
-            load_sport_config,
             save_sport_config,
             post_save_callback,
         }

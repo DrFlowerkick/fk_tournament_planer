@@ -127,7 +127,9 @@ pub fn SportDashboard() -> impl IntoView {
                         </button>
 
                         <A
-                            href=move || url_matched_route(MatchedRouteHandler::Extend("adhoc-tournament"))
+                            href=move || url_matched_route(
+                                MatchedRouteHandler::Extend("adhoc-tournament"),
+                            )
                             attr:class="btn btn-accent h-auto min-h-[4rem] text-lg shadow-md"
                             attr:data-testid="link-nav-adhoc"
                             scroll=false
@@ -150,7 +152,9 @@ pub fn SportDashboard() -> impl IntoView {
 
                         // Full width About link
                         <A
-                            href=move || url_matched_route(MatchedRouteHandler::Extend("about-sport"))
+                            href=move || url_matched_route(
+                                MatchedRouteHandler::Extend("about-sport"),
+                            )
                             attr:class="btn btn-ghost md:col-span-2 mt-4"
                             attr:data-testid="link-nav-about"
                             scroll=false
