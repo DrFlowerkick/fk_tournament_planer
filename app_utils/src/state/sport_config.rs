@@ -172,8 +172,8 @@ impl EditorContext for SportConfigEditorContext {
                         local.set(Some(sc));
                     }
                     Ok(None) => {
-                        // This case should not happen, since we handle not found case in the server function by returning an error.
-                        // But we handle it here just in case, to prevent the editor from being stuck in a loading state.
+                        // This case should not happen, since the fetch action is triggered based on the presence of a valid
+                        // resource id. If it does happen, it means the resource was not found and we should inform the user.
                         let err = AppError::ResourceNotFound(
                             "Sport Config".to_string(),
                             resource_id.get().unwrap_or_default(),

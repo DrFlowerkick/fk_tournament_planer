@@ -13,18 +13,12 @@ use tracing::instrument;
 use tracing::{error, info};
 use uuid::Uuid;
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "stage.load_by_id",
     skip_all,
     fields(id = %id)
 )]
-pub async fn load_stage_by_id(tournament_id: Uuid, id: Uuid) -> AppResult<Option<Stage>> {
-    load_stage_by_id_inner(tournament_id, id).await
-}
-
-#[cfg(feature = "test-mock")]
 pub async fn load_stage_by_id(tournament_id: Uuid, id: Uuid) -> AppResult<Option<Stage>> {
     load_stage_by_id_inner(tournament_id, id).await
 }
