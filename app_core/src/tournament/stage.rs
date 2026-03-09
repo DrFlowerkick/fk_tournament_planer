@@ -381,19 +381,26 @@ impl Core<StageState> {
         self.client_registry.publish(notice, msg).await?;
         Ok(self.get())
     }
-    pub async fn list_stage_ids_of_tournament(&mut self) -> CoreResult<Vec<(Uuid, u32)>> {
+
+    pub async fn list_stages_of_tournament(&mut self) -> CoreResult<Vec<Stage>> {
         self.try_load_tournament().await?;
-        if let Some(tournament) = self.state.tournament.as_ref() {
-            let stages = self
-                .database
-                .list_stage_ids_of_tournament(
+        let stages = if let Some(tournament) = self.state.tournament.as_ref() {
+            self.database
+                .list_stages_of_tournament(
                     self.state.tournament_id,
                     tournament.get_tournament_mode().get_num_of_stages(),
                 )
-                .await?;
-            Ok(stages)
+                .await?
         } else {
-            Ok(vec![])
+            vec![]
+        };
+
+        if let Some(tournament) = self.state.tournament.as_ref() {
+            for stage in &stages {
+                stage.validate(tournament)?;
+            }
         }
+
+        Ok(stages)
     }
 }

@@ -79,11 +79,11 @@ impl DbpStage for FakeDatabasePort {
         Ok(new)
     }
 
-    async fn list_stage_ids_of_tournament(
+    async fn list_stages_of_tournament(
         &self,
         t_id: Uuid,
         number_of_stages: u32,
-    ) -> DbResult<Vec<(Uuid, u32)>> {
+    ) -> DbResult<Vec<Stage>> {
         let mut guard = self.fail_next_list_stage.lock().unwrap();
         if *guard {
             *guard = false;
@@ -103,9 +103,6 @@ impl DbpStage for FakeDatabasePort {
         // Simulate DB order by number ASC
         rows.sort_by_key(|s| s.get_number());
 
-        Ok(rows
-            .into_iter()
-            .map(|s| (s.get_id(), s.get_number()))
-            .collect())
+        Ok(rows)
     }
 }

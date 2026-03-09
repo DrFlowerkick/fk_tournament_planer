@@ -65,6 +65,7 @@ pub fn Header() -> impl IntoView {
                     // This is required because daisyUI's dropdown relies on focus/blur of CSS selectors.
                     <button
                         type="button"
+                        data-testid="menu-button"
                         class="btn btn-ghost btn-circle swap swap-rotate"
                         class:swap-active=move || menu_open.get()
                         on:click=move |_| {
@@ -90,6 +91,7 @@ pub fn Header() -> impl IntoView {
                         <li>
                             <A
                                 href=move || url_update_path("/postal-address")
+                                attr:data-testid="nav-postal-addresses"
                                 on:click=move |_| {
                                     set_menu_open.set(false);
                                     blur_active_element();
@@ -101,6 +103,7 @@ pub fn Header() -> impl IntoView {
                         <li>
                             <A
                                 href="/"
+                                attr:data-testid="nav-sport-selection"
                                 on:click=move |_| {
                                     if let Ok(Some(storage)) = window().local_storage() {
                                         let _ = storage.remove_item(STORAGE_KEY_SPORT_ID);

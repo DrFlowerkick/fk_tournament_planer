@@ -65,19 +65,19 @@ pub async fn load_stage_by_number_inner(
 #[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(name = "stage.list_all_of_tournament", skip_all)]
-pub async fn list_stage_ids_of_tournament(tournament_id: Uuid) -> AppResult<Vec<(Uuid, u32)>> {
-    list_stage_ids_of_tournament_inner(tournament_id).await
+pub async fn list_stages_of_tournament(tournament_id: Uuid) -> AppResult<Vec<Stage>> {
+    list_stages_of_tournament_inner(tournament_id).await
 }
 
 #[cfg(feature = "test-mock")]
-pub async fn list_stage_ids_of_tournament(tournament_id: Uuid) -> AppResult<Vec<(Uuid, u32)>> {
-    list_stage_ids_of_tournament_inner(tournament_id).await
+pub async fn list_stages_of_tournament(tournament_id: Uuid) -> AppResult<Vec<Stage>> {
+    list_stages_of_tournament_inner(tournament_id).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-async fn list_stage_ids_of_tournament_inner(tournament_id: Uuid) -> AppResult<Vec<(Uuid, u32)>> {
+async fn list_stages_of_tournament_inner(tournament_id: Uuid) -> AppResult<Vec<Stage>> {
     let mut core = expect_context::<CoreState>().as_stage_state(tournament_id);
-    let stages = core.list_stage_ids_of_tournament().await?;
+    let stages = core.list_stages_of_tournament().await?;
     Ok(stages)
 }
 

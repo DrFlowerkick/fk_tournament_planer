@@ -195,7 +195,7 @@ impl TournamentEditorContext {
         let Some(stage_editor) = self.get_stage_editor(stage.get_number()) else {
             return; // No editor for this stage number, cannot update
         };
-        let optimistic_version = stage_editor.optimistic_version_signal().get();
+        let optimistic_version = stage_editor.optimistic_version_signal().get_untracked();
         if optimistic_version.is_none() {
             stage_editor.set_object(stage.clone());
         }

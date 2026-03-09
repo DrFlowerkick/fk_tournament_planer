@@ -1,6 +1,7 @@
 // e2e/tests/generic-error.spec.ts
 import { test, expect } from "@playwright/test";
 import {
+  openHomePage,
   openPostalAddressList,
   clickNewPostalAddress,
   fillAllRequiredValid,
@@ -48,6 +49,7 @@ test.describe("Generic error handling saving address", () => {
 test.describe("Generic error handling loading address", () => {
   test("shows a generic error banner on 500 server error", async ({ page }) => {
     const BA = selectors(page).banners;
+    const MENU = selectors(page).menu;
 
     // ---------------- Arrange: Intercept server response --------------------
     await page.route(/\/api\/list_postal_addresses/, (route) => {
@@ -62,10 +64,13 @@ test.describe("Generic error handling loading address", () => {
     });
 
     // -------------------- Act: Try to load the address list --------------------
-    // Navigate to "list" route and assert elements exist
-    await page.goto(PA_ROUTES.list);
-    // strict hydration check
-    await waitForAppHydration(page);
+    // navigate to home page
+    await openHomePage(page);
+    // Navigate via menu to postal address list, which triggers the API call that we intercept above
+    await expect(MENU.btnToggle).toBeVisible();
+    await MENU.btnToggle.click();
+    await expect(MENU.navPostalAddresses).toBeVisible();
+    await MENU.navPostalAddresses.click();
 
     // -------------------- Assert: error banner is shown --------------------
     await expect(BA.globalErrorBanner.root).toBeVisible();

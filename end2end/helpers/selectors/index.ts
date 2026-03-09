@@ -6,6 +6,8 @@ import {
   TOAST_IDS,
   getListSelectors,
   LIST_IDS,
+  getMenuSelectors,
+  MENU_IDS
 } from "./common";
 import { getPostalSelectors, POSTAL_IDS } from "./postalAddress";
 import { getSportSelectors, SPORT_IDS } from "./sportConfig";
@@ -19,6 +21,7 @@ export const IDS = {
   toasts: TOAST_IDS,
   home: HOME_IDS,
   list: LIST_IDS,
+  menu: MENU_IDS,
 } as const;
 
 export function selectors(page: Page) {
@@ -29,5 +32,6 @@ export function selectors(page: Page) {
     toasts: getToastSelectors(page),
     home: getHomeSelectors(page),
     list: getListSelectors(page),
+    menu: getMenuSelectors(page),
   };
 }

@@ -1,4 +1,4 @@
-use app_core::{CoreError, DbError, Stage, utils::id_version::IdVersion};
+use app_core::{CoreError, DbError, utils::id_version::IdVersion};
 use uuid::Uuid;
 
 use integration_testing::port_fakes::*;
@@ -193,35 +193,23 @@ async fn given_multiple_stages_when_list_then_returned_sorted_by_number() {
     }
 
     // Act
-    let list = core.list_stage_ids_of_tournament().await.expect("db ok");
-    let mut stage_list: Vec<Stage> = Vec::with_capacity(list.len());
-    for (id, _) in list {
-        let stage = core
-            .load_by_id(id)
-            .await
-            .expect("load ok")
-            .expect("stage exists");
-        stage_list.push(stage.clone());
-    }
+    let list = core.list_stages_of_tournament().await.expect("db ok");
 
     // Assert
-    assert_eq!(stage_list.len(), 3);
+    assert_eq!(list.len(), 3);
 
     // check sort order (ASC by number)
-    assert_eq!(stage_list[0].get_number(), 0);
-    assert_eq!(stage_list[1].get_number(), 1);
-    assert_eq!(stage_list[2].get_number(), 2);
+    assert_eq!(list[0].get_number(), 0);
+    assert_eq!(list[1].get_number(), 1);
+    assert_eq!(list[2].get_number(), 2);
 
     // check content correctness (matches inputs above)
-    assert_eq!(stage_list[0].get_number_of_groups(), 4); // #0 -> 4 groups
-    assert_eq!(stage_list[0].get_group_sizes(), vec![8, 8, 8, 8]);
-    assert_eq!(stage_list[1].get_number_of_groups(), 8); // #2 -> 2 groups
-    assert_eq!(
-        stage_list[1].get_group_sizes(),
-        vec![4, 4, 4, 4, 4, 4, 4, 4]
-    );
-    assert_eq!(stage_list[2].get_number_of_groups(), 2); // #2 -> 2 groups
-    assert_eq!(stage_list[2].get_group_sizes(), vec![16, 16]);
+    assert_eq!(list[0].get_number_of_groups(), 4); // #0 -> 4 groups
+    assert_eq!(list[0].get_group_sizes(), vec![8, 8, 8, 8]);
+    assert_eq!(list[1].get_number_of_groups(), 8); // #2 -> 2 groups
+    assert_eq!(list[1].get_group_sizes(), vec![4, 4, 4, 4, 4, 4, 4, 4]);
+    assert_eq!(list[2].get_number_of_groups(), 2); // #2 -> 2 groups
+    assert_eq!(list[2].get_group_sizes(), vec![16, 16]);
 }
 
 /// 9) list_stages_of_tournament(): DB error propagates
@@ -232,7 +220,7 @@ async fn given_db_fake_failure_when_list_stages_then_error_propagates() {
     db_fake.fail_list_stage_once();
 
     let err = core
-        .list_stage_ids_of_tournament()
+        .list_stages_of_tournament()
         .await
         .expect_err("expected DB error");
 

@@ -4,7 +4,7 @@
 //! for the open/closed state of each node. We will use CSS to style the tree and indicate which nodes are expandable.
 
 use crate::header::DropdownContext;
-use app_core::CrTopic;
+use app_core::{CrTopic, utils::traits::ObjectIdVersion};
 use app_utils::{
     error::{
         ComponentError,
@@ -15,7 +15,7 @@ use app_utils::{
         use_url_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
     params::{ParamQuery, TournamentBaseIdQuery},
-    server_fn::{stage::list_stage_ids_of_tournament, tournament_base::load_tournament_base},
+    server_fn::{stage::list_stages_of_tournament, tournament_base::load_tournament_base},
     state::{
         SimpleEditorOptions,
         activity_tracker::ActivityTracker,
@@ -109,14 +109,14 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
     );
 
     // Resource that fetches stage ids for the tournament, to be used for rendering stage nodes in the tree
-    let stage_ids = Resource::new(
+    let stages = Resource::new(
         move || tournament_base_id.get(),
         move |maybe_id| async move {
             if let Some(t_id) = maybe_id {
                 activity_tracker
                     .track_activity_wrapper(
                         stage_component_id.get_value(),
-                        list_stage_ids_of_tournament(t_id),
+                        list_stages_of_tournament(t_id),
                     )
                     .await
             } else {
@@ -127,7 +127,7 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
     );
 
     // Refetch callbacks
-    let refetch = Callback::new(move |()| stage_ids.refetch());
+    let refetch = Callback::new(move |()| stages.refetch());
     page_err_ctx.register_retry_handler(stage_component_id.get_value(), refetch);
 
     let reload_after_new = Callback::new(move |()| {
@@ -136,7 +136,7 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
         // but only update the list of stages in the tree, which should not interrupt
         // the editing process.
         toast_ctx.success("New Tournament Stage on server, adding stage to menu", None);
-        stage_ids.refetch()
+        stages.refetch()
     });
 
     // Subscribe to relevant events from client registry to trigger refetch
@@ -220,24 +220,28 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                                             </summary>
                                             <div class="collapse-content text-sm">
                                                 {move || {
-                                                    stage_ids
-                                                        .and_then(|s_ids_and_numbers| {
-                                                            let s_ids_and_numbers = s_ids_and_numbers.clone();
+                                                    stages
+                                                        .and_then(|stages| {
+                                                            let stages = stages.clone();
                                                             {
                                                                 view! {
                                                                     <For
                                                                         each=move || {
-                                                                            s_ids_and_numbers
+                                                                            stages
                                                                                 .clone()
                                                                                 .into_iter()
-                                                                                .filter_map(move |(stage_id, stage_number)| {
+                                                                                .filter_map(move |stage| {
                                                                                     tournament_editor
-                                                                                        .spawn_stage_editor(Some(stage_id), stage_number)
-                                                                                        .map(|stage_editor| (stage_id, stage_editor))
+                                                                                        .spawn_stage_editor(
+                                                                                            Some(stage.get_id()),
+                                                                                            stage.get_number(),
+                                                                                        )
+                                                                                        .map(|stage_editor| (stage, stage_editor))
                                                                                 })
                                                                         }
-                                                                        key=|(stage_id, _)| *stage_id
-                                                                        children=move |(_, stage_editor)| {
+                                                                        key=|(stage, _)| stage.get_id_version()
+                                                                        children=move |(stage, stage_editor)| {
+                                                                            tournament_editor.update_stage_in_editor(&stage);
                                                                             view! {
                                                                                 <div class="collapse-content text-sm">
                                                                                     <TournamentTreeStage
@@ -275,54 +279,39 @@ fn TournamentTreeStage(
     let dropdown_ctx = expect_context::<DropdownContext>();
 
     view! {
-        {move || {
-            stage_editor
-                .load_stage
-                .and_then(|maybe_stage| {
-                    maybe_stage
-                        .as_ref()
-                        .map(|stage| {
-                            tournament_editor.update_stage_in_editor(stage);
-                            view! {
-                                <details class="collapse border-base-300 border">
-                                    <summary class="collapse-title font-semibold">
-                                        <span class="icon-[heroicons--view-columns-16-solid] w-[1em] h-[1em] mr-2"></span>
-                                        {move || {
-                                            stage_editor
-                                                .number
-                                                .get()
-                                                .and_then(|stage_number| {
-                                                    tournament_editor
-                                                        .base_editor
-                                                        .mode
-                                                        .get()
-                                                        .and_then(|mode| mode.get_stage_name(stage_number))
-                                                })
-                                        }}
-                                        <A
-                                            href=move || {
-                                                if let Some(stage_number) = stage_editor.number.get() {
-                                                    url_update_path(
-                                                        &format!("/tournaments/edit/{}", stage_number),
-                                                    )
-                                                } else {
-                                                    "/tournaments/edit".to_string()
-                                                }
-                                            }
-                                            attr:class="btn btn-ghost btn-sm"
-                                            scroll=false
-                                            on:click=move |_| {
-                                                dropdown_ctx.set_menu_open.set(false);
-                                                blur_active_element();
-                                            }
-                                        >
-                                            <span class="icon-[heroicons--link] w-[1em] h-[1em]"></span>
-                                        </A>
-                                    </summary>
-                                </details>
-                            }
+        <details class="collapse border-base-300 border">
+            <summary class="collapse-title font-semibold">
+                <span class="icon-[heroicons--view-columns-16-solid] w-[1em] h-[1em] mr-2"></span>
+                {move || {
+                    stage_editor
+                        .number
+                        .get()
+                        .and_then(|stage_number| {
+                            tournament_editor
+                                .base_editor
+                                .mode
+                                .get()
+                                .and_then(|mode| mode.get_stage_name(stage_number))
                         })
-                })
-        }}
+                }}
+                <A
+                    href=move || {
+                        if let Some(stage_number) = stage_editor.number.get() {
+                            url_update_path(&format!("/tournaments/edit/{}", stage_number))
+                        } else {
+                            "/tournaments/edit".to_string()
+                        }
+                    }
+                    attr:class="btn btn-ghost btn-sm"
+                    scroll=false
+                    on:click=move |_| {
+                        dropdown_ctx.set_menu_open.set(false);
+                        blur_active_element();
+                    }
+                >
+                    <span class="icon-[heroicons--link] w-[1em] h-[1em]"></span>
+                </A>
+            </summary>
+        </details>
     }
 }

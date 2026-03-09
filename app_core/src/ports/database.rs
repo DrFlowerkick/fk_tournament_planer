@@ -68,11 +68,11 @@ pub trait DbpStage: Send + Sync {
         number: u32,
     ) -> DbResult<Option<Stage>>;
     async fn save_stage(&self, stage: &Stage) -> DbResult<Stage>;
-    async fn list_stage_ids_of_tournament(
+    async fn list_stages_of_tournament(
         &self,
         tournament_id: Uuid,
         number_of_stages: u32,
-    ) -> DbResult<Vec<(Uuid, u32)>>;
+    ) -> DbResult<Vec<Stage>>;
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]
