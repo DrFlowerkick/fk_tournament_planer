@@ -7,7 +7,7 @@ use crate::header::DropdownContext;
 use app_core::CrTopic;
 use app_utils::{
     error::{
-        AppError, ComponentError,
+        ComponentError,
         strategy::{handle_unexpected_ui_error, handle_with_error_banner},
     },
     hooks::{
@@ -15,7 +15,7 @@ use app_utils::{
         use_url_navigation::{UseQueryNavigationReturn, use_query_navigation},
     },
     params::{ParamQuery, TournamentBaseIdQuery},
-    server_fn::stage::list_stage_ids_of_tournament,
+    server_fn::{stage::list_stage_ids_of_tournament, tournament_base::load_tournament_base},
     state::{
         SimpleEditorOptions,
         activity_tracker::ActivityTracker,
@@ -77,12 +77,15 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
     // --- global context ---
     let page_err_ctx = expect_context::<PageErrorContext>();
     let toast_ctx = expect_context::<ToastContext>();
-    let component_id = StoredValue::new(Uuid::new_v4());
+    let base_component_id = StoredValue::new(Uuid::new_v4());
+    let stage_component_id = StoredValue::new(Uuid::new_v4());
     let activity_tracker = expect_context::<ActivityTracker>();
     // remove errors on unmount
     on_cleanup(move || {
-        page_err_ctx.clear_all_for_component(component_id.get_value());
-        activity_tracker.remove_component(component_id.get_value());
+        page_err_ctx.clear_all_for_component(base_component_id.get_value());
+        activity_tracker.remove_component(base_component_id.get_value());
+        page_err_ctx.clear_all_for_component(stage_component_id.get_value());
+        activity_tracker.remove_component(stage_component_id.get_value());
     });
 
     // --- state & context ---
@@ -90,23 +93,42 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
         expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
     let dropdown_ctx = expect_context::<DropdownContext>();
 
+    // resource to load tournament base
+    let load_tournament_base = Resource::new(
+        move || tournament_base_id.get(),
+        move |maybe_id| async move {
+            if let Some(id) = maybe_id {
+                activity_tracker
+                    .track_activity_wrapper(base_component_id.get_value(), load_tournament_base(id))
+                    .await
+            } else {
+                Ok(None)
+            }
+            .map_err(|app_error| ComponentError::new(base_component_id.get_value(), app_error))
+        },
+    );
+
     // Resource that fetches stage ids for the tournament, to be used for rendering stage nodes in the tree
-    let stage_ids = LocalResource::new(move || async move {
-        if let Some(t_id) = tournament_base_id.try_get().flatten() {
-            activity_tracker
-                .track_activity_wrapper(
-                    component_id.get_value(),
-                    list_stage_ids_of_tournament(t_id),
-                )
-                .await
-        } else {
-            Ok(vec![])
-        }
-    });
+    let stage_ids = Resource::new(
+        move || tournament_base_id.get(),
+        move |maybe_id| async move {
+            if let Some(t_id) = maybe_id {
+                activity_tracker
+                    .track_activity_wrapper(
+                        stage_component_id.get_value(),
+                        list_stage_ids_of_tournament(t_id),
+                    )
+                    .await
+            } else {
+                Ok(vec![])
+            }
+            .map_err(|app_error| ComponentError::new(stage_component_id.get_value(), app_error))
+        },
+    );
 
     // Refetch callbacks
     let refetch = Callback::new(move |()| stage_ids.refetch());
-    page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
+    page_err_ctx.register_retry_handler(stage_component_id.get_value(), refetch);
 
     let reload_after_new = Callback::new(move |()| {
         // in menu it should not be a problem to trigger a refetch while editing,
@@ -146,17 +168,11 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                 for (_err_id, err) in errors.get().into_iter() {
                     let e = err.into_inner();
                     if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        if let AppError::ResourceNotFound(object, _) = &comp_err.app_error
-                            && object == "Tournament Base"
-                        {
-                            toast_ctx.error("Obsolete tournament id in query.", None);
-                        } else {
-                            handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
-                        }
+                        handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
                     } else {
                         handle_unexpected_ui_error(
                             &page_err_ctx,
-                            component_id.get_value(),
+                            base_component_id.get_value(),
                             "An unexpected error occurred.",
                             on_cancel,
                         );
@@ -164,9 +180,7 @@ fn TournamentTreeBase(tournament_editor: TournamentEditorContext) -> impl IntoVi
                 }
             }>
                 {move || {
-                    tournament_editor
-                        .base_editor
-                        .load_tournament_base
+                    load_tournament_base
                         .and_then(|maybe_base| {
                             maybe_base
                                 .as_ref()

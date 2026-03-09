@@ -1,6 +1,6 @@
 //! list tournaments
 
-use app_core::{CrTopic, TournamentState};
+use app_core::{CrTopic, TournamentBase, TournamentState, utils::traits::ObjectIdVersion};
 use app_utils::{
     components::inputs::{EnumSelect, FieldInput, InputCommitAction, InputUpdateStrategy},
     enum_utils::EditAction,
@@ -20,7 +20,7 @@ use app_utils::{
         EditActionParams, FilterLimitQuery, FilterNameQuery, IncludeAdhocQuery, ParamQuery,
         SportIdQuery, TournamentBaseIdQuery, TournamentStateQuery,
     },
-    server_fn::tournament_base::list_tournament_base_ids,
+    server_fn::tournament_base::list_tournament_bases,
     state::{
         LabeledAction, SimpleEditorOptions, activity_tracker::ActivityTracker,
         error_state::PageErrorContext, object_table::ObjectEditorMapContext,
@@ -87,7 +87,7 @@ pub fn ListTournaments() -> impl IntoView {
                 activity_tracker
                     .track_activity_wrapper(
                         component_id.get_value(),
-                        list_tournament_base_ids(
+                        list_tournament_bases(
                             s_id,
                             term.unwrap_or_default(),
                             status,
@@ -143,145 +143,145 @@ pub fn ListTournaments() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <Transition fallback=move || {
-            view! {
-                <div class="card w-full bg-base-100 shadow-xl" data-testid="tournaments-list-root">
-                    <div class="card-body">
-                        <h2 class="card-title" node_ref=scroll_ref>
-                            "List Tournaments"
-                        </h2>
-                        <span class="loading loading-spinner loading-lg"></span>
-                    </div>
-                </div>
+        <ErrorBoundary fallback=move |errors| {
+            for (_err_id, err) in errors.get().into_iter() {
+                let e = err.into_inner();
+                if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
+                    handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
+                } else {
+                    handle_unexpected_ui_error(
+                        &page_err_ctx,
+                        component_id.get_value(),
+                        "An unexpected error occurred.",
+                        on_cancel,
+                    );
+                }
             }
         }>
-            <ErrorBoundary fallback=move |errors| {
-                for (_err_id, err) in errors.get().into_iter() {
-                    let e = err.into_inner();
-                    if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
-                    } else {
-                        handle_unexpected_ui_error(
-                            &page_err_ctx,
-                            component_id.get_value(),
-                            "An unexpected error occurred.",
-                            on_cancel,
-                        );
-                    }
+            <Transition fallback=move || {
+                view! {
+                    <div
+                        class="card w-full bg-base-100 shadow-xl"
+                        data-testid="tournaments-list-root"
+                    >
+                        <div class="card-body">
+                            <h2 class="card-title" node_ref=scroll_ref>
+                                "List Tournaments"
+                            </h2>
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    </div>
                 }
             }>
-                {move || {
-                    tournament_ids
-                        .and_then(|t_ids| {
-                            tournament_editor_map.visible_ids_list.set(t_ids.clone());
-                            view! {
-                                <div
-                                    class="card w-full bg-base-100 shadow-xl"
-                                    data-testid="tournaments-list-root"
+                <div class="card w-full bg-base-100 shadow-xl" data-testid="tournaments-list-root">
+                    <div class="card-body">
+                        <div class="flex justify-between items-center">
+                            <h2 class="card-title" node_ref=scroll_ref>
+                                "List Tournaments"
+                            </h2>
+                            <button
+                                class="btn btn-square btn-ghost btn-sm"
+                                on:click=move |_| on_cancel.run(())
+                                aria-label="Close"
+                                data-testid="action-btn-close-list"
+                            >
+                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                            </button>
+                        </div>
+
+                        // --- Filter Bar ---
+                        <Form method="GET" action="" noscroll=true replace=true>
+                            // Hidden input to keep sport_id and sport_config_id in query string
+                            <input
+                                type="hidden"
+                                name=SportIdQuery::KEY
+                                prop:value=move || {
+                                    sport_id.get().map(|id| id.to_string()).unwrap_or_default()
+                                }
+                            />
+                            <input
+                                type="hidden"
+                                name=TournamentBaseIdQuery::KEY
+                                prop:value=move || {
+                                    tournament_base_id
+                                        .get()
+                                        .map(|id| id.to_string())
+                                        .unwrap_or_default()
+                                }
+                            />
+                            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+
+                                // Status Filter
+                                <div class="w-full max-w-xs">
+                                    <EnumSelect<
+                                    TournamentState,
                                 >
-                                    <div class="card-body">
-                                        <div class="flex justify-between items-center">
-                                            <h2 class="card-title" node_ref=scroll_ref>
-                                                "List Tournaments"
-                                            </h2>
-                                            <button
-                                                class="btn btn-square btn-ghost btn-sm"
-                                                on:click=move |_| on_cancel.run(())
-                                                aria-label="Close"
-                                                data-testid="action-btn-close-list"
-                                            >
-                                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
-                                            </button>
-                                        </div>
+                                        name=TournamentStateQuery::KEY
+                                        label="Tournament State"
+                                        value=tournament_state
+                                        data_testid="filter-tournament-state-select"
+                                        clear_label="No Status Filter"
+                                        action=InputCommitAction::SubmitForm
+                                    />
+                                </div>
 
-                                        // --- Filter Bar ---
-                                        <Form method="GET" action="" noscroll=true replace=true>
-                                            // Hidden input to keep sport_id and sport_config_id in query string
-                                            <input
-                                                type="hidden"
-                                                name=SportIdQuery::KEY
-                                                prop:value=move || {
-                                                    sport_id.get().map(|id| id.to_string()).unwrap_or_default()
-                                                }
-                                            />
-                                            <input
-                                                type="hidden"
-                                                name=TournamentBaseIdQuery::KEY
-                                                prop:value=move || {
-                                                    tournament_base_id
-                                                        .get()
-                                                        .map(|id| id.to_string())
-                                                        .unwrap_or_default()
-                                                }
-                                            />
-                                            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                                // Text Search
+                                <div class="w-full max-w-xs">
+                                    <FieldInput<
+                                    String,
+                                >
+                                        input_type="search"
+                                        name=FilterNameQuery::KEY
+                                        label="Search Name"
+                                        placeholder="Type to search for name..."
+                                        value=search_term
+                                        update_on=InputUpdateStrategy::Input
+                                        action=InputCommitAction::SubmitForm
+                                        data_testid="filter-name-search"
+                                    />
+                                </div>
+                                // Limit Selector
+                                <div class="w-full max-w-xs">
+                                    <EnumSelect<
+                                    FilterLimit,
+                                >
+                                        name=FilterLimitQuery::KEY
+                                        label="Limit"
+                                        value=limit
+                                        data_testid="filter-limit-select"
+                                        clear_label=FilterLimit::default().to_string()
+                                        action=InputCommitAction::SubmitForm
+                                    />
+                                </div>
 
-                                                // Status Filter
-                                                <div class="w-full max-w-xs">
-                                                    <EnumSelect<
-                                                    TournamentState,
-                                                >
-                                                        name=TournamentStateQuery::KEY
-                                                        label="Tournament State"
-                                                        value=tournament_state
-                                                        data_testid="filter-tournament-state-select"
-                                                        clear_label="No Status Filter"
-                                                        action=InputCommitAction::SubmitForm
-                                                    />
-                                                </div>
-
-                                                // Text Search
-                                                <div class="w-full max-w-xs">
-                                                    <FieldInput<
-                                                    String,
-                                                >
-                                                        input_type="search"
-                                                        name=FilterNameQuery::KEY
-                                                        label="Search Name"
-                                                        placeholder="Type to search for name..."
-                                                        value=search_term
-                                                        update_on=InputUpdateStrategy::Input
-                                                        action=InputCommitAction::SubmitForm
-                                                        data_testid="filter-name-search"
-                                                    />
-                                                </div>
-                                                // Limit Selector
-                                                <div class="w-full max-w-xs">
-                                                    <EnumSelect<
-                                                    FilterLimit,
-                                                >
-                                                        name=FilterLimitQuery::KEY
-                                                        label="Limit"
-                                                        value=limit
-                                                        data_testid="filter-limit-select"
-                                                        clear_label=FilterLimit::default().to_string()
-                                                        action=InputCommitAction::SubmitForm
-                                                    />
-                                                </div>
-
-                                                // Adhoc Toggle
-                                                <div class="form-control w-full max-w-xs flex flex-col">
-                                                    <label class="label">
-                                                        <span class="label-text">"Include Adhoc"</span>
-                                                    </label>
-                                                    <input
-                                                        type="checkbox"
-                                                        class="toggle"
-                                                        name=IncludeAdhocQuery::KEY
-                                                        data-testid="filter-include-adhoc-toggle"
-                                                        value="true"
-                                                        prop:checked=move || include_adhoc.get().unwrap_or(false)
-                                                        oninput="this.form.requestSubmit()"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </Form>
+                                // Adhoc Toggle
+                                <div class="form-control w-full max-w-xs flex flex-col">
+                                    <label class="label">
+                                        <span class="label-text">"Include Adhoc"</span>
+                                    </label>
+                                    <input
+                                        type="checkbox"
+                                        class="toggle"
+                                        name=IncludeAdhocQuery::KEY
+                                        data-testid="filter-include-adhoc-toggle"
+                                        value="true"
+                                        prop:checked=move || include_adhoc.get().unwrap_or(false)
+                                        oninput="this.form.requestSubmit()"
+                                    />
+                                </div>
+                            </div>
+                        </Form>
+                        {move || {
+                            tournament_ids
+                                .and_then(|tb_list| {
+                                    tournament_editor_map.visible_objects_list.set(tb_list.clone());
+                                    view! {
                                         // --- Table Area ---
                                         <div class="overflow-x-auto">
                                             <Show
                                                 when=move || {
                                                     tournament_editor_map
-                                                        .visible_ids_list
+                                                        .visible_objects_list
                                                         .with(|val| !val.is_empty())
                                                 }
                                                 fallback=|| {
@@ -307,209 +307,196 @@ pub fn ListTournaments() -> impl IntoView {
                                                     <tbody>
                                                         <For
                                                             each=move || {
-                                                                tournament_editor_map.visible_ids_list.get()
+                                                                tournament_editor_map.visible_objects_list.get()
                                                             }
-                                                            key=|id| *id
-                                                            children=move |id| {
-                                                                view! { <TournamentTableRow id=id /> }
+                                                            key=|tb| tb.get_id_version()
+                                                            children=move |tb| {
+                                                                view! { <TournamentTableRow tb=tb /> }
                                                             }
                                                         />
                                                     </tbody>
                                                 </table>
                                             </Show>
                                         </div>
-                                        // --- Action Bar ---
-                                        <div class="flex flex-col md:flex-row justify-end gap-4">
-                                            <div class:hidden=move || {
-                                                tournament_editor_map.selected_id.get().is_none()
-                                            }>
-                                                <A
-                                                    href=move || url_matched_route(
-                                                        MatchedRouteHandler::Extend("edit"),
-                                                    )
-                                                    attr:class="btn btn-sm btn-secondary"
-                                                    attr:data-testid="action-btn-edit"
-                                                    scroll=false
-                                                >
-                                                    "Edit selected Tournament"
-                                                </A>
-                                            </div>
-                                            <button
-                                                class="btn btn-sm btn-secondary-content"
-                                                class:hidden=move || {
-                                                    tournament_editor_map.selected_id.get().is_none()
-                                                }
-                                                data-testid="action-btn-copy"
-                                                on:click=move |_| {
-                                                    toast_ctx.warning("Not implemented yet", None);
-                                                }
-                                            >
-                                                "Copy selected Tournament"
-                                            </button>
-                                            <button
-                                                class="btn btn-sm btn-primary"
-                                                data-testid="action-btn-new"
-                                                on:click=move |_| {
-                                                    let navigate = use_navigate();
-                                                    if let Some(new_editor) = tournament_editor_map
-                                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
-                                                        && let Some(new_id) = new_editor.base_editor.id.get()
-                                                    {
-                                                        let nav_url = url_matched_route_update_query(
-                                                            TournamentBaseIdQuery::KEY,
-                                                            &new_id.to_string(),
-                                                            MatchedRouteHandler::Extend("new"),
-                                                        );
-                                                        navigate(
-                                                            &nav_url,
-                                                            NavigateOptions {
-                                                                scroll: false,
-                                                                ..Default::default()
-                                                            },
-                                                        );
-                                                    } else {
-                                                        toast_ctx
-                                                            .warning("Failed to create a new tournament", None);
-                                                    }
-                                                }
-                                            >
-                                                "Create new Tournament"
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="my-4"></div>
-                                <Outlet />
-                            }
-                        })
-                }}
-            </ErrorBoundary>
-        </Transition>
+                                    }
+                                })
+                        }}
+                        // --- Action Bar ---
+                        <div class="flex flex-col md:flex-row justify-end gap-4">
+                            <div class:hidden=move || {
+                                tournament_editor_map.selected_id.get().is_none()
+                            }>
+                                <A
+                                    href=move || url_matched_route(
+                                        MatchedRouteHandler::Extend("edit"),
+                                    )
+                                    attr:class="btn btn-sm btn-secondary"
+                                    attr:data-testid="action-btn-edit"
+                                    scroll=false
+                                >
+                                    "Edit selected Tournament"
+                                </A>
+                            </div>
+                            <button
+                                class="btn btn-sm btn-secondary-content"
+                                class:hidden=move || {
+                                    tournament_editor_map.selected_id.get().is_none()
+                                }
+                                data-testid="action-btn-copy"
+                                on:click=move |_| {
+                                    toast_ctx.warning("Not implemented yet", None);
+                                }
+                            >
+                                "Copy selected Tournament"
+                            </button>
+                            <button
+                                class="btn btn-sm btn-primary"
+                                data-testid="action-btn-new"
+                                on:click=move |_| {
+                                    let navigate = use_navigate();
+                                    if let Some(new_editor) = tournament_editor_map
+                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                        && let Some(new_id) = new_editor.base_editor.id.get()
+                                    {
+                                        let nav_url = url_matched_route_update_query(
+                                            TournamentBaseIdQuery::KEY,
+                                            &new_id.to_string(),
+                                            MatchedRouteHandler::Extend("new"),
+                                        );
+                                        navigate(
+                                            &nav_url,
+                                            NavigateOptions {
+                                                scroll: false,
+                                                ..Default::default()
+                                            },
+                                        );
+                                    } else {
+                                        toast_ctx
+                                            .warning("Failed to create a new tournament", None);
+                                    }
+                                }
+                            >
+                                "Create new Tournament"
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="my-4"></div>
+                <Outlet />
+            </Transition>
+        </ErrorBoundary>
     }
 }
 
 #[component]
-fn TournamentTableRow(id: Uuid) -> impl IntoView {
+fn TournamentTableRow(tb: TournamentBase) -> impl IntoView {
     // --- local context ---
     let tournament_editor_map =
         expect_context::<ObjectEditorMapContext<TournamentEditorContext, TournamentBaseIdQuery>>();
+    let id = tb.get_id();
     // unwrap is safe here, since we provide an id.
     let tournament_editor = tournament_editor_map
         .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
         .unwrap();
+    // We use update here, because there is a chain of events, which might result in an unwanted edit conflict. If
+    // the user changes several fields, the entry will differ with regard to the last loaded list entry. If during
+    // editing a reload of the list is triggered (e.g. because of adding a new entry to the list), there is a tiny
+    // window, where the user changes a field and triggers a save before the list is fully loaded. This results
+    // in an edit conflict, because the save tries to update an outdated version of the entry. By using update here,
+    // we only update the editor with the list data, if it is newer than the optimistic version of the edited entry.
+    tournament_editor.update_base_in_editor(&tb);
     let tournament_id = TournamentBaseIdQuery::use_param_query();
 
     view! {
-        {move || {
-            tournament_editor
-                .base_editor
-                .load_tournament_base
-                .and_then(|maybe_base| {
-                    maybe_base
-                        .as_ref()
-                        .map(|base| {
-                            tournament_editor.update_base_in_editor(base);
-                            view! {
-                                <tr
-                                    class="hover cursor-pointer"
-                                    class:bg-base-200=move || tournament_editor_map.is_selected(id)
-                                    data-testid=format!("tournaments-row-{}", id)
-                                    on:click=move |_| {
-                                        if tournament_id.get() == Some(id) {
-                                            tournament_editor_map.set_selected_id.run(None);
-                                        } else {
-                                            tournament_editor_map.set_selected_id.run(Some(id));
-                                        }
-                                    }
-                                >
-                                    <td
-                                        class="font-bold"
-                                        data-testid=format!("table-entry-name-{}", id)
-                                    >
-                                        {move || tournament_editor.base_editor.name.get()}
-                                    </td>
-                                    <td data-testid=format!("table-entry-preview-{}", id)>
-                                        <p>
-                                            <span class="badge badge-outline mr-2">
-                                                {move || {
-                                                    tournament_editor
-                                                        .base_editor
-                                                        .tournament_state
-                                                        .get()
-                                                        .map(|s| s.to_string())
-                                                }}
-                                            </span>
-                                            {move || {
-                                                tournament_editor
-                                                    .base_editor
-                                                    .num_entrants
-                                                    .get()
-                                                    .and_then(|n| {
-                                                        tournament_editor
-                                                            .base_editor
-                                                            .mode
-                                                            .get()
-                                                            .map(|m| format!("{} with {} entrants", m, n))
-                                                    })
-                                            }}
-                                        </p>
-                                    </td>
-                                </tr>
-                                <Show when=move || tournament_editor_map.is_selected(id)>
-                                    <tr>
-                                        <td colspan="2" class="p-0">
-                                            <div
-                                                class="p-4 bg-base-100 border border-base-300 rounded-lg"
-                                                data-testid="table-entry-detailed-preview"
-                                            >
-                                                <h3 class="font-bold text-lg mb-2">"Tournament Details"</h3>
-                                                <p>
-                                                    <strong>"ID: "</strong>
-                                                    {move || {
-                                                        tournament_editor
-                                                            .base_editor
-                                                            .id
-                                                            .get()
-                                                            .map(|id| id.to_string())
-                                                    }}
-                                                </p>
-                                                <p>
-                                                    <strong>"Type: "</strong>
-                                                    {move || {
-                                                        tournament_editor
-                                                            .base_editor
-                                                            .tournament_type
-                                                            .get()
-                                                            .map(|t| t.to_string())
-                                                    }}
-                                                </p>
-                                                <p>
-                                                    <strong>"State: "</strong>
-                                                    {move || {
-                                                        tournament_editor
-                                                            .base_editor
-                                                            .tournament_state
-                                                            .get()
-                                                            .map(|s| s.to_string())
-                                                    }}
-                                                </p>
-                                                <p>
-                                                    <strong>"Number of Entrants: "</strong>
-                                                    {move || {
-                                                        tournament_editor
-                                                            .base_editor
-                                                            .num_entrants
-                                                            .get()
-                                                            .map(|n| n.to_string())
-                                                    }}
-                                                </p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </Show>
-                            }
-                        })
-                })
-        }}
+        <tr
+            class="hover cursor-pointer"
+            class:bg-base-200=move || tournament_editor_map.is_selected(id)
+            data-testid=format!("tournaments-row-{}", id)
+            on:click=move |_| {
+                if tournament_id.get() == Some(id) {
+                    tournament_editor_map.set_selected_id.run(None);
+                } else {
+                    tournament_editor_map.set_selected_id.run(Some(id));
+                }
+            }
+        >
+            <td class="font-bold" data-testid=format!("table-entry-name-{}", id)>
+                {move || tournament_editor.base_editor.name.get()}
+            </td>
+            <td data-testid=format!("table-entry-preview-{}", id)>
+                <p>
+                    <span class="badge badge-outline mr-2">
+                        {move || {
+                            tournament_editor
+                                .base_editor
+                                .tournament_state
+                                .get()
+                                .map(|s| s.to_string())
+                        }}
+                    </span>
+                    {move || {
+                        tournament_editor
+                            .base_editor
+                            .num_entrants
+                            .get()
+                            .and_then(|n| {
+                                tournament_editor
+                                    .base_editor
+                                    .mode
+                                    .get()
+                                    .map(|m| format!("{} with {} entrants", m, n))
+                            })
+                    }}
+                </p>
+            </td>
+        </tr>
+        <Show when=move || tournament_editor_map.is_selected(id)>
+            <tr>
+                <td colspan="2" class="p-0">
+                    <div
+                        class="p-4 bg-base-100 border border-base-300 rounded-lg"
+                        data-testid="table-entry-detailed-preview"
+                    >
+                        <h3 class="font-bold text-lg mb-2">"Tournament Details"</h3>
+                        <p>
+                            <strong>"ID: "</strong>
+                            {move || {
+                                tournament_editor.base_editor.id.get().map(|id| id.to_string())
+                            }}
+                        </p>
+                        <p>
+                            <strong>"Type: "</strong>
+                            {move || {
+                                tournament_editor
+                                    .base_editor
+                                    .tournament_type
+                                    .get()
+                                    .map(|t| t.to_string())
+                            }}
+                        </p>
+                        <p>
+                            <strong>"State: "</strong>
+                            {move || {
+                                tournament_editor
+                                    .base_editor
+                                    .tournament_state
+                                    .get()
+                                    .map(|s| s.to_string())
+                            }}
+                        </p>
+                        <p>
+                            <strong>"Number of Entrants: "</strong>
+                            {move || {
+                                tournament_editor
+                                    .base_editor
+                                    .num_entrants
+                                    .get()
+                                    .map(|n| n.to_string())
+                            }}
+                        </p>
+                    </div>
+                </td>
+            </tr>
+        </Show>
     }
 }

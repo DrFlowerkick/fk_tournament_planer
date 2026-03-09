@@ -152,29 +152,19 @@ async fn given_name_filter_when_list_then_ordered_and_bounded() -> Result<()> {
     // Filter: name contains 'a' (case-insensitive)
     // Alice (matches), Bob (no), Charlie (matches)
     let listed = db
-        .list_tournament_base_ids(sport_id, Some("a"), None, false, Some(2))
+        .list_tournament_bases(sport_id, Some("a"), None, false, Some(2))
         .await?;
 
     // Expect at most 2 rows, and only from sport_id
     assert!(listed.len() <= 2, "must respect limit");
 
-    // load all items
-    let mut listed_bases = Vec::with_capacity(listed.len());
-    for id in &listed {
-        let tb = db.get_tournament_base(*id).await?.expect("row must exist");
-        listed_bases.push(tb);
-    }
-
     // All should belong to sport_id
-    for item in &listed_bases {
+    for item in &listed {
         assert_eq!(item.get_sport_id(), sport_id);
     }
 
     // Names are ordered ascending (NULLS LAST)
-    let names: Vec<String> = listed_bases
-        .into_iter()
-        .map(|t| t.get_name().to_string())
-        .collect();
+    let names: Vec<String> = listed.iter().map(|t| t.get_name().to_string()).collect();
     let mut sorted = names.clone();
     sorted.sort();
     assert_eq!(names, sorted, "expected name-ascending order");

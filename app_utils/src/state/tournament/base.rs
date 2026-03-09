@@ -1,12 +1,13 @@
 //! base editor context
 
 use crate::{
-    error::{AppError, ComponentError, ComponentResult, strategy::handle_with_toast},
+    error::{AppError, strategy::handle_with_toast},
     params::{ParamQuery, SportIdQuery},
-    server_fn::tournament_base::{SaveTournamentBase, load_tournament_base},
+    server_fn::tournament_base::{LoadTournamentBase, SaveTournamentBase},
     state::{
-        EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
-        error_state::PageErrorContext, toast_state::ToastContext,
+        EditorContext, EditorContextWithResource, EditorOptions, LabeledAction,
+        activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        toast_state::ToastContext,
     },
 };
 use app_core::{
@@ -79,8 +80,6 @@ pub struct BaseEditorContext {
     pub set_optimistic_version: RwSignal<Option<u32>>,
     /// WriteSignal for setting the resource id in the editor context, which triggers loading of the tournament base resource
     set_resource_id: WriteSignal<Option<Uuid>>,
-    /// Resource for loading the tournament base based on the given id in the editor options
-    pub load_tournament_base: LocalResource<ComponentResult<Option<TournamentBase>>>,
     /// Server action for saving the tournament base based on the current state of the editor context
     pub save_tournament_base: ServerAction<SaveTournamentBase>,
     /// Callback after successful save to e.g. navigate to the new tournament base or show a success toast.
@@ -242,55 +241,21 @@ impl EditorContext for BaseEditorContext {
             )
         });
 
-        // ---- tournament base resource ----
+        // ---- tournament base server action ----
         let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
-        // resource to load tournament base
-        /*let load_tournament_base = Resource::new(
-            move || resource_id.get(),
-            move |maybe_id| async move {
-                if let Some(id) = maybe_id {
-                    match activity_tracker
-                        .track_activity_wrapper(component_id.get_value(), load_tournament_base(id))
-                        .await
-                    {
-                        Ok(None) => {
-                            Err(AppError::ResourceNotFound("Tournament Base".to_string(), id))
-                        }
-                        res => res,
-                    }
-                } else {
-                    Ok(None)
-                }
-            },
-        );*/
-        // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
-        // errors occur until the page is fully rendered and the app "transformed" into a SPA). For this reason
-        // we use a LocalResource here, which does not cause hydration errors.
-        // ToDo: investigate how to use Resource without hydration errors, since Resource provides better
-        // ergonomics for loading states and error handling.
-        let load_tournament_base = LocalResource::new(move || async move {
-            if let Some(id) = resource_id.get() {
-                match activity_tracker
-                    .track_activity_wrapper(component_id.get_value(), load_tournament_base(id))
-                    .await
-                {
-                    Ok(None) => Err(AppError::ResourceNotFound(
-                        "Tournament Base".to_string(),
-                        id,
-                    )),
-                    res => res,
-                }
-            } else {
-                Ok(None)
-            }
-            .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
-        });
+        // server action to fetch updated tournament base for the given id, used by client registry
+        let fetch_tournament_base = ServerAction::<LoadTournamentBase>::new();
+        let fetch_tournament_base_pending = fetch_tournament_base.pending();
+        activity_tracker
+            .track_pending_memo(component_id.get_value(), fetch_tournament_base_pending);
+
         let refetch = Callback::new(move |()| {
-            load_tournament_base.refetch();
+            if let Some(id) = resource_id.get() {
+                fetch_tournament_base.dispatch(LoadTournamentBase { id });
+            }
         });
-        page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
         let topic = Signal::derive(move || {
             resource_id.get().map(|id| CrTopic::TournamentBase {
@@ -299,7 +264,37 @@ impl EditorContext for BaseEditorContext {
         });
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
-        // ---- tournament base server action ----
+        // handle fetch result
+        Effect::new(move || {
+            if let Some(fetch_result) = fetch_tournament_base.value().get() {
+                fetch_tournament_base.clear();
+                match fetch_result {
+                    Ok(Some(tb)) => {
+                        set_resource_id.set(Some(tb.get_id()));
+                        set_optimistic_version.set(tb.get_version());
+                        set_local.set(Some(tb));
+                    }
+                    Ok(None) => {
+                        // This case should not happen, since we handle not found case in the server function by returning an error.
+                        // But we handle it here just in case, to prevent the editor from being stuck in a loading state.
+                        let err = AppError::ResourceNotFound(
+                            "Tournament Base".to_string(),
+                            resource_id.get().unwrap_or_default(),
+                        );
+                        handle_with_toast(&toast_ctx, &err, None);
+                    }
+                    Err(err) => {
+                        let interactive = LabeledAction {
+                            label: "Retry".to_string(),
+                            on_click: refetch,
+                        };
+                        handle_with_toast(&toast_ctx, &err, Some(interactive));
+                    }
+                }
+            }
+        });
+
+        // server action for saving the tournament base based on the current state of the editor context
         let save_tournament_base = ServerAction::<SaveTournamentBase>::new();
         let save_tournament_base_pending = save_tournament_base.pending();
         activity_tracker.track_pending_memo(component_id.get_value(), save_tournament_base_pending);
@@ -357,7 +352,6 @@ impl EditorContext for BaseEditorContext {
             tournament_state,
             set_optimistic_version,
             set_resource_id,
-            load_tournament_base,
             save_tournament_base,
             post_save_callback,
         }

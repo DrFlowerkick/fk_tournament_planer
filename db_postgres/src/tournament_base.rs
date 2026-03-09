@@ -224,14 +224,14 @@ impl DbpTournamentBase for PgDb {
     }
 
     #[instrument(name = "db.tb.list", skip(self, name_filter, limit))]
-    async fn list_tournament_base_ids(
+    async fn list_tournament_bases(
         &self,
         sport: Uuid,
         name_filter: Option<&str>,
         state_filter: Option<TournamentState>,
         include_adhoc: bool,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>> {
+    ) -> DbResult<Vec<TournamentBase>> {
         let mut conn = self.new_connection().await?;
         let mut query = tournament_bases.into_boxed::<diesel::pg::Pg>();
 
@@ -271,13 +271,27 @@ impl DbpTournamentBase for PgDb {
         }
 
         let rows = query
-            .select(id)
+            .select((
+                id,
+                version,
+                name,
+                sport_id,
+                num_entrants,
+                t_type,
+                mode,
+                state,
+                created_at,
+                updated_at,
+            ))
             .order((name.asc().nulls_last(), created_at.asc()))
-            .load::<Uuid>(&mut conn)
+            .load::<DbTournamentBase>(&mut conn)
             .await
             .map_err(map_db_err)?;
 
         info!(count = rows.len(), "list_ok");
-        Ok(rows)
+        Ok(rows
+            .into_iter()
+            .map(|row| TournamentBase::try_from(row))
+            .collect::<Result<_, _>>()?)
     }
 }

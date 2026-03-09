@@ -35,7 +35,11 @@ pub struct TournamentEditorContext {
 }
 
 impl EditorContext for TournamentEditorContext {
-    type ObjectType = Tournament;
+    // we use TournamentBase as object type, since Tournament itself is a meta object, which only exists
+    // in the editor state and is not stored in the database. Since TournamentBase is the root object
+    // of a tournament, we use it to identify the tournament in the editor context and for loading
+    // and listing tournaments from the server.
+    type ObjectType = TournamentBase;
     type NewEditorOptions = SimpleEditorOptions;
 
     fn new(options: SimpleEditorOptions) -> Self {
@@ -132,13 +136,12 @@ impl EditorContext for TournamentEditorContext {
         }
     }
 
-    /// Set the current tournament in the editor context, updating all relevant state accordingly.
-    fn set_object(&self, tournament: Tournament) {
-        self.local.set(Some(tournament.clone()));
-        self.base_editor.set_object(tournament.get_base().clone());
+    /// Set the current tournament base in the editor context, updating all relevant state accordingly.
+    fn set_object(&self, tournament_base: TournamentBase) {
+        self.base_editor.set_object(tournament_base);
     }
 
-    /// Create a new tournament object in the editor context, returning its unique identifier.
+    /// Create a new tournament base object in the editor context, returning its unique identifier.
     fn new_object(&self) -> Option<Uuid> {
         self.base_editor.new_object();
         self.base_editor.id.get()
@@ -147,7 +150,7 @@ impl EditorContext for TournamentEditorContext {
 
 impl TournamentEditorContext {
     pub fn update_base_in_editor(&self, base: &TournamentBase) {
-        let optimistic_version = self.base_editor.optimistic_version_signal().get();
+        let optimistic_version = self.base_editor.optimistic_version_signal().get_untracked();
         if optimistic_version.is_none() {
             self.base_editor.set_object(base.clone());
         }
@@ -217,27 +220,5 @@ impl TournamentEditorContext {
 
     pub fn prepare_group(&self, _stage_number: u32, _group_number: u32) {
         // ToDo: implement group editor context and insert into map here
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct TournamentRefetchContext {
-    /// Trigger to refetch data from server
-    refetch_trigger: RwSignal<u64>,
-    /// Read slice for getting the current state of the tournament editor
-    pub track_fetch_trigger: Signal<u64>,
-}
-
-impl TournamentRefetchContext {
-    pub fn new() -> Self {
-        let refetch_trigger = RwSignal::new(0);
-        Self {
-            refetch_trigger,
-            track_fetch_trigger: refetch_trigger.read_only().into(),
-        }
-    }
-
-    pub fn trigger_refetch(&self) {
-        self.refetch_trigger.update(|v| *v += 1);
     }
 }

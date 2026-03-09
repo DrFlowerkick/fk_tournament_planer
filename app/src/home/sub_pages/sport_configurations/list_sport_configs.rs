@@ -140,88 +140,103 @@ pub fn ListSportConfigurations() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <div class="card w-full bg-base-100 shadow-xl" data-testid="sport-config-list-root">
-            <div class="card-body">
-                <div class="flex justify-between items-center">
-                    <h2 class="card-title" node_ref=scroll_ref>
-                        "Sport Configurations"
-                    </h2>
-                    <button
-                        class="btn btn-square btn-ghost btn-sm"
-                        on:click=move |_| on_cancel.run(())
-                        aria-label="Close"
-                        data-testid="action-btn-close-list"
+        <ErrorBoundary fallback=move |errors| {
+            for (_err_id, err) in errors.get().into_iter() {
+                let e = err.into_inner();
+                if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
+                    handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
+                } else {
+                    handle_unexpected_ui_error(
+                        &page_err_ctx,
+                        component_id.get_value(),
+                        "An unexpected error occurred.",
+                        on_cancel,
+                    );
+                }
+            }
+        }>
+            <Transition fallback=move || {
+                view! {
+                    <div
+                        class="card w-full bg-base-100 shadow-xl"
+                        data-testid="sport-config-list-root"
                     >
-                        <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
-                    </button>
-                </div>
-
-                // --- Filter Bar ---
-                <Form method="GET" action="" noscroll=true replace=true>
-                    // Hidden input to keep sport_id and sport_config_id in query string
-                    <input
-                        type="hidden"
-                        name=SportIdQuery::KEY
-                        prop:value=move || {
-                            sport_id.get().map(|id| id.to_string()).unwrap_or_default()
-                        }
-                    />
-                    <input
-                        type="hidden"
-                        name=SportConfigIdQuery::KEY
-                        prop:value=move || {
-                            sport_config_id.get().map(|id| id.to_string()).unwrap_or_default()
-                        }
-                    />
-                    <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
-                        // Text Search
-                        <div class="w-full max-w-xs">
-                            <FieldInput<
-                            String,
-                        >
-                                input_type="search"
-                                name=FilterNameQuery::KEY
-                                label="Search Name"
-                                placeholder="Type to search for name..."
-                                value=search_term
-                                update_on=InputUpdateStrategy::Input
-                                action=InputCommitAction::SubmitForm
-                                data_testid="filter-name-search"
-                            />
-                        </div>
-                        // Limit Selector
-                        <div class="w-full max-w-xs">
-                            <EnumSelect<
-                            FilterLimit,
-                        >
-                                name=FilterLimitQuery::KEY
-                                label="Limit"
-                                value=limit
-                                data_testid="filter-limit-select"
-                                clear_label=FilterLimit::default().to_string()
-                                action=InputCommitAction::SubmitForm
-                            />
+                        <div class="card-body">
+                            <h2 class="card-title" node_ref=scroll_ref>
+                                "Sport Configurations"
+                            </h2>
+                            <span class="loading loading-spinner loading-lg"></span>
                         </div>
                     </div>
-                </Form>
-                <ErrorBoundary fallback=move |errors| {
-                    for (_err_id, err) in errors.get().into_iter() {
-                        let e = err.into_inner();
-                        if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                            handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
-                        } else {
-                            handle_unexpected_ui_error(
-                                &page_err_ctx,
-                                component_id.get_value(),
-                                "An unexpected error occurred.",
-                                on_cancel,
-                            );
-                        }
-                    }
-                }>
-                    <Transition fallback=move || {
-                        view! { <span class="loading loading-spinner loading-lg"></span> }
-                    }>
+                }
+            }>
+                <div class="card w-full bg-base-100 shadow-xl" data-testid="sport-config-list-root">
+                    <div class="card-body">
+                        <div class="flex justify-between items-center">
+                            <h2 class="card-title" node_ref=scroll_ref>
+                                "Sport Configurations"
+                            </h2>
+                            <button
+                                class="btn btn-square btn-ghost btn-sm"
+                                on:click=move |_| on_cancel.run(())
+                                aria-label="Close"
+                                data-testid="action-btn-close-list"
+                            >
+                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                            </button>
+                        </div>
+
+                        // --- Filter Bar ---
+                        <Form method="GET" action="" noscroll=true replace=true>
+                            // Hidden input to keep sport_id and sport_config_id in query string
+                            <input
+                                type="hidden"
+                                name=SportIdQuery::KEY
+                                prop:value=move || {
+                                    sport_id.get().map(|id| id.to_string()).unwrap_or_default()
+                                }
+                            />
+                            <input
+                                type="hidden"
+                                name=SportConfigIdQuery::KEY
+                                prop:value=move || {
+                                    sport_config_id
+                                        .get()
+                                        .map(|id| id.to_string())
+                                        .unwrap_or_default()
+                                }
+                            />
+                            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                                // Text Search
+                                <div class="w-full max-w-xs">
+                                    <FieldInput<
+                                    String,
+                                >
+                                        input_type="search"
+                                        name=FilterNameQuery::KEY
+                                        label="Search Name"
+                                        placeholder="Type to search for name..."
+                                        value=search_term
+                                        update_on=InputUpdateStrategy::Input
+                                        action=InputCommitAction::SubmitForm
+                                        data_testid="filter-name-search"
+                                    />
+                                </div>
+                                // Limit Selector
+                                <div class="w-full max-w-xs">
+                                    <EnumSelect<
+                                    FilterLimit,
+                                >
+                                        name=FilterLimitQuery::KEY
+                                        label="Limit"
+                                        value=limit
+                                        data_testid="filter-limit-select"
+                                        clear_label=FilterLimit::default().to_string()
+                                        action=InputCommitAction::SubmitForm
+                                    />
+                                </div>
+                            </div>
+                        </Form>
                         {move || {
                             sport_config_ids
                                 .and_then(|sc_list| {
@@ -274,109 +289,109 @@ pub fn ListSportConfigurations() -> impl IntoView {
                                                 </table>
                                             </Show>
                                         </div>
-                                        // --- Action Bar ---
-                                        <div class="flex flex-col md:flex-row justify-end gap-4">
-                                            <button
-                                                class="btn btn-sm btn-secondary"
-                                                class:hidden=move || {
-                                                    sport_config_editor_map.selected_id.get().is_none()
-                                                }
-                                                data-testid="action-btn-edit"
-                                                on:click=move |_| {
-                                                    let navigate = use_navigate();
-                                                    let nav_url = url_matched_route(
-                                                        MatchedRouteHandler::Extend("edit"),
-                                                    );
-                                                    navigate(
-                                                        &nav_url,
-                                                        NavigateOptions {
-                                                            scroll: false,
-                                                            ..Default::default()
-                                                        },
-                                                    );
-                                                }
-                                            >
-                                                "Edit selected Sport Configuration"
-                                            </button>
-                                            <button
-                                                class="btn btn-sm btn-secondary-content"
-                                                class:hidden=move || {
-                                                    sport_config_editor_map.selected_id.get().is_none()
-                                                }
-                                                data-testid="action-btn-copy"
-                                                on:click=move |_| {
-                                                    let navigate = use_navigate();
-                                                    if let Some(selected_id) = sport_config_editor_map
-                                                        .selected_id
-                                                        .get()
-                                                        && let Some(new_editor) = sport_config_editor_map
-                                                            .spawn_editor_for_copy_object(
-                                                                selected_id,
-                                                                SimpleEditorOptions::no_id(),
-                                                            ) && let Some(new_id) = new_editor.id.get()
-                                                    {
-                                                        let nav_url = url_matched_route_update_query(
-                                                            SportConfigIdQuery::KEY,
-                                                            &new_id.to_string(),
-                                                            MatchedRouteHandler::Extend("copy"),
-                                                        );
-                                                        navigate(
-                                                            &nav_url,
-                                                            NavigateOptions {
-                                                                scroll: false,
-                                                                ..Default::default()
-                                                            },
-                                                        );
-                                                    } else {
-                                                        toast_ctx
-                                                            .warning("Failed to copy Sport Configuration", None);
-                                                    }
-                                                }
-                                            >
-                                                "Copy selected Sport Configuration"
-                                            </button>
-                                            <button
-                                                class="btn btn-sm btn-primary"
-                                                data-testid="action-btn-new"
-                                                on:click=move |_| {
-                                                    let navigate = use_navigate();
-                                                    if let Some(new_editor) = sport_config_editor_map
-                                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
-                                                        && let Some(new_id) = new_editor.id.get()
-                                                    {
-                                                        let nav_url = url_matched_route_update_query(
-                                                            SportConfigIdQuery::KEY,
-                                                            &new_id.to_string(),
-                                                            MatchedRouteHandler::Extend("new"),
-                                                        );
-                                                        navigate(
-                                                            &nav_url,
-                                                            NavigateOptions {
-                                                                scroll: false,
-                                                                ..Default::default()
-                                                            },
-                                                        );
-                                                    } else {
-                                                        toast_ctx
-                                                            .warning(
-                                                                "Failed to create a new Sport Configuration",
-                                                                None,
-                                                            );
-                                                    }
-                                                }
-                                            >
-                                                "Create new Sport Configuration"
-                                            </button>
-                                        </div>
-                                        <div class="my-4"></div>
-                                        <Outlet />
                                     }
                                 })
                         }}
-                    </Transition>
-                </ErrorBoundary>
-            </div>
-        </div>
+                        // --- Action Bar ---
+                        <div class="flex flex-col md:flex-row justify-end gap-4">
+                            <button
+                                class="btn btn-sm btn-secondary"
+                                class:hidden=move || {
+                                    sport_config_editor_map.selected_id.get().is_none()
+                                }
+                                data-testid="action-btn-edit"
+                                on:click=move |_| {
+                                    let navigate = use_navigate();
+                                    let nav_url = url_matched_route(
+                                        MatchedRouteHandler::Extend("edit"),
+                                    );
+                                    navigate(
+                                        &nav_url,
+                                        NavigateOptions {
+                                            scroll: false,
+                                            ..Default::default()
+                                        },
+                                    );
+                                }
+                            >
+                                "Edit selected Sport Configuration"
+                            </button>
+                            <button
+                                class="btn btn-sm btn-secondary-content"
+                                class:hidden=move || {
+                                    sport_config_editor_map.selected_id.get().is_none()
+                                }
+                                data-testid="action-btn-copy"
+                                on:click=move |_| {
+                                    let navigate = use_navigate();
+                                    if let Some(selected_id) = sport_config_editor_map
+                                        .selected_id
+                                        .get()
+                                        && let Some(new_editor) = sport_config_editor_map
+                                            .spawn_editor_for_copy_object(
+                                                selected_id,
+                                                SimpleEditorOptions::no_id(),
+                                            ) && let Some(new_id) = new_editor.id.get()
+                                    {
+                                        let nav_url = url_matched_route_update_query(
+                                            SportConfigIdQuery::KEY,
+                                            &new_id.to_string(),
+                                            MatchedRouteHandler::Extend("copy"),
+                                        );
+                                        navigate(
+                                            &nav_url,
+                                            NavigateOptions {
+                                                scroll: false,
+                                                ..Default::default()
+                                            },
+                                        );
+                                    } else {
+                                        toast_ctx
+                                            .warning("Failed to copy Sport Configuration", None);
+                                    }
+                                }
+                            >
+                                "Copy selected Sport Configuration"
+                            </button>
+                            <button
+                                class="btn btn-sm btn-primary"
+                                data-testid="action-btn-new"
+                                on:click=move |_| {
+                                    let navigate = use_navigate();
+                                    if let Some(new_editor) = sport_config_editor_map
+                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                        && let Some(new_id) = new_editor.id.get()
+                                    {
+                                        let nav_url = url_matched_route_update_query(
+                                            SportConfigIdQuery::KEY,
+                                            &new_id.to_string(),
+                                            MatchedRouteHandler::Extend("new"),
+                                        );
+                                        navigate(
+                                            &nav_url,
+                                            NavigateOptions {
+                                                scroll: false,
+                                                ..Default::default()
+                                            },
+                                        );
+                                    } else {
+                                        toast_ctx
+                                            .warning(
+                                                "Failed to create a new Sport Configuration",
+                                                None,
+                                            );
+                                    }
+                                }
+                            >
+                                "Create new Sport Configuration"
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="my-4"></div>
+                <Outlet />
+            </Transition>
+        </ErrorBoundary>
     }
 }
 
@@ -401,8 +416,12 @@ fn SportConfigTableRow(sc: SportConfig) -> impl IntoView {
     let sport_config_editor = sport_config_editor_map
         .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
         .unwrap();
-    // we use update here, because the row may be rerendered during editing,which may result in an edit
-    // conflict.
+    // We use update here, because there is a chain of events, which might result in an unwanted edit conflict. If
+    // the user changes several fields, the entry will differ with regard to the last loaded list entry. If during
+    // editing a reload of the list is triggered (e.g. because of adding a new entry to the list), there is a tiny
+    // window, where the user changes a field and triggers a save before the list is fully loaded. This results
+    // in an edit conflict, because the save tries to update an outdated version of the entry. By using update here,
+    // we only update the editor with the list data, if it is newer than the optimistic version of the edited entry.
     sport_config_editor_map.update_object_in_editor(&sc);
     let sport_config_id = SportConfigIdQuery::use_param_query();
 

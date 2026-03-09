@@ -48,14 +48,14 @@ pub trait DbpTournamentBase: Send + Sync {
         &self,
         tournament_base: &TournamentBase,
     ) -> DbResult<TournamentBase>;
-    async fn list_tournament_base_ids(
+    async fn list_tournament_bases(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
         state_filter: Option<TournamentState>,
         include_adhoc: bool,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>>;
+    ) -> DbResult<Vec<TournamentBase>>;
 }
 
 /// database port trait for stage

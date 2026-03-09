@@ -59,14 +59,14 @@ impl DbpTournamentBase for FakeDatabasePort {
         Ok(new)
     }
 
-    async fn list_tournament_base_ids(
+    async fn list_tournament_bases(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
         state_filter: Option<TournamentState>,
         include_adhoc: bool,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>> {
+    ) -> DbResult<Vec<TournamentBase>> {
         let mut guard = self.fail_next_list_tb.lock().unwrap();
         if *guard {
             *guard = false;
@@ -99,6 +99,6 @@ impl DbpTournamentBase for FakeDatabasePort {
             rows.truncate(lim);
         }
 
-        Ok(rows.into_iter().map(|tb| tb.get_id()).collect())
+        Ok(rows)
     }
 }
