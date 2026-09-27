@@ -77,6 +77,8 @@ pub enum Mode {
 /// scheduled entrant for a match
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub enum ScheduledEntrant {
+    /// Entrant is not scheduled
+    NotScheduled,
     /// Entrant referenced by id; used for first stage and stages, which previous stages are done
     /// Uuid: id of entrant
     Entrant(Uuid),
@@ -84,7 +86,7 @@ pub enum ScheduledEntrant {
     /// Uuid of stage, usize: index of entrant in entrant list sorted by stage rank
     StageRank(Uuid, usize),
     /// rank of entrant in group after concluded stage
-    /// Uuid of stage, usize: index of entrant in entrant list of group sorted by group rank
+    /// Uuid of group, usize: index of entrant in entrant list of group sorted by group rank
     GroupRank(Uuid, usize),
     /// In Swiss system entrants are allocated to matches during tournament depending on
     /// their achieved results and the results of their opponents.
