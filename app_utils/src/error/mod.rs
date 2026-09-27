@@ -53,29 +53,75 @@ impl From<serde_json::Error> for AppError {
     }
 }
 
-pub type AppResult<T> = Result<T, AppError>;
+impl AppError {
+    pub fn to_web_ui_msg(&self) -> String {
+        match self {
+            // 1. Optimistic Lock Conflict
+            // The client registry and auto saving ensures, that always the latest version is loaded. If a version mismatch
+            // occurs during saving, it means that parallel editing is happening. In this case, we still reload "automatically"
+            // the current version. Therefore a manual reload by the user is not necessary
+            // We inform the user about the parallel editing via a toast.
+            // This should not happen often.
+            AppError::Core(CoreError::Db(DbError::OptimisticLockConflict)) => {
+                format!("Parallel editing conflict: {self}")
+            }
 
-pub fn map_db_unique_violation_to_field_error(
-    err: &AppError,
-    object_id: Uuid,
-    field_name: &str,
-) -> Option<FieldError> {
-    if let AppError::Core(CoreError::Db(DbError::UniqueViolation(field_opt))) = err {
-        let message = if let Some(field) = field_opt {
-            format!("Unique constraint violation on field: {}", field)
-        } else {
-            "Unique constraint violation".to_string()
-        };
-        let field_error = FieldError::builder()
-            .set_field(field_name)
-            .add_message(message)
-            .set_object_id(object_id)
-            .build();
+            // 2. Unique Violation
+            // Validation error: Input needs correction (e.g. "Name already taken").
+            AppError::Core(CoreError::Db(DbError::UniqueViolation(field_opt))) => field_opt
+                .as_ref()
+                .map(|f| format!("A unique value is already in use: '{f}'."))
+                .unwrap_or_else(|| "A unique value is already in use.".to_string()),
 
-        return Some(field_error);
+            // 3. Check Violation
+            // Validation error: Database constraint failed (e.g. "age >= 0").
+            // Treated like UniqueViolation: The user must correct the input.
+            AppError::Core(CoreError::Db(DbError::CheckViolation(constraint_opt))) => {
+                constraint_opt
+                    .as_ref()
+                    .map(|c| format!("Data validation failed (Constraint: {}).", c))
+                    .unwrap_or_else(|| "Data validation failed.".to_string())
+            }
+
+            // Case 4 Specific Entity not found
+            AppError::ResourceNotFound(entity, id) => {
+                format!("'{entity}' with ID '{id}' could not be found.")
+            }
+
+            // Case 5: Generic Database Not Found
+            AppError::Core(CoreError::Db(DbError::NotFound)) => {
+                "The requested data could not be found in database.".to_string()
+            }
+
+            // 6. Everything else
+            _ => {
+                // "Fire & Forget" Toast
+                // AppError implements Display via thiserror, so self.to_string() works fine.
+                self.to_string()
+            }
+        }
     }
-    None
+
+    pub fn to_field_error(&self, object_id: Uuid, field_name: &str) -> Option<FieldError> {
+        if let AppError::Core(CoreError::Db(DbError::UniqueViolation(field_opt))) = self {
+            let message = if let Some(field) = field_opt {
+                format!("Unique constraint violation on field: {}", field)
+            } else {
+                "Unique constraint violation".to_string()
+            };
+            let field_error = FieldError::builder()
+                .set_field(field_name)
+                .add_message(message)
+                .set_object_id(object_id)
+                .build();
+
+            return Some(field_error);
+        }
+        None
+    }
 }
+
+pub type AppResult<T> = Result<T, AppError>;
 
 #[derive(Debug, Clone, Deserialize, Serialize, Error)]
 #[error("Component error: {app_error} (Component ID: {component_id})")]

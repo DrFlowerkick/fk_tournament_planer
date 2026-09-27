@@ -1,12 +1,12 @@
 //! Postal Address Search Component
 
-use app_core::CrTopic;
+use app_core::{CrTopic, PostalAddress, utils::traits::ObjectIdVersion};
 use app_utils::{
-    components::inputs::{EnumSelect, InputCommitAction, InputUpdateStrategy, TextInput},
+    components::inputs::{EnumSelect, FieldInput, InputCommitAction, InputUpdateStrategy},
     enum_utils::{EditAction, FilterLimit},
     error::{
         ComponentError,
-        strategy::{handle_read_error, handle_unexpected_ui_error},
+        strategy::{handle_unexpected_ui_error, handle_with_error_banner},
     },
     hooks::{
         use_on_cancel::use_on_cancel,
@@ -16,7 +16,7 @@ use app_utils::{
         },
     },
     params::{AddressIdQuery, EditActionParams, FilterLimitQuery, FilterNameQuery, ParamQuery},
-    server_fn::postal_address::list_postal_address_ids,
+    server_fn::postal_address::list_postal_addresses,
     state::{
         LabeledAction, SimpleEditorOptions, activity_tracker::ActivityTracker,
         error_state::PageErrorContext, object_table::ObjectEditorMapContext,
@@ -27,10 +27,7 @@ use cr_leptos_axum_socket::use_client_registry_socket;
 use isocountry::CountryCode;
 use leptos::{html::H2, prelude::*};
 use leptos_router::{
-    NavigateOptions,
-    components::{A, Form},
-    hooks::use_navigate,
-    nested_router::Outlet,
+    NavigateOptions, components::Form, hooks::use_navigate, nested_router::Outlet,
 };
 use uuid::Uuid;
 
@@ -73,7 +70,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
     let limit = FilterLimitQuery::use_param_query();
 
     // Resource that fetches data when filters change
-    let postal_address_ids = Resource::new(
+    let postal_addresses = Resource::new(
         move || {
             (
                 search_term.get(),
@@ -85,7 +82,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
             activity_tracker
                 .track_activity_wrapper(
                     component_id.get_value(),
-                    list_postal_address_ids(
+                    list_postal_addresses(
                         term.unwrap_or_default(),
                         lim.or_else(|| Some(FilterLimit::default()))
                             .map(|l| l as usize),
@@ -97,7 +94,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
     );
 
     // Refetch callbacks
-    let refetch = Callback::new(move |()| postal_address_ids.refetch());
+    let refetch = Callback::new(move |()| postal_addresses.refetch());
     page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
     let edit_action = EditActionParams::use_param_query();
@@ -115,7 +112,7 @@ pub fn ListPostalAddresses() -> impl IntoView {
         }
         None => {
             toast_ctx.success("New Postal Address on server, reloading list", None);
-            postal_address_ids.refetch();
+            postal_addresses.refetch();
         }
     });
 
@@ -130,110 +127,110 @@ pub fn ListPostalAddresses() -> impl IntoView {
     use_scroll_h2_into_view(scroll_ref, url_is_matched_route);
 
     view! {
-        <Transition fallback=move || {
-            view! {
+        <ErrorBoundary fallback=move |errors| {
+            for (_err_id, err) in errors.get().into_iter() {
+                let e = err.into_inner();
+                if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
+                    handle_with_error_banner(&page_err_ctx, comp_err, on_cancel);
+                } else {
+                    handle_unexpected_ui_error(
+                        &page_err_ctx,
+                        component_id.get_value(),
+                        "An unexpected error occurred.",
+                        on_cancel,
+                    );
+                }
+            }
+        }>
+            <Transition fallback=move || {
+                view! {
+                    <div
+                        class="card w-full bg-base-100 shadow-xl"
+                        data-testid="postal-address-list-root"
+                    >
+                        <div class="card-body">
+                            <h2 class="card-title" node_ref=scroll_ref>
+                                "Search Postal Address"
+                            </h2>
+                            <span class="loading loading-spinner loading-lg"></span>
+                        </div>
+                    </div>
+                }
+            }>
                 <div
                     class="card w-full bg-base-100 shadow-xl"
                     data-testid="postal-address-list-root"
                 >
                     <div class="card-body">
-                        <h2 class="card-title" node_ref=scroll_ref>
-                            "Search Postal Address"
-                        </h2>
-                        <span class="loading loading-spinner loading-lg"></span>
-                    </div>
-                </div>
-            }
-        }>
-            <ErrorBoundary fallback=move |errors| {
-                for (_err_id, err) in errors.get().into_iter() {
-                    let e = err.into_inner();
-                    if let Some(comp_err) = e.downcast_ref::<ComponentError>() {
-                        handle_read_error(&page_err_ctx, comp_err, on_cancel);
-                    } else {
-                        handle_unexpected_ui_error(
-                            &page_err_ctx,
-                            component_id.get_value(),
-                            "An unexpected error occurred.",
-                            on_cancel,
-                        );
-                    }
-                }
-            }>
-                {move || {
-                    postal_address_ids
-                        .and_then(|pa_ids| {
-                            postal_address_editor_map.visible_ids_list.set(pa_ids.clone());
-                            view! {
-                                <div
-                                    class="card w-full bg-base-100 shadow-xl"
-                                    data-testid="postal-address-list-root"
-                                >
-                                    <div class="card-body">
-                                        <div class="flex justify-between items-center">
-                                            <h2 class="card-title" node_ref=scroll_ref>
-                                                "Search Postal Address"
-                                            </h2>
-                                            <button
-                                                class="btn btn-square btn-ghost btn-sm"
-                                                on:click=move |_| on_cancel.run(())
-                                                aria-label="Close"
-                                                data-testid="action-btn-close-list"
-                                            >
-                                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
-                                            </button>
-                                        </div>
+                        <div class="flex justify-between items-center">
+                            <h2 class="card-title" node_ref=scroll_ref>
+                                "Search Postal Address"
+                            </h2>
+                            <button
+                                class="btn btn-square btn-ghost btn-sm"
+                                on:click=move |_| on_cancel.run(())
+                                aria-label="Close"
+                                data-testid="action-btn-close-list"
+                            >
+                                <span class="icon-[heroicons--x-mark] w-6 h-6"></span>
+                            </button>
+                        </div>
 
-                                        // --- Filter Bar ---
-                                        <Form method="GET" action="" noscroll=true replace=true>
-                                            // Hidden input to keep address_id in query string
-                                            <input
-                                                type="hidden"
-                                                name=AddressIdQuery::KEY
-                                                prop:value=move || {
-                                                    address_id
-                                                        .get()
-                                                        .map(|id| id.to_string())
-                                                        .unwrap_or_default()
-                                                }
-                                            />
-                                            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
-                                                // Text Search
-                                                <div class="w-full max-w-xs">
-                                                    <TextInput<
-                                                    String,
-                                                >
-                                                        name=FilterNameQuery::KEY
-                                                        label="Search Name"
-                                                        placeholder="Type to search for name..."
-                                                        value=search_term
-                                                        update_on=InputUpdateStrategy::Input
-                                                        action=InputCommitAction::SubmitForm
-                                                        data_testid="filter-name-search"
-                                                    />
-                                                </div>
-                                                // Limit Selector
-                                                <div class="w-full max-w-xs">
-                                                    <EnumSelect<
-                                                    FilterLimit,
-                                                >
-                                                        name=FilterLimitQuery::KEY
-                                                        label="Limit"
-                                                        value=limit
-                                                        data_testid="filter-limit-select"
-                                                        clear_label=FilterLimit::default().to_string()
-                                                        action=InputCommitAction::SubmitForm
-                                                    />
-                                                </div>
-                                            </div>
-                                        </Form>
+                        // --- Filter Bar ---
+                        <Form method="GET" action="" noscroll=true replace=true>
+                            // Hidden input to keep address_id in query string
+                            <input
+                                type="hidden"
+                                name=AddressIdQuery::KEY
+                                prop:value=move || {
+                                    address_id.get().map(|id| id.to_string()).unwrap_or_default()
+                                }
+                            />
+                            <div class="bg-base-200 p-4 rounded-lg flex flex-wrap gap-4 items-end">
+                                // Text Search
+                                <div class="w-full max-w-xs">
+                                    <FieldInput<
+                                    String,
+                                >
+                                        input_type="search"
+                                        name=FilterNameQuery::KEY
+                                        label="Search Name"
+                                        placeholder="Type to search for name..."
+                                        value=search_term
+                                        update_on=InputUpdateStrategy::Input
+                                        action=InputCommitAction::SubmitForm
+                                        data_testid="filter-name-search"
+                                    />
+                                </div>
+                                // Limit Selector
+                                <div class="w-full max-w-xs">
+                                    <EnumSelect<
+                                    FilterLimit,
+                                >
+                                        name=FilterLimitQuery::KEY
+                                        label="Limit"
+                                        value=limit
+                                        data_testid="filter-limit-select"
+                                        clear_label=FilterLimit::default().to_string()
+                                        action=InputCommitAction::SubmitForm
+                                    />
+                                </div>
+                            </div>
+                        </Form>
+                        {move || {
+                            postal_addresses
+                                .and_then(|pa_list| {
+                                    postal_address_editor_map
+                                        .visible_objects_list
+                                        .set(pa_list.clone());
+                                    view! {
                                         // --- Table Area ---
                                         <div class="overflow-x-auto">
                                             <Show
                                                 when=move || {
                                                     postal_address_editor_map
-                                                        .visible_ids_list
-                                                        .with(|val| !val.is_empty())
+                                                        .visible_objects_list
+                                                        .with(|list| !list.is_empty())
                                                 }
                                                 fallback=|| {
                                                     view! {
@@ -258,248 +255,233 @@ pub fn ListPostalAddresses() -> impl IntoView {
                                                     <tbody>
                                                         <For
                                                             each=move || {
-                                                                postal_address_editor_map.visible_ids_list.get().into_iter()
+                                                                postal_address_editor_map.visible_objects_list.get()
                                                             }
-                                                            key=|id| *id
-                                                            children=move |id| {
-                                                                view! { <PostalAddressTableRow id=id /> }
+                                                            key=|pa| pa.get_id_version()
+                                                            children=move |pa| {
+                                                                view! { <PostalAddressTableRow pa=pa /> }
                                                             }
                                                         />
                                                     </tbody>
                                                 </table>
                                             </Show>
                                         </div>
-                                        // --- Action Bar ---
-                                        <div class="flex flex-col md:flex-row justify-end gap-4">
-                                            <div class:hidden=move || {
-                                                postal_address_editor_map.selected_id.get().is_none()
-                                            }>
-                                                <A
-                                                    href=move || url_matched_route(
-                                                        MatchedRouteHandler::Extend("edit"),
-                                                    )
-                                                    attr:class="btn btn-sm btn-secondary"
-                                                    attr:data-testid="action-btn-edit"
-                                                    scroll=false
-                                                >
-                                                    "Edit selected Postal Address"
-                                                </A>
-                                            </div>
-                                            <button
-                                                class="btn btn-sm btn-secondary-content"
-                                                class:hidden=move || {
-                                                    postal_address_editor_map.selected_id.get().is_none()
-                                                }
-                                                data-testid="action-btn-copy"
-                                                on:click=move |_| {
-                                                    let navigate = use_navigate();
-                                                    if let Some(selected_id) = postal_address_editor_map
-                                                        .selected_id
-                                                        .get()
-                                                        && let Some(new_editor) = postal_address_editor_map
-                                                            .spawn_editor_for_copy_object(
-                                                                selected_id,
-                                                                SimpleEditorOptions::no_id(),
-                                                            ) && let Some(new_id) = new_editor.id.get()
-                                                    {
-                                                        let nav_url = url_matched_route_update_query(
-                                                            AddressIdQuery::KEY,
-                                                            &new_id.to_string(),
-                                                            MatchedRouteHandler::Extend("copy"),
-                                                        );
-                                                        navigate(
-                                                            &nav_url,
-                                                            NavigateOptions {
-                                                                scroll: false,
-                                                                ..Default::default()
-                                                            },
-                                                        );
-                                                    } else {
-                                                        toast_ctx.warning("Failed to copy object", None);
-                                                    }
-                                                }
-                                            >
-                                                "Copy selected Postal Address"
-                                            </button>
-                                            <button
-                                                class="btn btn-sm btn-primary"
-                                                data-testid="action-btn-new"
-                                                on:click=move |_| {
-                                                    let navigate = use_navigate();
-                                                    if let Some(new_editor) = postal_address_editor_map
-                                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
-                                                        && let Some(new_id) = new_editor.id.get()
-                                                    {
-                                                        let nav_url = url_matched_route_update_query(
-                                                            AddressIdQuery::KEY,
-                                                            &new_id.to_string(),
-                                                            MatchedRouteHandler::Extend("new"),
-                                                        );
-                                                        navigate(
-                                                            &nav_url,
-                                                            NavigateOptions {
-                                                                scroll: false,
-                                                                ..Default::default()
-                                                            },
-                                                        );
-                                                    } else {
-                                                        toast_ctx
-                                                            .warning("Failed to create a new postal address", None);
-                                                    }
-                                                }
-                                            >
-                                                "Create new Postal Address"
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="my-4"></div>
-                                <Outlet />
-                            }
-                        })
-                }}
-            </ErrorBoundary>
-        </Transition>
+                                    }
+                                })
+                        }}
+                        // --- Action Bar ---
+                        <div class="flex flex-col md:flex-row justify-end gap-4">
+                            <button
+                                class="btn btn-sm btn-secondary"
+                                class:hidden=move || {
+                                    postal_address_editor_map.selected_id.get().is_none()
+                                }
+                                data-testid="action-btn-edit"
+                                on:click=move |_| {
+                                    let navigate = use_navigate();
+                                    let nav_url = url_matched_route(
+                                        MatchedRouteHandler::Extend("edit"),
+                                    );
+                                    navigate(
+                                        &nav_url,
+                                        NavigateOptions {
+                                            scroll: false,
+                                            ..Default::default()
+                                        },
+                                    );
+                                }
+                            >
+                                "Edit selected Postal Address"
+                            </button>
+                            <button
+                                class="btn btn-sm btn-secondary-content"
+                                class:hidden=move || {
+                                    postal_address_editor_map.selected_id.get().is_none()
+                                }
+                                data-testid="action-btn-copy"
+                                on:click=move |_| {
+                                    let navigate = use_navigate();
+                                    if let Some(selected_id) = postal_address_editor_map
+                                        .selected_id
+                                        .get()
+                                        && let Some(new_editor) = postal_address_editor_map
+                                            .spawn_editor_for_copy_object(
+                                                selected_id,
+                                                SimpleEditorOptions::no_id(),
+                                            ) && let Some(new_id) = new_editor.id.get()
+                                    {
+                                        let nav_url = url_matched_route_update_query(
+                                            AddressIdQuery::KEY,
+                                            &new_id.to_string(),
+                                            MatchedRouteHandler::Extend("copy"),
+                                        );
+                                        navigate(
+                                            &nav_url,
+                                            NavigateOptions {
+                                                scroll: false,
+                                                ..Default::default()
+                                            },
+                                        );
+                                    } else {
+                                        toast_ctx.warning("Failed to copy object", None);
+                                    }
+                                }
+                            >
+                                "Copy selected Postal Address"
+                            </button>
+                            <button
+                                class="btn btn-sm btn-primary"
+                                data-testid="action-btn-new"
+                                on:click=move |_| {
+                                    let navigate = use_navigate();
+                                    if let Some(new_editor) = postal_address_editor_map
+                                        .spawn_editor_for_new_object(SimpleEditorOptions::no_id())
+                                        && let Some(new_id) = new_editor.id.get()
+                                    {
+                                        let nav_url = url_matched_route_update_query(
+                                            AddressIdQuery::KEY,
+                                            &new_id.to_string(),
+                                            MatchedRouteHandler::Extend("new"),
+                                        );
+                                        navigate(
+                                            &nav_url,
+                                            NavigateOptions {
+                                                scroll: false,
+                                                ..Default::default()
+                                            },
+                                        );
+                                    } else {
+                                        toast_ctx
+                                            .warning("Failed to create a new postal address", None);
+                                    }
+                                }
+                            >
+                                "Create new Postal Address"
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="my-4"></div>
+                <Outlet />
+            </Transition>
+        </ErrorBoundary>
     }
 }
 
 #[component]
-fn PostalAddressTableRow(id: Uuid) -> impl IntoView {
+fn PostalAddressTableRow(pa: PostalAddress) -> impl IntoView {
     // --- local context ---
     let postal_address_editor_map =
         expect_context::<ObjectEditorMapContext<PostalAddressEditorContext, AddressIdQuery>>();
+    let id = pa.get_id();
     // unwrap is safe here, since we provide an id.
     let postal_address_editor = postal_address_editor_map
         .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(id))
         .unwrap();
+    // We use update here, because there is a chain of events, which might result in an unwanted edit conflict. If
+    // the user changes several fields, the entry will differ with regard to the last loaded list entry. If during
+    // editing a reload of the list is triggered (e.g. because of adding a new entry to the list), there is a tiny
+    // window, where the user changes a field and triggers a save before the list is fully loaded. This results
+    // in an edit conflict, because the save tries to update an outdated version of the entry. By using update here,
+    // we only update the editor with the list data, if it is newer than the optimistic version of the edited entry.
+    postal_address_editor_map.update_object_in_editor(&pa);
     let address_id = AddressIdQuery::use_param_query();
 
     view! {
-        {move || {
-            postal_address_editor
-                .load_postal_address
-                .and_then(|maybe_pa| {
-                    maybe_pa
-                        .as_ref()
-                        .map(|pa| {
-                            postal_address_editor_map.update_object_in_editor(pa);
-                            view! {
-                                <tr
-                                    class="hover cursor-pointer"
-                                    class:bg-base-200=move || {
-                                        postal_address_editor_map.is_selected(id)
-                                    }
-                                    data-testid=format!("table-entry-row-{}", id)
-                                    on:click=move |_| {
-                                        if address_id.get() == Some(id) {
-                                            postal_address_editor_map.set_selected_id.run(None);
-                                        } else {
-                                            postal_address_editor_map.set_selected_id.run(Some(id));
-                                        }
-                                    }
-                                >
-                                    <td
-                                        class="font-bold"
-                                        data-testid=format!("table-entry-name-{}", id)
-                                    >
-                                        {move || postal_address_editor.name.get()}
-                                    </td>
-                                    <td data-testid=format!(
-                                        "table-entry-preview-{}",
-                                        id,
-                                    )>
-                                        {move || {
-                                            format!(
-                                                "{} - {}",
-                                                postal_address_editor.locality.get().unwrap_or_default(),
-                                                postal_address_editor
-                                                    .country
-                                                    .get()
-                                                    .map(|c| c.name())
-                                                    .unwrap_or_default(),
-                                            )
-                                        }}
-                                    </td>
-                                </tr>
-                                <Show when=move || postal_address_editor_map.is_selected(id)>
-                                    <tr>
-                                        <td colspan="2" class="p-0">
-                                            <div
-                                                class="flex flex-wrap items-baseline gap-x-2 gap-y-1 p-4 bg-base-200 text-sm"
-                                                data-testid="table-entry-detailed-preview"
-                                            >
-                                                <span data-testid="preview-street" class="font-medium">
-                                                    {move || postal_address_editor.street.get()}
-                                                </span>
+        <tr
+            class="hover cursor-pointer"
+            class:bg-base-200=move || { postal_address_editor_map.is_selected(id) }
+            data-testid=format!("table-entry-row-{}", id)
+            on:click=move |_| {
+                if address_id.get() == Some(id) {
+                    postal_address_editor_map.set_selected_id.run(None);
+                } else {
+                    postal_address_editor_map.set_selected_id.run(Some(id));
+                }
+            }
+        >
+            <td class="font-bold" data-testid=format!("table-entry-name-{}", id)>
+                {move || postal_address_editor.name.get()}
+            </td>
+            <td data-testid=format!(
+                "table-entry-preview-{}",
+                id,
+            )>
+                {move || {
+                    format!(
+                        "{} - {}",
+                        postal_address_editor.locality.get().unwrap_or_default(),
+                        postal_address_editor.country.get().map(|c| c.name()).unwrap_or_default(),
+                    )
+                }}
+            </td>
+        </tr>
+        <Show when=move || postal_address_editor_map.is_selected(id)>
+            <tr>
+                <td colspan="2" class="p-0">
+                    <div
+                        class="flex flex-wrap items-baseline gap-x-2 gap-y-1 p-4 bg-base-200 text-sm"
+                        data-testid="table-entry-detailed-preview"
+                    >
+                        <span data-testid="preview-street" class="font-medium">
+                            {move || postal_address_editor.street.get()}
+                        </span>
 
-                                                <span class="opacity-50 hidden sm:inline">"•"</span>
+                        <span class="opacity-50 hidden sm:inline">"•"</span>
 
-                                                <span data-testid="preview-postal_locality">
-                                                    <span data-testid="preview-postal_code">
-                                                        {move || postal_address_editor.postal_code.get()}
-                                                    </span>
-                                                    " "
-                                                    <span data-testid="preview-locality">
-                                                        {move || postal_address_editor.locality.get()}
-                                                    </span>
-                                                </span>
+                        <span data-testid="preview-postal_locality">
+                            <span data-testid="preview-postal_code">
+                                {move || postal_address_editor.postal_code.get()}
+                            </span>
+                            " "
+                            <span data-testid="preview-locality">
+                                {move || postal_address_editor.locality.get()}
+                            </span>
+                        </span>
 
-                                                <Show when=move || {
-                                                    postal_address_editor.region.get().is_some()
-                                                }>
-                                                    <span class="opacity-50 hidden sm:inline">"•"</span>
-                                                    <span data-testid="preview-region">
-                                                        {move || {
-                                                            postal_address_editor
-                                                                .region
-                                                                .get()
-                                                                .map(|r| r.to_string())
-                                                                .unwrap_or_default()
-                                                        }}
-                                                    </span>
-                                                </Show>
+                        <Show when=move || { postal_address_editor.region.get().is_some() }>
+                            <span class="opacity-50 hidden sm:inline">"•"</span>
+                            <span data-testid="preview-region">
+                                {move || {
+                                    postal_address_editor
+                                        .region
+                                        .get()
+                                        .map(|r| r.to_string())
+                                        .unwrap_or_default()
+                                }}
+                            </span>
+                        </Show>
 
-                                                <span class="opacity-50 hidden sm:inline">"•"</span>
+                        <span class="opacity-50 hidden sm:inline">"•"</span>
 
-                                                <span
-                                                    data-testid="preview-country"
-                                                    class="text-base-content/70"
-                                                >
-                                                    {move || display_country(
-                                                        postal_address_editor.country.get(),
-                                                    )}
-                                                </span>
+                        <span data-testid="preview-country" class="text-base-content/70">
+                            {move || display_country(postal_address_editor.country.get())}
+                        </span>
 
-                                                // Hidden technical fields
-                                                <span class="hidden" data-testid="preview-address-id">
-                                                    {move || {
-                                                        postal_address_editor
-                                                            .id
-                                                            .get()
-                                                            .map(|id| id.to_string())
-                                                            .unwrap_or_default()
-                                                    }}
-                                                </span>
-                                                <span class="hidden" data-testid="preview-address-version">
-                                                    {move || {
-                                                        postal_address_editor.version.get().unwrap_or_default()
-                                                    }}
-                                                </span>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td colspan="2" class="p-0">
-                                            <div
-                                                class="flex gap-2 justify-end p-2 bg-base-200"
-                                                data-testid="row-actions"
-                                            ></div>
-                                        </td>
-                                    </tr>
-                                </Show>
-                            }
-                        })
-                })
-        }}
+                        // Hidden technical fields
+                        <span class="hidden" data-testid="preview-address-id">
+                            {move || {
+                                postal_address_editor
+                                    .id
+                                    .get()
+                                    .map(|id| id.to_string())
+                                    .unwrap_or_default()
+                            }}
+                        </span>
+                        <span class="hidden" data-testid="preview-address-version">
+                            {move || { postal_address_editor.version.get().unwrap_or_default() }}
+                        </span>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" class="p-0">
+                    <div
+                        class="flex gap-2 justify-end p-2 bg-base-200"
+                        data-testid="row-actions"
+                    ></div>
+                </td>
+            </tr>
+        </Show>
     }
 }

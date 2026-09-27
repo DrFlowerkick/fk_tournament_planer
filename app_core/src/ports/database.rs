@@ -21,11 +21,11 @@ pub trait DatabasePort:
 pub trait DbpPostalAddress: Send + Sync {
     async fn get_postal_address(&self, id: Uuid) -> DbResult<Option<PostalAddress>>;
     async fn save_postal_address(&self, address: &PostalAddress) -> DbResult<PostalAddress>;
-    async fn list_postal_address_ids(
+    async fn list_postal_addresses(
         &self,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>>;
+    ) -> DbResult<Vec<PostalAddress>>;
 }
 
 /// database port trait for sport config
@@ -33,12 +33,12 @@ pub trait DbpPostalAddress: Send + Sync {
 pub trait DbpSportConfig: Send + Sync {
     async fn get_sport_config(&self, config_id: Uuid) -> DbResult<Option<SportConfig>>;
     async fn save_sport_config(&self, sport_config: &SportConfig) -> DbResult<SportConfig>;
-    async fn list_sport_config_ids(
+    async fn list_sport_configs(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>>;
+    ) -> DbResult<Vec<SportConfig>>;
 }
 /// database port trait for tournament base
 #[async_trait]
@@ -48,14 +48,14 @@ pub trait DbpTournamentBase: Send + Sync {
         &self,
         tournament_base: &TournamentBase,
     ) -> DbResult<TournamentBase>;
-    async fn list_tournament_base_ids(
+    async fn list_tournament_bases(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
         state_filter: Option<TournamentState>,
         include_adhoc: bool,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>>;
+    ) -> DbResult<Vec<TournamentBase>>;
 }
 
 /// database port trait for stage
@@ -68,11 +68,11 @@ pub trait DbpStage: Send + Sync {
         number: u32,
     ) -> DbResult<Option<Stage>>;
     async fn save_stage(&self, stage: &Stage) -> DbResult<Stage>;
-    async fn list_stage_ids_of_tournament(
+    async fn list_stages_of_tournament(
         &self,
         tournament_id: Uuid,
         number_of_stages: u32,
-    ) -> DbResult<Vec<(Uuid, u32)>>;
+    ) -> DbResult<Vec<Stage>>;
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize)]

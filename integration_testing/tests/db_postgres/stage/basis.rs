@@ -30,7 +30,7 @@ async fn given_new_when_save_then_get_roundtrip_version_is_0() -> Result<()> {
 
     assert_eq!(fetched.get_tournament_id(), t_id);
     assert_eq!(fetched.get_number(), 0);
-    assert_eq!(fetched.get_num_groups(), 2);
+    assert_eq!(fetched.get_number_of_groups(), 2);
 
     Ok(())
 }
@@ -53,7 +53,7 @@ async fn given_existing_v0_when_update_then_version_increments_to_1() -> Result<
     // Assert
     assert_eq!(v1.get_id(), v0.get_id());
     assert_eq!(v1.get_version(), Some(1));
-    assert_eq!(v1.get_num_groups(), 4);
+    assert_eq!(v1.get_number_of_groups(), 4);
 
     Ok(())
 }
@@ -125,18 +125,10 @@ async fn given_multiple_stages_when_list_then_ordered_by_number() -> Result<()> 
     db.save_stage(&make_new_stage(t_id, 1)).await?;
 
     // Act
-    let stage_ids = db.list_stage_ids_of_tournament(t_id, 3).await?;
+    let stages = db.list_stages_of_tournament(t_id, 3).await?;
 
     // Assert
-    assert_eq!(stage_ids.len(), 3);
-
-    // Load stages by ID
-    let mut stages = Vec::with_capacity(stage_ids.len());
-    for (id, _) in &stage_ids {
-        let stage = db.get_stage_by_id(*id).await?.expect("row must exist");
-        stages.push(stage);
-    }
-
+    assert_eq!(stages.len(), 3);
     assert_eq!(stages[0].get_number(), 0);
     assert_eq!(stages[1].get_number(), 1);
     assert_eq!(stages[2].get_number(), 2);

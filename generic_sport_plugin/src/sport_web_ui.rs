@@ -8,7 +8,7 @@ use app_core::{
     utils::validation::{ValidationErrors, ValidationResult},
 };
 use app_utils::{
-    components::inputs::{DurationInput, DurationInputUnit, InputCommitAction, NumberInput},
+    components::inputs::{DurationInput, DurationInputUnit, FieldInput, InputCommitAction},
     state::sport_config::SportConfigEditorContext,
 };
 use leptos::prelude::*;
@@ -221,7 +221,8 @@ impl SportPortWebUi for GenericSportPlugin {
 
         view! {
             <div class="space-y-4" data-testid="sport-config-configuration">
-                <NumberInput
+                <FieldInput
+                    input_type="number"
                     label="Sets to Win"
                     name="sets_to_win"
                     data_testid="input-sets_to_win"
@@ -233,7 +234,8 @@ impl SportPortWebUi for GenericSportPlugin {
                     min="1"
                 />
                 <div class="grid grid-cols-3 gap-4">
-                    <NumberInput
+                    <FieldInput
+                        input_type="number"
                         label="Score to Win a Set"
                         name="score_to_win"
                         data_testid="input-score_to_win"
@@ -244,7 +246,8 @@ impl SportPortWebUi for GenericSportPlugin {
                         field="score_to_win"
                         min="1"
                     />
-                    <NumberInput
+                    <FieldInput
+                        input_type="number"
                         label="Win by Margin"
                         name="win_by_margin"
                         data_testid="input-win_by_margin"
@@ -255,7 +258,8 @@ impl SportPortWebUi for GenericSportPlugin {
                         field="win_by_margin"
                         min="1"
                     />
-                    <NumberInput
+                    <FieldInput
+                        input_type="number"
                         label="Hard Cap"
                         name="hard_cap"
                         data_testid="input-hard_cap"
@@ -268,7 +272,8 @@ impl SportPortWebUi for GenericSportPlugin {
                     />
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <NumberInput
+                    <FieldInput
+                        input_type="number"
                         label="Victory Points for Win"
                         name="victory_points_win"
                         data_testid="input-victory_points_win"
@@ -280,7 +285,8 @@ impl SportPortWebUi for GenericSportPlugin {
                         min="0"
                         step="0.1"
                     />
-                    <NumberInput
+                    <FieldInput
+                        input_type="number"
                         label="Victory Points for Draw"
                         name="victory_points_draw"
                         data_testid="input-victory_points_draw"

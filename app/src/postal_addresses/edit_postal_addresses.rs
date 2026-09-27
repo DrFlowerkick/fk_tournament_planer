@@ -4,7 +4,7 @@ use app_core::PostalAddress;
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::postal_address::save_postal_address_inner;
 use app_utils::{
-    components::inputs::{EnumSelect, InputCommitAction, TextInput},
+    components::inputs::{EnumSelect, FieldInput, InputCommitAction},
     enum_utils::EditAction,
     hooks::{
         use_on_cancel::use_on_cancel,
@@ -224,7 +224,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                             postal_address_editor.version.get().unwrap_or_default()
                         }
                     />
-                    <TextInput
+                    <FieldInput
                         label="Name"
                         data_testid="input-name"
                         value=postal_address_editor.name
@@ -233,7 +233,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         object_id=postal_address_editor.id
                         field="name"
                     />
-                    <TextInput
+                    <FieldInput
                         label="Street & number"
                         data_testid="input-street"
                         value=postal_address_editor.street
@@ -243,7 +243,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                         field="street"
                     />
                     <div class="grid grid-cols-2 gap-4">
-                        <TextInput
+                        <FieldInput
                             label="Postal code"
                             data_testid="input-postal_code"
                             value=postal_address_editor.postal_code
@@ -254,7 +254,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                             object_id=postal_address_editor.id
                             field="postal_code"
                         />
-                        <TextInput
+                        <FieldInput
                             label="City"
                             data_testid="input-locality"
                             value=postal_address_editor.locality
@@ -266,7 +266,7 @@ fn PostalAddressForm(postal_address_editor: PostalAddressEditorContext) -> impl 
                             field="locality"
                         />
                     </div>
-                    <TextInput
+                    <FieldInput
                         label="Region"
                         data_testid="input-region"
                         value=postal_address_editor.region

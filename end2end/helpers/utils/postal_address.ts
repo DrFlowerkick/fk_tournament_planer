@@ -39,6 +39,23 @@ export async function openPostalAddressList(page: Page) {
 }
 
 /**
+ * Click navigate link in menu to open "Postal Address List".
+ */
+export async function clickMenuPostalAddressList(page: Page, shouldHaveId = false) {
+  const PA = selectors(page).postalAddress;
+  const MENU = selectors(page).menu;
+
+  // Click the menu link to navigate to the list page
+  await expect(MENU.btnToggle).toBeVisible();
+  await MENU.btnToggle.click();
+  await expect(MENU.navPostalAddresses).toBeVisible();
+  await MENU.navPostalAddresses.click();
+
+  // Wait for URL path /postal-address and address_id query param according to option
+  await waitForPostalAddressListUrl(page, shouldHaveId);
+}
+
+/**
  * Wait for navigation to a postal address detail page (UUID URL).
  * @param page Playwright Page object
  * @param shouldHaveId If true (default), expects a valid address_id in query. If false, expects NO address_id.

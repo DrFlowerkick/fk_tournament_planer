@@ -1,4 +1,4 @@
-import type { Page, Locator } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 
 export const BANNER_IDS = {
@@ -69,5 +69,19 @@ export function getListSelectors(page: Page) {
         .getByTestId(new RegExp(`^${ids.entryPreviewPrefix}`)),
     anyPreview: page.locator(`[data-testid^="${ids.entryPreviewPrefix}"]`).first(),
     anyRow: page.locator(`tr:has([data-testid^="${ids.entryNamePrefix}"])`).first(),
+  };
+}
+
+export const MENU_IDS = {
+  btnToggle: "menu-button",
+  navPostalAddresses: "nav-postal-addresses",
+  navSportSelection: "nav-sport-selection",
+} as const;
+
+export function getMenuSelectors(page: Page) {
+  return {
+    btnToggle: page.getByTestId(MENU_IDS.btnToggle),
+    navPostalAddresses: page.getByTestId(MENU_IDS.navPostalAddresses),
+    navSportSelection: page.getByTestId(MENU_IDS.navSportSelection),
   };
 }

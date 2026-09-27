@@ -1,11 +1,12 @@
 //! stage editor context
 
 use crate::{
-    error::{AppError, ComponentError, ComponentResult, strategy::handle_write_error},
-    server_fn::stage::{SaveStage, load_stage_by_id},
+    error::{AppError, strategy::handle_with_toast},
+    server_fn::stage::{LoadStageById, SaveStage},
     state::{
-        EditorContext, EditorContextWithResource, EditorOptions, activity_tracker::ActivityTracker,
-        error_state::PageErrorContext, toast_state::ToastContext,
+        EditorContext, EditorContextWithResource, EditorOptions, LabeledAction,
+        activity_tracker::ActivityTracker, error_state::PageErrorContext,
+        toast_state::ToastContext,
     },
 };
 use app_core::{
@@ -57,12 +58,14 @@ pub struct StageEditorContext {
     pub num_groups: Signal<Option<u32>>,
     /// Write slice for setting the stage number of groups
     pub set_num_groups: Callback<Option<u32>>,
+    /// Signal for the group sizes of the stage, which is derived from the local stage and number of groups
+    pub group_sizes: Signal<Vec<u32>>,
+    /// Callback for setting the group size of a specific group, which updates the local stage accordingly
+    pub set_group_sizes: Callback<(usize, u32)>,
 
     // --- Resource & server action state ---
     /// WriteSignal for optimistic version handling to prevent unneeded server round after save
     set_optimistic_version: RwSignal<Option<u32>>,
-    /// Resource for loading the stage based on the given id in the editor options
-    pub load_stage: LocalResource<ComponentResult<Option<Stage>>>,
     /// Server action for saving the stage based on the current state of the editor context
     pub save_stage: ServerAction<SaveStage>,
     /// Callback after successful save to e.g. navigate to the new stage or show a success toast.
@@ -166,7 +169,7 @@ impl EditorContext for StageEditorContext {
                     local_tournament
                         .as_ref()
                         .and_then(|t| t.get_stage_by_id(id))
-                        .map(|s| s.get_num_groups())
+                        .map(|s| s.get_number_of_groups())
                 })
             },
             move |local_tournament, num_groups: u32| {
@@ -180,67 +183,83 @@ impl EditorContext for StageEditorContext {
         let set_num_groups = Callback::new(move |num_groups: Option<u32>| {
             set_num_groups.set(num_groups.unwrap_or_default());
         });
+        let (group_sizes, set_group_sizes) = create_slice(
+            options.local_tournament,
+            move |local_tournament| {
+                if let Some(id) = id.get()
+                    && let Some(t) = local_tournament
+                    && let Some(stage) = t.get_stage_by_id(id)
+                {
+                    stage.get_group_sizes().into()
+                } else {
+                    vec![]
+                }
+            },
+            move |local_tournament, (group_index, group_size): (usize, u32)| {
+                if let Some(id) = id.get()
+                    && let Some(t) = local_tournament
+                {
+                    t.set_stage_group_size(id, group_index, group_size);
+                }
+            },
+        );
+        let set_group_sizes = Callback::new(move |(group_index, group_size): (usize, u32)| {
+            set_group_sizes.set((group_index, group_size));
+        });
 
-        // ---- tournament stage resource ----
+        // ---- tournament stage server action ----
         let (resource_id, set_resource_id) = signal(options.object_id);
         let set_optimistic_version = RwSignal::new(None::<u32>);
 
-        // resource to load tournament stage
-        /*let load_tournament_base = Resource::new(
-            move || resource_id.get(),
-            move |maybe_id| async move {
-                if let Some(id) = maybe_id {
-                    match activity_tracker
-                        .track_activity_wrapper(component_id.get_value(), load_tournament_base(id))
-                        .await
-                    {
-                        Ok(None) => {
-                            Err(AppError::ResourceNotFound("Tournament Base".to_string(), id))
-                        }
-                        res => res,
-                    }
-                } else {
-                    Ok(None)
-                }
-            },
-        );*/
-        // At current state of leptos SSR does not provide stable rendering (meaning during initial load Hydration
-        // errors occur until the page is fully rendered and the app "transformed" into a SPA). For this reason
-        // we use a LocalResource here, which does not cause hydration errors.
-        // ToDo: investigate how to use Resource without hydration errors, since Resource provides better
-        // ergonomics for loading states and error handling.
-        let load_stage = LocalResource::new(move || async move {
-            if let Some(id) = resource_id.get()
-                && let Some(tournament_id) = tournament_id.get()
-            {
-                match activity_tracker
-                    .track_activity_wrapper(
-                        component_id.get_value(),
-                        load_stage_by_id(tournament_id, id),
-                    )
-                    .await
-                {
-                    Ok(None) => Err(AppError::ResourceNotFound(
-                        "Tournament Stage".to_string(),
-                        id,
-                    )),
-                    res => res,
-                }
-            } else {
-                Ok(None)
-            }
-            .map_err(|app_error| ComponentError::new(component_id.get_value(), app_error))
-        });
+        // server action to fetch updated tournament stage for the given id, used by client registry
+        let fetch_tournament_stage = ServerAction::<LoadStageById>::new();
+        let fetch_tournament_stage_pending = fetch_tournament_stage.pending();
+        activity_tracker
+            .track_pending_memo(component_id.get_value(), fetch_tournament_stage_pending);
+
         let refetch = Callback::new(move |()| {
-            load_stage.refetch();
+            if let Some(tournament_id) = tournament_id.get()
+                && let Some(id) = resource_id.get()
+            {
+                fetch_tournament_stage.dispatch(LoadStageById { tournament_id, id });
+            }
         });
-        page_err_ctx.register_retry_handler(component_id.get_value(), refetch);
 
         let topic =
             Signal::derive(move || resource_id.get().map(|id| CrTopic::Stage { stage_id: id }));
         use_client_registry_socket(topic, set_optimistic_version.into(), refetch);
 
-        // ---- tournament stage server action ----
+        // handle fetch result
+        Effect::new(move || {
+            if let Some(fetch_result) = fetch_tournament_stage.value().get() {
+                fetch_tournament_stage.clear();
+                match fetch_result {
+                    Ok(Some(tb)) => {
+                        set_resource_id.set(Some(tb.get_id()));
+                        set_optimistic_version.set(tb.get_version());
+                        set_local.set(Some(tb));
+                    }
+                    Ok(None) => {
+                        // This case should not happen, since the fetch action is triggered based on the presence of a valid
+                        // resource id. If it does happen, it means the resource was not found and we should inform the user.
+                        let err = AppError::ResourceNotFound(
+                            "Tournament Stage".to_string(),
+                            resource_id.get().unwrap_or_default(),
+                        );
+                        handle_with_toast(&toast_ctx, &err, None);
+                    }
+                    Err(err) => {
+                        let interactive = LabeledAction {
+                            label: "Retry".to_string(),
+                            on_click: refetch,
+                        };
+                        handle_with_toast(&toast_ctx, &err, Some(interactive));
+                    }
+                }
+            }
+        });
+
+        // server action for saving the tournament stage based on the current state of the editor context
         let save_stage = ServerAction::<SaveStage>::new();
         let save_stage_pending = save_stage.pending();
         activity_tracker.track_pending_memo(component_id.get_value(), save_stage_pending);
@@ -264,7 +283,7 @@ impl EditorContext for StageEditorContext {
                     Err(err) => {
                         // version reset for parallel editing
                         set_optimistic_version.set(version.get());
-                        handle_write_error(&toast_ctx, &err);
+                        handle_with_toast(&toast_ctx, &err, None);
                     }
                 }
             }
@@ -282,8 +301,9 @@ impl EditorContext for StageEditorContext {
             number,
             num_groups,
             set_num_groups,
+            group_sizes,
+            set_group_sizes,
             set_optimistic_version,
-            load_stage,
             save_stage,
             post_save_callback,
         }

@@ -3,7 +3,7 @@
 #[cfg(feature = "test-mock")]
 use app_utils::server_fn::stage::save_stage_inner;
 use app_utils::{
-    components::inputs::{InputCommitAction, NumberInput},
+    components::inputs::{FieldInput, InputCommitAction, VecFieldInput, VecInputCommitAction},
     hooks::{
         use_on_cancel::use_on_cancel,
         use_scroll_into_view::use_scroll_h2_into_view,
@@ -181,7 +181,8 @@ fn TournamentStageForm(
                                     }
                                 />
                                 <div class="w-full max-w-md grid grid-cols-1 gap-6">
-                                    <NumberInput
+                                    <FieldInput
+                                        input_type="number"
                                         label="Number of Groups"
                                         name="stage-num-groups"
                                         data_testid="input-stage-num-groups"
@@ -201,10 +202,26 @@ fn TournamentStageForm(
                                 <For
                                     each=move || {
                                         0..stage_editor.num_groups.get().unwrap_or_default()
+                                            as usize
                                     }
                                     key=|i| *i
                                     children=move |i| {
                                         view! {
+                                            <VecFieldInput
+                                                input_type="number"
+                                                label=format!("Group {} Size", i + 1)
+                                                name=format!("group-{}-size", i)
+                                                data_testid=format!("input-group-{}-size", i)
+                                                value=stage_editor.group_sizes
+                                                action=VecInputCommitAction::WriteAndSubmit(
+                                                    stage_editor.set_group_sizes,
+                                                )
+                                                index=i
+                                                validation_result=stage_editor.validation_result
+                                                min="1".to_string()
+                                                object_id=stage_editor.id
+                                                field="group_sizes"
+                                            />
                                             <button
                                                 class="btn btn-sm btn-secondary"
                                                 data-testid=format!("action-btn-configure-group-{}", i)
@@ -213,7 +230,7 @@ fn TournamentStageForm(
                                                     tournament_editor
                                                         .prepare_group(
                                                             active_stage_number.get().unwrap_or_default(),
-                                                            i,
+                                                            i as u32,
                                                         );
                                                     let nav_url = url_matched_route(
                                                         MatchedRouteHandler::Extend(&i.to_string()),

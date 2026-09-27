@@ -8,7 +8,7 @@ use app_utils::{
     enum_utils::EditAction,
     params::AddressIdQuery,
     state::{
-        SimpleEditorOptions, object_table::ObjectEditorMapContext,
+        EditorContext, SimpleEditorOptions, object_table::ObjectEditorMapContext,
         postal_address::PostalAddressEditorContext,
     },
 };
@@ -26,9 +26,10 @@ fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
     let postal_address_editor_map =
         ObjectEditorMapContext::<PostalAddressEditorContext, AddressIdQuery>::new();
     let existing_id = pa.get_id();
-    postal_address_editor_map
+    let editor = postal_address_editor_map
         .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(existing_id))
         .unwrap();
+    editor.set_object(pa.clone());
 
     match edit_action {
         EditAction::New => {
@@ -39,13 +40,11 @@ fn PrepareTest(edit_action: EditAction, pa: PostalAddress) -> impl IntoView {
             postal_address_editor_map.set_selected_id.run(Some(new_id));
         }
         EditAction::Edit => {
-            postal_address_editor_map.update_object_in_editor(&pa);
             postal_address_editor_map
                 .set_selected_id
                 .run(Some(existing_id));
         }
         EditAction::Copy => {
-            postal_address_editor_map.update_object_in_editor(&pa);
             let new_id = postal_address_editor_map
                 .spawn_editor_for_copy_object(existing_id, SimpleEditorOptions::no_id())
                 .and_then(|editor| editor.id.get())
@@ -112,19 +111,11 @@ async fn test_new_postal_address() {
 
     let new_address = ts
         .db
-        .list_postal_address_ids(Some("New"), None)
+        .list_postal_addresses(Some("New"), None)
         .await
         .unwrap();
     assert_eq!(new_address.len(), 1);
-    assert_eq!(
-        ts.db
-            .get_postal_address(new_address[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_name(),
-        "New Name"
-    );
+    assert_eq!(new_address[0].get_name(), "New Name");
 }
 
 #[wasm_bindgen_test]
@@ -242,27 +233,10 @@ async fn test_copy_new_postal_address() {
 
     let cloned_addresses = ts
         .db
-        .list_postal_address_ids(Some("Cloned"), None)
+        .list_postal_addresses(Some("Cloned"), None)
         .await
         .unwrap();
     assert_eq!(cloned_addresses.len(), 1);
-    assert_eq!(
-        ts.db
-            .get_postal_address(cloned_addresses[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_name(),
-        "Cloned Address"
-    );
-    assert_eq!(
-        ts.db
-            .get_postal_address(cloned_addresses[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_version()
-            .unwrap(),
-        0
-    );
+    assert_eq!(cloned_addresses[0].get_name(), "Cloned Address");
+    assert_eq!(cloned_addresses[0].get_version().unwrap(), 0);
 }

@@ -1,11 +1,16 @@
 import { test, expect } from "@playwright/test";
-import { openPostalAddressList, clickNewPostalAddress, selectors } from "../../helpers";
+import { clickMenuPostalAddressList, clickNewPostalAddress, openHomePage, selectors } from "../../helpers";
 
 test("Smoke: Search → New → Close", async ({ page }) => {
   const PA = selectors(page).postalAddress;
+  const MENU = selectors(page).menu;
 
-  await test.step("Open search page", async () => {
-    await openPostalAddressList(page);
+  await test.step("Open home page", async () => {
+    await openHomePage(page);
+  });
+
+  await test.step("Navigate to Postal Address List", async () => {
+    await clickMenuPostalAddressList(page);
   });
 
   await test.step("Navigate to New form", async () => {

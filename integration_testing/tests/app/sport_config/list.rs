@@ -1,12 +1,10 @@
-use crate::common::{get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url};
+use crate::common::{
+    get_element_by_test_id, get_test_root, init_test_state, lock_test, set_url,
+    wait_for_element_text,
+};
 use app::{home::ListSportConfigurations, provide_global_context};
 use gloo_timers::future::sleep;
-use leptos::{
-    mount::mount_to,
-    prelude::*,
-    wasm_bindgen::JsCast,
-    web_sys::{HtmlAnchorElement, HtmlButtonElement},
-};
+use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlButtonElement};
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -40,12 +38,20 @@ async fn test_config_search_renders() {
         }
     });
 
-    sleep(Duration::from_millis(10)).await;
+    let row_id = format!("table-entry-row-{}", ts.generic_sport_config_id);
+    wait_for_element_text(&row_id, "Test Config 1", 10_000).await;
 
     // click table and check URL update
-    let row = get_element_by_test_id(&format!("table-entry-row-{}", ts.generic_sport_config_id));
+    let row = get_element_by_test_id(&row_id);
     row.click();
-    sleep(Duration::from_millis(10)).await;
+
+    for _ in 0..50 {
+        let url = document().location().unwrap().href().unwrap();
+        if url.contains(&format!("sport_config_id={}", ts.generic_sport_config_id)) {
+            break;
+        }
+        sleep(Duration::from_millis(200)).await;
+    }
 
     let url_id = document()
         .location()
@@ -59,6 +65,7 @@ async fn test_config_search_renders() {
     assert_eq!(url_id, ts.generic_sport_config_id.to_string());
 
     // check preview
+    wait_for_element_text("table-entry-detailed-preview", "~30 min", 10_000).await;
     let preview = get_element_by_test_id("table-entry-detailed-preview")
         .text_content()
         .unwrap();
@@ -75,13 +82,8 @@ async fn test_config_search_renders() {
 
     // test buttons which show after click on table row
     let edit_button = get_element_by_test_id("action-btn-edit")
-        .dyn_into::<HtmlAnchorElement>()
+        .dyn_into::<HtmlButtonElement>()
         .unwrap();
-    let href = edit_button.href();
-    assert!(href.ends_with(&format!(
-        "edit?sport_id={}&sport_config_id={}",
-        ts.generic_sport_id, ts.generic_sport_config_id
-    )));
     assert_eq!(
         edit_button.text_content().unwrap(),
         "Edit selected Sport Configuration"

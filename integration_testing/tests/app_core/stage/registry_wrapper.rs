@@ -11,7 +11,9 @@ async fn given_successful_db_save_when_save_then_publishes_exactly_once_with_cor
     // Arrange: new stage configuration in state
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(0); // Valid stage number for TwoPoolStagesAndFinalStage
-    core.get_mut().set_num_groups(2);
+    core.get_mut().set_number_of_groups(2);
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 2);
 
     // Act: persist (DB succeeds) → should publish once
     let saved = core
@@ -54,7 +56,9 @@ async fn given_db_failure_when_save_then_no_publish_occurs() {
     // Put valid state so save attempts to persist
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(1);
-    core.get_mut().set_num_groups(4);
+    core.get_mut().set_number_of_groups(4);
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 4);
 
     // Act
     let err = core
@@ -88,7 +92,9 @@ async fn given_publish_failure_after_successful_db_save_when_save_then_error_pro
     // Arrange: insert a new config (DB should succeed), but inject publish failure
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(2);
-    core.get_mut().set_num_groups(1);
+    core.get_mut().set_number_of_groups(1);
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 1);
 
     cr_fake.fail_publish_once();
 
@@ -136,7 +142,9 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     s1.set_id_version(IdVersion::default());
     s1.set_tournament_id(t_id);
     s1.set_number(0);
-    s1.set_num_groups(2);
+    s1.set_number_of_groups(2);
+    // 32 entrants
+    s1.distribute_groups_evenly(32, 2);
     *core.get_mut() = s1;
     let saved_id = core.save().await.expect("seed 0").get_id();
 
@@ -144,7 +152,7 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     s2.set_id_version(IdVersion::default());
     s2.set_tournament_id(t_id);
     s2.set_number(1);
-    s2.set_num_groups(2);
+    s2.set_number_of_groups(2);
     *core.get_mut() = s2;
     core.save().await.expect("seed 1");
 
@@ -154,7 +162,7 @@ async fn given_read_operations_when_invoked_then_never_publish_anything() {
     // Act: load_by_id, load_by_number and list
     let _ = core.load_by_id(saved_id).await.expect("load_by_id ok");
     let _ = core.load_by_number(1).await.expect("load_by_number ok");
-    let _ = core.list_stage_ids_of_tournament().await.expect("list ok");
+    let _ = core.list_stages_of_tournament().await.expect("list ok");
 
     // Assert: still no publish after read-only operations
     assert!(
@@ -172,14 +180,18 @@ async fn given_two_consecutive_saves_then_two_publishes_and_version_monotonic() 
     // First insert
     core.get_mut().set_tournament_id(t_id);
     core.get_mut().set_number(0);
-    core.get_mut().set_num_groups(2);
+    core.get_mut().set_number_of_groups(2);
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 2);
 
     let first = core.save().await.expect("first save").clone();
     let id = first.get_id();
     assert_eq!(first.get_version(), Some(0));
 
     // Update same stage (simulate a change)
-    core.get_mut().set_num_groups(4);
+    core.get_mut().set_number_of_groups(4);
+    // 32 entrants
+    core.get_mut().distribute_groups_evenly(32, 4);
 
     let second = core.save().await.expect("second save (update)");
     assert_eq!(second.get_id(), id);

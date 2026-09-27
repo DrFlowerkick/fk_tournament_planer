@@ -23,8 +23,8 @@ where
     editor_map: RwSignal<HashMap<Uuid, (OE, Owner)>>,
     /// Owner where the context is provided, used for creating new signals in the context of the editors
     pub owner: StoredValue<Owner>,
-    /// RwSignal for the list of visible object editor ids
-    pub visible_ids_list: RwSignal<Vec<Uuid>>,
+    /// List of visible objects, loaded from the server
+    pub visible_objects_list: RwSignal<Vec<OE::ObjectType>>,
     /// Read slice for the currently selected object editor id
     pub selected_id: Signal<Option<Uuid>>,
     /// Callback for updating the currently selected object editor id
@@ -69,13 +69,17 @@ where
 
         let editor_map = RwSignal::new(HashMap::new());
         let owner = StoredValue::new(Owner::current().expect("No reactive owner found"));
-        let visible_ids_list = RwSignal::new(Vec::new());
+        let visible_objects_list = RwSignal::new(Vec::new());
         let selected_id_query = use_query::<Q>();
         let selected_id = Signal::derive(move || {
             selected_id_query.with(|qr| {
                 qr.as_ref().ok().and_then(|q| {
                     q.get_id().and_then(|id| {
-                        visible_ids_list.with(move |vids| vids.contains(&id).then_some(id))
+                        visible_objects_list.with(move |vos| {
+                            vos.iter()
+                                .any(|vo: &OE::ObjectType| vo.get_id_version().get_id() == id)
+                                .then_some(id)
+                        })
                     })
                 })
             })
@@ -102,7 +106,7 @@ where
         Self {
             editor_map,
             owner,
-            visible_ids_list,
+            visible_objects_list,
             selected_id,
             set_selected_id,
             refetch_trigger,
@@ -224,12 +228,12 @@ where
     }
 
     pub fn update_object_in_editor(&self, object: &OE::ObjectType) {
-        self.editor_map.with(|em| {
+        self.editor_map.with_untracked(|em| {
             if let Some(editor) = em
                 .get(&object.get_id_version().get_id())
                 .map(|(editor, _)| editor)
             {
-                let optimistic_version = editor.optimistic_version_signal().get();
+                let optimistic_version = editor.optimistic_version_signal().get_untracked();
                 if optimistic_version.is_none() {
                     editor.set_object(object.clone());
                 }

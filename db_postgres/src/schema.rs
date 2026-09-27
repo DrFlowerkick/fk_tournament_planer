@@ -33,9 +33,9 @@ diesel::table! {
         version -> Int8,
         tournament_id -> Uuid,
         number -> Int4,
-        num_groups -> Int4,
         created_at -> Timestamptz,
         updated_at -> Timestamptz,
+        group_sizes -> Array<Nullable<Int4>>,
     }
 }
 

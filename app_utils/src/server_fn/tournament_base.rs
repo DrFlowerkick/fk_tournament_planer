@@ -14,18 +14,12 @@ use tracing::instrument;
 use tracing::{error, info};
 use uuid::Uuid;
 
-#[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(
     name = "tournament_base.load",
     skip_all,
     fields(id = %id)
 )]
-pub async fn load_tournament_base(id: Uuid) -> AppResult<Option<TournamentBase>> {
-    load_tournament_base_inner(id).await
-}
-
-#[cfg(feature = "test-mock")]
 pub async fn load_tournament_base(id: Uuid) -> AppResult<Option<TournamentBase>> {
     load_tournament_base_inner(id).await
 }
@@ -40,38 +34,38 @@ pub async fn load_tournament_base_inner(id: Uuid) -> AppResult<Option<Tournament
 #[cfg(not(feature = "test-mock"))]
 #[server]
 #[instrument(name = "tournament_base.list", skip_all)]
-pub async fn list_tournament_base_ids(
+pub async fn list_tournament_bases(
     sport_id: Uuid,
     name: String,
     state_filter: Option<TournamentState>,
     include_adhoc: bool,
     limit: Option<usize>,
-) -> AppResult<Vec<Uuid>> {
-    list_tournament_base_ids_inner(sport_id, name, state_filter, include_adhoc, limit).await
+) -> AppResult<Vec<TournamentBase>> {
+    list_tournament_bases_inner(sport_id, name, state_filter, include_adhoc, limit).await
 }
 
 #[cfg(feature = "test-mock")]
-pub async fn list_tournament_base_ids(
+pub async fn list_tournament_bases(
     sport_id: Uuid,
     name: String,
     state_filter: Option<TournamentState>,
     include_adhoc: bool,
     limit: Option<usize>,
-) -> AppResult<Vec<Uuid>> {
-    list_tournament_base_ids_inner(sport_id, name, state_filter, include_adhoc, limit).await
+) -> AppResult<Vec<TournamentBase>> {
+    list_tournament_bases_inner(sport_id, name, state_filter, include_adhoc, limit).await
 }
 
 #[cfg(any(feature = "ssr", feature = "test-mock"))]
-async fn list_tournament_base_ids_inner(
+async fn list_tournament_bases_inner(
     sport_id: Uuid,
     name: String,
     state_filter: Option<TournamentState>,
     include_adhoc: bool,
     limit: Option<usize>,
-) -> AppResult<Vec<Uuid>> {
+) -> AppResult<Vec<TournamentBase>> {
     let core = expect_context::<CoreState>().as_tournament_base_state();
     let configs = core
-        .list_tournament_base_ids(sport_id, Some(&name), state_filter, include_adhoc, limit)
+        .list_tournament_bases(sport_id, Some(&name), state_filter, include_adhoc, limit)
         .await?;
     Ok(configs)
 }

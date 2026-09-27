@@ -190,16 +190,19 @@ impl Core<SportConfigState> {
         Ok(self.get())
     }
 
-    pub async fn list_sport_config_ids(
+    pub async fn list_sport_configs(
         &self,
         sport_id: Uuid,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> CoreResult<Vec<Uuid>> {
+    ) -> CoreResult<Vec<SportConfig>> {
         let list = self
             .database
-            .list_sport_config_ids(sport_id, name_filter, limit)
+            .list_sport_configs(sport_id, name_filter, limit)
             .await?;
+        for config in &list {
+            self.validate(config)?;
+        }
         Ok(list)
     }
 }

@@ -29,9 +29,9 @@ pub struct DbStage {
     pub version: i64,
     pub tournament_id: Uuid,
     pub number: i32,
-    pub num_groups: i32,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    pub group_sizes: Vec<Option<i32>>,
 }
 
 // Mapping DB -> Core
@@ -54,7 +54,13 @@ impl TryFrom<DbStage> for Stage {
 
         s.set_tournament_id(r.tournament_id)
             .set_number(r.number as u32)
-            .set_num_groups(r.num_groups as u32);
+            .set_group_sizes(
+                r.group_sizes
+                    .into_iter()
+                    .flatten()
+                    .map(|size| size as u32)
+                    .collect(),
+            );
 
         Ok(s)
     }
@@ -66,7 +72,7 @@ impl TryFrom<DbStage> for Stage {
 pub struct WriteDbStage {
     pub tournament_id: Uuid,
     pub number: i32,
-    pub num_groups: i32,
+    pub group_sizes: Vec<i32>,
 }
 
 // Mapping Core -> DB
@@ -77,7 +83,11 @@ impl<'a> TryFrom<&'a Stage> for WriteDbStage {
         Ok(WriteDbStage {
             tournament_id: s.get_tournament_id(),
             number: s.get_number() as i32,
-            num_groups: s.get_num_groups() as i32,
+            group_sizes: s
+                .get_group_sizes()
+                .iter()
+                .map(|&size| size as i32)
+                .collect(),
         })
     }
 }
@@ -161,9 +171,9 @@ impl DbpStage for PgDb {
                     version,
                     tournament_id,
                     number,
-                    num_groups,
                     created_at,
                     updated_at,
+                    group_sizes,
                 ))
                 .get_result::<DbStage>(&mut conn)
                 .await;
@@ -205,9 +215,9 @@ impl DbpStage for PgDb {
                         version,
                         tournament_id,
                         number,
-                        num_groups,
                         created_at,
                         updated_at,
+                        group_sizes,
                     ))
                     .get_result::<DbStage>(&mut conn)
                     .await
@@ -220,25 +230,34 @@ impl DbpStage for PgDb {
     }
 
     #[instrument(name = "db.stage.list", skip(self, t_id))]
-    async fn list_stage_ids_of_tournament(
+    async fn list_stages_of_tournament(
         &self,
         t_id: Uuid,
         number_of_stages: u32,
-    ) -> DbResult<Vec<(Uuid, u32)>> {
+    ) -> DbResult<Vec<Stage>> {
         let mut conn = self.new_connection().await?;
 
         let rows: Vec<_> = stages
             .filter(tournament_id.eq(t_id))
             .filter(number.lt(number_of_stages as i32))
-            .select((id, number))
+            .select((
+                id,
+                version,
+                tournament_id,
+                number,
+                created_at,
+                updated_at,
+                group_sizes,
+            ))
             .order(number.asc())
-            .load::<(Uuid, i32)>(&mut conn)
+            .load::<DbStage>(&mut conn)
             .await
-            .map_err(map_db_err)?
-            .into_iter()
-            .map(|(stage_id, stage_number)| (stage_id, stage_number as u32))
-            .collect();
+            .map_err(map_db_err)?;
         info!(count = rows.len(), "list_ok");
-        Ok(rows)
+
+        Ok(rows
+            .into_iter()
+            .map(|r| r.try_into())
+            .collect::<Result<_, DbError>>()?)
     }
 }

@@ -7,7 +7,7 @@ use app_utils::{
     enum_utils::EditAction,
     params::SportConfigIdQuery,
     state::{
-        SimpleEditorOptions, object_table::ObjectEditorMapContext,
+        EditorContext, SimpleEditorOptions, object_table::ObjectEditorMapContext,
         sport_config::SportConfigEditorContext,
     },
 };
@@ -26,12 +26,10 @@ fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
     let sport_config_editor_map =
         ObjectEditorMapContext::<SportConfigEditorContext, SportConfigIdQuery>::new();
     let existing_id = sc.get_id();
-    sport_config_editor_map
+    let editor = sport_config_editor_map
         .spawn_editor_for_edit_object(SimpleEditorOptions::with_id(existing_id))
         .unwrap();
-    sport_config_editor_map
-        .set_selected_id
-        .run(Some(existing_id));
+    editor.set_object(sc.clone());
 
     match edit_action {
         EditAction::New => {
@@ -42,10 +40,11 @@ fn PrepareTest(edit_action: EditAction, sc: SportConfig) -> impl IntoView {
             sport_config_editor_map.set_selected_id.run(Some(new_id));
         }
         EditAction::Edit => {
-            sport_config_editor_map.update_object_in_editor(&sc);
+            sport_config_editor_map
+                .set_selected_id
+                .run(Some(existing_id));
         }
         EditAction::Copy => {
-            sport_config_editor_map.update_object_in_editor(&sc);
             let new_id = sport_config_editor_map
                 .spawn_editor_for_copy_object(existing_id, SimpleEditorOptions::no_id())
                 .and_then(|editor| editor.id.get())
@@ -103,19 +102,11 @@ async fn test_new_sport_config() {
 
     let new_configs = ts
         .db
-        .list_sport_config_ids(ts.generic_sport_id, Some("New"), None)
+        .list_sport_configs(ts.generic_sport_id, Some("New"), None)
         .await
         .unwrap();
     assert_eq!(new_configs.len(), 1);
-    assert_eq!(
-        ts.db
-            .get_sport_config(new_configs[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_name(),
-        "New Sport Config"
-    );
+    assert_eq!(new_configs[0].get_name(), "New Sport Config");
 }
 
 #[wasm_bindgen_test]
@@ -230,27 +221,10 @@ async fn test_copy_new_sport_config() {
 
     let cloned_configs = ts
         .db
-        .list_sport_config_ids(ts.generic_sport_id, Some("Cloned"), None)
+        .list_sport_configs(ts.generic_sport_id, Some("Cloned"), None)
         .await
         .unwrap();
     assert_eq!(cloned_configs.len(), 1);
-    assert_eq!(
-        ts.db
-            .get_sport_config(cloned_configs[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_name(),
-        "Cloned Config"
-    );
-    assert_eq!(
-        ts.db
-            .get_sport_config(cloned_configs[0])
-            .await
-            .unwrap()
-            .unwrap()
-            .get_version()
-            .unwrap(),
-        0
-    );
+    assert_eq!(cloned_configs[0].get_name(), "Cloned Config");
+    assert_eq!(cloned_configs[0].get_version().unwrap(), 0);
 }

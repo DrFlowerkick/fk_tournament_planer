@@ -4,12 +4,7 @@ use crate::common::{
 };
 use app::{postal_addresses::ListPostalAddresses, provide_global_context};
 use gloo_timers::future::sleep;
-use leptos::{
-    mount::mount_to,
-    prelude::*,
-    wasm_bindgen::JsCast,
-    web_sys::{HtmlAnchorElement, HtmlButtonElement},
-};
+use leptos::{mount::mount_to, prelude::*, wasm_bindgen::JsCast, web_sys::HtmlButtonElement};
 use leptos_router::{
     components::{Route, Router, Routes},
     path,
@@ -40,10 +35,11 @@ async fn test_search_postal_address() {
         }
     });
 
-    // check row
+    // wait for loading and check if first row contains correct data
     let first_row_id = format!("table-entry-row-{}", ts.entries[0]);
     wait_for_element_text(&first_row_id, "Test Address1", 1000).await;
 
+    // check row
     let row = get_element_by_test_id(&first_row_id)
         .text_content()
         .unwrap();
@@ -107,10 +103,8 @@ async fn test_search_postal_address() {
 
     // test buttons which show after click on table row
     let edit_button = get_element_by_test_id("action-btn-edit")
-        .dyn_into::<HtmlAnchorElement>()
+        .dyn_into::<HtmlButtonElement>()
         .unwrap();
-    let href = edit_button.href();
-    assert!(href.ends_with(&format!("edit?address_id={}", ts.entries[0])));
     assert_eq!(
         edit_button.text_content().unwrap(),
         "Edit selected Postal Address"

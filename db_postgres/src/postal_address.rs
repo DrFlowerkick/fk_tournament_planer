@@ -218,11 +218,11 @@ impl DbpPostalAddress for PgDb {
             limit = limit.unwrap_or(10)
         )
     )]
-    async fn list_postal_address_ids(
+    async fn list_postal_addresses(
         &self,
         name_filter: Option<&str>,
         limit: Option<usize>,
-    ) -> DbResult<Vec<Uuid>> {
+    ) -> DbResult<Vec<PostalAddress>> {
         let mut conn = self.new_connection().await?;
 
         let mut query = postal_addresses.into_boxed::<diesel::pg::Pg>();
@@ -241,13 +241,27 @@ impl DbpPostalAddress for PgDb {
         }
 
         let rows = query
-            .select(id)
+            .select((
+                id,
+                version,
+                name,
+                street,
+                postal_code,
+                locality,
+                region,
+                country,
+                created_at,
+                updated_at,
+            ))
             .order((name.asc().nulls_last(), created_at.asc()))
-            .load::<Uuid>(&mut conn)
+            .load::<DbPostalAddress>(&mut conn)
             .await
             .map_err(map_db_err)?;
 
         info!(count = rows.len(), "list_ok");
-        Ok(rows)
+        Ok(rows
+            .into_iter()
+            .map(|r| r.try_into())
+            .collect::<Result<_, _>>()?)
     }
 }
